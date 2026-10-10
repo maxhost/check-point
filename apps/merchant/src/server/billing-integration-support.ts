@@ -15,7 +15,7 @@ import type { SeededSubscription } from "./locations-integration-support";
 // incluido lo que vuelve a `./stripe-config`, cuya factory todavia no termino. Con el
 // barrel, `billing-pages*.neon.integration.test.ts` COLGABAN para siempre (ni `vitest
 // list` terminaba). Es el mismo deadlock que ya documenta `billing-pages.neon.integration.test.ts`.
-import { readSubscription, scheduleDowngrade } from "./billing/store";
+import { readSubscription, scheduleCancel } from "./billing/store";
 import { getDb, withDbTransaction } from "@mi-pasaporte/db";
 import { lockBusiness } from "./locations/shared";
 import {
@@ -34,7 +34,7 @@ import {
  */
 
 /**
- * LAS 5 ENV DE STRIPE, con valores falsos que PASAN la validación real de
+ * LAS 7 ENV DE STRIPE (spec 0189 §D5: cuatro precios), con valores falsos que PASAN la validación real de
  * `stripe-config.ts`: el prefijo `sk_test_` tiene que coincidir con
  * `STRIPE_ENVIRONMENT=test` (`stripe-config.ts:29-31`) o `getStripeConfiguration()` tira y el
  * webhook contesta 400 «Webhook no configurado» — un test podría quedar VERDE aseverando el
@@ -48,13 +48,22 @@ export const STRIPE_TEST_ENV = {
   STRIPE_ENVIRONMENT: "test",
   STRIPE_SECRET_KEY_TEST: "sk_test_falsa_para_la_integracion",
   STRIPE_WEBHOOK_SECRET_TEST: "whsec_falso_para_la_integracion",
+  STRIPE_PRICE_BASE_MONTHLY_TEST: "price_base_monthly",
+  STRIPE_PRICE_BASE_YEARLY_TEST: "price_base_yearly",
   STRIPE_PRICE_PLUS_MONTHLY_TEST: "price_plus_monthly",
   STRIPE_PRICE_PLUS_YEARLY_TEST: "price_plus_yearly",
 } as const;
 
+/** Los precios de PLUS (los nombres son de antes de la spec 0189, con un solo plan). */
 export const MONTHLY_PRICE = STRIPE_TEST_ENV.STRIPE_PRICE_PLUS_MONTHLY_TEST;
 export const YEARLY_PRICE = STRIPE_TEST_ENV.STRIPE_PRICE_PLUS_YEARLY_TEST;
-export const PRICE_IDS = { monthly: MONTHLY_PRICE, yearly: YEARLY_PRICE };
+export const BASE_MONTHLY_PRICE =
+  STRIPE_TEST_ENV.STRIPE_PRICE_BASE_MONTHLY_TEST;
+export const BASE_YEARLY_PRICE = STRIPE_TEST_ENV.STRIPE_PRICE_BASE_YEARLY_TEST;
+export const PRICE_IDS = {
+  base: { month: BASE_MONTHLY_PRICE, year: BASE_YEARLY_PRICE },
+  plus: { month: MONTHLY_PRICE, year: YEARLY_PRICE },
+};
 
 /**
  * EL DOBLE DE STRIPE VIVE EN `billing-stripe-fake.ts` — corte de tamaño decidido por el
@@ -241,7 +250,7 @@ export const subscriptionRowFixture = (
   overrides: Partial<SubscriptionRow> = {},
 ): SubscriptionRow => ({
   businessId: CALLER_BUSINESS,
-  plan: "free",
+  plan: "trial",
   interval: null,
   status: "active",
   stripeCustomerId: null,
@@ -249,6 +258,7 @@ export const subscriptionRowFixture = (
   pendingPlan: null,
   pendingPlanAt: null,
   downgradeRequestedAt: null,
+  trialEndsAt: new Date(Date.now() + 60 * 86_400_000),
   lastEventAt: null,
   ...overrides,
 });
@@ -278,32 +288,12 @@ export async function cancelStepUnderLock(
   return withDbTransaction(async (tx) => {
     await lockBusiness(tx, businessId);
     await readSubscription(tx, businessId);
-    const result = await scheduleDowngrade(tx, businessId, { now });
+    const result = await scheduleCancel(tx, businessId, {
+      now,
+      pendingPlan: "none",
+      pendingPlanAt: null,
+    });
     if (gate) await gate;
     return result;
   });
-}
-
-/**
- * Spec 0064, fase B — LA SUSCRIPCIÓN VIVA que el doble devolvería para un tag, mudada acá desde
- * `billing-downgrade-now.neon.integration.test.ts` por tamaño (302/300 al hook).
- *
- * El `fake` va por PARÁMETRO y no se lee de un módulo: cada test reconstruye el suyo en su
- * `beforeEach`, así que capturarlo por closure ataría este helper a la instancia vieja y el
- * seed caería en el doble equivocado — un rojo que parecería un bug del producto.
- */
-export function seedLiveSubscription(
-  fake: FakeStripe,
-  businessId: string,
-  tag: string,
-) {
-  const subscription = stripeSubscription({
-    id: subId(tag),
-    status: "active",
-    customer: custId(tag),
-    businessId,
-    items: [{ priceId: MONTHLY_PRICE }],
-  });
-  fake.subscriptions.set(subId(tag), subscription);
-  return subscription;
 }

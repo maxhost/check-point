@@ -50,16 +50,12 @@ vi.mock("./staff", async (importOriginal) => {
 });
 
 import { renderToStaticMarkup } from "react-dom/server";
-import { subscriptionOffers } from "./billing";
-import { settleToFree } from "./billing/store";
+import { scheduleCancel } from "./billing/store";
 import { withDbTransaction } from "@mi-pasaporte/db";
 import { lockBusiness } from "./locations/shared";
 import { useBusiness } from "./billing-pages-support";
 import SubscriptionPage from "../app/backoffice/subscription/page";
 import { POST as CHECKOUT } from "../app/api/billing/checkout/route";
-import { POST as CANCEL } from "../app/api/billing/cancel/route";
-import { downgradeToFree } from "../app/api/billing/_downgrade";
-import { POST as SETTLE_FREE } from "../app/api/billing/settle-free/route";
 
 /** Las páginas se importan DESPUÉS de los `vi.mock` y no desde el support: el motivo (un
  * ciclo de imports que cuelga la colección entera) está en `billing-pages-support.ts`. */
@@ -69,17 +65,16 @@ const renderSubscription = async () =>
   );
 
 /**
- * Spec 0063 — EL ESTADO «`plus` CON LA SUSCRIPCIÓN MUERTA» Y SUS DOS SALIDAS, JUNTAS Y SOBRE
- * EL MISMO ESTADO. Existe por una razón de proceso: la spec dice que ese estado sale por
- * «**D8 o el botón de D10**», D10 se cerró en la fase D1 y D8 en la D2, así que NINGÚN
- * REVISOR VIO LAS DOS JUNTAS. Si las dos se debilitaran, `already_on_plan` volvería a ser un
- * callejón sin salida — «Ya estás en el plan Plus» sobre una suscripción que no existe.
+ * Spec 0063 + spec 0189 — EL ESTADO «PLAN PAGO CON LA SUSCRIPCIÓN MUERTA» Y SU SALIDA. Desde la
+ * spec 0189 no hay plan gratis al que bajar: la salida es CONTRATAR (la suscripción muerta no
+ * cuenta como viva, así que el Checkout procede), y D8 reconcilia a `none` cuando Stripe lo
+ * cuenta.
  *
- * Archivo propio por CORTE DE TAMAÑO (delta de la D2): `billing-reconcile-page.neon…` llegó a
- * 300 exactas. Los `vi.mock` de arriba se repiten a propósito — no pueden vivir en el support.
+ * Archivo propio por CORTE DE TAMAÑO. Los `vi.mock` de arriba se repiten a propósito — no
+ * pueden vivir en el support.
  */
 describe.skipIf(!integrationEnabled)(
-  "«plus con la suscripción muerta»: las DOS salidas (spec 0063, D8 y D10)",
+  "«plan pago con la suscripción muerta»: su salida (spec 0063 D8 + spec 0189)",
   () => {
     let seed: Seed | null = null;
 
@@ -109,13 +104,13 @@ describe.skipIf(!integrationEnabled)(
           id: subId("d8"),
           status: "canceled",
           customer: custId("d8"),
-          items: [{ priceId: PRICE_IDS.monthly }],
+          items: [{ priceId: PRICE_IDS.plus.month }],
         }),
       ];
       const html = await renderSubscription();
 
       // Por SQL, que es el oráculo (la respuesta nunca lo es): un `canceled` sobre un plan
-      // PAGO sin `downgrade_requested_at` es `none`, no `free` (bloqueante R2-1).
+      // PAGO es `none` (spec 0189 §D5).
       const row = await readSubscriptionRow(seed.business.id);
       expect(row.plan).toBe("none");
       // Y el owner ve el estado NUEVO en el mismo render, no en el siguiente.
@@ -124,15 +119,16 @@ describe.skipIf(!integrationEnabled)(
       // medido: la primera sonda aseveró `toContain("Plan Sin plan")` y PASÓ).
       expect(html).not.toContain("Plan Sin plan");
       expect(html).toContain("Tu suscripción terminó");
-      expect(html).toContain("Volver a Plus");
+      expect(html).toContain("Elegir un plan");
     }, 60_000);
 
-    it("SALIDA 2 (D10): con Stripe sin nada que contar, el botón sigue siendo salida y deja pasar el checkout", async () => {
+    it("SALIDA 2: con Stripe sin nada que contar, el estado muerto NO es un callejón: el checkout procede", async () => {
       seed = await seedBillingBusiness("plus", {
         interval: "month",
-        stripeCustomerId: custId("d10"),
-        stripeSubscriptionId: subId("d10"),
+        stripeCustomerId: custId("muerta"),
+        stripeSubscriptionId: subId("muerta"),
         status: "canceled",
+        trialEndsAt: new Date(Date.now() - 86_400_000),
       });
       useBusiness(seed);
       // Lista VACÍA: D8 no escribe nada (M16) y el estado muerto SIGUE ahí.
@@ -140,39 +136,17 @@ describe.skipIf(!integrationEnabled)(
       const html = await renderSubscription();
       expect(await readSubscriptionRow(seed.business.id)).toMatchObject({
         plan: "plus",
-        stripeSubscriptionId: subId("d10"),
+        stripeSubscriptionId: subId("muerta"),
       });
-      expect(html).toContain("Bajar a Free");
+      expect(html).toContain("Elegir un plan");
       expect(html).toContain("No pudimos confirmar tu suscripción con Stripe");
-
-      // EL ALIAS, ENUNCIADO (menor 9 del revisor): para un `plus` muerto las offers mandan
-      // el botón a `/api/billing/cancel`, y `settle-free` es LITERALMENTE el mismo handler
-      // (`settle-free/route.ts`: `export const POST = downgradeToFree`, de `_downgrade.ts`). Qué hacer lo decide
-      // la FILA, no la URL. Si alguien los separa, esto lo dice antes que prod.
-      expect(
-        subscriptionOffers({
-          plan: "plus",
-          status: "canceled",
-          interval: "month",
-          pendingPlan: null,
-          pendingPlanAt: null,
-        }).downgrade?.endpoint,
-      ).toBe("/api/billing/cancel");
-      expect(SETTLE_FREE).toBe(downgradeToFree);
-
-      // El botón es salida de verdad, POR EL ENDPOINT QUE EL BOTÓN USA: limpia el id en
-      // local, SIN tocar Stripe.
-      const callsAntes = fake.calls.length;
-      expect((await CANCEL(billingRequest({}))).status).toBe(200);
-      const settled = await readSubscriptionRow(seed.business.id);
-      expect([settled.plan, settled.stripeSubscriptionId]).toEqual([
-        "free",
-        null,
-      ]);
-      expect(fake.calls.length).toBe(callsAntes);
-      // Y RECIÉN ACÁ deja de ser un callejón: el checkout procede.
+      // La suscripción MUERTA no cuenta como viva: el checkout procede sin pasar por nada.
       const checkout = await CHECKOUT(
-        billingRequest({ interval: "month", from: "subscription" }),
+        billingRequest({
+          plan: "plus",
+          interval: "month",
+          from: "subscription",
+        }),
       );
       expect(checkout.status).toBe(200);
       expect(((await checkout.json()) as { url?: string }).url).toBeTruthy();
@@ -183,11 +157,11 @@ describe.skipIf(!integrationEnabled)(
       // `billing-click-probe.test.ts` (antes se transcribía a mano y pinneaba la copia);
       // acá se pinnea lo que la RUTA hace con él: la sesión vuelve a `/backoffice` y no a
       // la sección, que es el [R2-I8] del lado del aterrizaje.
-      seed = await seedBillingBusiness("free");
+      seed = await seedBillingBusiness("trial");
       useBusiness(seed);
 
       const response = await CHECKOUT(
-        billingRequest({ interval: "month", from: "onboarding" }),
+        billingRequest({ plan: "base", interval: "month", from: "onboarding" }),
       );
       expect(response.status).toBe(200);
       expect(((await response.json()) as { url?: string }).url).toBeTruthy();
@@ -200,12 +174,10 @@ describe.skipIf(!integrationEnabled)(
       expect(params?.client_reference_id).toBe(seed.business.id);
     }, 60_000);
 
-    it("S9: la página lee el estado BAJO el lock, así que una baja en vuelo se ve commiteada y nunca a medias", async () => {
-      // EL LÍMITE QUE LA D2 DECLARÓ («sólo lo pinnearía una carrera») ERA FALSO, y lo
-      // falsificó un revisor escribiendo esta carrera: ~40 líneas, 0 paquetes. Un escritor
-      // toma `lockBusiness`, escribe el `SET` de `settle_to_free` y RETIENE el commit
-      // mientras la página renderiza. Con el lock, el render espera y muestra `free`; sin
-      // él (R9), lee `plus` y ofrece «Bajar a Free» sobre un estado que ya no existe.
+    it("S9: la página lee el estado BAJO el lock, así que una cancelación en vuelo se ve commiteada y nunca a medias", async () => {
+      // Un escritor toma `lockBusiness`, PROGRAMA la cancelación y RETIENE el commit mientras
+      // la página renderiza. Con el lock, el render espera y muestra la cancelación; sin él
+      // (R9), lee la fila vieja y ofrece «Cancelar suscripción» sobre algo ya cancelado.
       seed = await seedBillingBusiness("plus", {
         interval: "month",
         stripeCustomerId: custId("carrera"),
@@ -221,7 +193,11 @@ describe.skipIf(!integrationEnabled)(
       });
       const writer = withDbTransaction(async (tx) => {
         await lockBusiness(tx, businessId);
-        await settleToFree(tx, businessId);
+        await scheduleCancel(tx, businessId, {
+          now: new Date(),
+          pendingPlan: "none",
+          pendingPlanAt: null,
+        });
         locked();
         await new Promise((resolve) => setTimeout(resolve, 1500));
       });
@@ -229,10 +205,10 @@ describe.skipIf(!integrationEnabled)(
       const html = await renderSubscription();
       await writer;
 
-      // Lo que el owner vio es el estado COMMITEADO: free, sin la baja que ya ocurrió.
-      expect(html).not.toContain("Bajar a Free");
-      expect(html).toContain("Mejorar a Plus");
-      expect((await readSubscriptionRow(businessId)).plan).toBe("free");
+      // Lo que el owner vio es el estado COMMITEADO: la cancelación programada, sin el botón.
+      expect(html).not.toContain("Cancelar suscripción");
+      expect(html).toContain("al final del período");
+      expect((await readSubscriptionRow(businessId)).pendingPlan).toBe("none");
     }, 60_000);
   },
 );

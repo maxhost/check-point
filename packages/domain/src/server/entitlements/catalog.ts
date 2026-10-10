@@ -19,25 +19,32 @@
  */
 
 /**
- * Los planes que `core.subscription.plan` toma hoy. NO es decoracion: `byPlan` esta tipado
- * como `Record<KnownPlan, …>`, asi que **agregar un plan aca sin declarar sus limites en
- * cada entrada no compila**, y el recorrido `ENTITLEMENTS × KNOWN_PLANS`
- * (`entitlements-catalog.test.ts`) lo pone ademas en rojo en la suite.
+ * Los planes que `core.subscription.plan` toma hoy (spec 0189 / ADR 0134 §1: no hay plan
+ * gratis). NO es decoracion: `byPlan` esta tipado como `Record<KnownPlan, …>`, asi que
+ * **agregar un plan aca sin declarar sus limites en cada entrada no compila**, y el recorrido
+ * `ENTITLEMENTS × KNOWN_PLANS` (`entitlements-catalog.test.ts`) lo pone ademas en rojo.
  *
- * El agujero que cierra (ADR 0073 §3): hasta esta spec un plan sin fila caia al valor mas
- * restrictivo **en silencio**, asi que introducir `enterprise` lo aterrizaba en 1 local —
- * el peligro estaba escrito como advertencia en `locations/core.ts` y no tenia oraculo.
+ *  - `trial`: la prueba de 90 dias, con todo lo del plan superior (ADR 0134 §2).
+ *  - `base`: el plan pago chico — 1 local, Bienvenida y Venta cruzada (ADR 0134 §4).
+ *  - `plus`: el plan pago superior — 3 locales y todas las campañas (ADR 0134 §5).
+ *  - `none`: sin acceso. Es tambien el valor de un negocio BLOQUEADO (`effectivePlan`).
+ *
+ * Los ids internos no cambian cuando lleguen los nombres comerciales (ADR 0134 §1).
  */
-export const KNOWN_PLANS = ["free", "plus", "none"] as const;
+export const KNOWN_PLANS = ["trial", "base", "plus", "none"] as const;
 
 export type KnownPlan = (typeof KNOWN_PLANS)[number];
 
-/** Que hacer con `pending_plan`. Hoy hay una sola regla y es la del ADR 0063 D2: el valor
- * efectivo es el **menor** entre el plan vigente y el destino. Es `min` y no «gana el
- * pendiente» porque un upgrade programado no debe subir el tope antes de que el pago este
- * confirmado. Se declara por entrada —en vez de ser implicita— para que el dia que aparezca
- * una segunda regla el catalogo la pueda nombrar sin tocar a los llamadores. */
-export type PendingRule = "min";
+/** ADR 0134 §2: la prueba dura 90 dias. Se usa al ESCRIBIR `trial_ends_at` (alta, seed); el
+ * acceso se decide por la fecha guardada, nunca recalculando con esto. */
+export const TRIAL_DAYS = 90;
+
+/** Precios de EXHIBICION (ADR 0134 §4/§5/§10, en USD). El cobro real es el precio de Stripe:
+ * esto solo viaja a la UI (`GET /api/billing/state`). */
+export const PLAN_PRICES_USD = {
+  base: { month: 20, year: 200 },
+  plus: { month: 49, year: 490 },
+} as const;
 
 /**
  * Spec 0090 §8 / ADR 0082 §10 — LA VENTANA de una entrada `kind: "limit"`.
@@ -49,23 +56,18 @@ export type PendingRule = "min";
  */
 export type EntitlementWindow = "day" | "week" | "month";
 
+/**
+ * Spec 0189 §D2: el valor sale de `byPlan[effectivePlan(ctx)]` (`index.ts`). Ya no hay reglas
+ * por entrada (ni «exige suscripcion viva» ni «el menor con el pendiente»): el acceso
+ * (suscripcion viva o prueba vigente) decide el plan EFECTIVO, y `pending_plan` solo toma `'none'` (cancelacion programada), que
+ * por el ADR 0134 §8 no baja nada hasta el fin del periodo pagado.
+ */
 type EntitlementShape<Kind extends string, Value> = {
   kind: Kind;
   byPlan: Record<KnownPlan, Value>;
-  /** El valor de un plan DESCONOCIDO, y tambien el de una entrada con
-   * `requiresLiveSubscription` cuando no hay suscripcion viva. Es el mas restrictivo. */
+  /** El valor de un plan DESCONOCIDO (y el de una suscripcion viva cuyo plan no es pago).
+   * Es el mas restrictivo. */
   fallback: Value;
-  /**
-   * ADR 0073 §2 — se declara **por entrada** y NO se deriva un `effectivePlan` unico.
-   *
-   * La asimetria existe **a proposito**: un `plus` con `interval` NULL y sin
-   * `stripe_subscription_id` (la forma A1 de la spec 0063, que existio en produccion) no
-   * activa campañas pero **si conserva sus 3 locales**, porque el tope de un negocio sin
-   * suscripcion es 1 «y no 0» para que pueda archivar y salir. Degradar a `free` en la
-   * capa es mas simple de leer y **cambia el comportamiento de locales**.
-   */
-  requiresLiveSubscription: boolean;
-  pendingRule: PendingRule;
   /** Solo en los topes de FLUJO (spec 0090 §8). Ausente = tope de stock, sin ventana. */
   window?: EntitlementWindow;
 };
@@ -75,77 +77,67 @@ export type FlagEntitlement = EntitlementShape<"flag", boolean>;
 export type EntitlementDef = LimitEntitlement | FlagEntitlement;
 
 export const ENTITLEMENTS = {
-  /** Locales ACTIVOS que el plan admite (spec 0061 decision 2, ADR 0063 D2). `none` es 1 y
-   * no 0 a proposito (ADR 0058 §12): un negocio sin suscripcion sigue operando su local y
-   * tiene que poder archivar para salir. */
+  /** Locales ACTIVOS que el plan admite (ADR 0134 §4/§5). `none` es 1 y no 0 (ADR 0058 §12):
+   * el tope se usa tambien para el plan destino de una bajada y para archivar y salir. */
   "locations.max": {
     kind: "limit",
-    byPlan: { free: 1, plus: 3, none: 1 },
+    byPlan: { trial: 3, base: 1, plus: 3, none: 1 },
     fallback: 1,
-    requiresLiveSubscription: false,
-    pendingRule: "min",
   },
-  /** Componer y activar campañas (spec 0065 fase D). Exige suscripcion viva: sin esto un
-   * `plus` forma A1 activaria campañas sin pagar. */
+  /** Componer y activar campañas: todas las plantillas salvo Bienvenida y Venta cruzada, y las
+   * campañas propias (ADR 0134 §5). Solo `trial` y `plus`. */
   "campaigns.enabled": {
     kind: "flag",
-    byPlan: { free: false, plus: true, none: false },
+    byPlan: { trial: true, base: false, plus: true, none: false },
     fallback: false,
-    requiresLiveSubscription: true,
-    pendingRule: "min",
   },
   /**
-   * ADR 0112 — LA BIENVENIDA ESTA INCLUIDA EN TODOS LOS PLANES (spec 0129). La activan y la
-   * entregan `free`, `plus` y `none` (y un negocio sin fila de suscripcion, por `fallback`), y
-   * NO exige suscripcion viva: es la campaña que trae clientes a la red, decision del owner
-   * del 2026-10-02. Solo la consulta la plantilla `welcome` (`campaignAllowedFor` en
-   * `marketing/plan-gate.ts`); el resto de las campañas sigue con `campaigns.enabled`.
-   * `pendingRule: "min"` es inocuo: los tres planes dan `true`. Cambiar que planes la
-   * incluyen es ESTA linea, no una busqueda por el codigo.
+   * ADR 0112 + ADR 0134 §4 — LA BIENVENIDA: incluida en los planes con acceso (`trial`,
+   * `base`, `plus`). Un negocio sin acceso (`none`) no la activa ni la entrega (ADR 0134 §7).
+   * Solo la consulta la plantilla `welcome` (`campaignAllowedFor` en `marketing/plan-gate.ts`).
    */
   "campaigns.welcome": {
     kind: "flag",
-    byPlan: { free: true, plus: true, none: true },
-    fallback: true,
-    requiresLiveSubscription: false,
-    pendingRule: "min",
+    byPlan: { trial: true, base: true, plus: true, none: false },
+    fallback: false,
+  },
+  /**
+   * Spec 0189 §D2 / ADR 0134 §4 — LA VENTA CRUZADA: incluida en el plan base («sirve al comercio
+   * y a la red»). Solo la consulta la plantilla `cross`; «Horas valle» sigue con
+   * `campaigns.enabled`.
+   */
+  "campaigns.cross": {
+    kind: "flag",
+    byPlan: { trial: true, base: true, plus: true, none: false },
+    fallback: false,
   },
   /**
    * Spec 0090 §8 — ANALISIS DE IMPORTACION QUE LLEGARON A `ready`, por ventana.
    *
    * **Solo lo consume un analisis que llego a `ready`** (ADR 0082 §10, decision del owner):
-   * un fallo del proveedor o nuestro no le cuesta el dia al merchant. `requiresLiveSubscription`
-   * es `false` porque esto **no es cuota comercial** (§7 del ADR sigue en pie) sino un control
-   * operativo: un negocio sin suscripcion tiene que poder importar su menu.
+   * un fallo del proveedor o nuestro no le cuesta el dia al merchant. Es un control
+   * operativo, no cuota comercial: vale lo mismo en todos los planes.
    *
    * **⚠️ VALOR DE PRUEBAS — 100, NO 1 (decision del owner, 2026-09-23).** El valor de
    * produccion es **1 por negocio por dia** y vuelve cuando la feature salga de pruebas.
-   * El mecanismo NO cambio: misma clave, misma ventana `day`, mismo discriminante
-   * (`draft IS NOT NULL`). Lo unico que se movio es el numero, y se mueve **solo acá** —
-   * ninguna pantalla ni ruta lo hardcodea, la UI muestra lo que devuelve el servidor.
+   * Lo unico que se movio es el numero, y se mueve **solo acá**.
    */
   "catalog.imports.analyses": {
     kind: "limit",
-    byPlan: { free: 100, plus: 100, none: 100 },
+    byPlan: { trial: 100, base: 100, plus: 100, none: 100 },
     fallback: 100,
-    requiresLiveSubscription: false,
-    pendingRule: "min",
     window: "day",
   },
   /**
    * El techo de SUBMITS ACEPTADOS por el proveedor en la ventana (ADR 0083). Un trabajo
    * aceptado cuenta aunque falle despues; configuracion/preparacion/rechazo de `start` no.
    *
-   * **⚠️ TAMBIEN EN VALOR DE PRUEBAS — 100, NO 3.** El owner pidio sacar el tope de **1
-   * analisis diario**; este es el otro techo del mismo camino y a 3 habria cortado la prueba
-   * en el cuarto submit aceptado, que es justo lo que pidio evitar. Valor de produccion: **3**.
+   * **⚠️ TAMBIEN EN VALOR DE PRUEBAS — 100, NO 3.** Valor de produccion: **3**.
    */
   "catalog.imports.attempts": {
     kind: "limit",
-    byPlan: { free: 100, plus: 100, none: 100 },
+    byPlan: { trial: 100, base: 100, plus: 100, none: 100 },
     fallback: 100,
-    requiresLiveSubscription: false,
-    pendingRule: "min",
     window: "day",
   },
 } as const satisfies Record<string, EntitlementDef>;
@@ -163,12 +155,29 @@ export type LimitKey = KeysOfKind<"limit">;
 export type FlagKey = KeysOfKind<"flag">;
 
 /**
- * Los planes PAGOS. Vive en el catalogo y no en `billing/derive-rules.ts` (de donde se
- * re-exporta) por el mismo motivo que los topes: «que plan es pago / como se llama» era el
+ * Los planes PAGOS (ADR 0134 §4/§5). Vive en el catalogo y no en `billing/derive-rules.ts`
+ * (de donde se re-exporta) por el mismo motivo que los topes: «que plan es pago» era el
  * tercer lugar de la §P1 donde el conocimiento de plan estaba copiado.
  *
  * `ReadonlySet<string>` y no `ReadonlySet<KnownPlan>`: sus llamadores preguntan por un
  * `plan` que viene de la base como `string`, y un set tipado obligaria a castear en cada
  * `.has()`.
  */
-export const PAID_PLANS: ReadonlySet<string> = new Set<KnownPlan>(["plus"]);
+export const PAID_PLANS: ReadonlySet<string> = new Set<KnownPlan>([
+  "base",
+  "plus",
+]);
+
+/** Las plantillas que incluye el plan BASE (spec 0189 §D2): una plantilla esta en el base si su
+ * flag propio es `true` en `base`. DERIVADO del catalogo, no escrito a mano en otro lugar; lo
+ * usan el bloqueo de bajada a base y el barrido. */
+const TEMPLATE_FLAGS = {
+  welcome: "campaigns.welcome",
+  cross: "campaigns.cross",
+} as const;
+
+export const BASE_TEMPLATE_KEYS: readonly string[] = Object.entries(
+  TEMPLATE_FLAGS,
+)
+  .filter(([, key]) => ENTITLEMENTS[key].byPlan.base)
+  .map(([template]) => template);

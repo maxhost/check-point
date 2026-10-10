@@ -86,6 +86,7 @@ describe.skipIf(!integrationEnabled)(
       interval: "month",
       pendingPlan: null,
       pendingPlanAt: null,
+      trialEndsAt: null,
     };
 
     beforeEach(() => {
@@ -114,6 +115,7 @@ describe.skipIf(!integrationEnabled)(
         stripeCustomerId: custId("props"),
         stripeSubscriptionId: subId("props"),
         downgradeRequestedAt: requestedAt,
+        trialEndsAt: null,
       });
       useBusiness(seed);
       // LAS CUATRO ASERCIONES VIVEN EN `expectCrossesExactly` (ADR 0062) y se corren en LOS
@@ -146,7 +148,7 @@ describe.skipIf(!integrationEnabled)(
       );
     }, 60_000);
 
-    it("le pasa el DTO también en el estado BLOQUEADO, con el conjunto COMPLETO", async () => {
+    it("le pasa el DTO también con 2 locales activos, con el conjunto COMPLETO", async () => {
       // ES UN `it` PROPIO Y NO UN SEGUNDO TRAMO DEL ANTERIOR: adentro del mismo `it` el
       // primer rojo corta y este estado NUNCA se evalúa —medido: con la fuga del `key` puesta
       // sólo salía la aserción del estado 1—, así que un rojo no diría CUÁL de los dos
@@ -159,6 +161,7 @@ describe.skipIf(!integrationEnabled)(
         interval: "month",
         stripeCustomerId: custId("bloq"),
         stripeSubscriptionId: subId("bloq"),
+        trialEndsAt: null,
       });
       await seedExtraLocation(seed.business.id, "Sucursal Sur");
       useBusiness(seed);
@@ -170,14 +173,10 @@ describe.skipIf(!integrationEnabled)(
           offers: subscriptionOffers(plusMensual),
           facts: { renewalAt: null, lastPaidInvoice: null },
           activeLocations: 2,
-          canCancel: false,
-          downgradeBlock: {
-            message:
-              "Para volver a Free necesitas 1 local activo; hoy tienes 2. Archiva 1.",
-            // Spec 0065, fase D: lo que cruza es el `code`, no el conteo — el modal usa el
-            // `code` para elegir a dónde manda y el conteo ya viaja dentro del mensaje.
-            code: "downgrade_blocked",
-          },
+          // Spec 0189: cancelar ya no exige archivar (corta al fin del periodo), así que con
+          // 2 locales la cancelación procede y no cruza ningún bloqueo.
+          canCancel: true,
+          downgradeBlock: null,
           stripeUnconfirmed: true,
           timezone: "America/Guayaquil",
           notice: null,
@@ -197,6 +196,7 @@ describe.skipIf(!integrationEnabled)(
         interval: "month",
         stripeCustomerId: customer,
         stripeSubscriptionId: subscription,
+        trialEndsAt: null,
       });
       useBusiness(seed);
       // El 1 de diciembre de 2026 a las 12:00 UTC, en unix SECONDS: si alguien sacara el

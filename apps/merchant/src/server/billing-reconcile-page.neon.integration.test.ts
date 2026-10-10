@@ -98,11 +98,11 @@ describe.skipIf(!integrationEnabled)(
     });
 
     it("una fila DIVERGENTE se reconcilia ANTES de renderizar", async () => {
-      // EL CASO MOTIVADOR DE D8: el webhook se perdió el evento, la DB dice `free` sin id y
+      // EL CASO MOTIVADOR DE D8: el webhook se perdió el evento, la DB dice `trial` sin id y
       // Stripe tiene una suscripción viva → `checkout` crearía una SEGUNDA suscripción viva
       // (DOBLE COBRO). El «antes de renderizar» es lo que el oráculo del store no ve: acá se
       // asevera que el MISMO render ya muestra Plus.
-      seed = await seedBillingBusiness("free", {
+      seed = await seedBillingBusiness("trial", {
         stripeCustomerId: custId("divergente"),
       });
       useBusiness(seed);
@@ -111,7 +111,7 @@ describe.skipIf(!integrationEnabled)(
           id: subId("divergente"),
           status: "active",
           customer: custId("divergente"),
-          items: [{ priceId: PRICE_IDS.monthly }],
+          items: [{ priceId: PRICE_IDS.plus.month }],
         }),
       ];
       const html = await renderSubscription();
@@ -122,10 +122,10 @@ describe.skipIf(!integrationEnabled)(
         "month",
         subId("divergente"),
       ]);
-      // El owner ve el plan RECONCILIADO en este render y NO el «Mejorar a Plus» que
+      // El owner ve el plan RECONCILIADO en este render y NO el «Elegir un plan» que
       // llevaba al doble cobro.
       expect(html).toContain("Plan Plus");
-      expect(html).not.toContain("Mejorar a Plus");
+      expect(html).not.toContain("Elegir un plan");
       expect(fake.calls).toContain("subscriptions.list");
     }, 60_000);
 
@@ -148,7 +148,7 @@ describe.skipIf(!integrationEnabled)(
       expect(html).toContain("No pudimos confirmar tu suscripción con Stripe");
       // Y la sección NO se bloquea: sigue mostrando el plan y sus operaciones.
       expect(html).toContain("Plan Plus");
-      expect(html).toContain("Bajar a Free");
+      expect(html).toContain("Cancelar suscripción");
     }, 60_000);
 
     it("con Stripe CAÍDO renderiza con el aviso y sin bloquear la sección", async () => {
@@ -172,17 +172,17 @@ describe.skipIf(!integrationEnabled)(
       // fallo tumbara la página, el owner perdería la sección entera por un timeout de red.
       expect(html).toContain("Plan Plus");
       expect(html).toContain("Pasar a anual");
-      expect(html).toContain("Bajar a Free");
+      expect(html).toContain("Cancelar suscripción");
     }, 60_000);
 
-    it("un `free` SIN customer no dispara el aviso: no hay nada que confirmar", async () => {
-      // Los 9 `free` de prod tienen `stripe_customer_id` NULL: avisar ahí sería alarmar a
-      // todos los negocios gratis por un no-evento, con el aviso siempre encendido.
-      seed = await seedBillingBusiness("free");
+    it("un negocio en prueba SIN customer no dispara el aviso: no hay nada que confirmar", async () => {
+      // Los negocios en prueba nacen con `stripe_customer_id` NULL: avisar ahí sería alarmar a
+      // todos por un no-evento, con el aviso siempre encendido.
+      seed = await seedBillingBusiness("trial");
       useBusiness(seed);
       const html = await renderSubscription();
       expect(html).not.toContain("No pudimos confirmar");
-      expect(html).toContain("Mejorar a Plus");
+      expect(html).toContain("Elegir un plan");
       // Y no se le preguntó nada a Stripe: sin customer no hay por dónde.
       expect(fake.calls).toEqual([]);
     }, 60_000);
@@ -204,7 +204,7 @@ describe.skipIf(!integrationEnabled)(
           id: subId("ajena"),
           status: "active",
           customer: custId("ajena"),
-          items: [{ priceId: PRICE_IDS.monthly }],
+          items: [{ priceId: PRICE_IDS.plus.month }],
         }),
       ];
       const html = await renderSubscription();

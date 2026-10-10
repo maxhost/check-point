@@ -4,7 +4,7 @@ import {
   activeLocationCount,
   lockBusiness,
 } from "../../../server/locations/shared";
-import { activeCampaignCount } from "../../../server/marketing/plan-brake";
+import { activeCampaignsOutsideBase } from "../../../server/marketing/plan-brake";
 import {
   NO_BILLING_FACTS,
   asStripeGateway,
@@ -58,7 +58,7 @@ export default async function SubscriptionPage({
 }: {
   searchParams: Promise<{ checkout?: string; done?: string }>;
 }) {
-  const { business } = await requireOwner();
+  const { business } = await requireOwner({ allowBlocked: true });
   const confirmedWithStripe = await reconcileOnOpen(business.id);
   const state = await readBillingState(business.id);
   const params = await searchParams;
@@ -131,10 +131,7 @@ async function reconcileOnOpen(businessId: string): Promise<boolean> {
       {
         businessId,
         stripeCustomerId,
-        priceIds: {
-          monthly: configuration.monthlyPriceId,
-          yearly: configuration.yearlyPriceId,
-        },
+        priceIds: configuration.priceIds,
       },
     );
     return outcome.reconciled || outcome.reason === "no_customer";
@@ -165,16 +162,20 @@ async function readBillingState(businessId: string) {
     const activeLocations = await activeLocationCount(tx, businessId);
     // Spec 0065, fase D: el conteo de campañas activas alimenta la segunda guarda del
     // downgrade, y se lee bajo el MISMO lock que el de locales.
-    const activeCampaigns = await activeCampaignCount(tx, businessId);
     const decision = decidePlanChange({
       currentPlan: row.plan,
       currentInterval: row.interval,
       pendingPlan: row.pendingPlan,
       status: row.status,
       stripeSubscriptionId: row.stripeSubscriptionId,
+      trialEndsAt: row.trialEndsAt,
+      now: new Date(),
       activeLocations,
-      activeCampaigns,
-      intent: { kind: "downgrade" },
+      activeCampaignsOutsideBase: await activeCampaignsOutsideBase(
+        tx,
+        businessId,
+      ),
+      intent: { kind: "cancel" },
     });
     return {
       subscription: toSubscriptionView(row),
@@ -188,9 +189,7 @@ async function readBillingState(businessId: string) {
         stripeSubscriptionId: row.stripeSubscriptionId,
       },
       activeLocations,
-      canCancel:
-        decision.kind === "schedule_downgrade" ||
-        decision.kind === "settle_to_free",
+      canCancel: decision.kind === "schedule_cancel",
       // El `code` viaja porque es lo que decide A DÓNDE manda el modal (Locales o
       // Campañas); el texto sigue siendo el del servidor, sin una segunda versión acá.
       // `archiveCount` NO viaja: el modal nunca lo renderizó — el conteo ya está DENTRO
@@ -249,7 +248,7 @@ function noticeFor(params: {
       // DECÍA «Programamos la baja a Free», que desde el ADR 0063 es FALSO: la baja se aplica
       // en el acto y no hay nada programado. Un aviso que promete un período de gracia que el
       // servidor ya no da es la misma clase de mentira que el texto viejo del modal.
-      return "Diste de baja tu plan: ya estás en Free.";
+      return "Cancelaste tu suscripción: sigue activa hasta el final del periodo.";
     case "interval":
       return "Pasaste a facturación anual.";
     default:

@@ -101,7 +101,7 @@ export default async function BackofficePage() {
     .from(subscriptions)
     .where(eq(subscriptions.businessId, owned.id))
     .limit(1);
-  const plan = subscription?.plan ?? "free";
+  const plan = subscription?.plan ?? "none";
   const status = subscription?.status ?? "active";
   const firstName = userName.trim().split(/\s+/)[0];
   const greeting = firstName ? `Hola, ${firstName}` : "Hola";

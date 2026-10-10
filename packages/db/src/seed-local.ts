@@ -156,7 +156,7 @@ function businessRows(b: Business): Query[] {
       k.business,
     ),
     q(
-      `insert into core.subscription (id, business_id, plan, status) values ($1, $2, 'free', 'active')
+      `insert into core.subscription (id, business_id, plan, status, trial_ends_at) values ($1, $2, 'trial', 'active', now() + interval '90 days')
        on conflict do nothing`,
       k.business,
       k.business,

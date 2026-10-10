@@ -16,7 +16,7 @@ import {
   seedLocationsBusiness,
 } from "../../../../server/locations-integration-support";
 import { getDb } from "@mi-pasaporte/db";
-import { businesses, users } from "@mi-pasaporte/db/schema";
+import { businesses, subscriptions, users } from "@mi-pasaporte/db/schema";
 import { openMerchantSession } from "../../../../server/merchant-session";
 
 import { GET } from "./route";
@@ -48,11 +48,16 @@ describe.skipIf(!integrationEnabled)(
     let staffCookie: string;
     let staffId: string;
 
+    // Spec 0189 §D10: la prueba vence en 10 días y una hora → `trialDaysLeft` = 11.
+    const trialEndsAt = new Date(
+      Math.floor((Date.now() + 10 * 86_400_000 + 3_600_000) / 1000) * 1000,
+    );
+
     beforeAll(async () => {
       seed = await seedLocationsBusiness(
         `Plan ${randomUUID().slice(0, 8)}`,
         "plus",
-        { interval: "month" },
+        { interval: "month", trialEndsAt },
       );
       ownerCookie = await cookieFor(seed.userId);
       staffId = await seedMember({ businessId: seed.business.id });
@@ -84,6 +89,8 @@ describe.skipIf(!integrationEnabled)(
       const response = await GET(stateRequest(ownerCookie));
       expect(response.status).toBe(200);
       const body = await response.json();
+      // Spec 0189 §D10, literal. Un `plus` SIN suscripción de Stripe con la prueba vigente
+      // tiene acceso por la PRUEBA (no por el plan escrito).
       expect(body).toEqual({
         subscription: {
           plan: "plus",
@@ -91,9 +98,17 @@ describe.skipIf(!integrationEnabled)(
           interval: "month",
           pendingPlan: null,
           pendingPlanAt: null,
+          trialEndsAt: trialEndsAt.toISOString(),
         },
+        access: "trial",
+        trialDaysLeft: 11,
         activeLocations: 1,
-        canCancel: true,
+        activeCampaignsOutsideBase: 0,
+        prices: {
+          base: { month: 20, year: 200 },
+          plus: { month: 49, year: 490 },
+        },
+        currency: "USD",
       });
       // ALLOW-LIST POSITIVA, aseverada sobre el CONJUNTO EXACTO de claves: `not.toHaveProperty`
       // pasa en verde si el objeto cambia de forma.
@@ -103,8 +118,29 @@ describe.skipIf(!integrationEnabled)(
         "pendingPlanAt",
         "plan",
         "status",
+        "trialEndsAt",
       ]);
     }, 120_000);
+
+    it("T7 — un negocio SIN ACCESO lee su estado igual (200, `access: blocked`): es donde paga", async () => {
+      await getDb()
+        .update(subscriptions)
+        .set({ trialEndsAt: new Date(Date.now() - 1000) })
+        .where(eq(subscriptions.businessId, seed.business.id));
+      try {
+        const response = await GET(stateRequest(ownerCookie));
+        expect(response.status).toBe(200);
+        expect(await response.json()).toMatchObject({
+          access: "blocked",
+          trialDaysLeft: null,
+        });
+      } finally {
+        await getDb()
+          .update(subscriptions)
+          .set({ trialEndsAt })
+          .where(eq(subscriptions.businessId, seed.business.id));
+      }
+    }, 60_000);
 
     it("paso 1 — sin sesion: 401 `unauthorized`", async () => {
       const response = await GET(stateRequest());

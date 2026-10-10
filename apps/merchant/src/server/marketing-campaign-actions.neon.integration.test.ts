@@ -167,11 +167,11 @@ describe.skipIf(!integrationEnabled || !COMPOSER_ENABLED)(
       );
     }, 180_000);
 
-    it("charges the plan: a `free` business gets 402 at CREATE (spec 0065, fase D)", async () => {
+    it("charges the plan: a `base` business gets 402 at CREATE (spec 0065 fase D, spec 0189)", async () => {
       // Hasta la fase C crear era gratis y el gate vivía sólo en `activate`; la D lo mueve
-      // también a la composición («un `free` no compone campañas»). El caso viejo aseveraba
-      // el 402 en `activate` DESPUÉS de crear, y ya no se puede llegar ahí.
-      const seed = await world("free", "Campaign plan");
+      // también a la composición. Desde la spec 0189 el plan sin campañas propias es el BASE
+      // (solo Bienvenida y Venta cruzada, ADR 0134 §4).
+      const seed = await world("base", "Campaign plan");
       expect(
         await caught(() =>
           createCampaign(seed.business.id, seed.userId, body(seed)),
@@ -191,9 +191,10 @@ describe.skipIf(!integrationEnabled || !COMPOSER_ENABLED)(
       );
       expect(campaign.status).toBe("draft");
 
+      // La suscripción muere y la prueba ya venció: el negocio queda SIN ACCESO.
       await getDb()
         .update(subscriptions)
-        .set({ plan: "free", stripeSubscriptionId: null })
+        .set({ plan: "none", stripeSubscriptionId: null })
         .where(eq(subscriptions.businessId, seed.business.id));
 
       expect(

@@ -34,8 +34,8 @@ const { limitOf } =
  * Escribirlos dos veces hacia que moverlos para las pruebas pusiera en rojo dos casos que no
  * hablan del valor.
  */
-const TOPE_ANALISIS = limitOf({ plan: null }, "catalog.imports.analyses");
-const TOPE_INTENTOS = limitOf({ plan: null }, "catalog.imports.attempts");
+const TOPE_ANALISIS = limitOf(null, "catalog.imports.analyses");
+const TOPE_INTENTOS = limitOf(null, "catalog.imports.attempts");
 
 /**
  * Spec 0090 §8 / ADR 0082 §10 — **EL CUPO SE CUENTA CON FILAS, Y UN FALLO NO LO CONSUME.**

@@ -30,21 +30,15 @@ import { getDb } from "@mi-pasaporte/db";
 import { campaigns } from "@mi-pasaporte/db/schema";
 
 /**
- * Spec 0065, fase D — EL FRENO DEFENSIVO, contra Postgres.
+ * Spec 0065 fase D + spec 0189 §D4 — LAS CAMPAÑAS SIGUEN AL ACCESO EN EL ACTO, contra Postgres.
  *
- * El bloqueo duro de la baja vive en NUESTRA ruta; este es el camino que la ruta no ve —
- * una cancelación desde el dashboard de Stripe, o un impago que termina en `deleted`. El
- * DoD pide dos cosas y acá está cada una:
+ * Cuando el webhook escribe la fila y el negocio queda SIN acceso (suscripción muerta y la
+ * prueba vencida), TODAS sus campañas `active` —Bienvenida incluida, ADR 0134 §7— quedan
+ * `paused` / `billing_blocked`, en la MISMA transacción. Y es ATÓMICO, verificado **inyectando
+ * un fallo** en la sincronización y aseverando que el PLAN tampoco quedó escrito.
  *
- *  1. que las campañas `active` del negocio queden `paused` / `plan_downgraded`;
- *  2. que sea ATÓMICO, verificado **inyectando un fallo** en ese `update` y aseverando que
- *     el PLAN tampoco quedó escrito. La mutación alternativa —mover el `update` fuera de la
- *     transacción— NO muerde: el estado final es idéntico y el test queda verde con la
- *     atomicidad violada (está escrito así en el plan de pruebas de la spec).
- *
- * El fallo se inyecta envolviendo `pauseCampaignsForDowngrade`, no doblándola: el camino
- * feliz sigue corriendo la función REAL, así que el mismo archivo prueba la escritura y el
- * rollback sin dos implementaciones distintas.
+ * El fallo se inyecta envolviendo `syncCampaignsWithAccess` (lo que `billing/store.ts` llama),
+ * no doblándola: el camino feliz sigue corriendo la función REAL.
  */
 
 const world = vi.hoisted(() => ({ failPause: false }));
@@ -54,11 +48,11 @@ vi.mock("./marketing/plan-brake", async (importOriginal) => {
     await importOriginal<typeof import("./marketing/plan-brake")>();
   return {
     ...actual,
-    pauseCampaignsForDowngrade: async (
-      ...args: Parameters<typeof actual.pauseCampaignsForDowngrade>
+    syncCampaignsWithAccess: async (
+      ...args: Parameters<typeof actual.syncCampaignsWithAccess>
     ) => {
       if (world.failPause) throw new Error("fallo inyectado en la pausa");
-      return actual.pauseCampaignsForDowngrade(...args);
+      return actual.syncCampaignsWithAccess(...args);
     },
   };
 });
@@ -73,12 +67,18 @@ vi.mock("./stripe-config", async (importOriginal) => {
 
 const events = eventIdRegistry();
 
-/** Un negocio `plus` con suscripción viva y N campañas `active`. */
-async function worldWithCampaigns(tag: string, count: number) {
+/** Un negocio `plus` con suscripción viva, la prueba VENCIDA (salvo `trialEndsAt`) y N
+ * campañas `active`. */
+async function worldWithCampaigns(
+  tag: string,
+  count: number,
+  trialEndsAt = new Date(Date.now() - 86_400_000),
+) {
   const seeded = await seedBillingBusiness("plus", {
     stripeSubscriptionId: `sub_${tag}`,
     stripeCustomerId: `cus_${tag}`,
     interval: "month",
+    trialEndsAt,
   });
   const locationId = await seedLocation({ businessId: seeded.business.id });
   const ids: string[] = [];
@@ -121,7 +121,7 @@ async function readCampaigns(ids: string[]) {
 }
 
 describe.skipIf(!integrationEnabled)(
-  "webhook — el freno defensivo de campañas (spec 0065, fase D)",
+  "webhook — las campañas siguen al acceso (spec 0189 §D4)",
   () => {
     beforeEach(() => {
       fake = fakeStripe();
@@ -137,7 +137,7 @@ describe.skipIf(!integrationEnabled)(
       await dropWebhookEvents(events.ids);
     }, 30_000);
 
-    it("un plan que aterriza en `none` sin pasar por nuestra ruta pausa LAS DOS campañas", async () => {
+    it("una suscripción que muere con la prueba vencida pausa LAS DOS campañas con `billing_blocked`", async () => {
       const { seeded, ids } = await worldWithCampaigns("brake", 2);
       try {
         const response = await deliver({
@@ -153,8 +153,8 @@ describe.skipIf(!integrationEnabled)(
           "none",
         );
         expect(await readCampaigns(ids)).toEqual([
-          { status: "paused", pauseReason: "plan_downgraded" },
-          { status: "paused", pauseReason: "plan_downgraded" },
+          { status: "paused", pauseReason: "billing_blocked" },
+          { status: "paused", pauseReason: "billing_blocked" },
         ]);
       } finally {
         await getDb()
@@ -181,7 +181,7 @@ describe.skipIf(!integrationEnabled)(
         expect(response.status).toBe(200);
 
         expect(await readCampaigns(mine.ids)).toEqual([
-          { status: "paused", pauseReason: "plan_downgraded" },
+          { status: "paused", pauseReason: "billing_blocked" },
         ]);
         // El vecino no se enteró: mismo tick de webhook, otra suscripción.
         expect(await readCampaigns(neighbour.ids)).toEqual([
@@ -197,7 +197,7 @@ describe.skipIf(!integrationEnabled)(
       }
     }, 60_000);
 
-    it("ADR 0112 §3: con la Bienvenida y otra activas, la baja pausa SÓLO la otra", async () => {
+    it("ADR 0134 §7: sin acceso también se pausa la Bienvenida", async () => {
       const { seeded, ids } = await worldWithCampaigns("welcome", 1);
       const welcome = await seedWelcomeCampaign(seeded, {
         activatedAt: new Date("2026-09-01T12:00:00.000Z"),
@@ -213,10 +213,36 @@ describe.skipIf(!integrationEnabled)(
         expect((await readSubscriptionRow(seeded.business.id)).plan).toBe(
           "none",
         );
-        expect(await readCampaigns(ids)).toEqual([
-          { status: "paused", pauseReason: "plan_downgraded" },
+        expect(await readCampaigns([...ids, welcome])).toEqual([
+          { status: "paused", pauseReason: "billing_blocked" },
+          { status: "paused", pauseReason: "billing_blocked" },
         ]);
-        expect(await readCampaigns([welcome])).toEqual([
+      } finally {
+        await getDb()
+          .delete(campaigns)
+          .where(eq(campaigns.businessId, seeded.business.id));
+        await dropBusiness(seeded.business.id);
+      }
+    }, 60_000);
+
+    it("si la suscripción muere con la prueba VIGENTE, el negocio sigue con acceso y nada se pausa", async () => {
+      const { seeded, ids } = await worldWithCampaigns(
+        "vigente",
+        1,
+        new Date(Date.now() + 86_400_000),
+      );
+      try {
+        const response = await deliver({
+          id: events.next("vigente"),
+          created: Math.floor(Date.UTC(2026, 8, 12) / 1000),
+          type: "customer.subscription.deleted",
+          object: { id: "sub_vigente" },
+        });
+        expect(response.status).toBe(200);
+        expect((await readSubscriptionRow(seeded.business.id)).plan).toBe(
+          "none",
+        );
+        expect(await readCampaigns(ids)).toEqual([
           { status: "active", pauseReason: null },
         ]);
       } finally {

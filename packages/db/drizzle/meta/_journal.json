@@ -484,6 +484,13 @@
       "when": 1791565939169,
       "tag": "0068_ajuste_del_ticket",
       "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1791650287975,
+      "tag": "0069_planes_pagos_con_prueba",
+      "breakpoints": true
     }
   ]
 }

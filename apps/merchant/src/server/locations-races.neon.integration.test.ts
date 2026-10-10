@@ -1,6 +1,5 @@
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
-import Stripe from "stripe";
 import {
   afterAll,
   afterEach,
@@ -174,16 +173,15 @@ describe.skipIf(!integrationEnabled)(
     }, 60_000);
 
     /**
-     * Spec 0063, D2 — EL TOPE EFECTIVO BAJO CONCURRENCIA. Con una baja programada el plan
-     * VIGENTE sigue siendo `plus` (3 locales), así que sin `effectiveLocationLimit` ocho
-     * desarchivados simultáneos caminan el negocio a 3 activos y al cerrar el periodo queda
-     * `free` CON 3 ACTIVOS — el estado que la spec entera existe para prohibir.
+     * Spec 0063 D2 + spec 0189 §D2 — EL TOPE EFECTIVO BAJO CONCURRENCIA. Un negocio que paga
+     * el plan BASE (1 local) recibe ocho desarchivados simultáneos: sin el tope leído bajo el
+     * lock del negocio, caminarían el negocio a 3 activos.
      *
      * EL ORÁCULO ES EL `count`, NO «cero éxitos»: `setLocationStatus` tiene un early-return
      * idempotente (`locations/store.ts:59`) que devuelve ÉXITO sin cambiar el conteo, así que
      * contar promesas resueltas mediría otra cosa.
      */
-    it("eight simultaneous reactivations under a scheduled downgrade leave ONE active", async () => {
+    it("eight simultaneous reactivations on the BASE plan leave ONE active", async () => {
       // Los ids de Stripe son UNIQUE GLOBALES (`schema/business.ts:250`) y vitest paraleliza
       // ARCHIVOS: un literal compartido con otro archivo revienta con un `23505` EN EL SEED,
       // que se lee como un bug del producto y encima es no determinista (falla un test u otro
@@ -191,11 +189,10 @@ describe.skipIf(!integrationEnabled)(
       // `cus_race`/`sub_race` contra `billing-webhook.neon.integration.test.ts:213`. Por eso
       // el tag es único por corrida.
       const tag = randomUUID().slice(0, 8);
-      const seed = await seedLocationsBusiness("Baja programada", "plus", {
-        pendingPlan: "free",
-        downgradeRequestedAt: new Date(Date.UTC(2026, 8, 11)),
+      const seed = await seedLocationsBusiness("Plan base", "base", {
         stripeCustomerId: custId(tag),
         stripeSubscriptionId: subId(tag),
+        trialEndsAt: new Date(Date.now() - 86_400_000),
       });
       try {
         const segunda = await seedExtraLocation(seed.business.id, "Sucursal 2");
@@ -224,14 +221,13 @@ describe.skipIf(!integrationEnabled)(
         );
         // La tabla es el oráculo: el tope efectivo es 1, así que NINGUNO puede entrar.
         expect(await activeLocationCountSql(seed.business.id)).toBe(1);
-        // Y el motivo que ve el owner es el de la baja programada, no «mejora tu plan».
         const refused = attempts.filter((a) => a.status === "rejected");
         expect(refused).toHaveLength(8);
         expect((refused[0] as PromiseRejectedResult).reason).toMatchObject({
           status: 409,
           code: "location_limit",
           message:
-            "Tu suscripción baja a Free: no puedes reactivar locales. Reanuda tu plan si querías seguir en Plus.",
+            "Tu plan permite 1 local activo. Mejora tu plan para abrir otro.",
         });
       } finally {
         await dropBusiness(seed.business.id);
@@ -239,19 +235,10 @@ describe.skipIf(!integrationEnabled)(
     }, 60_000);
 
     /**
-     * Spec 0063 D6 + spec 0064 A2 — `cancel` CONCURRENTE CON EL WEBHOOK. Los dos hacen un
-     * read-modify-write de `core.subscription` y los dos toman `lockBusiness`, así que el
-     * lock los serializa: ninguna de las dos escrituras se puede perder. Sin el lock del
-     * webhook (mutación M4) el evento decide con un `downgrade_requested_at` leído ANTES del
-     * commit del `cancel`.
-     *
-     * POR QUÉ LA RUTA FALLA A PROPÓSITO EN STRIPE (`cancelError`), que es lo único que cambió
-     * con la baja inmediata: la escritura que M4 pone en juego es la del PASO 2 (la marca de
-     * intención). Con la baja completa, el paso 4 (`settleToFree`) escribe DESPUÉS y es
-     * TERMINAL POR DISEÑO —`free`, sin suscripción, las tres columnas limpias—, así que pisa
-     * legítimamente lo que el webhook acababa de poner y el test dejaría de poder distinguir
-     * «el lock serializó» de «el último ganó». Con el 503 el paso 4 no corre, el estado QUEDA
-     * PUESTO ([R1-B3]) y las dos escrituras vuelven a ser observables por separado.
+     * Spec 0189 §D7 — `cancel` CONCURRENTE CON EL WEBHOOK. Los dos escriben `core.subscription`
+     * bajo `lockBusiness`, así que el lock los serializa y ninguna de las dos escrituras se
+     * pierde: la de la RUTA (la marca de auditoría) y la del WEBHOOK (el status crudo). Las dos
+     * coinciden en la cancelación programada, derivada de la MISMA suscripción.
      */
     it("a cancel concurrent with the webhook loses NEITHER write", async () => {
       const periodEnd = Math.floor(Date.UTC(2026, 9, 1) / 1000);
@@ -268,9 +255,6 @@ describe.skipIf(!integrationEnabled)(
         subscription.cancel_at_period_end = true;
         subscription.metadata = { businessId: seed.business.id };
 
-        fake.cancelError = new Stripe.errors.StripeConnectionError({
-          message: "network",
-        });
         const [cancelled] = await Promise.all([
           CANCEL(billingRequest({})),
           deliver({
@@ -279,7 +263,7 @@ describe.skipIf(!integrationEnabled)(
             object: { id: subId(tag) },
           }),
         ]);
-        expect(cancelled.status).toBe(503);
+        expect(cancelled.status).toBe(200);
 
         const row = await readSubscriptionRow(seed.business.id);
         // La escritura de la RUTA: la marca «esta baja la pedimos nosotros».
@@ -287,8 +271,8 @@ describe.skipIf(!integrationEnabled)(
         // La escritura del WEBHOOK: el status crudo del evento aplicado (D5.e).
         expect(row.status).toBe("trialing");
         expect(row.lastEventAt).not.toBeNull();
-        // Y el tope ya cayó: las dos coinciden en la baja programada.
-        expect(row.pendingPlan).toBe("free");
+        // Y las dos coinciden en la cancelación programada.
+        expect(row.pendingPlan).toBe("none");
       } finally {
         await dropBusiness(seed.business.id);
       }

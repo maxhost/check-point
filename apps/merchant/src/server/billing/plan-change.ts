@@ -1,161 +1,159 @@
-import { locationLimitForPlan } from "../locations/core";
+import { limitForPlan } from "@mi-pasaporte/domain/server/entitlements/index";
 import { hasLiveSubscription } from "@mi-pasaporte/domain/server/entitlements/live-subscription";
+import type { BillingInterval, PaidPlan } from "./prices";
+import { planLabel } from "./view";
 
 /**
- * Spec 0063, D4 — CONTRATO. Lo dejó el orquestador antes de despachar; el implementador
- * añade `decidePlanChange` en este mismo archivo y NO cambia los tipos ni el orden de las
- * guardas sin volver la spec a `borrador`.
- *
- * Por qué el intent va DISCRIMINADO y no `target: "plus" | "free"` (bloqueante [R2] de la
- * segunda ronda, encontrado por los dos revisores por separado): con un target plano el
- * cambio de intervalo no se podía expresar, y la tabla de 8 filas no declaraba orden de
- * evaluación — al menos cuatro entradas matcheaban dos filas a la vez (incluida `none` +
- * `free`, que matcheaba `no_subscription` Y `settle_to_free`, o sea que la salida que D10
- * agrega para que `none` no sea un callejón era, leída literal, un 409). Con el intent
- * discriminado cada movimiento tiene sus propias guardas y no hay solapamiento.
+ * Spec 0189 §D6 (ADR 0134 §6-§9) — LAS DECISIONES DE COBRO, como función PURA. Ya no hay plan
+ * gratis al que bajar: entran el cambio de plan, cancelar al fin del periodo y reanudar. El
+ * intent va DISCRIMINADO ([R2] de la spec 0063): cada movimiento tiene sus propias guardas.
  */
 
-/** Motivo estable por el que un cambio de plan no procede. Viaja al cliente como `code`. */
+/** Motivo estable por el que un cambio no procede. Viaja al cliente como `code`. Todos 409.
+ * Los nombres que ya existían se conservan: la UI de GPT ya los conoce. */
 export type BlockCode =
-  /** Ya hay una suscripción viva en Stripe: abrir otro Checkout cobraría dos veces. 409 */
+  /** Ya hay una suscripción viva en Stripe: abrir otro Checkout cobraría dos veces. */
   | "subscription_live"
-  /** El negocio ya está en el plan que pide. 409 */
+  /** El negocio ya está en el plan que pide. */
   | "already_on_plan"
-  /** Hay más locales activos que los del plan destino. Trae `archiveCount`. 409 */
+  /** Hay más locales activos que los del plan destino. Trae `archiveCount`. */
   | "downgrade_blocked"
-  /** Hay campañas activas (spec 0065). Trae `deactivateCount`. 409 */
+  /** Hay campañas activas que el plan base no incluye. Trae `deactivateCount`. */
   | "downgrade_blocked_campaigns"
-  /** anual → mensual, fuera de alcance por diseño (D9, tarea 55). 409 */
+  /** anual → mensual, fuera de alcance por diseño (tarea 55). */
   | "interval_downgrade_unsupported"
-  /** Cambio de intervalo sin suscripción viva que cambiar. 409 */
+  /** Cambio de intervalo sin suscripción viva que cambiar. */
   | "interval_needs_subscription"
-  /** Ya está en ese intervalo. 409 */
-  | "interval_unchanged";
+  /** Ya está en ese intervalo. */
+  | "interval_unchanged"
+  /** Cambio de plan sin suscripción viva: primero se contrata (checkout). */
+  | "plan_needs_subscription"
+  /** Hay una cancelación programada: primero se reanuda. */
+  | "cancel_scheduled"
+  /** Cancelar sin suscripción viva. */
+  | "no_subscription"
+  /** Reanudar sin suscripción viva o sin cancelación programada. */
+  | "nothing_to_resume";
 
-/**
- * El movimiento que el llamador pide. `upgrade` lleva el intervalo porque el Checkout se
- * abre contra un price concreto; `change_interval` lleva el destino porque la decisión de
- * rechazar `month` es de esta función, no de la ruta.
- */
 export type PlanIntent =
-  | { kind: "upgrade"; interval: "month" | "year" } // free → plus, por Checkout
-  | { kind: "downgrade" } // plus → free (cancelar) | none → free
-  | { kind: "change_interval"; to: "month" | "year" };
+  | { kind: "subscribe"; plan: PaidPlan; interval: BillingInterval }
+  | { kind: "change_plan"; to: PaidPlan }
+  | { kind: "change_interval"; to: BillingInterval }
+  | { kind: "cancel" }
+  | { kind: "resume" };
 
 export type PlanChangeInput = {
-  /** `'free' | 'plus' | 'none' | cualquier otro`. No se estrecha: la columna es `text`. */
+  /** `'trial' | 'base' | 'plus' | 'none' | cualquier otro`. La columna es `text`. */
   currentPlan: string;
-  /** En prod hay un `plus` con `interval` NULL (A1) — [R2]. No es un estado imposible. */
   currentInterval: string | null;
   pendingPlan: string | null;
-  /** El status CRUDO de Stripe (D5.e). NO el colapsado `active|trialing → active`. */
+  /** El status CRUDO de Stripe. NO el colapsado. */
   status: string;
   stripeSubscriptionId: string | null;
+  trialEndsAt: Date | null;
+  now: Date;
   activeLocations: number;
-  /** Campañas en `status = 'active'` (spec 0065, fase D). El bloqueo es DURO, igual que el
-   * de locales: el owner las desactiva primero. */
-  activeCampaigns: number;
+  /** Campañas `active` cuya plantilla no está en `BASE_TEMPLATE_KEYS` (incluidas las propias).
+   * Alimenta el bloqueo de bajar a base. */
+  activeCampaignsOutsideBase: number;
   intent: PlanIntent;
 };
 
 export type PlanChangeDecision =
-  | { kind: "checkout"; interval: "month" | "year" }
-  /** Hay suscripción: se cancela en el acto (spec 0064 A2, orden de operaciones). El nombre
-   * quedó de cuando la baja se programaba (ADR 0063 la hizo inmediata) y se CONSERVA: es el
-   * discriminante de «hay que hablar con Stripe», que es lo que la ruta necesita saber.
-   * Renombrarlo tocaría la matriz, los casos nombrados y las dos rutas sin cambiar ninguna
-   * regla. */
-  | { kind: "schedule_downgrade" }
-  /** No hay suscripción viva: se escribe `free` local, sin tocar Stripe (D10). */
-  | { kind: "settle_to_free" }
+  | {
+      kind: "checkout";
+      plan: PaidPlan;
+      interval: BillingInterval;
+      /** `subscription_data.trial_end` del Checkout, o `null` = cobro en el acto. */
+      trialEnd: Date | null;
+    }
+  | {
+      kind: "change_plan";
+      to: PaidPlan;
+      /** Subir cobra la diferencia ya; bajar rige desde la próxima factura (ADR 0134 §9). */
+      proration: "always_invoice" | "none";
+    }
   | { kind: "change_interval"; to: "year" }
+  | { kind: "schedule_cancel" }
+  | { kind: "resume" }
   | {
       kind: "blocked";
       code: BlockCode;
       message: string;
       archiveCount?: number;
-      /** Sólo en `downgrade_blocked_campaigns`: cuántas campañas hay que desactivar. */
       deactivateCount?: number;
     };
 
-/**
- * `DEAD_STRIPE_STATUS` y `hasLiveSubscription` se MUDARON a
- * `server/entitlements/live-subscription.ts` (spec 0072) y se re-exportan desde acá: son la
- * misma decisión que el catálogo de entitlements necesita para `requiresLiveSubscription`,
- * y dejarlas en este archivo cerraba un ciclo de imports que mataba la carga de 8 suites
- * (el motivo completo está escrito en el módulo nuevo).
- *
- * Se re-exportan y no se reescriben los imports de `applicability.ts`, `reconcile.ts`,
- * `view.ts` y `billing/index.ts` porque esta spec es una unificación, no un renombre: el
- * `DEAD_STRIPE_STATUS` que esos módulos consumen sigue siendo el mismo objeto.
- */
+/** Viven en el dominio (spec 0072); se re-exportan para los consumidores de este módulo. */
 export {
   DEAD_STRIPE_STATUS,
   hasLiveSubscription,
 } from "@mi-pasaporte/domain/server/entitlements/live-subscription";
 
+/** `trial_end` de Checkout exige al menos 48 h en el futuro (`Sessions.d.ts:3007`,
+ * stripe@22.5.0). Con menos, se cobra en el acto (ADR 0134 §6). */
+export const CHECKOUT_TRIAL_MIN_MS = 48 * 60 * 60 * 1000;
+
 /**
- * GUARDAS, EN ORDEN. PRIMER MATCH GANA. ES NORMATIVO — el unit
- * (`billing-plan-change.test.ts`) asevera el orden DECLARADO, no el intuitivo, y sin esta
- * lista la matriz de la spec se escribiría adivinando.
+ * La fecha de `trial_end` del Checkout: el fin de la prueba si faltan **48 h o más**; si no
+ * (o no hay prueba), `null`. Así el primer cobro cae el día 90 cuando se puede (ADR 0134 §6).
+ */
+export function checkoutTrialEnd(
+  trialEndsAt: Date | null,
+  now: Date,
+): Date | null {
+  if (trialEndsAt === null) return null;
+  return trialEndsAt.getTime() - now.getTime() >= CHECKOUT_TRIAL_MIN_MS
+    ? trialEndsAt
+    : null;
+}
+
+/**
+ * GUARDAS, EN ORDEN. PRIMER MATCH GANA. ES NORMATIVO (spec 0189 §D6) y el unit
+ * (`billing-plan-change.test.ts`) asevera el orden declarado.
  *
- * `intent: "upgrade"`
- *   1. `hasLiveSubscription` → blocked `subscription_live`. Si además hay baja programada
- *      —que desde la spec 0064 sólo puede venir del dashboard de Stripe, porque nuestro flujo
- *      ya no la crea— el mensaje lo dice y NO ofrece reanudar: esa operación no existe.
- *   2. `currentPlan === 'plus'` → blocked `already_on_plan`.
- *   3. en otro caso → `{ kind: "checkout", interval }`.
- *      Cubre los 9 `free` de prod: `status='active'`, sin id → no hay suscripción viva.
+ * `subscribe {plan, interval}` (checkout):
+ *   1. suscripción viva → `subscription_live`.
+ *   2. `activeLocations > limitForPlan(plan)` → `downgrade_blocked` + `archiveCount`.
+ *   3. `plan === "base"` y `activeCampaignsOutsideBase > 0` → `downgrade_blocked_campaigns`.
+ *   4. → `checkout {plan, interval, trialEnd: checkoutTrialEnd(trialEndsAt, now)}`.
  *
- * `intent: "downgrade"`
- *   1. `activeLocations > locationLimitForPlan("free")` → blocked `downgrade_blocked` con
- *      `archiveCount = activeLocations - locationLimitForPlan("free")`. VA PRIMERO: es la
- *      condición del owner (ADR 0058 §3/§6) y la que alimenta el modal. El `1` NO se
- *      hardcodea — el tope vive en `locations/core.ts` y en ningún otro lado.
- *   2. `activeCampaigns > 0` → blocked `downgrade_blocked_campaigns` con
- *      `deactivateCount = activeCampaigns` (spec 0065, fase D). VA SEGUNDA, entre la de
- *      locales y `already_on_plan`, y el orden lo fija la spec: la condición del owner es
- *      la de locales y es la que ya alimentaba el modal.
- *      CONSECUENCIA ACEPTADA Y DECLARADA EN LA SPEC: un negocio que viola las DOS
- *      condiciones recibe primero el bloqueo de locales y, tras archivar, el de campañas.
- *      Son dos vueltas. Mostrar las dos juntas exigiría que `PlanChangeDecision` llevara
- *      los dos contadores; se deja como posible mejora y NO entra.
- *   3. `currentPlan === 'free'` → blocked `already_on_plan`.
- *   4. `hasLiveSubscription` → `{ kind: "schedule_downgrade" }`.
- *   5. en otro caso (`none`, o `plus` sin id como A1) → `{ kind: "settle_to_free" }`.
- *      Acá muere el código `no_subscription` de la versión anterior, que era la fila que
- *      contradecía a D10.
+ * `change_plan {to}`:
+ *   1. sin suscripción viva → `plan_needs_subscription`.
+ *   2. cancelación programada → `cancel_scheduled`.
+ *   3. `currentPlan === to` → `already_on_plan`.
+ *   4. `to === "base"` con locales o campañas de más → mismos bloqueos y orden que subscribe.
+ *   5. → `change_plan {to, proration}`: `always_invoice` al subir a plus, `none` al bajar.
  *
- * `intent: "change_interval"`
- *   1. `to === "month"` → blocked `interval_downgrade_unsupported` (D9, tarea 55).
- *   2. `!hasLiveSubscription` → blocked `interval_needs_subscription`.
- *   3. `currentInterval === to` → blocked `interval_unchanged`.
- *   4. en otro caso (incluye `currentInterval === null`, el caso de A1) →
- *      `{ kind: "change_interval", to: "year" }`. Se permite con intervalo desconocido
- *      porque el real lo sabe Stripe y el `retrieve` de D9 lo confirma.
+ * `change_interval {to}` (igual que la spec 0063 D9):
+ *   1. `to === "month"` → `interval_downgrade_unsupported`.
+ *   2. sin suscripción viva → `interval_needs_subscription`.
+ *   3. `currentInterval === to` → `interval_unchanged`.
+ *   4. → `change_interval {to: "year"}`.
  *
- * Todos los `BlockCode` responden 409. El `payment_failed` de D9 (402) y los de
- * configuración (503) NO salen de acá: los produce la ruta.
+ * `cancel`: sin suscripción viva → `no_subscription`; ya programada → `cancel_scheduled`;
+ *   → `schedule_cancel`.
  *
- * Precedencia que el unit asevera explícitamente: `downgrade` con 2 activos Y
- * `currentPlan === 'free'` → gana `downgrade_blocked` (guarda 1 antes que la 3); con 2
- * activos Y 1 campaña activa → gana `downgrade_blocked` (guarda 1 antes que la 2).
+ * `resume`: sin suscripción viva o sin cancelación programada → `nothing_to_resume`;
+ *   → `resume`.
+ *
+ * Un `pendingPlan` VACÍO no es una cancelación programada ([R1-N8] de la spec 0063).
  */
 export function decidePlanChange(input: PlanChangeInput): PlanChangeDecision {
   switch (input.intent.kind) {
-    case "upgrade":
-      return decideUpgrade(input, input.intent.interval);
-    case "downgrade":
-      return decideDowngrade(input);
+    case "subscribe":
+      return decideSubscribe(input, input.intent.plan, input.intent.interval);
+    case "change_plan":
+      return decideChangePlan(input, input.intent.to);
     case "change_interval":
       return decideChangeInterval(input, input.intent.to);
+    case "cancel":
+      return decideCancel(input);
+    case "resume":
+      return decideResume(input);
   }
 }
 
-/** El `extra` es el contador que el modal necesita, y va DISCRIMINADO: `archiveCount`
- * pertenece a `downgrade_blocked` y `deactivateCount` a `downgrade_blocked_campaigns`.
- * Un bloqueo sin contador no lleva ninguna de las dos claves (el `...undefined` no agrega
- * nada), que es lo que deja al resto de los códigos exactamente como estaban. */
 function blocked(
   code: BlockCode,
   message: string,
@@ -164,51 +162,93 @@ function blocked(
   return { kind: "blocked", code, message, ...extra };
 }
 
-function decideUpgrade(
+function cancelScheduled(input: PlanChangeInput): boolean {
+  return typeof input.pendingPlan === "string" && input.pendingPlan !== "";
+}
+
+/** Los dos bloqueos de llegar a un plan: locales primero (la condición del owner, ADR 0058
+ * §3/§6), campañas después. `null` = el negocio cabe en el plan. */
+function fitBlock(
   input: PlanChangeInput,
-  interval: "month" | "year",
+  plan: PaidPlan,
+): PlanChangeDecision | null {
+  const limit = limitForPlan(plan, "locations.max");
+  const label = planLabel(plan);
+  if (input.activeLocations > limit) {
+    const archiveCount = input.activeLocations - limit;
+    return blocked(
+      "downgrade_blocked",
+      `El plan ${label} admite ${limit} ${limit === 1 ? "local activo" : "locales activos"}; hoy tienes ${input.activeLocations}. Archiva ${archiveCount}.`,
+      { archiveCount },
+    );
+  }
+  const extra = input.activeCampaignsOutsideBase;
+  if (plan === "base" && extra > 0) {
+    return blocked(
+      "downgrade_blocked_campaigns",
+      `El plan ${label} solo incluye Bienvenida y Venta cruzada; hoy tienes ${extra} ${extra === 1 ? "campaña activa" : "campañas activas"} fuera de eso. Desactiva ${extra}.`,
+      { deactivateCount: extra },
+    );
+  }
+  return null;
+}
+
+function decideSubscribe(
+  input: PlanChangeInput,
+  plan: PaidPlan,
+  interval: BillingInterval,
 ): PlanChangeDecision {
   if (hasLiveSubscription(input)) {
     return blocked(
       "subscription_live",
-      input.pendingPlan !== null
-        ? "Tu suscripción sigue activa hasta el final del periodo. Cuando termine podrás contratar el plan otra vez."
+      cancelScheduled(input)
+        ? "Tu suscripción sigue activa hasta el final del periodo: reanúdala en vez de contratar otra."
         : "Ya tienes una suscripción activa.",
     );
   }
-  if (input.currentPlan === "plus") {
-    return blocked("already_on_plan", "Ya estás en el plan Plus.");
-  }
-  return { kind: "checkout", interval };
+  const fit = fitBlock(input, plan);
+  if (fit) return fit;
+  return {
+    kind: "checkout",
+    plan,
+    interval,
+    trialEnd: checkoutTrialEnd(input.trialEndsAt, input.now),
+  };
 }
 
-function decideDowngrade(input: PlanChangeInput): PlanChangeDecision {
-  const freeLimit = locationLimitForPlan("free");
-  if (input.activeLocations > freeLimit) {
-    const archiveCount = input.activeLocations - freeLimit;
+function decideChangePlan(
+  input: PlanChangeInput,
+  to: PaidPlan,
+): PlanChangeDecision {
+  if (!hasLiveSubscription(input)) {
     return blocked(
-      "downgrade_blocked",
-      `Para volver a Free necesitas ${freeLimit} local activo; hoy tienes ${input.activeLocations}. Archiva ${archiveCount}.`,
-      { archiveCount },
+      "plan_needs_subscription",
+      "No hay una suscripción activa que cambiar: elige un plan primero.",
     );
   }
-  if (input.activeCampaigns > 0) {
+  if (cancelScheduled(input)) {
     return blocked(
-      "downgrade_blocked_campaigns",
-      `Para volver a Free no puedes tener campañas activas; hoy tienes ${input.activeCampaigns}. Desactiva ${input.activeCampaigns}.`,
-      { deactivateCount: input.activeCampaigns },
+      "cancel_scheduled",
+      "Reanuda tu suscripción para cambiar de plan.",
     );
   }
-  if (input.currentPlan === "free") {
-    return blocked("already_on_plan", "Ya estás en el plan Free.");
+  if (input.currentPlan === to) {
+    return blocked("already_on_plan", `Ya estás en el plan ${planLabel(to)}.`);
   }
-  if (hasLiveSubscription(input)) return { kind: "schedule_downgrade" };
-  return { kind: "settle_to_free" };
+  if (to === "base") {
+    const fit = fitBlock(input, to);
+    if (fit) return fit;
+  }
+  return {
+    kind: "change_plan",
+    to,
+    proration: to === "plus" ? "always_invoice" : "none",
+  };
 }
 
 function decideChangeInterval(
   input: PlanChangeInput,
-  to: "month" | "year",
+  to: BillingInterval,
 ): PlanChangeDecision {
   if (to === "month") {
     return blocked(
@@ -226,4 +266,30 @@ function decideChangeInterval(
     return blocked("interval_unchanged", "Ya estás en el plan anual.");
   }
   return { kind: "change_interval", to: "year" };
+}
+
+function decideCancel(input: PlanChangeInput): PlanChangeDecision {
+  if (!hasLiveSubscription(input)) {
+    return blocked(
+      "no_subscription",
+      "No hay una suscripción activa que cancelar.",
+    );
+  }
+  if (cancelScheduled(input)) {
+    return blocked(
+      "cancel_scheduled",
+      "Tu suscripción ya termina al final del periodo.",
+    );
+  }
+  return { kind: "schedule_cancel" };
+}
+
+function decideResume(input: PlanChangeInput): PlanChangeDecision {
+  if (!hasLiveSubscription(input) || !cancelScheduled(input)) {
+    return blocked(
+      "nothing_to_resume",
+      "No hay una cancelación programada que reanudar.",
+    );
+  }
+  return { kind: "resume" };
 }

@@ -7,24 +7,14 @@ import {
 export const dynamic = "force-dynamic";
 
 /**
- * Spec 0074 §D2 — `GET /api/billing/state`, EL PLAN Y LA SUSCRIPCION.
+ * Spec 0074 §D2 + spec 0189 §D10 — `GET /api/billing/state`, EL ESTADO DE COBRO.
  *
- * **No compone nada: delega en `billingStateResponse`**, que ya existe y que **ya es la
- * respuesta de las cuatro rutas POST de billing**. Es §D0 aplicado: el conocimiento de plan
- * vivia en tres lugares y ya divergio una vez (0072 §P1); un `GET` que armara su propio objeto
- * a mano seria el cuarto. De ahi sale, gratis, la allow-list positiva `toSubscriptionView` —lo
- * unico que hay entre Stripe y el navegador (mutacion M4)—: `stripeCustomerId`,
- * `stripeSubscriptionId` y `downgradeRequestedAt` no pueden viajar.
+ * **No compone nada: delega en `billingStateResponse`**, que es también la respuesta de éxito
+ * de `plan`/`interval`/`cancel`/`resume`: un solo lugar arma el contrato de §D10, con la
+ * allow-list positiva `toSubscriptionView` como lo único entre Stripe y el navegador.
  *
- * **SI pasa por `requireApiOwner`** —al reves que `/api/merchant/session`— y emite los cinco
- * `code` de la 0072 en su orden (ADR 0073 §1). Es dato del owner: un integrante recibe
- * SIEMPRE `not_owner`, aunque su email no este verificado y aunque el negocio este suspendido.
- *
- * **El lock se hereda a proposito y es COSTO DECLARADO, no perseguido.**
- * `billingStateResponse` abre transaccion y toma `lockBusiness` antes de leer porque su
- * contrato pide que la lectura y la decision de `canCancel` ocurran en la misma transaccion
- * lockeada. Un camino de lectura sin lock, para ahorrarselo, produciria un `canCancel` que
- * puede mentir — y seria el segundo lugar donde vive la regla.
+ * **Pasa por `requireBillingOwner`** (owner + email verificado + eje `status`) con
+ * `allowBlocked`: un negocio sin acceso SÍ la lee — es la pantalla donde paga.
  */
 export async function GET(request: Request) {
   const auth = await requireBillingOwner(request);

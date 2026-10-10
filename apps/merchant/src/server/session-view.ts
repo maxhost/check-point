@@ -61,6 +61,17 @@ export type SessionMembership = {
 };
 
 /**
+ * Spec 0189 §D10 — el estado de cobro que la UI necesita para pintar el aviso de días de prueba
+ * o el bloqueo, SIN datos de Stripe. `trialEndsAt` es STRING ISO (como `pendingPlanAt` del
+ * DTO de billing). `trialDaysLeft` solo con `access === "trial"`.
+ */
+export type SessionBilling = {
+  access: "subscribed" | "trial" | "blocked";
+  trialEndsAt: string | null;
+  trialDaysLeft: number | null;
+};
+
+/**
  * **SIEMPRE `200`.** No existe un camino que devuelva 401 ni 403: un endpoint que REPORTA el
  * estado no puede estar gateado por el estado que reporta, o la UI nunca podria renderizar la
  * pantalla de cuenta suspendida (spec 0074 §D1, `0074-contratos-de-api.md` §1).
@@ -72,6 +83,8 @@ export type SessionView =
       user: SessionUser;
       business: SessionBusiness | null;
       membership: SessionMembership | null;
+      /** `null` cuando no hay negocio. */
+      billing: SessionBilling | null;
     };
 
 /** La fila cruda del join `memberships × businesses`. `businessStatus` y `membershipStatus`
@@ -116,13 +129,21 @@ export const NOT_AUTHENTICATED = { authenticated: false } as const;
 export function toSessionView(
   user: SessionUser,
   row: SessionRow | null | undefined,
+  billing: SessionBilling | null = null,
 ): SessionView {
   if (!row || row.membershipStatus !== "active") {
-    return { authenticated: true, user, business: null, membership: null };
+    return {
+      authenticated: true,
+      user,
+      business: null,
+      membership: null,
+      billing: null,
+    };
   }
   return {
     authenticated: true,
     user,
+    billing,
     business: {
       id: row.id,
       name: row.name,

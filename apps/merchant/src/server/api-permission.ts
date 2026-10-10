@@ -1,6 +1,7 @@
 import { getMerchantAuth } from "./auth";
 import { membershipContext } from "./staff";
 import { type ApiOwnerBusiness } from "./api-owner";
+import { businessBillingFailure } from "./billing-gate";
 // Desde la HOJA pura, igual que `api-owner.ts`: `DEFAULT_MESSAGES` no esta entre lo que ese
 // modulo re-exporta, y traerlo de acá evita una re-exportacion nueva en un archivo que la
 // spec 0075 exige que quede intacto.
@@ -31,6 +32,7 @@ import {
  * 3. ¿owner, o staff con el scope?   → 403 missing_permission  ← code NUEVO
  * 4. ¿email verificado?              → 403 email_not_verified  ← SOLO si role === 'owner'
  * 5. ¿el negocio OPERA?              → 403 business_suspended | business_closed
+ * 6. ¿tiene ACCESO?                  → 402 payment_required (spec 0189 §D4, owner y staff)
  * ```
  *
  * - **Los pasos 4 y 5 van DESPUES de resolver la membresia** por el mismo motivo por el que
@@ -111,7 +113,7 @@ export async function requireApiPermission(
     };
   }
 
-  return statusStep(resolved);
+  return await statusStep(resolved);
 }
 
 /**
@@ -151,7 +153,7 @@ export async function requireApiPermissionSinGateDeEmail(
 
   // PASO 4 — NO CORRE, a proposito. Es la razon de ser de esta funcion.
 
-  return statusStep(resolved);
+  return await statusStep(resolved);
 }
 
 /** Los pasos 1, 2 y 3, que las dos funciones comparten ENTEROS. Lo unico que las distingue
@@ -232,18 +234,22 @@ async function resolveMembership(
  * `reasonVisible` sale del rol: el `suspensionReason` es una nota interna sobre la cuenta y
  * **se serializa solo al owner** (spec 0072 §D4, y `auth-guards.ts` / `session-view.ts` hacen
  * exactamente lo mismo con la misma fila). Un integrante recibe `business_suspended` mudo. */
-function statusStep(resolved: {
+async function statusStep(resolved: {
   business: ApiOwnerBusiness;
   userId: string;
   role: string;
   permissions: string[];
-}): ApiPermissionResult {
+}): Promise<ApiPermissionResult> {
   const failure = businessStatusFailure(
     resolved.business.status,
     resolved.business.suspensionReason,
     resolved.role === "owner",
   );
   if (failure) return { failure };
+  // PASO 6 — el eje de ACCESO (spec 0189 §D4), DESPUES del eje `status`: un negocio
+  // suspendido sigue diciendo `business_suspended`.
+  const billing = await businessBillingFailure(resolved.business.id);
+  if (billing) return { failure: billing };
   return {
     business: resolved.business,
     userId: resolved.userId,

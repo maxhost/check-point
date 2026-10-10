@@ -1,4 +1,3 @@
-import type Stripe from "stripe";
 import { withDbTransaction } from "@mi-pasaporte/db";
 import {
   BillingError,
@@ -9,6 +8,7 @@ import {
   requireBillingOwner,
   stripeContext,
 } from "../_auth";
+import { cardErrorAsPaymentFailed, soleOurItem } from "../_stripe-item";
 
 /**
  * Spec 0063, D9 — `POST /api/billing/interval`: cambio de intervalo, SÓLO mensual → anual.
@@ -26,11 +26,10 @@ import {
  *     puede cambiar y una copia nuestra sería una segunda fuente de verdad. ([R2-5]: la
  *     versión anterior de la spec escribía `items: [{ id: itemId }]` con un `itemId` que NO
  *     EXISTÍA en ninguna parte del sistema — ni columna, ni payload, ni body.)
- *  3. SELECCIÓN EXPLÍCITA: el único item cuyo `price.id` está en {monthly, yearly}. Con 0,
- *     con más de 1, o con `items.has_more === true` → NO SE TOCA NADA, 409
- *     `interval_ambiguous`. D5.f ya estableció que `items` viene truncado a 10 y sin orden
- *     contractual: elegir `data[0]` para ESCRIBIR un precio sería el mismo error que ahí se
- *     prohíbe para leer.
+ *  3. SELECCIÓN EXPLÍCITA (`soleOurItem`): el único item cuyo `price.id` es uno de los
+ *     cuatro nuestros (spec 0189 §D5). Con 0, con más de 1, o con `items.has_more === true`
+ *     → NO SE TOCA NADA, 409 `interval_ambiguous`. El precio anual es el del PLAN de ese
+ *     item (base o plus): cambiar el intervalo no cambia el plan.
  *  4. `update` con `payment_behavior: "error_if_incomplete"`, que es NORMATIVO: el DoD afirma
  *     «cobra la diferencia en el acto», y con el default un cobro rechazado dejaría la factura
  *     abierta, la suscripción hacia `past_due` CON EL PRICE ANUAL YA APLICADO y este handler
@@ -66,11 +65,11 @@ export async function POST(request: Request) {
     });
 
     const subscription = await gateway.subscriptions.retrieve(subscriptionId);
-    const item = soleOurItem(subscription, priceIds);
+    const { item, plan } = soleOurItem(subscription, priceIds);
     await gateway.subscriptions.update(
       subscriptionId,
       {
-        items: [{ id: item.id, price: priceIds.yearly }],
+        items: [{ id: item.id, price: priceIds[plan].year }],
         proration_behavior: "always_invoice",
         payment_behavior: "error_if_incomplete",
       },
@@ -81,46 +80,8 @@ export async function POST(request: Request) {
     return await billingStateResponse(businessId);
   } catch (error) {
     return billingErrorResponse(
-      isCardError(error)
-        ? new BillingError(
-            402,
-            "payment_failed",
-            "Tu tarjeta rechazó el cobro. No cambiamos nada: revisa el medio de pago y vuelve a intentarlo.",
-          )
-        : error,
+      cardErrorAsPaymentFailed(error),
       "No pudimos cambiar el intervalo. Vuelve a intentarlo.",
     );
   }
-}
-
-/** El ÚNICO item cuyo price es de nuestra cuenta. Cero, más de uno, o una lista truncada son
- * el mismo caso: no sabemos cuál cambiar, así que no se toca nada. */
-function soleOurItem(
-  subscription: Stripe.Subscription,
-  priceIds: { monthly: string; yearly: string },
-): Stripe.SubscriptionItem {
-  const ambiguous = new BillingError(
-    409,
-    "interval_ambiguous",
-    "No pudimos identificar el plan a cambiar. Escríbenos y lo resolvemos.",
-  );
-  if (subscription.items.has_more) throw ambiguous;
-  const ours = subscription.items.data.filter(
-    (item) =>
-      item.price.id === priceIds.monthly || item.price.id === priceIds.yearly,
-  );
-  if (ours.length !== 1) throw ambiguous;
-  return ours[0];
-}
-
-/** `type` es el nombre de la clase salvo que se construya con el 2.º argumento
- * (`Error.js:79`), y `rawType` es el `type` que mandó la API. Se miran los dos y no
- * `instanceof`: un `instanceof` contra la clase importada acá se rompe si el que construyó el
- * error cargó otra copia del módulo. */
-function isCardError(error: unknown): boolean {
-  if (!error || typeof error !== "object") return false;
-  const candidate = error as { type?: unknown; rawType?: unknown };
-  return (
-    candidate.type === "StripeCardError" || candidate.rawType === "card_error"
-  );
 }

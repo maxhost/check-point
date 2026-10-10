@@ -1,103 +1,88 @@
 import { describe, expect, it } from "vitest";
 import {
   campaignAllowedFor,
-  campaignsAllowedFor,
   type CampaignPlanRow,
 } from "@mi-pasaporte/domain/server/marketing/plan-gate";
 
 /**
- * Spec 0065, fase D — las TRES condiciones del gate de plan de campañas, cada una con su
- * caso y con su control. El oráculo es la tabla: se escribe la salida esperada de cada
- * fila, no una regla re-derivada.
+ * Spec 0189 §Plan de pruebas, T4 — `campaignAllowedFor` POR PLANTILLA sobre el plan EFECTIVO:
+ * `welcome`/`cross`/`valley`/`null` (propia)/otra × `trial`/`base`/`plus`/`none` vencido. El
+ * oráculo es la tabla: se escribe la salida esperada de cada fila, no una regla re-derivada.
+ * ORÁCULO DE M4: la columna `base` de `cross`.
  *
- * Lo que NO está acá: que el 402 salga por HTTP y que el plan se lea AL ACTIVAR (los dos sí
+ * Lo que NO está acá: que el 402 salga por HTTP y que el plan se lea AL ACTIVAR (los dos
  * tienen su oráculo en `marketing-campaign-actions.neon.integration.test.ts`).
- *
- * Y UNA ATRIBUCIÓN QUE ERA FALSA, corregida: este docblock decía que «el gate se lee en la
- * MISMA transacción que escribe» tenía su oráculo en esa integración. **No lo tiene** — la
- * revisión independiente de la fase D leyó el gate con `getDb()` fuera de la transacción y
- * los 64 tests quedaron VERDES. La ventana es real pero angosta (deja crear un `draft` que
- * después no se puede activar), así que se DECLARA sin oráculo en vez de perseguirla. Lo que
- * no se podía dejar es la frase: una fila «propiedad → su oráculo vive allá» escrita de
- * memoria le regala a quien herede el árbol una cobertura que no existe.
  */
 
-const live: CampaignPlanRow = {
-  plan: "plus",
-  pendingPlan: null,
-  status: "active",
-  stripeSubscriptionId: "sub_1",
-};
+const NOW = new Date("2026-10-10T12:00:00.000Z");
+const FUTURE = new Date(NOW.getTime() + 86_400_000);
+const PAST = new Date(NOW.getTime() - 86_400_000);
 
-const CASES: Array<[string, Partial<CampaignPlanRow>, boolean]> = [
-  ["plus con suscripción viva", {}, true],
-  ["plus en trial (no es un status MUERTO)", { status: "trialing" }, true],
-  [
-    "plus en `past_due` — el impago bloquea el acceso, no degrada",
-    { status: "past_due" },
-    true,
-  ],
-  ["plus con un `pending_plan` que NO baja", { pendingPlan: "plus" }, true],
-  [
-    "plus con `pending_plan` vacío: eso no es una baja programada",
-    { pendingPlan: "" },
-    true,
-  ],
-  ["free", { plan: "free" }, false],
-  ["none", { plan: "none" }, false],
-  ["un plan desconocido", { plan: "enterprise" }, false],
-  ["plus con baja programada a free", { pendingPlan: "free" }, false],
-  [
-    "plus SIN `stripe_subscription_id` (la fila A1 de prod)",
-    { stripeSubscriptionId: null },
-    false,
-  ],
-  ["plus con la suscripción cancelada", { status: "canceled" }, false],
-  [
-    "plus con la suscripción `incomplete_expired`",
-    { status: "incomplete_expired" },
-    false,
-  ],
-];
-
-describe("campaignsAllowedFor — el gate de plan de las campañas (spec 0065, fase D)", () => {
-  it.each(CASES)("%s → %s", (_label, over, expected) => {
-    expect(campaignsAllowedFor({ ...live, ...over })).toBe(expected);
-  });
-
-  it("sin fila de suscripción NO hay campañas", () => {
-    // Un negocio sin fila no debería existir (el unique + la fk de D3), pero el default de
-    // un `select` que no encuentra nada es `undefined`, y el default seguro acá es `false`:
-    // lo contrario regalaría el plan Plus a un estado que nadie sabe leer.
-    expect(campaignsAllowedFor(null)).toBe(false);
-  });
-
-  it("la tabla ejerce las dos salidas (no es degenerada)", () => {
-    const outcomes = new Set(CASES.map(([, , expected]) => expected));
-    expect([...outcomes].sort()).toEqual([false, true]);
-    expect(CASES).toHaveLength(12);
-  });
-});
-
-describe("campaignAllowedFor — el freno decide POR PLANTILLA (ADR 0112)", () => {
-  const free: CampaignPlanRow = {
-    plan: "free",
-    pendingPlan: null,
+const ROWS: Record<string, CampaignPlanRow> = {
+  trial: {
+    plan: "trial",
     status: "active",
     stripeSubscriptionId: null,
-  };
+    trialEndsAt: FUTURE,
+  },
+  base: {
+    plan: "base",
+    status: "active",
+    stripeSubscriptionId: "sub_base",
+    trialEndsAt: PAST,
+  },
+  plus: {
+    plan: "plus",
+    status: "active",
+    stripeSubscriptionId: "sub_plus",
+    trialEndsAt: PAST,
+  },
+  // Una suscripción que murió (plan `none`) con la prueba vencida: BLOQUEADO.
+  none: {
+    plan: "none",
+    status: "canceled",
+    stripeSubscriptionId: "sub_muerta",
+    trialEndsAt: PAST,
+  },
+};
 
-  it("la Bienvenida pasa en free y sin fila de suscripción", () => {
-    expect(campaignAllowedFor(free, "welcome")).toBe(true);
-    expect(campaignAllowedFor(null, "welcome")).toBe(true);
-    expect(campaignAllowedFor({ ...live, plan: "none" }, "welcome")).toBe(true);
+/** plantilla → [trial, base, plus, none vencido]. */
+const TABLE: Array<[string | null, [boolean, boolean, boolean, boolean]]> = [
+  ["welcome", [true, true, true, false]],
+  ["cross", [true, true, true, false]],
+  ["valley", [true, false, true, false]],
+  [null, [true, false, true, false]],
+  ["win_back", [true, false, true, false]],
+  ["at_risk", [true, false, true, false]],
+];
+
+describe("campaignAllowedFor — por plantilla y por plan efectivo (T4)", () => {
+  it.each(TABLE)("plantilla %s", (template, expected) => {
+    (["trial", "base", "plus", "none"] as const).forEach((plan, i) => {
+      expect(
+        campaignAllowedFor(ROWS[plan], template, NOW),
+        `${String(template)} × ${plan}`,
+      ).toBe(expected[i]);
+    });
   });
 
-  it("cualquier otra plantilla, o una campaña propia, sigue con `campaigns.enabled`", () => {
-    expect(campaignAllowedFor(free, "win_back")).toBe(false);
-    expect(campaignAllowedFor(null, "win_back")).toBe(false);
-    expect(campaignAllowedFor(free, null)).toBe(false);
-    expect(campaignAllowedFor(live, "win_back")).toBe(true);
-    expect(campaignAllowedFor(live, null)).toBe(true);
+  it("sin fila de suscripción no hay ninguna campaña (fail-closed)", () => {
+    for (const [template] of TABLE) {
+      expect(campaignAllowedFor(null, template, NOW)).toBe(false);
+    }
+  });
+
+  it("un `plus` cuya prueba vigente sobrevive a una suscripción muerta sigue con todo", () => {
+    const row: CampaignPlanRow = {
+      plan: "plus",
+      status: "canceled",
+      stripeSubscriptionId: "sub_muerta",
+      trialEndsAt: FUTURE,
+    };
+    expect(campaignAllowedFor(row, "win_back", NOW)).toBe(true);
+  });
+
+  it("el reloj importa: la misma prueba deja de valer al vencer", () => {
+    expect(campaignAllowedFor(ROWS.trial, "welcome", FUTURE)).toBe(false);
   });
 });

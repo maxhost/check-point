@@ -9,55 +9,79 @@ const subscription = stripeSubscription({
   id: "sub_1",
   customer: "cus_1",
 });
+const NOW = new Date("2026-10-10T12:00:00.000Z");
 
 /**
- * Spec 0065, fase D — EL FRENO DEFENSIVO, del lado de «qué escribe».
+ * Spec 0189 §D4 — LAS CAMPAÑAS SIGUEN AL ACCESO EN EL ACTO, del lado de «qué escribe».
  *
- * Acá se pinnea que la pausa sale de la MISMA llamada que escribe el plan (el doble sólo ve
- * una transacción) y con qué columnas. Que sea ATÓMICA —que un fallo del `update` de
- * campañas deje el plan sin escribir— es una propiedad de Postgres y su oráculo es la
- * integración, con inyección de fallo; un doble no puede probar un rollback.
+ * Acá se pinnea que la pausa sale de la MISMA llamada que escribe la fila (el doble sólo ve
+ * una transacción), con qué columnas, y que la decide el acceso de la fila que QUEDÓ escrita
+ * (lo que devuelve el `returning`). Que sea ATÓMICA es una propiedad de Postgres: su oráculo
+ * es la integración con inyección de fallo (`billing-webhook-campaign-brake`). La reanudación
+ * (que lee las campañas pausadas) tiene su oráculo en el barrido de integración (T9).
  */
-describe("applySubscriptionState — el freno defensivo de campañas (spec 0065)", () => {
-  const derived = (plan: string | undefined) => ({
-    ...(plan === undefined ? {} : { plan }),
+describe("applySubscriptionState — el acceso que queda decide las campañas", () => {
+  const write = {
+    plan: "none",
     status: "canceled",
     pendingPlan: null,
     pendingPlanAt: null,
-    clearDowngradeRequest: false,
-  });
+    clearDowngradeRequest: true,
+  };
 
-  it.each(["free", "none"])(
-    "con el plan derivado en `%s` pausa las campañas activas en la misma transacción",
-    async (plan) => {
-      const { tx, recorded } = txDouble();
-      await applySubscriptionState(tx, {
-        businessId: BIZ,
-        subscription,
-        write: derived(plan),
-        lastEventAt: null,
-      });
-      expect(recorded.sets.campaign).toMatchObject({
-        status: "paused",
-        pauseReason: "plan_downgraded",
-      });
-      // Y el plan se escribió igual: la pausa es un AÑADIDO, no un reemplazo.
-      expect(recorded.set).toMatchObject({ plan });
-    },
-  );
-
-  const UNTOUCHED: Array<[string | undefined, string]> = [
-    ["plus", "un plan que no baja"],
-    [undefined, "«no tocar el plan» (`past_due`, price desconocido…)"],
-  ];
-
-  it.each(UNTOUCHED)("con %s (%s) NO toca ninguna campaña", async (plan) => {
-    const { tx, recorded } = txDouble();
+  it("si la fila queda SIN acceso, pausa TODAS las activas con `billing_blocked`", async () => {
+    const { tx, recorded } = txDouble({
+      plan: "none",
+      status: "canceled",
+      stripeSubscriptionId: "sub_1",
+      trialEndsAt: new Date(NOW.getTime() - 1),
+    });
     await applySubscriptionState(tx, {
       businessId: BIZ,
       subscription,
-      write: derived(plan),
+      write,
       lastEventAt: null,
+      now: NOW,
+    });
+    expect(recorded.sets.campaign).toEqual({
+      status: "paused",
+      pauseReason: "billing_blocked",
+      updatedAt: NOW,
+    });
+    // Y el plan se escribió igual: la pausa es un AÑADIDO, no un reemplazo.
+    expect(recorded.set).toMatchObject({ plan: "none" });
+  });
+
+  it("si la fila queda CON acceso (la prueba vigente sobrevive), NO pausa nada", async () => {
+    const { tx, recorded } = txDouble({
+      plan: "trial",
+      status: "canceled",
+      stripeSubscriptionId: "sub_1",
+      trialEndsAt: new Date(NOW.getTime() + 1),
+    });
+    await applySubscriptionState(tx, {
+      businessId: BIZ,
+      subscription,
+      write: { ...write, plan: undefined },
+      lastEventAt: null,
+      now: NOW,
+    });
+    expect(recorded.sets).not.toHaveProperty("campaign");
+  });
+
+  it("una suscripción viva (aunque `past_due`) no pausa nada", async () => {
+    const { tx, recorded } = txDouble({
+      plan: "plus",
+      status: "past_due",
+      stripeSubscriptionId: "sub_1",
+      trialEndsAt: null,
+    });
+    await applySubscriptionState(tx, {
+      businessId: BIZ,
+      subscription,
+      write: { ...write, status: "past_due", clearDowngradeRequest: false },
+      lastEventAt: null,
+      now: NOW,
     });
     expect(recorded.sets).not.toHaveProperty("campaign");
   });

@@ -19,7 +19,7 @@ import { integrationEnabled } from "./locations-integration-support";
 
 /**
  * Spec 0063, D6 — LA SUPERFICIE COMPARTIDA DE `app/api/billing/_auth.ts`: lo que vale para las
- * CINCO rutas porque vive en `decideUnderLock`. Nace del barrido sistemático de afirmaciones
+ * rutas que deciden porque vive en `decideUnderLock`. Nace del barrido sistemático de afirmaciones
  * (S1), que encontró sin oráculo la propiedad más central de la spec.
  *
  * `decideUnderLock` documenta «el conteo de locales que alimenta `downgrade_blocked` tiene que
@@ -89,7 +89,10 @@ describe.skipIf(!integrationEnabled)(
 
     it("un `cancel` ESPERA al que tiene el lock del negocio, y recién después decide", async () => {
       const tag = `lock${randomUUID().slice(0, 8)}`;
-      const seed = await seedBillingBusiness("plus", livePlusState(fake, tag));
+      const seed = await seedBillingBusiness("plus", {
+        ...livePlusState(fake, tag),
+        trialEndsAt: new Date(Date.now() - 86_400_000),
+      });
       world.businessId = seed.business.id;
       try {
         let terminado = false;
@@ -104,17 +107,17 @@ describe.skipIf(!integrationEnabled)(
           // Tiempo de sobra para que la ruta llegue al lock y se quede ahí.
           await new Promise((resolve) => setTimeout(resolve, 2_000));
 
-          // LA PROPIEDAD, y el oráculo tiene que ser ESTE: con el lock tomado por otro, la
-          // ruta NO ESCRIBIÓ NADA. Leído por una conexión distinta (`getDb()` es neon-http),
-          // así que ve lo COMMITEADO. Sin `lockBusiness` en `decideUnderLock`, el
-          // read-modify-write corre igual y `pending_plan` ya estaría puesto acá.
+          // LA PROPIEDAD (spec 0189): con el lock tomado por otro, la ruta NO DECIDIÓ — y
+          // como la llamada a Stripe va DESPUÉS de decidir, el doble no recibió nada. Sin
+          // `lockBusiness` en `decideUnderLock`, la decisión corre igual y el `update` ya
+          // estaría en `fake.calls` (la escritura local, en cambio, espera igual: la ruta
+          // vuelve a tomar el lock para escribir, así que la FILA no discrimina).
           //
-          // OJO CON EL ORÁCULO QUE NO SIRVE, y es el que se escribió primero: aseverar «la
-          // ruta no terminó» queda VERDE con y sin el guard, porque `billingStateResponse`
-          // TAMBIÉN toma el lock al final. Pinneaba «algún paso toma el lock», no éste.
+          // OJO CON EL ORÁCULO QUE NO SIRVE: «la ruta no terminó» queda VERDE con y sin el
+          // guard, porque la escritura y `billingStateResponse` TAMBIÉN toman el lock.
+          expect(fake.calls).toEqual([]);
           const durante = await readSubscriptionRow(seed.business.id);
           expect(durante.pendingPlan).toBeNull();
-          expect(durante.downgradeRequestedAt).toBeNull();
           expect(terminado).toBe(false);
         });
 
@@ -122,13 +125,10 @@ describe.skipIf(!integrationEnabled)(
         const response = await enVuelo!;
         expect(response.status).toBe(200);
         expect(terminado).toBe(true);
-        // La baja es INMEDIATA desde la spec 0064 (ADR 0063): el estado final ya no es «baja
-        // programada» sino `free` sin suscripción. Lo que este test pinnea sigue siendo el
-        // lock, no el desenlace — pero el desenlace tiene que ser el REAL o el oráculo miente.
+        // Spec 0189: cancelar PROGRAMA el fin al cierre del periodo y el plan se conserva.
         const row = await readSubscriptionRow(seed.business.id);
-        expect(row.plan).toBe("free");
-        expect(row.stripeSubscriptionId).toBeNull();
-        expect(row.downgradeRequestedAt).toBeNull();
+        expect([row.plan, row.pendingPlan]).toEqual(["plus", "none"]);
+        expect(row.downgradeRequestedAt).not.toBeNull();
       } finally {
         await dropBusiness(seed.business.id);
       }

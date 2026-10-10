@@ -5,8 +5,7 @@ import {
   applySubscriptionState,
   clearPendingPlan,
   readSubscription,
-  scheduleDowngrade,
-  settleToFree,
+  scheduleCancel,
 } from "./billing";
 import { stripeSubscription } from "./billing-integration-support";
 import { txDouble } from "./billing-tx-double";
@@ -19,94 +18,51 @@ import { txDouble } from "./billing-tx-double";
  * queda afuera está declarado al pie del archivo y sí tiene oráculo, en
  * `billing-store.neon.integration.test.ts`.
  *
- * Por qué el conjunto de claves y no sólo los valores: en D10 la propiedad load-bearing es
- * una AUSENCIA — `stripe_customer_id` SE CONSERVA, porque es la llave con la que D8 vuelve a
- * preguntarle a Stripe. Un test de valores no ve una clave que sobra; uno de conjunto, sí.
+ * Por qué el conjunto de claves y no sólo los valores: la propiedad load-bearing puede ser
+ * una AUSENCIA (cancelar NO toca el plan). Un test de valores no ve una clave que sobra; uno
+ * de conjunto, sí.
  */
 
 const BIZ = "11111111-1111-1111-1111-111111111111";
 
-describe("settleToFree — el `SET` exacto de D10", () => {
-  it("escribe las 7 columnas de la spec y NO `stripe_customer_id`", async () => {
+describe("scheduleCancel — la cancelación programada (spec 0189 §D7)", () => {
+  it("escribe `pending_plan`, su fecha y la marca de auditoría, y nada más", async () => {
+    const at = new Date(Date.UTC(2026, 11, 1));
     const { tx, recorded } = txDouble();
-    await settleToFree(tx, BIZ, new Date(Date.UTC(2026, 8, 10)));
+    await scheduleCancel(tx, BIZ, {
+      now: new Date(Date.UTC(2026, 9, 10)),
+      pendingPlan: "none",
+      pendingPlanAt: at,
+    });
     expect(Object.keys(recorded.set).sort()).toEqual([
       "downgradeRequestedAt",
-      "interval",
       "pendingPlan",
       "pendingPlanAt",
-      "plan",
-      "status",
-      "stripeSubscriptionId",
       "updatedAt",
     ]);
-    // `stripe_customer_id` NO está: es la llave de D8 y borrarla deja al negocio sin forma
-    // de detectar deriva. Se asevera como ausencia, que es la propiedad real.
-    expect(recorded.set).not.toHaveProperty("stripeCustomerId");
-  });
-
-  it("limpia el id de Stripe y el intervalo, y deja `free` / `active`", async () => {
-    // Los cuatro valores que hacen que el negocio PUEDA volver a Plus: con
-    // `status='active'` y el `stripe_subscription_id` viejo sin limpiar,
-    // `hasLiveSubscription` es true → `subscription_live` 409 PARA SIEMPRE.
-    const { tx, recorded } = txDouble();
-    await settleToFree(tx, BIZ);
     expect(recorded.set).toMatchObject({
-      plan: "free",
-      status: "active",
-      stripeSubscriptionId: null,
-      interval: null,
-      pendingPlan: null,
-      pendingPlanAt: null,
-      downgradeRequestedAt: null,
+      pendingPlan: "none",
+      pendingPlanAt: at,
     });
-  });
-});
-
-describe("scheduleDowngrade — la intención, y la marca que NO se pisa", () => {
-  it("el paso 2 de D6 escribe `pending_plan` y NO toca `pending_plan_at`", async () => {
-    // «Baja programada SIN fecha» es un estado VÁLIDO y garantizado entre el 200 de `cancel`
-    // y el paso 4 (D7 lo muestra sin fecha). Si el paso 2 escribiera `pendingPlanAt: null`,
-    // un segundo `cancel` borraría la fecha que el paso 4 ya había puesto.
-    const { tx, recorded } = txDouble({ downgradeRequestedAt: null });
-    await scheduleDowngrade(tx, BIZ, { now: new Date(Date.UTC(2026, 8, 10)) });
-    expect(Object.keys(recorded.set).sort()).toEqual([
-      "downgradeRequestedAt",
-      "pendingPlan",
-      "updatedAt",
-    ]);
-    expect(recorded.set.pendingPlan).toBe("free");
+    // NO toca el plan: se usa lo pagado hasta el fin del periodo (ADR 0134 §8).
+    expect(recorded.set).not.toHaveProperty("plan");
   });
 
-  it("`downgrade_requested_at` se escribe con un `coalesce`, no con la fecha pelada", async () => {
-    // La propiedad: CONSERVA la marca que ya estuviera puesta. De eso cuelga la
-    // `idempotencyKey` de D6 (`billing:cancel:${id}:${downgradeRequestedAt}`): si cada
-    // reintento la sobreescribiera con `now()`, la clave cambiaría y Stripe no reconocería
-    // el reintento — el camino de reparación dejaría de serlo. Que el `coalesce` haga lo que
-    // dice se verifica en la integración, por SQL; acá se asevera que la decisión es un
-    // `coalesce` y no una asignación.
-    const { tx, recorded } = txDouble({ downgradeRequestedAt: null });
-    await scheduleDowngrade(tx, BIZ, { now: new Date() });
-    expect(recorded.set.downgradeRequestedAt).toBeInstanceOf(SQL);
-  });
-
-  it("el paso 4 sí escribe `pending_plan_at` cuando llega la fecha de Stripe", async () => {
-    const cancelAt = new Date(Date.UTC(2026, 11, 1));
-    const { tx, recorded } = txDouble({ downgradeRequestedAt: null });
-    await scheduleDowngrade(tx, BIZ, {
+  it("`downgrade_requested_at` se escribe con un `coalesce`: conserva la primera marca", async () => {
+    const { tx, recorded } = txDouble();
+    await scheduleCancel(tx, BIZ, {
       now: new Date(),
-      pendingPlanAt: cancelAt,
+      pendingPlan: "none",
+      pendingPlanAt: null,
     });
-    expect(recorded.set.pendingPlanAt).toBe(cancelAt);
+    expect(recorded.set.downgradeRequestedAt).toBeInstanceOf(SQL);
   });
 });
 
 describe("clearPendingPlan — el revert limpia las TRES columnas", () => {
   it("no deja `downgrade_requested_at` puesto", async () => {
-    // Su único llamador desde la spec 0064 es el REVERT del paso 3 de `cancel` (el rechazo
-    // determinista): `resume` ya no existe. Si dejara la marca, un `deleted` ajeno posterior
-    // se clasificaría «esperado» y aterrizaría en `free` en vez de `none` — el bloqueante
-    // R2-1 por la puerta de atrás.
+    // Su llamador es `resume` (spec 0189 §D7): deshacer la cancelación limpia las tres
+    // juntas, o la UI seguiría diciendo «tu suscripción termina el …».
     const { tx, recorded } = txDouble();
     await clearPendingPlan(tx, BIZ);
     expect(recorded.set).toMatchObject({
@@ -180,11 +136,9 @@ describe("applySubscriptionState — `plan` AUSENTE significa «no tocar el plan
 });
 
 describe("readSubscription — la allow-list de columnas", () => {
-  it("pide las 10 columnas del dominio, ni una más ni una menos", async () => {
-    // Sin esta aserción, que la lectura dejara de pedir `downgradeRequestedAt` pasaría
-    // desapercibido: `planFromSubscription` lo leería como `undefined`, la comparación
-    // `!== null` daría true y TODO `deleted` aterrizaría en `free` — el bloqueante R2-1 otra
-    // vez, esta vez por una columna que nadie seleccionó.
+  it("pide las 11 columnas del dominio, ni una más ni una menos", async () => {
+    // Sin esta aserción, que la lectura dejara de pedir `trialEndsAt` pasaría desapercibido:
+    // el eje de acceso lo leería como `undefined` y el estado de cobro mentiría.
     const { tx, recorded } = txDouble({ businessId: BIZ });
     await readSubscription(tx, BIZ);
     expect(recorded.selected.sort()).toEqual([
@@ -198,6 +152,7 @@ describe("readSubscription — la allow-list de columnas", () => {
       "status",
       "stripeCustomerId",
       "stripeSubscriptionId",
+      "trialEndsAt",
     ]);
   });
 
@@ -210,9 +165,8 @@ describe("readSubscription — la allow-list de columnas", () => {
 /**
  * LO QUE ESTE ARCHIVO NO PINNEA, declarado en vez de tapado:
  *
- *  - que el `coalesce` de `scheduleDowngrade` CONSERVE de verdad la marca anterior: eso es
- *    Postgres, y su oráculo es `billing-store.neon.integration.test.ts`
- *    (`scheduleDowngrade CONSERVA downgrade_requested_at entre pedidos repetidos`);
+ *  - que el `coalesce` de `scheduleCancel` CONSERVE de verdad la marca anterior: eso es
+ *    Postgres (`billing-store.neon.integration.test.ts`);
  *  - el `where` por `businessId` de cada `UPDATE`: el doble ignora el `where`, así que una
  *    operación que escribiera sobre TODAS las filas pasaría estos tests. Mismo límite que
  *    declara `locations-plan-cap.test.ts`, y está cubierto en la integración, donde las dos

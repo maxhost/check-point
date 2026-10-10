@@ -27,6 +27,9 @@ const world = vi.hoisted(() => ({
   saveProgram: vi.fn(),
 }));
 
+// Spec 0189 §D4: el eje de acceso (402) tiene su oráculo propio (T7); acá el negocio paga.
+vi.mock("./billing-gate", () => ({ businessBillingFailure: async () => null }));
+
 vi.mock("./auth", () => ({
   getMerchantAuth: () => ({ api: { getSession: async () => world.session } }),
 }));

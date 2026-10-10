@@ -90,8 +90,8 @@ describe.skipIf(!integrationEnabled)(
       vi.unstubAllEnvs();
     });
 
-    it("la `idempotencyKey` del Checkout es FIJA por negocio + intervalo", async () => {
-      const seed = await seedBillingBusiness("free", {});
+    it("la `idempotencyKey` del Checkout es FIJA por negocio + plan + intervalo", async () => {
+      const seed = await seedBillingBusiness("trial", {});
       world.businessId = seed.business.id;
       // El customer que devuelve el fake se ESCRIBE en `core.subscription`, y ese unique es
       // GLOBAL: con el literal por defecto este archivo chocaría con el `checkout` de
@@ -100,20 +100,29 @@ describe.skipIf(!integrationEnabled)(
       try {
         const open = (body: unknown) =>
           CHECKOUT(billingRequest(body) as NextRequest);
-        expect((await open({ interval: "month" })).status).toBe(200);
-        expect((await open({ interval: "month" })).status).toBe(200);
+        const base = { plan: "base", interval: "month" };
+        expect((await open(base)).status).toBe(200);
+        expect((await open(base)).status).toBe(200);
 
         // DOS intentos del MISMO plan reusan la MISMA clave: es lo que impide que queden dos
         // sesiones de pago abiertas a la vez (§Decisiones del orquestador, 3).
         expect(fake.sessionKeys).toEqual([
-          `checkout:${seed.business.id}:month`,
-          `checkout:${seed.business.id}:month`,
+          `checkout:${seed.business.id}:base:month`,
+          `checkout:${seed.business.id}:base:month`,
         ]);
 
-        // …y el INTERVALO sí forma parte de la clave: cambiar de mensual a anual es otro
-        // pago, y tiene que poder abrir su propia sesión.
-        expect((await open({ interval: "year" })).status).toBe(200);
-        expect(fake.sessionKeys[2]).toBe(`checkout:${seed.business.id}:year`);
+        // …y el PLAN y el INTERVALO sí forman parte de la clave: son otro pago, y tienen que
+        // poder abrir su propia sesión.
+        expect((await open({ plan: "base", interval: "year" })).status).toBe(
+          200,
+        );
+        expect((await open({ plan: "plus", interval: "month" })).status).toBe(
+          200,
+        );
+        expect(fake.sessionKeys.slice(2)).toEqual([
+          `checkout:${seed.business.id}:base:year`,
+          `checkout:${seed.business.id}:plus:month`,
+        ]);
       } finally {
         await dropBusiness(seed.business.id);
       }
@@ -132,7 +141,7 @@ describe.skipIf(!integrationEnabled)(
       world.businessId = seed.business.id;
       try {
         const response = await CHECKOUT(
-          billingRequest({ interval: "month" }) as NextRequest,
+          billingRequest({ plan: "plus", interval: "month" }) as NextRequest,
         );
         expect(response.status).toBe(409);
         expect(await response.json()).toMatchObject({
@@ -156,13 +165,19 @@ describe.skipIf(!integrationEnabled)(
      */
     it("un `MERCHANT_PUBLIC_ORIGIN` con barra final no produce `//backoffice`", async () => {
       vi.stubEnv("MERCHANT_PUBLIC_ORIGIN", "https://checkpass.test/");
-      const seed: Seed = await seedBillingBusiness("free", {});
+      const seed: Seed = await seedBillingBusiness("trial", {});
       world.businessId = seed.business.id;
       fake.nextCustomerId = custId("barra");
       try {
         expect(
-          (await CHECKOUT(billingRequest({ interval: "month" }) as NextRequest))
-            .status,
+          (
+            await CHECKOUT(
+              billingRequest({
+                plan: "base",
+                interval: "month",
+              }) as NextRequest,
+            )
+          ).status,
         ).toBe(200);
         expect(fake.sessionParams[0]).toMatchObject({
           success_url: "https://checkpass.test/backoffice?checkout=success",

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getMerchantAuth } from "./auth";
 import { ownerContext } from "./staff";
+import { businessBillingFailure } from "./billing-gate";
 import {
   API_OWNER_CODES,
   type ApiOwnerFailure,
@@ -35,15 +36,17 @@ export {
  * 2. ¿es owner activo?   → 403 not_owner
  * 3. ¿email verificado?  → 403 email_not_verified
  * 4. ¿el negocio OPERA?  → 403 business_suspended | business_closed
+ * 5. ¿tiene ACCESO?      → 402 payment_required (spec 0189 §D4: sin suscripcion viva y con
+ *                          la prueba vencida), salvo `{ allowBlocked: true }` (cobro)
  * ```
  *
  * Los pasos 3 y 4 van **despues** de resolver al owner: puestos antes, un INTEGRANTE
  * recibiria `email_not_verified` en vez de `not_owner` —lo cazo un test de la spec 0067— y
  * un tercero podria sondear el estado de un negocio ajeno. Es la mutacion M3.
  *
- * **El eje `plan` NO se evalua aca** (paso 5 del ADR): eso es `can()` / `limitOf()`, y vive
- * en la transaccion que escribe. Mezclarlos haria que la superficie diga «mejora tu plan» a
- * un negocio suspendido.
+ * **El eje `plan` NO se evalua aca**: eso es `can()` / `limitOf()`, y vive en la transaccion
+ * que escribe. El paso 5 no es el plan: es el ACCESO (pagar o estar en prueba), y va despues
+ * del 4 para que un negocio suspendido siga diciendo `business_suspended`.
  */
 
 /** El negocio del owner, con las dos columnas del eje `status`. Es la fila de
@@ -74,6 +77,9 @@ export type ApiOwnerMessages = {
 export async function requireApiOwner(
   request: Request,
   messages: ApiOwnerMessages = {},
+  /** `allowBlocked`: solo las rutas de cobro (`api/billing/_auth.ts`), donde el owner
+   * bloqueado paga. */
+  options: { allowBlocked?: boolean } = {},
 ): Promise<ApiOwnerResult> {
   const session = await getMerchantAuth().api.getSession({
     headers: request.headers,
@@ -120,6 +126,12 @@ export async function requireApiOwner(
     business.suspensionReason,
   );
   if (failure) return { failure };
+
+  // PASO 5 — el eje de ACCESO (spec 0189 §D4).
+  if (!options.allowBlocked) {
+    const billing = await businessBillingFailure(business.id);
+    if (billing) return { failure: billing };
+  }
 
   return { business, userId: session.user.id };
 }
@@ -239,6 +251,10 @@ export async function requireApiOwnerSinGateDeEmail(
     business.suspensionReason,
   );
   if (failure) return { failure };
+
+  // PASO 5 — el eje de ACCESO (spec 0189 §D4), igual que en `requireApiOwner`.
+  const billing = await businessBillingFailure(business.id);
+  if (billing) return { failure: billing };
 
   return { business, userId: session.user.id };
 }

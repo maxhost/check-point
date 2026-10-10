@@ -50,22 +50,25 @@ function rowWithSecrets(
     status: "active",
     stripeCustomerId: LEAKED_CUSTOMER,
     stripeSubscriptionId: LEAKED_SUBSCRIPTION,
-    pendingPlan: "free",
+    pendingPlan: "none",
     pendingPlanAt: new Date("2026-12-01T00:00:00.000Z"),
     downgradeRequestedAt: DOWNGRADE_REQUESTED_AT,
+    trialEndsAt: new Date("2026-11-30T00:00:00.000Z"),
     lastEventAt: new Date("2026-09-10T00:00:00.000Z"),
     ...overrides,
   };
 }
 
 describe("toSubscriptionView — allow-list POSITIVA de claves (spec 0063, D7)", () => {
-  it("deja exactamente estas cinco claves, escritas a mano, y ninguna más", () => {
+  it("deja exactamente estas seis claves, escritas a mano, y ninguna más", () => {
+    // Spec 0189 §D10 sumó `trialEndsAt`.
     expect(Object.keys(toSubscriptionView(rowWithSecrets())).sort()).toEqual([
       "interval",
       "pendingPlan",
       "pendingPlanAt",
       "plan",
       "status",
+      "trialEndsAt",
     ]);
   });
 
@@ -84,6 +87,7 @@ describe("toSubscriptionView — allow-list POSITIVA de claves (spec 0063, D7)",
       "pendingPlanAt",
       "plan",
       "status",
+      "trialEndsAt",
     ]);
   });
 
@@ -111,6 +115,7 @@ describe("toSubscriptionView — allow-list POSITIVA de claves (spec 0063, D7)",
           interval: "year",
           pendingPlan: null,
           pendingPlanAt: null,
+          trialEndsAt: null,
         }),
       ),
     ).toEqual({
@@ -119,6 +124,7 @@ describe("toSubscriptionView — allow-list POSITIVA de claves (spec 0063, D7)",
       interval: "year",
       pendingPlan: null,
       pendingPlanAt: null,
+      trialEndsAt: null,
     });
   });
 });
@@ -134,6 +140,8 @@ describe("toSubscriptionView — `pendingPlanAt` viaja como string ISO [R2-M4]",
     expect(typeof view.pendingPlanAt).toBe("string");
     expect(view.pendingPlanAt).not.toBeInstanceOf(Date);
     expect(view.pendingPlanAt).toBe("2026-12-01T00:00:00.000Z");
+    // Spec 0189 §D10: `trialEndsAt` igual.
+    expect(view.trialEndsAt).toBe("2026-11-30T00:00:00.000Z");
   });
 
   it('`null` sigue siendo `null`, no la cadena "null" ni la época', () => {
@@ -141,32 +149,31 @@ describe("toSubscriptionView — `pendingPlanAt` viaja como string ISO [R2-M4]",
     // fecha. La UI lo dice sin fecha, así que el DTO no puede fabricarle una.
     expect(
       toSubscriptionView(
-        rowWithSecrets({ pendingPlan: "free", pendingPlanAt: null }),
+        rowWithSecrets({
+          pendingPlan: "none",
+          pendingPlanAt: null,
+          trialEndsAt: null,
+        }),
       ),
-    ).toMatchObject({ pendingPlan: "free", pendingPlanAt: null });
+    ).toMatchObject({
+      pendingPlan: "none",
+      pendingPlanAt: null,
+      trialEndsAt: null,
+    });
   });
 });
 
-describe("planLabel — allow-list de presentación del PLAN (spec 0063, D7)", () => {
+describe("planLabel — allow-list de presentación del PLAN (spec 0189 §D9)", () => {
   it.each([
-    ["free", "Free"],
+    ["trial", "Prueba gratis"],
+    ["base", "Base"],
     ["plus", "Plus"],
     ["none", "Sin plan"],
   ])("%s → «%s»", (plan, expected) => {
     expect(planLabel(plan)).toBe(expected);
   });
 
-  it("`none` NUNCA dice «Free»: es justo lo que el estado existe para no hacer", () => {
-    // Hoy la home hace `plan === "plus" ? "Plus" : "Free"` (`backoffice/page.tsx:62`), o
-    // sea que `none` se mostraría como «Plan Free» — el ADR 0058 §12 dice que `none` NO es
-    // ninguna de las suscripciones que existen, y mostrarlo como Free es mentirle al owner
-    // sobre su plan.
-    const label = planLabel("none");
-    expect(label).toBe("Sin plan");
-    expect(label.toLowerCase()).not.toContain("free");
-  });
-
-  it.each([["enterprise"], ["PLUS"], [""], ["plan'; drop table"]])(
+  it.each([["enterprise"], ["PLUS"], [""], ["free"], ["plan'; drop table"]])(
     "un plan desconocido (%s) sale por el texto genérico, nunca crudo",
     (plan) => {
       const label = planLabel(plan);
@@ -178,9 +185,9 @@ describe("planLabel — allow-list de presentación del PLAN (spec 0063, D7)", (
 
 describe("statusLabel — allow-list de presentación del STATUS (spec 0063, D7)", () => {
   it("`canceled` NO dice «confirmando pago»", () => {
-    // El caso que motivó la allow-list: hoy la home hace
-    // `status === "active" ? "activo" : "confirmando pago"`, así que un `free` con
-    // `status='canceled'` diría «confirmando pago» PARA SIEMPRE.
+    // El caso que motivó la allow-list: la home hacía
+    // `status === "active" ? "activo" : "confirmando pago"`, así que un plan sin suscripción
+    // con `status='canceled'` diría «confirmando pago» PARA SIEMPRE.
     const label = statusLabel("canceled");
     expect(label).toBe("cancelada");
     expect(label).not.toContain("confirmando");
@@ -256,8 +263,10 @@ describe("planWithInterval — el plan con su intervalo (spec 0064, F2-1)", () =
     // adivinado por ser el caso más común. Una etiqueta inventada sobre la plata del
     // merchant es peor que una incompleta.
     ["plus", null, "Plus"],
+    ["base", "month", "Base mensual"],
+    ["base", "year", "Base anual"],
     // Los que no tienen suscripción no llevan intervalo ni aunque la columna lo traiga.
-    ["free", "month", "Free"],
+    ["trial", "month", "Prueba gratis"],
     ["none", "year", "Sin plan"],
     ["enterprise", "month", "Plan no disponible"],
   ])("plan=%s interval=%s → «%s»", (plan, interval, label) => {
@@ -271,6 +280,7 @@ describe("planWithInterval — el plan con su intervalo (spec 0064, F2-1)", () =
       interval: "year",
       pendingPlan: null,
       pendingPlanAt: null,
+      trialEndsAt: null,
     });
     expect(offers.plan).toBe("Plus anual");
   });

@@ -69,8 +69,8 @@ const NOTHING: BillingFacts = { renewalAt: null, lastPaidInvoice: null };
  * borrar la fecha de renovación que el `retrieve` ya trajo, ni al revés. Con un solo `try`
  * alrededor de los dos, un fallo de cualquiera vaciaría los dos campos.
  *
- * Y SIN LOS IDS NO SE LLAMA A NADA: un negocio `free` no tiene suscripción ni, muchas veces,
- * customer. Llamar igual sería un round-trip garantizado a un 400 en el render más común.
+ * Y SIN LOS IDS NO SE LLAMA A NADA: un negocio en prueba no tiene suscripción ni, muchas
+ * veces, customer. Llamar igual sería un round-trip garantizado a un 400 en el render más común.
  */
 export async function readBillingFacts(
   gw: StripeGateway,

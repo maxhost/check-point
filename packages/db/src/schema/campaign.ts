@@ -36,9 +36,10 @@ import { NO_CHANNEL_TEMPLATES, offerChecks } from "./offer-checks";
  * accept any business's product. `set null` so deleting a product never deletes a campaign.
  *
  * `pause_reason` distinguishes who pulled the brake: `owner` (the pause button),
- * `plan_downgraded` (the defensive pause of `billing/webhook-apply.ts` when the plan
- * lands on `free`/`none` without passing through our own route) and
- * `no_active_locations`. The tick reads it to pick the turn's `cancel_reason`.
+ * `plan_downgraded` (a paused campaign the current plan does not include),
+ * `no_active_locations` and `billing_blocked` (spec 0189 / ADR 0134: the business lost its
+ * access — the daily billing sweep and the webhook pause and resume it). The tick reads it to
+ * pick the turn's `cancel_reason`.
  *
  * The CHANNELS (spec 0103 / ADR 0095) are two booleans, never a `kind`: `kind` describes
  * the AUDIENCE, and a template runs by proximity, push or both. At least one is on
@@ -130,7 +131,7 @@ export const campaigns = core.table(
     ),
     check(
       "core_campaign_pause_reason_check",
-      sql`${table.pauseReason} is null or ${table.pauseReason} in ('owner', 'plan_downgraded', 'no_active_locations')`,
+      sql`${table.pauseReason} is null or ${table.pauseReason} in ('owner', 'plan_downgraded', 'no_active_locations', 'billing_blocked')`,
     ),
     check(
       "core_campaign_dormant_days_check",

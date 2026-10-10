@@ -3,7 +3,7 @@ import { eq, sql } from "drizzle-orm";
 
 import type { DbTransaction } from "@mi-pasaporte/db";
 import { subscriptions } from "@mi-pasaporte/db/schema";
-import { pauseCampaignsForDowngrade } from "../marketing/plan-brake";
+import { syncCampaignsWithAccess } from "../marketing/plan-brake";
 import type { planFromSubscription, SubscriptionRow } from "./derive";
 
 /**
@@ -25,6 +25,7 @@ const rowColumns = {
   pendingPlan: subscriptions.pendingPlan,
   pendingPlanAt: subscriptions.pendingPlanAt,
   downgradeRequestedAt: subscriptions.downgradeRequestedAt,
+  trialEndsAt: subscriptions.trialEndsAt,
   lastEventAt: subscriptions.lastEventAt,
 };
 
@@ -49,49 +50,34 @@ export async function readSubscription(
 }
 
 /**
- * D6, pasos 2 y 4 de `cancel`. Escribe la INTENCIÓN: «el tope tiene que caer»
- * (`pending_plan`) y «esta baja la pedimos NOSOTROS» (`downgrade_requested_at`).
+ * Spec 0189 §D7, `cancel`: la cancelación PROGRAMADA al fin del periodo (ADR 0134 §8). Escribe
+ * `pending_plan='none'` con su fecha (la de Stripe, `pendingPlanFor` sobre la respuesta del
+ * `update`) y `downgrade_requested_at` (auditoría: «la pidió el owner desde nuestra ruta»).
  *
- * `downgrade_requested_at` se escribe con `coalesce(columna, $now)` — CONSERVA el valor que
- * ya estuviera puesto. No es un detalle: la `idempotencyKey` de D6 es
- * `billing:cancel:${subscriptionId}:${downgradeRequestedAt.toISOString()}`, así que un
- * segundo `cancel` sobre una baja ya programada tiene que reusar la MISMA marca para que
- * Stripe reconozca el reintento (el camino de reparación). Si la sobreescribiéramos con
- * `now()`, cada reintento generaría una clave nueva. Y al revés: `resume` la limpia, así que
- * el `cancel` siguiente sí estrena clave y SÍ llega a Stripe — el ítem del DoD
- * `cancel → resume → cancel`.
- *
- * `pendingPlanAt` se pasa sólo en el paso 4, con la respuesta de Stripe (`cancel_at`) ya en
- * mano; en el paso 2 se omite, y el estado «baja programada SIN fecha» es válido y la UI lo
- * dice (D7).
+ * Idempotente frente al webhook que llega en paralelo: el `customer.subscription.updated` de
+ * la misma operación deriva el MISMO `pending_plan`/`pending_plan_at` de la misma suscripción,
+ * así que el orden entre las dos escrituras no cambia el resultado. `downgrade_requested_at`
+ * conserva la primera marca (`coalesce`).
  */
-export async function scheduleDowngrade(
+export async function scheduleCancel(
   tx: DbTransaction,
   businessId: string,
-  args: { now: Date; pendingPlanAt?: Date | null },
-): Promise<{ downgradeRequestedAt: Date }> {
-  const [row] = await tx
+  args: { now: Date; pendingPlan: string | null; pendingPlanAt: Date | null },
+): Promise<void> {
+  await tx
     .update(subscriptions)
     .set({
-      pendingPlan: "free",
+      pendingPlan: args.pendingPlan,
+      pendingPlanAt: args.pendingPlanAt,
       downgradeRequestedAt: sql`coalesce(${subscriptions.downgradeRequestedAt}, ${args.now})`,
-      ...(args.pendingPlanAt === undefined
-        ? {}
-        : { pendingPlanAt: args.pendingPlanAt }),
       updatedAt: args.now,
     })
-    .where(eq(subscriptions.businessId, businessId))
-    .returning({ downgradeRequestedAt: subscriptions.downgradeRequestedAt });
-  // `coalesce` sobre una columna nullable devuelve el tipo nullable: acá no puede ser null
-  // porque uno de los dos operandos es `args.now`, pero el tipo no lo sabe.
-  return { downgradeRequestedAt: row?.downgradeRequestedAt ?? args.now };
+    .where(eq(subscriptions.businessId, businessId));
 }
 
 /**
- * D6, `resume`: deshace la baja programada. Limpia las tres columnas juntas —
- * `pending_plan` («el tope tiene que caer»), su fecha, y `downgrade_requested_at` («la
- * pedimos nosotros»)— porque dejar la tercera puesta haría que un `deleted` posterior
- * ajeno se clasificara «esperado» y aterrizara en `free` en vez de `none`.
+ * Spec 0189 §D7, `resume`: deshace la cancelación programada. Limpia las tres columnas juntas
+ * — `pending_plan`, su fecha y `downgrade_requested_at`.
  */
 export async function clearPendingPlan(
   tx: DbTransaction,
@@ -101,39 +87,6 @@ export async function clearPendingPlan(
   await tx
     .update(subscriptions)
     .set({
-      pendingPlan: null,
-      pendingPlanAt: null,
-      downgradeRequestedAt: null,
-      updatedAt: now,
-    })
-    .where(eq(subscriptions.businessId, businessId));
-}
-
-/**
- * D10 — la salida del estado «sin suscripción», y la ÚNICA operación de plan que no toca
- * Stripe. El `SET` es el literal de la spec y cada campo es load-bearing:
- *
- * `status='active'` sin limpiar `stripe_subscription_id` (la elección natural, porque en
- * prod los 11 negocios están `active`) deja `hasLiveSubscription = true` → `subscription_live`
- * 409 PARA SIEMPRE: el negocio no puede volver a Plus nunca. Y el guard de pertenencia de
- * D5.h ignoraría el `customer.subscription.created` de la suscripción nueva, así que el
- * owner pagaría y se quedaría en `free`.
- *
- * `stripe_customer_id` SE CONSERVA: es la llave con la que D8 (`reconcileFromStripe`)
- * vuelve a preguntarle a Stripe. Borrarlo deja al negocio sin forma de detectar deriva.
- */
-export async function settleToFree(
-  tx: DbTransaction,
-  businessId: string,
-  now = new Date(),
-): Promise<void> {
-  await tx
-    .update(subscriptions)
-    .set({
-      plan: "free",
-      status: "active",
-      stripeSubscriptionId: null,
-      interval: null,
       pendingPlan: null,
       pendingPlanAt: null,
       downgradeRequestedAt: null,
@@ -156,21 +109,12 @@ export async function settleToFree(
  * `lastEventAt` va como parámetro y no sale del `write` porque la reconciliación NO mueve el
  * guard de orden (ver `reconcileFromStripe`).
  *
- * EL FRENO DEFENSIVO DE LA SPEC 0065 VIVE ACÁ, Y ACÁ ES MÁS QUE DONDE LA SPEC LO PIDIÓ.
- * La spec lo ubica en `billing/webhook-apply.ts` («cuando el webhook escribe un plan
- * derivado `free`/`none`, en la misma transacción pausa las campañas activas»). Ponerlo en
- * esta función cubre ADEMÁS a `reconcileFromStripe`, que deriva el plan con la MISMA
- * `planFromSubscription` sobre una suscripción `canceled` y por lo tanto también puede
- * aterrizar en `free`/`none` — por un camino que tampoco pasa por nuestra ruta de baja, que
- * es exactamente la clase de agujero que el freno existe para tapar. Los dos llamadores ya
- * corren dentro de una transacción con `lockBusiness` tomado, así que la atomicidad que el
- * DoD exige («si el `update campaign` falla, el plan tampoco queda escrito») vale para los
- * dos. DIVERGENCIA DEL ORQUESTADOR respecto de la letra de la spec, declarada acá y en el
- * handoff; es un ensanche del alcance, no un recorte.
- *
- * Va DESPUÉS del `update` de la suscripción y no antes por una sola razón: el orden no
- * cambia nada dentro de una transacción, pero leído de arriba abajo dice lo que pasa —
- * primero el plan que Stripe dicta, después su consecuencia sobre las campañas.
+ * LAS CAMPAÑAS SIGUEN AL ACCESO EN EL ACTO (spec 0189 §D4). En la MISMA transacción que
+ * escribe la fila, `syncCampaignsWithAccess` mira el acceso que quedó: sin acceso pausa todo
+ * con `billing_blocked`; con acceso reanuda lo que el bloqueo pausó. Así pagar devuelve las
+ * campañas sin esperar al barrido diario. Vale para el webhook y para la reconciliación
+ * (`reconcileFromStripe`), que escriben por acá: los dos corren con `lockBusiness` tomado, así
+ * que si el `update campaign` falla, el plan tampoco queda escrito.
  */
 export async function applySubscriptionState(
   tx: DbTransaction,
@@ -184,7 +128,7 @@ export async function applySubscriptionState(
 ): Promise<void> {
   const now = args.now ?? new Date();
   const { write } = args;
-  await tx
+  const [written] = await tx
     .update(subscriptions)
     .set({
       ...(write.plan === undefined ? {} : { plan: write.plan }),
@@ -201,7 +145,12 @@ export async function applySubscriptionState(
       ...(args.lastEventAt === null ? {} : { lastEventAt: args.lastEventAt }),
       updatedAt: now,
     })
-    .where(eq(subscriptions.businessId, args.businessId));
-  if (write.plan === "free" || write.plan === "none")
-    await pauseCampaignsForDowngrade(tx, args.businessId, now);
+    .where(eq(subscriptions.businessId, args.businessId))
+    .returning({
+      plan: subscriptions.plan,
+      status: subscriptions.status,
+      stripeSubscriptionId: subscriptions.stripeSubscriptionId,
+      trialEndsAt: subscriptions.trialEndsAt,
+    });
+  await syncCampaignsWithAccess(tx, args.businessId, written ?? null, now);
 }

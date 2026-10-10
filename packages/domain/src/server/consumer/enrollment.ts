@@ -6,6 +6,7 @@ import {
   locations,
   loyaltyPrograms,
 } from "@mi-pasaporte/db/schema";
+import { businessHasAccessSql } from "../billing-access";
 import { ConsumerError, type MembershipRow, pgErrorCode } from "./core";
 
 const PROGRAM_UNAVAILABLE = "Este programa no está disponible.";
@@ -39,8 +40,12 @@ function assertBusinessAdmitsEnrollment(businessStatus: string): void {
 }
 
 /** Reads a program that admits enrollment (active | closing). A malformed uuid
- * (Postgres 22P02) is treated as an unavailable program (404), never a 500. */
-async function loadEnrollableProgram(programId: string) {
+ * (Postgres 22P02) is treated as an unavailable program (404), never a 500.
+ *
+ * Spec 0189 §D4 / ADR 0134 §7: a business WITHOUT ACCESS (no live subscription and its trial
+ * over) takes no new members — the program reads as unavailable (404), like the landing. Who
+ * is already in keeps pass and balance. */
+async function loadEnrollableProgram(programId: string, now = new Date()) {
   const db = getDb();
   try {
     const [program] = await db
@@ -60,6 +65,7 @@ async function loadEnrollableProgram(programId: string) {
         and(
           eq(loyaltyPrograms.id, programId),
           inArray(loyaltyPrograms.status, ["active", "closing"]),
+          businessHasAccessSql(loyaltyPrograms.businessId, now),
         ),
       )
       .limit(1);

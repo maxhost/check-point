@@ -31,7 +31,9 @@ export default async function LocationsPage() {
     .select({
       countryCode: businesses.countryCode,
       plan: subscriptions.plan,
-      pendingPlan: subscriptions.pendingPlan,
+      status: subscriptions.status,
+      stripeSubscriptionId: subscriptions.stripeSubscriptionId,
+      trialEndsAt: subscriptions.trialEndsAt,
     })
     .from(businesses)
     .leftJoin(subscriptions, eq(subscriptions.businessId, businesses.id))
@@ -43,10 +45,9 @@ export default async function LocationsPage() {
       initialLocations={await listLocations(business.id)}
       countryCode={row?.countryCode ?? "EC"}
       // Advisory only: it decides whether the "add" button is rendered. The cap that
-      // holds is `createLocation`'s, under the business row lock. Spec 0063, D2: es el
-      // tope EFECTIVO — con una baja ya programada el número que se muestra es el del plan
-      // destino, no el del plan vigente.
-      activeLimit={effectiveLocationLimit(row?.plan, row?.pendingPlan)}
+      // holds is `createLocation`'s, under the business row lock. Spec 0189 §D2: el tope
+      // del plan EFECTIVO (prueba, plan pago o sin acceso).
+      activeLimit={effectiveLocationLimit(row, new Date())}
     />
   );
 }

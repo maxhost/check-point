@@ -14,25 +14,29 @@ export const subscriptions = core.table(
     businessId: uuid("business_id")
       .notNull()
       .references(() => businesses.id, { onDelete: "cascade" }),
-    plan: text("plan").notNull().default("free"),
+    /** Spec 0189 / ADR 0134: `trial` | `base` | `plus` | `none`. El alta nace en `trial`. */
+    plan: text("plan").notNull().default("trial"),
     interval: text("interval"),
     status: text("status").notNull().default("active"),
     stripeCustomerId: text("stripe_customer_id"),
     stripeSubscriptionId: text("stripe_subscription_id"),
     /** Spec 0063, D3. «El tope tiene que caer» — lo dice STRIPE, y por eso no sirve como
      * discriminante de intención: el botón «Cancel subscription» del dashboard lo produce
-     * igual que nuestra ruta. NULL = sin baja programada. Hoy solo toma `'free'`. */
+     * igual que nuestra ruta. NULL = sin baja programada. Desde la spec 0189 solo toma
+     * `'none'` (cancelacion programada al fin del periodo, ADR 0134 §8). */
     pendingPlan: text("pending_plan"),
     /** Cuándo se aplica la baja programada; es lo que la UI muestra. */
     pendingPlanAt: timestamp("pending_plan_at", { withTimezone: true }),
     /** Spec 0063, D3 / [R2-1]. «Esta baja la pedimos NOSOTROS»: lo escriben SOLO nuestras
-     * rutas (`cancel` lo pone; `resume` y `settle-free` lo limpian). El webhook nunca lo
-     * pone — solo lo limpia en la rama incondicional de D5.f. Sin esta columna, un
-     * `deleted` originado en el dashboard se clasificaba «esperado» y aterrizaba en `free`
-     * con 3 locales activos, el estado que la spec entera existe para prohibir. */
+     * rutas (`cancel` lo pone; `resume` lo limpia). El webhook nunca lo pone — solo lo
+     * limpia en un evento terminal. Desde la spec 0189 es solo AUDITORIA: `derive` ya no lo
+     * lee (no hay plan gratis al que aterrizar). */
     downgradeRequestedAt: timestamp("downgrade_requested_at", {
       withTimezone: true,
     }),
+    /** Spec 0189 / ADR 0134 §3: el fin de la prueba de 90 dias. SE GUARDA, no se calcula:
+     * el owner la extiende a mano (skill `/extender-prueba`). NULL = sin prueba. */
+    trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
     /** `created` del último evento de Stripe APLICADO (guard de orden, D5.h). */
     lastEventAt: timestamp("last_event_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })

@@ -2,6 +2,7 @@ import type Stripe from "stripe";
 
 import type { IgnoredReason, SubscriptionRow } from "./derive";
 import { DEAD_STRIPE_STATUS } from "./plan-change";
+import { isOurPrice, type PriceIds } from "./prices";
 
 /**
  * Spec 0063, D5.h — GUARD DE PERTENENCIA, DE ADOPCIÓN Y DE ORDEN.
@@ -82,7 +83,7 @@ export type AssessEventApplicability = (args: {
    */
   subscription: Pick<Stripe.Subscription, "id" | "status" | "items">;
   row: Pick<SubscriptionRow, "stripeSubscriptionId" | "status" | "lastEventAt">;
-  priceIds: { monthly: string; yearly: string };
+  priceIds: PriceIds;
 }) => EventApplicability;
 
 export const assessEventApplicability: AssessEventApplicability = ({
@@ -101,10 +102,8 @@ export const assessEventApplicability: AssessEventApplicability = ({
     // m1: adoptar exige que la suscripción recuperada sea NUESTRA (un price de nuestra
     // cuenta) y que esté VIVA. Un evento puede crear o confirmar una adopción, nunca
     // terminarla.
-    const ours = subscription.items?.data?.some(
-      (item) =>
-        item.price?.id === priceIds.monthly ||
-        item.price?.id === priceIds.yearly,
+    const ours = subscription.items?.data?.some((item) =>
+      isOurPrice(priceIds, item.price?.id),
     );
     if (!ours || DEAD_STRIPE_STATUS.has(subscription.status as string)) {
       return { apply: false, ignoredReason: "not_adoptable" };

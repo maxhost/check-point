@@ -7,6 +7,7 @@ import {
   TERMINAL_STATUS,
   pendingPlanFor,
 } from "./derive-rules";
+import { matchPrice, type PriceIds } from "./prices";
 
 /**
  * Spec 0063, D5 — CONTRATO. Lo dejó el orquestador antes de despachar; el implementador
@@ -32,30 +33,19 @@ export type SubscriptionRow = {
   /** «El tope tiene que caer» — lo dice Stripe. NULL = sin baja programada. */
   pendingPlan: string | null;
   pendingPlanAt: Date | null;
-  /** «Esta baja la pedimos NOSOTROS» — lo decimos nosotros. Ver el bloque de abajo. */
+  /** «Esta baja la pedimos NOSOTROS». Desde la spec 0189 es AUDITORÍA: `derive` no lo lee. */
   downgradeRequestedAt: Date | null;
+  /** Spec 0189 / ADR 0134 §3: fin de la prueba de 90 días. NULL = sin prueba. */
+  trialEndsAt: Date | null;
   /** `created` del último evento APLICADO (guard de orden, D5.h). */
   lastEventAt: Date | null;
 };
 
 /**
- * POR QUÉ `downgradeRequestedAt` ES UNA COLUMNA PROPIA Y NO SE DEDUCE DE `pendingPlan`
- * ([R2-1], el bloqueante peor de la segunda ronda).
- *
- * La versión anterior de la spec usaba `pendingPlan` como discriminante y afirmaba «no
- * hace falta ninguna columna nueva». Era falso, y se demostraba leyendo la propia spec dos
- * secciones más abajo: la jerarquía de `pending_plan` (abajo) escribe `'free'` ante
- * CUALQUIER evento con `cancel_at_period_end === true`, sin mirar quién originó la baja — y
- * eso es exactamente lo que setea el botón «Cancel subscription» del dashboard de Stripe.
- * Secuencia que rompía el invariante central, con 3 locales activos: el owner cancela desde
- * el dashboard → `updated` → `pending_plan='free'` → fin de periodo → `deleted` → la regla
- * vieja lo clasificaba «esperado» y escribía `plan='free'` CON 3 LOCALES ACTIVOS, el estado
- * que la spec entera existe para prohibir.
- *
- * El discriminante era falsificable por el actor del que había que defenderse. Regla
- * general, ya en CLAUDE.md: un discriminante de intención no puede leerse de un campo que
- * el otro lado también escribe. `downgradeRequestedAt` lo escriben SOLO nuestras rutas
- * (`cancel` lo pone; `resume` y `settle-free` lo limpian); el webhook NUNCA lo escribe.
+ * `downgradeRequestedAt` (spec 0063 [R2-1]) discriminaba si un `deleted` aterrizaba en `free`
+ * (la baja la pedimos nosotros) o en `none`. Desde la spec 0189 no hay plan gratis: un evento
+ * terminal sobre un plan pago aterriza SIEMPRE en `none`, así que la columna queda como
+ * auditoría (`cancel` la pone, `resume` la limpia) y esta derivación no la lee.
  */
 
 /**
@@ -109,70 +99,51 @@ export type PlanFromSubscriptionArgs = {
   /** La respuesta de `subscriptions.retrieve(...)`, no `event.data.object`. */
   subscription: Stripe.Subscription;
   row: SubscriptionRow;
-  priceIds: { monthly: string; yearly: string };
+  priceIds: PriceIds;
 };
 
 /**
- * DERIVACIÓN DEL PLAN — allow-list POSITIVA, condicionada al plan vigente (D5.d).
- * Es normativo; el unit recorre los 8 status conocidos + uno inventado.
+ * DERIVACIÓN DEL PLAN — allow-list POSITIVA, condicionada al plan vigente (spec 0189 §D5).
+ * Es normativo; el unit recorre los 4 precios y los 8 status conocidos + uno inventado.
  *
- *   plan = 'plus'  si  algún item.price.id ∈ {monthly, yearly}
- *                  Y   status ∈ {active, trialing}
- *                  Y   pause_collection === null
+ *   plan = base|plus  según el price que MATCHEÓ (uno de los 4 nuestros)
+ *                     Y   status ∈ {active, trialing}
+ *                     Y   pause_collection === null
+ *                     (el `interval` sale del MISMO price)
  *
- *   plan = 'free'  si  (status ∈ {canceled, incomplete_expired} o type === '…deleted')
- *                  Y   (downgradeRequestedAt !== null      // la baja la pedimos NOSOTROS
- *                       o currentPlan NO es un plan pago)   // [R2-7]
- *
- *   plan = 'none'  si  (status ∈ {canceled, incomplete_expired} o type === '…deleted')
- *                  Y   downgradeRequestedAt === null
- *                  Y   currentPlan ES un plan pago
+ *   evento terminal (status ∈ {canceled, incomplete_expired} o type === '…deleted'):
+ *     plan vigente PAGO (`base`/`plus`) → plan = 'none'
+ *     si no (p. ej. `trial`)             → `plan` AUSENTE ([R2-7]: una tarjeta rechazada
+ *                                          durante la prueba no quita la prueba)
+ *     en los dos: pendingPlan = null, pendingPlanAt = null, clearDowngradeRequest = true
  *
  *   status 'past_due' | 'incomplete' | 'unpaid' | 'paused'  →  `plan` AUSENTE
  *   price desconocido / status desconocido                  →  `plan` AUSENTE + ignoredReason
  *
- * [R2-7] «`currentPlan` NO es un plan pago» evita convertir en `none` a un negocio `free`
- * que nunca tuvo nada: uno de los 9 `free` aprieta «Mejorar a Plus», la tarjeta se rechaza,
- * la suscripción queda `incomplete`, a las 23 h pasa a `incomplete_expired` (terminal,
- * `Subscriptions.d.ts:252`) y el negocio quedaría `plan='none'` POR HABER INTENTADO PAGAR.
- *
- * `unpaid` y `paused` no bajan el plan (ADR 0059: el impago bloquea el acceso, no degrada).
- * `pause_collection !== null` igual impide SUBIR a `plus`, porque no cambia el `status`
+ * `unpaid` y `paused` no bajan el plan (ADR 0059; el bloqueo por impago es PARQUEADO #54).
+ * `pause_collection !== null` igual impide SUBIR a un plan pago, porque no cambia el `status`
  * («the subscription status will be unchanged», `Subscriptions.d.ts:220-223`).
- *
- * El `interval` sale del price que MATCHEÓ — y el `price` de un `SubscriptionItem` es un
- * objeto, no un string (`SubscriptionItems.d.ts:90`): no hace falta ninguna llamada extra.
  *
  * JERARQUÍA DE `pendingPlan`, EN ESTE ORDEN (D5.f):
  *
- *   si plan derivado ∈ {'free','none'} → pendingPlan = null, pendingPlanAt = null,
+ *   si el evento es terminal           → pendingPlan = null, pendingPlanAt = null,
  *                                        clearDowngradeRequest = true   (INCONDICIONAL)
  *   si no, si cancel_at !== null o cancel_at_period_end === true
- *                                      → pendingPlan = 'free'
+ *                                      → pendingPlan = 'none'
  *                                        pendingPlanAt = cancel_at
  *                                                     ?? items?.data?.[0]?.current_period_end
  *                                                     ?? null
  *   si no                              → pendingPlan = null, pendingPlanAt = null
  *
  * La primera rama es incondicional PORQUE EN UN `deleted` `cancel_at_period_end` SIGUE EN
- * `true`: lo dice el propio campo — «Whether this subscription will (if `status=active`) or
- * DID (if `status=canceled`) cancel at the end of the current billing period»
- * (`Subscriptions.d.ts:132`). Sin la jerarquía la fila quedaba `plan='free'` Y
- * `pending_plan='free'`, con la UI diciendo «tu plan baja a Free el …» estando YA en free y
- * un botón *Reanudar* sobre una suscripción muerta.
- *
- * `cancel_at` entra en la condición porque es INDEPENDIENTE de `cancel_at_period_end`
- * (`Subscriptions.d.ts:129`) y se puede setear desde el dashboard. Mutación M8.
+ * `true`: «Whether this subscription will (if `status=active`) or DID (if `status=canceled`)
+ * cancel at the end of the current billing period» (`Subscriptions.d.ts:132`).
  *
  * El acceso al periodo es DEFENSIVO: `items` es un `ApiList` con `has_more`, truncado a 10
  * y sin orden contractual; `items.data[0]` pelado con la lista vacía tira `TypeError`
- * DENTRO de la transacción → rollback → reintento → mismo `TypeError`. «No se pudo
- * determinar la fecha» es un caso VÁLIDO: `pendingPlan` puesto, `pendingPlanAt` en null, y
- * la UI lo dice sin fecha. Mutación M9.
+ * DENTRO de la transacción → rollback → reintento → mismo `TypeError`.
  *
- * LAS DOS FECHAS SON UNIX SECONDS → `new Date(x * 1000)` contra una columna `timestamptz`.
- * Sin el `* 1000` la fecha cae en 1970 y el bug es visual, no de tipos: el unit asevera el
- * AÑO.
+ * LAS DOS FECHAS SON UNIX SECONDS → `new Date(x * 1000)`; el unit asevera el AÑO.
  */
 export type PlanFromSubscription = (
   args: PlanFromSubscriptionArgs,
@@ -208,14 +179,11 @@ export const planFromSubscription: PlanFromSubscription = ({
   // `billing-derive.test.ts` («un evento TERMINAL con un price ajeno…»). La otra
   // precedencia del archivo, `unknown_price` > `unknown_status`, está comentada abajo.
   if (terminal) {
-    // `free` SÓLO si la baja la pedimos nosotros o el plan vigente no era pago; si no,
-    // `none`. Y la rama 1 de la jerarquía de `pendingPlan`, INCONDICIONAL: en un
-    // `deleted` `cancel_at_period_end` sigue en `true` («will … or DID cancel»).
+    // Un plan PAGO cae a `none`; cualquier otro (la prueba) NO se toca ([R2-7]). Y la rama 1
+    // de la jerarquía de `pendingPlan`, INCONDICIONAL: en un `deleted`
+    // `cancel_at_period_end` sigue en `true` («will … or DID cancel»).
     return {
-      plan:
-        row.downgradeRequestedAt !== null || !PAID_PLANS.has(row.plan)
-          ? "free"
-          : "none",
+      ...(PAID_PLANS.has(row.plan) ? { plan: "none" } : {}),
       status,
       pendingPlan: null,
       pendingPlanAt: null,
@@ -224,10 +192,10 @@ export const planFromSubscription: PlanFromSubscription = ({
   }
 
   const write: SubscriptionWrite = { status, ...pendingPlanFor(subscription) };
-  const matched = subscription.items?.data?.find(
-    (item) =>
-      item.price?.id === priceIds.monthly || item.price?.id === priceIds.yearly,
-  );
+  // El primer item con un price NUESTRO, y su plan+intervalo salen de ESE price.
+  const matched = subscription.items?.data
+    ?.map((item) => matchPrice(priceIds, item.price?.id))
+    .find((match) => match !== null);
   // El price se mira ANTES que el status: describe la suscripción, no su momento. Con los
   // dos desconocidos gana `unknown_price`.
   if (!matched) return { ...write, ignoredReason: "unknown_price" };
@@ -235,12 +203,8 @@ export const planFromSubscription: PlanFromSubscription = ({
     return { ...write, ignoredReason: "unknown_status" };
   }
   if (GRANTING_STATUS.has(status) && subscription.pause_collection === null) {
-    // El intervalo sale del price que MATCHEÓ, nunca de `data[0]`.
-    return {
-      ...write,
-      plan: "plus",
-      interval: matched.price.id === priceIds.yearly ? "year" : "month",
-    };
+    // Plan e intervalo salen del price que MATCHEÓ, nunca de `data[0]`.
+    return { ...write, plan: matched.plan, interval: matched.interval };
   }
   // `past_due` | `incomplete` | `unpaid` | `paused`, y `active`/`trialing` con el cobro
   // pausado: el plan NO se toca (ADR 0059 — el impago bloquea el acceso, no degrada).

@@ -161,7 +161,12 @@ describe.skipIf(!enabled)("POST /api/onboarding/signup (spec 0155)", () => {
       .select()
       .from(subscriptions)
       .where(eq(subscriptions.businessId, business.id));
-    expect(subscription).toMatchObject({ plan: "free", status: "active" });
+    // T11 (spec 0189 §D8): el alta nace en la prueba de 90 días, con la fecha GUARDADA.
+    expect(subscription).toMatchObject({ plan: "trial", status: "active" });
+    const expected = Date.now() + 90 * 86_400_000;
+    expect(
+      Math.abs((subscription.trialEndsAt?.getTime() ?? 0) - expected),
+    ).toBeLessThan(60_000);
     // ADR 0121 §3: el negocio nace SIN programa.
     const programs = await db
       .select({ id: loyaltyPrograms.id })

@@ -3,9 +3,9 @@
  * `core.subscription`. Vivia en `billing/plan-change.ts`, que la sigue re-exportando para
  * que ni sus llamadores ni sus tests cambien.
  *
- * **POR QUE SE MUDO ACA, y no es cosmetica.** El catalogo de entitlements declara
- * `requiresLiveSubscription` por entrada (ADR 0073 §2), asi que `can()` necesita esta
- * decision. Importarla de `billing/plan-change` cerraba un CICLO real —
+ * **POR QUE SE MUDO ACA, y no es cosmetica.** La capa de entitlements necesita esta decision
+ * (desde la spec 0189, via el eje de acceso de `billing-access.ts`). Importarla de
+ * `billing/plan-change` cerraba un CICLO real —
  * `entitlements/index` → `billing/plan-change` → `locations/core` → `entitlements` — y el
  * ciclo no era teorico: `FALLBACK_LOCATION_LIMIT` lee el catalogo en la inicializacion del
  * modulo, asi que la carga moria con «Cannot read properties of undefined (reading

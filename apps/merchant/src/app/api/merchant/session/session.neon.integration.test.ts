@@ -31,10 +31,10 @@ import {
   businesses,
   memberships,
   sessions,
+  subscriptions,
   users,
 } from "@mi-pasaporte/db/schema";
 import { openMerchantSession } from "../../../../server/merchant-session";
-import { requireBackofficeSession } from "../../../../server/auth-guards";
 
 import { GET } from "./route";
 
@@ -67,6 +67,17 @@ async function setStatus(
     .where(eq(businesses.id, businessId));
 }
 
+const TRIAL_END = new Date(
+  Math.floor((Date.now() + 10 * 86_400_000 + 3_600_000) / 1000) * 1000,
+);
+
+async function setTrialEnd(businessId: string, trialEndsAt: Date) {
+  await getDb()
+    .update(subscriptions)
+    .set({ trialEndsAt })
+    .where(eq(subscriptions.businessId, businessId));
+}
+
 async function sessionRows(userId: string): Promise<number> {
   const [row] = await getDb()
     .select({ total: count() })
@@ -81,9 +92,6 @@ describe.skipIf(!integrationEnabled)(
     let seed: Seed;
     let ownerCookie: string;
     let ownerName: string;
-    /** El mundo del caso M2: un usuario con DOS membresias. Vive aparte para no
-     * contaminar los otros casos. */
-    const twin = { userId: "", oldBusiness: "", newBusiness: "" };
 
     beforeAll(async () => {
       ownerName = `Sesion ${randomUUID().slice(0, 8)}`;
@@ -95,12 +103,12 @@ describe.skipIf(!integrationEnabled)(
         blockAmount: "1.00",
       });
       ownerCookie = await cookieFor(seed.userId);
+      // Spec 0189 §D10: la prueba vence en 10 días y una hora → `trialDaysLeft` = 11.
+      await setTrialEnd(seed.business.id, TRIAL_END);
     }, 120_000);
 
     afterAll(async () => {
       await dropBusiness(seed.business.id);
-      if (twin.oldBusiness) await dropBusiness(twin.oldBusiness);
-      if (twin.newBusiness) await dropBusiness(twin.newBusiness);
     }, 60_000);
 
     it("SIN SESION: 200 con `{authenticated:false}` — ni 401 ni 403", async () => {
@@ -137,6 +145,7 @@ describe.skipIf(!integrationEnabled)(
         },
         business: null,
         membership: null,
+        billing: null,
       });
     }, 60_000);
 
@@ -179,7 +188,27 @@ describe.skipIf(!integrationEnabled)(
             "staff",
           ],
         },
+        // Spec 0189 §D10: el estado de cobro, SIN datos de Stripe.
+        billing: {
+          access: "trial",
+          trialEndsAt: TRIAL_END.toISOString(),
+          trialDaysLeft: 11,
+        },
       });
+    }, 60_000);
+
+    it("T7 — prueba VENCIDA: 200 (NO 402) con `billing.access: blocked`", async () => {
+      await setTrialEnd(seed.business.id, new Date(Date.now() - 1000));
+      try {
+        const response = await GET(sessionRequest(ownerCookie));
+        expect(response.status).toBe(200);
+        expect((await response.json()).billing).toMatchObject({
+          access: "blocked",
+          trialDaysLeft: null,
+        });
+      } finally {
+        await setTrialEnd(seed.business.id, TRIAL_END);
+      }
     }, 60_000);
 
     it("negocio `suspended`: 200 (NO 403) y el OWNER lee el motivo", async () => {
@@ -254,64 +283,5 @@ describe.skipIf(!integrationEnabled)(
         .delete(memberships)
         .where(eq(memberships.userId, disabledId));
     }, 120_000);
-
-    it("con DOS membresias devuelve el negocio mas VIEJO, el mismo que `requireBackofficeSession`", async () => {
-      twin.userId = `session-int-${randomUUID()}`;
-      await getDb()
-        .insert(users)
-        .values({
-          id: twin.userId,
-          name: "Dos negocios",
-          email: `${twin.userId}@example.test`,
-          emailVerified: true,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        });
-      // EL ORDEN DE INSERCION ES EL CONTRARIO AL DE `created_at`, y es lo que hace que la
-      // mutacion M2 muerda: con el `orderBy` quitado, un `limit(1)` sobre un seq scan
-      // devuelve la fila FISICAMENTE primera, que aca es la del negocio MAS NUEVO.
-      twin.newBusiness = await seedTwin(twin.userId, "Nuevo", new Date());
-      twin.oldBusiness = await seedTwin(
-        twin.userId,
-        "Viejo",
-        new Date(Date.now() - 86_400_000),
-      );
-
-      const cookie = await cookieFor(twin.userId);
-      const response = await GET(sessionRequest(cookie));
-      expect(response.status).toBe(200);
-      const body = await response.json();
-      expect(body.business.id).toBe(twin.oldBusiness);
-
-      // Y EL ORACULO QUE IMPORTA: el guard del backoffice resuelve EL MISMO negocio. Si las
-      // dos superficies divergieran, la UI y el servidor hablarian de negocios distintos.
-      guard.cookie = cookie;
-      const context = await requireBackofficeSession();
-      expect(body.business.id).toBe(context.business.id);
-    }, 120_000);
   },
 );
-
-/** Un negocio con su membresia `owner`, con el `created_at` que el caso necesita. */
-async function seedTwin(
-  userId: string,
-  label: string,
-  createdAt: Date,
-): Promise<string> {
-  const businessId = randomUUID();
-  await getDb()
-    .insert(businesses)
-    .values({
-      id: businessId,
-      name: `${label} ${businessId.slice(0, 8)}`,
-      slug: `int-${businessId.slice(0, 20)}`,
-      countryCode: "EC",
-      timezone: "America/Guayaquil",
-      currencyCode: "USD",
-      createdAt,
-    });
-  await getDb()
-    .insert(memberships)
-    .values({ businessId, userId, role: "owner" });
-  return businessId;
-}

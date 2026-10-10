@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 
 import { getDb } from "@mi-pasaporte/db";
-import { getStripeClient, getStripeConfiguration } from "../stripe-config";
+import {
+  getStripeClient,
+  getStripeConfiguration,
+  type PriceIds,
+} from "../stripe-config";
 import { claimEvent } from "./claim";
 import type { IgnoredReason } from "./derive";
 import { asStripeGateway } from "./gateway";
@@ -71,23 +75,19 @@ export const HANDLED_EVENT_TYPES: ReadonlySet<string> = new Set([
  * un desarchivado concurrente gana el lock primero es una operación VÁLIDA (3 ≤ 3) y el
  * sobre-tope resultante es justo lo que D1 declara tolerado. El motivo real es la
  * CONSISTENCIA DEL READ-MODIFY-WRITE de `core.subscription` frente a `cancel` / `resume` /
- * `settle-free`: `planFromSubscription` decide `free` vs `none` leyendo
- * `downgrade_requested_at` DE LA FILA, así que sin el lock un `cancel` que commitea entre la
- * lectura y la escritura se pierde — el evento escribe `none` sobre una baja que sí pedimos,
- * y encima la limpia. Mutación M4.
+ * `plan`: `planFromSubscription` decide leyendo el plan vigente DE LA FILA (un plan pago cae
+ * a `none`, la prueba no se toca), así que sin el lock una escritura de esas rutas que commitea
+ * entre la lectura y la escritura del evento se pierde.
  */
 export async function handleStripeWebhook(request: Request): Promise<Response> {
   let stripe: Stripe;
-  let priceIds: { monthly: string; yearly: string };
+  let priceIds: PriceIds;
   let secret: string | undefined;
   try {
     const configuration = getStripeConfiguration();
     stripe = getStripeClient(configuration);
     secret = configuration.webhookSecret;
-    priceIds = {
-      monthly: configuration.monthlyPriceId,
-      yearly: configuration.yearlyPriceId,
-    };
+    priceIds = configuration.priceIds;
   } catch {
     return new NextResponse("Webhook no configurado.", { status: 400 });
   }

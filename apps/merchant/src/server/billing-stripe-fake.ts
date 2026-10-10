@@ -15,8 +15,8 @@ import type { StripeGateway } from "./billing";
  * mudó acá: ningún test de las fases B/C —que tienen PASS— cambia de import.
  *
  * SEGUNDO CORTE (spec 0064, fase A): los CONSTRUCTORES de objetos se mudaron a
- * `billing-stripe-objects.ts` porque este archivo quedó en 299/300 y A1 le suma
- * `subscriptions.cancel` + `invoices.list`. Se reexportan por el mismo motivo de siempre —
+ * `billing-stripe-objects.ts` porque este archivo quedó en 299/300 y A1 le sumaba
+ * `invoices.list` (y la baja inmediata, que la spec 0189 sacó con su ruta). Se reexportan por el mismo motivo de siempre —
  * ningún test cambia de import.
  */
 export {
@@ -31,7 +31,7 @@ export type { InvoiceSpec, SubscriptionSpec } from "./billing-stripe-objects";
 export type FakeStripe = {
   gateway: StripeGateway;
   /** Toda llamada, en orden. El DoD pide aseverar CERO llamadas en varios caminos (tipo fuera
-   * de la allow-list, `settle_to_free`), y eso sólo se asevera si se cuentan. */
+   * de la allow-list, un bloqueo 409), y eso sólo se asevera si se cuentan. */
   calls: string[];
   subscriptions: Map<string, Stripe.Subscription>;
   sessions: Map<string, Stripe.Checkout.Session>;
@@ -76,18 +76,8 @@ export type FakeStripe = {
   /** El id que devuelve `customers.create`. */
   nextCustomerId: string;
 
-  // ——— SPEC 0064, FASE A (la baja inmediata y los datos del cobro) ———
+  // ——— SPEC 0064, FASE A (los datos del cobro) ———
 
-  /** Lo que tira el próximo `subscriptions.cancel`: los dos caminos de error del paso 3 de A2
-   * (red → estado PUESTO; determinista + `createdNow` → REVERTIDO). */
-  cancelError: Error | null;
-  /** Params de cada `subscriptions.cancel`. El DoD pide aseverar que NO se manda `prorate` ni
-   * `invoice_now`: sin guardarlos no hay con qué. */
-  cancelParams: (Stripe.SubscriptionCancelParams | undefined)[];
-  cancelKeys: (string | undefined)[];
-  /** Se ejecuta DENTRO de `subscriptions.cancel`, antes de aplicar nada: la ventana en la que
-   * A-T4 mete el `deleted` del webhook ANTES del paso 4. */
-  beforeCancel: (() => Promise<void>) | null;
   /** Lo que devuelve `invoices.list` (A4). Vacío = «no hay factura pagada» → `null`, y la UI
    * omite el dato. */
   invoices: Stripe.Invoice[];
@@ -117,10 +107,6 @@ export function fakeStripe(): FakeStripe {
     sessionKeys: [],
     customerKeys: [],
     nextCustomerId: "cus_creado_por_el_checkout",
-    cancelError: null,
-    cancelParams: [],
-    cancelKeys: [],
-    beforeCancel: null,
     invoices: [],
     invoicesError: null,
     invoiceParams: [],
@@ -164,32 +150,6 @@ export function fakeStripe(): FakeStripe {
           fake.subscriptions.set(id, applied);
           return asResponse(applied);
         }) as StripeGateway["subscriptions"]["update"],
-        /**
-         * La baja INMEDIATA (ADR 0063). Modelada como la documenta Stripe: la suscripción pasa
-         * a `canceled` EN EL ACTO —no queda «programada»— y `cancel_at_period_end` NO se toca.
-         * Que quede `canceled` es lo que hace que el `deleted` tardío de A-T4 sea un caso real
-         * y no una maqueta.
-         */
-        cancel: (async (
-          id: string,
-          params?: Stripe.SubscriptionCancelParams,
-          options?: Stripe.RequestOptions,
-        ) => {
-          fake.calls.push(`subscriptions.cancel:${id}`);
-          fake.cancelParams.push(params);
-          fake.cancelKeys.push(options?.idempotencyKey);
-          if (fake.beforeCancel) await fake.beforeCancel();
-          if (fake.cancelError) throw fake.cancelError;
-          const found = fake.subscriptions.get(id);
-          if (!found) throw new Error(`No such subscription: ${id}`);
-          const canceled = {
-            ...found,
-            status: "canceled",
-            canceled_at: Math.floor(Date.now() / 1000),
-          } as Stripe.Subscription;
-          fake.subscriptions.set(id, canceled);
-          return asResponse(canceled);
-        }) as StripeGateway["subscriptions"]["cancel"],
         list: (async () => {
           fake.calls.push("subscriptions.list");
           return asResponse({

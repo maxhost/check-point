@@ -4,7 +4,6 @@ export {
   LocationError,
   effectiveLocationLimit,
   isProviderSelection,
-  locationLimitForPlan,
   parseLocationName,
   resolveAddress,
   toLocationDTO,

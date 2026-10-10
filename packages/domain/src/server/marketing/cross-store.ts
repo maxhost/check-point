@@ -3,7 +3,9 @@ import type { DbTransaction, getDb } from "@mi-pasaporte/db";
 import { campaigns } from "@mi-pasaporte/db/schema";
 import type { CouponReward } from "./coupon-issue";
 import type { CrossAudience, GeoPoint } from "./cross-rules";
-import { campaignsAllowedFor } from "./plan-gate";
+import { accessSql } from "../billing-access";
+import { toDate } from "./driver-values";
+import { campaignAllowedFor } from "./plan-gate";
 import type { CouponKind, DiscountUnit } from "./reward-input";
 
 /**
@@ -12,8 +14,9 @@ import type { CouponKind, DiscountUnit } from "./reward-input";
  * and write the coupon. Apart from `template-store.ts` for its size budget.
  *
  * CANDIDATE = `template_key = 'cross'`, `active`, switched on, started, not ended, its
- * business `active`, and the plan allows campaigns (`campaignsAllowedFor`) — the same
- * conditions as `loadWelcomeCampaign` (`welcome-store.ts`). Raw SQL with explicit aliases;
+ * business `active`, the business HAS ACCESS (`accessSql`, spec 0189 §D4) and its plan allows
+ * THAT template (`campaignAllowedFor(row, template)`: `cross` → `campaigns.cross`, in the base
+ * plan; `valley` → `campaigns.enabled`) — the same conditions as `loadWelcomeCampaign`. Raw SQL with explicit aliases;
  * dates cross `driver-values.ts`, counts are `::int` and numerics are `Number(...)`.
  *
  * Spec 0113: «Horas valle» is read by the SAME loader (`template = 'valley'`, same
@@ -127,11 +130,12 @@ export async function loadCrossCampaigns(
       c.coupon_kind, c.coupon_product_id, c.coupon_discount_unit, c.coupon_discount_value,
       c.coupon_extra_units, c.coupon_rule, b.name as business_name, b.category_gcid,
       b.timezone, b.currency_code, b.logo_object_key, b.logo_version,
-      s.plan, s.pending_plan, s.status as subscription_status, s.stripe_subscription_id
+      s.plan, s.status as subscription_status, s.stripe_subscription_id, s.trial_ends_at
     from core.campaign c
     join core.business b on b.id = c.business_id
     left join core.subscription s on s.business_id = c.business_id
     where c.template_key = ${template}
+      and ${accessSql("s", now)}
       and c.status = 'active'
       and c.activated_at is not null
       and c.starts_at <= ${at}::timestamptz
@@ -141,15 +145,17 @@ export async function loadCrossCampaigns(
     order by c.id`);
   return rowsOf<Record<string, unknown>>(result)
     .filter((row) =>
-      campaignsAllowedFor(
+      campaignAllowedFor(
         row.plan === null || row.plan === undefined
           ? null
           : {
               plan: String(row.plan),
-              pendingPlan: text(row.pending_plan),
               status: String(row.subscription_status),
               stripeSubscriptionId: text(row.stripe_subscription_id),
+              trialEndsAt: toDate(row.trial_ends_at),
             },
+        String(row.template_key),
+        now,
       ),
     )
     .map(toCrossCampaign);

@@ -1,7 +1,8 @@
 import { sql } from "drizzle-orm";
 import type { DbTransaction, getDb } from "@mi-pasaporte/db";
 import type { CouponReward } from "./coupon-issue";
-import { requireDate } from "./driver-values";
+import { accessSql } from "../billing-access";
+import { requireDate, toDate } from "./driver-values";
 import { campaignAllowedFor } from "./plan-gate";
 import type { CouponKind, DiscountUnit } from "./reward-input";
 import type { WelcomeRedeemFrom } from "./templates";
@@ -12,9 +13,10 @@ import type { WelcomeRedeemFrom } from "./templates";
  * and the enroll page (`consumer/enroll-landing.ts`), so the page never offers a gift the
  * issuer would refuse.
  *
- * ELIGIBLE = `active`, started, not ended, its business `active`, and the plan allows the
- * welcome (`campaignAllowedFor(plan, "welcome")`, `plan-gate.ts` → `campaigns.welcome`):
- * ADR 0112 put «Bienvenida» in EVERY plan —free, plus and none, live subscription or not.
+ * ELIGIBLE = `active`, started, not ended, its business `active`, the business HAS ACCESS
+ * (`accessSql`, spec 0189 §D4: a live subscription or a running trial — a blocked business
+ * gives no welcome) and the plan allows the welcome (`campaignAllowedFor(plan, "welcome")`,
+ * `plan-gate.ts` → `campaigns.welcome`: `trial`, `base` and `plus`, ADR 0134 §4).
  */
 
 type Db = DbTransaction | ReturnType<typeof getDb>;
@@ -54,11 +56,12 @@ export async function loadWelcomeCampaign(
       c.coupon_kind, c.coupon_product_id, c.coupon_discount_unit, c.coupon_discount_value,
       c.coupon_extra_units, c.coupon_rule, c.welcome_valid_days, c.welcome_reminder_days,
       c.welcome_monthly_cap, c.welcome_redeem_from, b.timezone, b.currency_code,
-      s.plan, s.pending_plan, s.status as subscription_status, s.stripe_subscription_id
+      s.plan, s.status as subscription_status, s.stripe_subscription_id, s.trial_ends_at
     from core.campaign c
     join core.business b on b.id = c.business_id
     left join core.subscription s on s.business_id = c.business_id
     where c.business_id = ${businessId}
+      and ${accessSql("s", now)}
       and c.template_key = 'welcome'
       and c.status = 'active'
       and c.activated_at is not null
@@ -73,12 +76,12 @@ export async function loadWelcomeCampaign(
       ? null
       : {
           plan: String(row.plan),
-          pendingPlan: text(row.pending_plan),
           status: String(row.subscription_status),
           stripeSubscriptionId: text(row.stripe_subscription_id),
+          trialEndsAt: toDate(row.trial_ends_at),
         };
-  // ADR 0112: la Bienvenida se entrega en todos los planes (`campaigns.welcome`).
-  if (!campaignAllowedFor(plan, "welcome")) return null;
+  // ADR 0112 / 0134 §4: la Bienvenida va en los planes con acceso (`campaigns.welcome`).
+  if (!campaignAllowedFor(plan, "welcome", now)) return null;
   return {
     id: String(row.id),
     businessId: String(row.business_id),

@@ -104,7 +104,7 @@ describe.skipIf(!integrationEnabled)(
     it("[m1-b] sobre una fila adoptable el binding escribe los ids y NO el plan", async () => {
       // Una sesión puede completarse con `payment_status: 'unpaid'`: el plan lo otorga el
       // evento de suscripción, nunca este camino.
-      const seeded = await seedBillingBusiness("free");
+      const seeded = await seedBillingBusiness("trial");
       try {
         fake.sessions.set(
           "cs_nueva",
@@ -126,7 +126,7 @@ describe.skipIf(!integrationEnabled)(
           row.stripeCustomerId,
           row.plan,
         ];
-        expect(bound).toEqual(["sub_recien_creada", "cus_nuevo", "free"]);
+        expect(bound).toEqual(["sub_recien_creada", "cus_nuevo", "trial"]);
         // Y este camino no mueve el guard de orden: `checkout.session.completed` y
         // `customer.subscription.created` llegan casi juntos y sin orden garantizado entre sus
         // `created`, así que moverlo dejaría al segundo como `stale_event` y sin plan.

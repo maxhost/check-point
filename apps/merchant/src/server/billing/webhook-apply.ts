@@ -11,6 +11,7 @@ import {
 } from "./applicability";
 import { planFromSubscription, type IgnoredReason } from "./derive";
 import type { StripeGateway } from "./gateway";
+import type { PriceIds } from "./prices";
 import { applySubscriptionState, readSubscription } from "./store";
 
 /**
@@ -121,7 +122,7 @@ export async function applySubscriptionEvent(
   gw: StripeGateway,
   event: Pick<Stripe.Event, "id" | "type" | "created">,
   subscriptionId: string,
-  priceIds: { monthly: string; yearly: string },
+  priceIds: PriceIds,
 ): Promise<IgnoredReason | null> {
   // El `retrieve` va FUERA de toda transacción (D5.b paso 4): si falla, queda la fila del
   // claim con `processed_at IS NULL` y el reintento la vuelve a tomar.

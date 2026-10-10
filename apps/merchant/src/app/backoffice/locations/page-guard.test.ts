@@ -27,7 +27,7 @@ vi.mock("@mi-pasaporte/db", () => {
   const chain: Record<string, unknown> = {};
   for (const m of ["select", "from", "leftJoin", "where"])
     chain[m] = () => chain;
-  chain.limit = () => Promise.resolve([{ countryCode: "EC", plan: "free" }]);
+  chain.limit = () => Promise.resolve([{ countryCode: "EC", plan: "trial" }]);
   return { getDb: () => chain };
 });
 vi.mock("../../../server/locations", () => ({

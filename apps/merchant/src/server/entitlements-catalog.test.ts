@@ -1,186 +1,152 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  BASE_TEMPLATE_KEYS,
   ENTITLEMENTS,
   KNOWN_PLANS,
   PAID_PLANS,
   can,
+  effectivePlan,
+  flagForPlan,
+  limitForPlan,
   limitOf,
   type EntitlementContext,
 } from "@mi-pasaporte/domain/server/entitlements/index";
 
 /**
- * Spec 0072 §D2 — LA CAPA DE ENTITLEMENTS.
+ * Spec 0189 §D2 / T3 — EL CATÁLOGO DE PLANES Y EL PLAN EFECTIVO.
  *
  * Las expectativas se transcriben a mano (`1`, `3`, `true`, `false`) y NO se derivan del
- * catálogo: un test que leyera `ENTITLEMENTS["locations.max"].byPlan.free` para aseverar
- * el tope de `free` pasaría con CUALQUIER valor, que es exactamente la copia muerta que la
- * mutación M7 existe para descartar.
+ * catálogo: un test que leyera `ENTITLEMENTS[...].byPlan.base` para aseverar el tope del base
+ * pasaría con CUALQUIER valor.
  */
 
-/** La fila de `core.subscription` de un negocio con suscripción VIVA en ese plan. */
-function live(
-  plan: string,
-  pendingPlan: string | null = null,
-): EntitlementContext {
+const NOW = new Date("2026-10-10T12:00:00.000Z");
+const FUTURE = new Date(NOW.getTime() + 86_400_000);
+const PAST = new Date(NOW.getTime() - 86_400_000);
+
+/** La tabla de §D2, fila por fila: clave → [trial, base, plus, none, fallback]. */
+const TABLE: Array<[string, [unknown, unknown, unknown, unknown, unknown]]> = [
+  ["locations.max", [3, 1, 3, 1, 1]],
+  ["campaigns.enabled", [true, false, true, false, false]],
+  ["campaigns.welcome", [true, true, true, false, false]],
+  ["campaigns.cross", [true, true, true, false, false]],
+  ["catalog.imports.analyses", [100, 100, 100, 100, 100]],
+  ["catalog.imports.attempts", [100, 100, 100, 100, 100]],
+];
+
+const PLANS = ["trial", "base", "plus", "none"] as const;
+
+function valueOf(key: string, plan: string | null): unknown {
+  const def = ENTITLEMENTS[key as keyof typeof ENTITLEMENTS];
+  return def.kind === "limit"
+    ? limitForPlan(plan, key as "locations.max")
+    : flagForPlan(plan, key as "campaigns.enabled");
+}
+
+describe("catálogo — cada plan × cada clave de la tabla de §D2", () => {
+  it.each(TABLE)("%s", (key, expected) => {
+    PLANS.forEach((plan, i) => {
+      expect(valueOf(key, plan), `${key} × ${plan}`).toBe(expected[i]);
+    });
+    // Un plan DESCONOCIDO y un plan nulo caen al `fallback`.
+    expect(valueOf(key, "enterprise"), `${key} × desconocido`).toBe(
+      expected[4],
+    );
+    expect(valueOf(key, null), `${key} × null`).toBe(expected[4]);
+  });
+
+  it("la tabla cubre TODAS las claves del catálogo y todos los planes conocidos", () => {
+    expect(Object.keys(ENTITLEMENTS).sort()).toEqual(
+      TABLE.map(([key]) => key).sort(),
+    );
+    expect([...KNOWN_PLANS]).toEqual([...PLANS]);
+  });
+
+  it("no hay plan gratis: `free` es un plan desconocido (fallback)", () => {
+    expect(limitForPlan("free", "locations.max")).toBe(1);
+    expect(flagForPlan("free", "campaigns.welcome")).toBe(false);
+  });
+
+  it("los planes pagos son `base` y `plus`", () => {
+    expect([...PAID_PLANS].sort()).toEqual(["base", "plus"]);
+  });
+
+  it("las plantillas del base salen del catálogo: Bienvenida y Venta cruzada", () => {
+    expect([...BASE_TEMPLATE_KEYS].sort()).toEqual(["cross", "welcome"]);
+  });
+});
+
+function ctx(over: Partial<EntitlementContext>): EntitlementContext {
   return {
-    plan,
-    pendingPlan,
+    plan: "trial",
     status: "active",
-    stripeSubscriptionId: "sub_live",
+    stripeSubscriptionId: null,
+    trialEndsAt: FUTURE,
+    now: NOW,
+    ...over,
   };
 }
 
-describe("entitlements — limitOf sobre `locations.max`", () => {
-  it("lee el tope declarado de cada plan conocido", () => {
-    expect(limitOf({ plan: "free" }, "locations.max")).toBe(1);
-    expect(limitOf({ plan: "plus" }, "locations.max")).toBe(3);
-    expect(limitOf({ plan: "none" }, "locations.max")).toBe(1);
+describe("effectivePlan — el acceso decide el plan efectivo", () => {
+  it("`subscribed` → el plan pago de la fila", () => {
+    const sub = { stripeSubscriptionId: "sub_1", trialEndsAt: PAST };
+    expect(effectivePlan(ctx({ ...sub, plan: "base" }))).toBe("base");
+    expect(effectivePlan(ctx({ ...sub, plan: "plus" }))).toBe("plus");
+    // past_due/unpaid con id cuentan como vivas (PARQUEADO #54).
+    expect(
+      effectivePlan(ctx({ ...sub, plan: "plus", status: "past_due" })),
+    ).toBe("plus");
   });
 
-  it("un `pending_plan` VACÍO no es una baja programada ([R1-N8])", () => {
-    expect(limitOf({ plan: "plus", pendingPlan: "" }, "locations.max")).toBe(3);
-    expect(limitOf({ plan: "plus", pendingPlan: null }, "locations.max")).toBe(
-      3,
-    );
-    expect(
-      limitOf({ plan: "plus", pendingPlan: undefined }, "locations.max"),
-    ).toBe(3);
+  it("`subscribed` sobre un plan que no es pago → fallback (`null`)", () => {
+    const sub = { stripeSubscriptionId: "sub_1", trialEndsAt: PAST };
+    expect(effectivePlan(ctx({ ...sub, plan: "trial" }))).toBeNull();
+    expect(effectivePlan(ctx({ ...sub, plan: "none" }))).toBeNull();
+    expect(limitOf(ctx({ ...sub, plan: "trial" }), "locations.max")).toBe(1);
   });
 
-  it("con baja programada el tope efectivo es el MENOR de los dos", () => {
+  it("`trial` → `trial`, sea cual sea el plan escrito", () => {
+    expect(effectivePlan(ctx({ plan: "trial" }))).toBe("trial");
+    expect(effectivePlan(ctx({ plan: "none" }))).toBe("trial");
+    // Una suscripción MUERTA con la prueba vigente sigue en prueba.
     expect(
-      limitOf({ plan: "plus", pendingPlan: "free" }, "locations.max"),
-    ).toBe(1);
-    // Y un upgrade programado NO sube el tope antes de que el pago esté confirmado.
-    expect(
-      limitOf({ plan: "free", pendingPlan: "plus" }, "locations.max"),
-    ).toBe(1);
-  });
-
-  it("un plan DESCONOCIDO cae al fallback, vigente o pendiente", () => {
-    expect(limitOf({ plan: "enterprise" }, "locations.max")).toBe(1);
-    expect(limitOf({ plan: null }, "locations.max")).toBe(1);
-    expect(
-      limitOf({ plan: "plus", pendingPlan: "enterprise" }, "locations.max"),
-    ).toBe(1);
-  });
-
-  it("NO exige suscripción viva: un `plus` forma A1 conserva sus 3 locales", () => {
-    // La asimetría del ADR 0073 §2, medida: misma fila que abajo pierde las campañas.
-    expect(
-      limitOf(
-        {
+      effectivePlan(
+        ctx({
           plan: "plus",
-          pendingPlan: null,
-          status: "active",
-          stripeSubscriptionId: null,
-        },
-        "locations.max",
-      ),
-    ).toBe(3);
-  });
-});
-
-describe("entitlements — can sobre `campaigns.enabled`", () => {
-  it("sólo `plus` con suscripción viva compone campañas", () => {
-    expect(can(live("plus"), "campaigns.enabled")).toBe(true);
-    expect(can(live("free"), "campaigns.enabled")).toBe(false);
-    expect(can(live("none"), "campaigns.enabled")).toBe(false);
-    expect(can(live("enterprise"), "campaigns.enabled")).toBe(false);
-  });
-
-  it("una baja programada apaga las campañas; un `pending_plan` vacío no", () => {
-    expect(can(live("plus", "free"), "campaigns.enabled")).toBe(false);
-    expect(can(live("plus", ""), "campaigns.enabled")).toBe(true);
-    expect(can(live("plus", "plus"), "campaigns.enabled")).toBe(true);
-  });
-
-  it("sin suscripción viva no hay campañas (forma A1 y suscripción muerta)", () => {
-    expect(
-      can(
-        {
-          plan: "plus",
-          pendingPlan: null,
-          status: "active",
-          stripeSubscriptionId: null,
-        },
-        "campaigns.enabled",
-      ),
-    ).toBe(false);
-    expect(
-      can(
-        {
-          plan: "plus",
-          pendingPlan: null,
           status: "canceled",
-          stripeSubscriptionId: "sub_dead",
-        },
-        "campaigns.enabled",
+          stripeSubscriptionId: "sub_x",
+        }),
       ),
-    ).toBe(false);
-    // Fail-closed: un contexto SIN los campos de suscripción no otorga la bandera.
-    expect(can({ plan: "plus" }, "campaigns.enabled")).toBe(false);
-  });
-});
-
-describe("entitlements — can sobre `campaigns.welcome` (ADR 0112)", () => {
-  it("la Bienvenida está en TODOS los planes, con o sin suscripción viva", () => {
-    expect(can(live("free"), "campaigns.welcome")).toBe(true);
-    expect(can(live("plus"), "campaigns.welcome")).toBe(true);
-    expect(can(live("none"), "campaigns.welcome")).toBe(true);
-    // Un negocio free REAL no tiene `stripe_subscription_id`: igual la tiene.
-    expect(
-      can(
-        {
-          plan: "free",
-          pendingPlan: null,
-          status: "active",
-          stripeSubscriptionId: null,
-        },
-        "campaigns.welcome",
-      ),
-    ).toBe(true);
-    // Sin fila de suscripción («sin plan») cae al fallback, que la admite.
-    expect(can({ plan: null }, "campaigns.welcome")).toBe(true);
-    // Una baja programada no la apaga.
-    expect(can(live("plus", "free"), "campaigns.welcome")).toBe(true);
+    ).toBe("trial");
+    expect(can(ctx({ plan: "none" }), "campaigns.enabled")).toBe(true);
+    expect(limitOf(ctx({ plan: "none" }), "locations.max")).toBe(3);
   });
 
-  it("y `campaigns.enabled` sigue exigiendo plus con suscripción viva", () => {
-    expect(can(live("free"), "campaigns.enabled")).toBe(false);
-    expect(can({ plan: null }, "campaigns.enabled")).toBe(false);
-  });
-});
-
-describe("entitlements — el catálogo declara TODOS los planes conocidos (§D2.3)", () => {
-  it("cada entrada tiene fila explícita para cada plan, del tipo de su `kind`", () => {
-    // Piso de barrido: si el catálogo o la lista de planes se vacían, esto se pone rojo
-    // antes que los `hasOwnProperty` de abajo (que sobre un objeto vacío no corren nunca).
-    const keys = Object.keys(ENTITLEMENTS);
-    expect(keys.length).toBeGreaterThanOrEqual(2);
-    expect(KNOWN_PLANS.length).toBeGreaterThanOrEqual(3);
-
-    for (const [key, def] of Object.entries(ENTITLEMENTS)) {
-      const byPlan: Record<string, unknown> = def.byPlan;
-      for (const plan of KNOWN_PLANS) {
-        expect(
-          Object.prototype.hasOwnProperty.call(byPlan, plan),
-          `${key} no declara el plan ${plan}`,
-        ).toBe(true);
-        expect(typeof byPlan[plan], `${key}.${plan}`).toBe(
-          def.kind === "limit" ? "number" : "boolean",
-        );
-      }
-      expect(typeof def.fallback, `${key}.fallback`).toBe(
-        def.kind === "limit" ? "number" : "boolean",
-      );
-    }
+  it("`blocked` → `none`: sin suscripción viva y con la prueba vencida, o sin fila", () => {
+    expect(effectivePlan(ctx({ trialEndsAt: PAST }))).toBe("none");
+    expect(effectivePlan(ctx({ trialEndsAt: null }))).toBe("none");
+    expect(effectivePlan(ctx({ plan: "plus", trialEndsAt: PAST }))).toBe(
+      "none",
+    );
+    expect(effectivePlan(null)).toBe("none");
+    expect(can(null, "campaigns.welcome")).toBe(false);
+    expect(can(ctx({ trialEndsAt: PAST }), "campaigns.cross")).toBe(false);
+    expect(limitOf(null, "locations.max")).toBe(1);
   });
 
-  it("los planes pagos salen del catálogo y `plus` es el único", () => {
-    expect(PAID_PLANS.has("plus")).toBe(true);
-    expect(PAID_PLANS.has("free")).toBe(false);
-    expect(PAID_PLANS.has("none")).toBe(false);
+  it("`pending_plan='none'` (cancelación programada) NO baja ningún valor", () => {
+    const row = {
+      ...ctx({
+        plan: "plus",
+        stripeSubscriptionId: "sub_1",
+        trialEndsAt: PAST,
+      }),
+      pendingPlan: "none",
+    };
+    expect(limitOf(row, "locations.max")).toBe(3);
+    expect(can(row, "campaigns.enabled")).toBe(true);
+    expect(can(row, "campaigns.welcome")).toBe(true);
+    expect(can(row, "campaigns.cross")).toBe(true);
   });
 });

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  limitForPlan,
   limitOf,
   retryAfterSeconds,
   windowEnd,
@@ -12,31 +13,34 @@ import {
  * Spec 0090 §8 / ADR 0082 §10 — EL CUPO DE ANALISIS COMO VALOR DEL CATALOGO, con ventana.
  *
  * **Los valores se transcriben a mano** (`100`, `"day"`): un test que leyera
- * `ENTITLEMENTS["catalog.imports.analyses"].byPlan.free` pasaria con CUALQUIER valor, que es
+ * `ENTITLEMENTS["catalog.imports.analyses"].byPlan.base` pasaria con CUALQUIER valor, que es
  * exactamente la copia muerta que `entitlements-catalog.test.ts` ya descarta.
  *
  * **Los dos topes estan en VALOR DE PRUEBAS (100).** Los de produccion son **1** analisis y
  * **3** intentos por dia; cuando vuelvan, estas transcripciones vuelven con ellos — que es
  * precisamente el punto de transcribirlas.
  */
+const NOW = new Date("2026-10-10T12:00:00.000Z");
 const live = (plan: string): EntitlementContext => ({
   plan,
   status: "active",
   stripeSubscriptionId: "sub_live",
+  trialEndsAt: null,
+  now: NOW,
 });
 
 describe("entitlements — el cupo de importación de catálogo", () => {
-  it("está en 100 análisis por negocio por día (pruebas), en los tres planes", () => {
-    expect(limitOf({ plan: "free" }, "catalog.imports.analyses")).toBe(100);
-    expect(limitOf({ plan: "plus" }, "catalog.imports.analyses")).toBe(100);
-    expect(limitOf({ plan: "none" }, "catalog.imports.analyses")).toBe(100);
+  it("está en 100 análisis por negocio por día (pruebas), en los cuatro planes", () => {
+    for (const plan of ["trial", "base", "plus", "none"]) {
+      expect(limitForPlan(plan, "catalog.imports.analyses"), plan).toBe(100);
+    }
     expect(windowOf("catalog.imports.analyses")).toBe("day");
   });
 
   it("el techo de intentos al proveedor es 100 por día (pruebas)", () => {
-    expect(limitOf({ plan: "free" }, "catalog.imports.attempts")).toBe(100);
-    expect(limitOf({ plan: "plus" }, "catalog.imports.attempts")).toBe(100);
-    expect(limitOf({ plan: "none" }, "catalog.imports.attempts")).toBe(100);
+    for (const plan of ["trial", "base", "plus", "none"]) {
+      expect(limitForPlan(plan, "catalog.imports.attempts"), plan).toBe(100);
+    }
     expect(windowOf("catalog.imports.attempts")).toBe("day");
   });
 
@@ -51,25 +55,22 @@ describe("entitlements — el cupo de importación de catálogo", () => {
       "catalog.imports.analyses",
       "catalog.imports.attempts",
     ] as const) {
-      const limite = limitOf({ plan: "free" }, key);
+      const limite = limitOf(live("base"), key);
       expect(Number.isFinite(limite)).toBe(true);
       expect(limite).toBeGreaterThan(0);
     }
   });
 
   /**
-   * **NO es cuota comercial** (ADR 0082 §7 sigue en pie). Si exigiera suscripción viva, un
-   * negocio sin pagar no podría importar su menú — que es justo el negocio que estrena la
-   * feature.
+   * **NO es cuota comercial** (ADR 0082 §7 sigue en pie): vale lo mismo sin acceso. Un negocio
+   * bloqueado igual no llega a importar (el guard de la API contesta 402 antes), pero el cupo
+   * no es el que lo decide.
    */
-  it("NO exige suscripción viva: un `plus` forma A1 importa igual", () => {
+  it("vale lo mismo para un negocio sin acceso (sin fila o bloqueado)", () => {
+    expect(limitOf(null, "catalog.imports.analyses")).toBe(100);
     expect(
       limitOf(
-        {
-          plan: "plus",
-          status: "incomplete_expired",
-          stripeSubscriptionId: null,
-        },
+        { ...live("plus"), status: "incomplete_expired" },
         "catalog.imports.analyses",
       ),
     ).toBe(100);
@@ -77,10 +78,8 @@ describe("entitlements — el cupo de importación de catálogo", () => {
   });
 
   it("un plan desconocido cae al fallback, no a cero ni a infinito", () => {
-    expect(limitOf({ plan: "enterprise" }, "catalog.imports.analyses")).toBe(
-      100,
-    );
-    expect(limitOf({ plan: null }, "catalog.imports.attempts")).toBe(100);
+    expect(limitForPlan("enterprise", "catalog.imports.analyses")).toBe(100);
+    expect(limitForPlan(null, "catalog.imports.attempts")).toBe(100);
   });
 
   it("`locations.max` NO tiene ventana: es un tope de stock, no de flujo", () => {
