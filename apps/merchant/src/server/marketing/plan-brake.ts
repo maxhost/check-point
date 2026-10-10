@@ -2,7 +2,10 @@ import { and, count, eq, inArray, sql } from "drizzle-orm";
 import type { DbTransaction } from "@mi-pasaporte/db";
 import { campaigns } from "@mi-pasaporte/db/schema";
 import { billingAccess } from "@mi-pasaporte/domain/server/billing-access";
-import { BASE_TEMPLATE_KEYS } from "@mi-pasaporte/domain/server/entitlements/index";
+import {
+  BASE_TEMPLATE_KEYS,
+  effectivePlan,
+} from "@mi-pasaporte/domain/server/entitlements/index";
 import {
   campaignAllowedFor,
   type CampaignPlanRow,
@@ -84,6 +87,11 @@ export async function pauseCampaignsForBilling(
  * EFECTIVO las permite (`campaignAllowedFor`, por plantilla) y no terminaron (`ends_at` nulo
  * o futuro). Las demás se quedan `paused` con `plan_downgraded`: el plan de hoy no las
  * incluye, y el motivo nuevo dice eso. Devuelve cuántas reanudó.
+ *
+ * H2 de la revisión: si el plan efectivo es el FALLBACK (suscripción viva sobre una fila cuyo
+ * plan todavía no es pago — el evento `incomplete` o de precio desconocido que llega antes del
+ * `active`), no se decide nada: las campañas se QUEDAN en `billing_blocked`. Reescribirlas como
+ * `plan_downgraded` las dejaba fuera de esta función para siempre, y pagar no las devolvía.
  */
 export async function resumeCampaignsAfterBilling(
   tx: DbTransaction,
@@ -91,6 +99,7 @@ export async function resumeCampaignsAfterBilling(
   row: CampaignPlanRow | null,
   now: Date,
 ): Promise<number> {
+  if (effectivePlan(row === null ? null : { ...row, now }) === null) return 0;
   const blocked = await tx
     .select({
       id: campaigns.id,
