@@ -5,6 +5,14 @@
 
 ## ⇥ 0187 (2026-10-09) — MESAS EN LOCALES Y POS, DEV LOCAL
 
+Ajuste visual en 8cdb050: eliminado «Mesa seleccionada» del paso 1 y prop
+redundante del selector. Chip elegido con borde accent de 1 px y accent-soft,
+sin ring. Capturas de paso 1 y modal vistas; captura inicial finaliza animaciones
+para medir el color final. E2E mesas 10/10 en 4.5 s y caso de captura repetido
+en 0; typecheck merchant, lint de pantallas, guardia sin aumentos, formato
+y diff --check en 0. Logs /private/tmp/0187-accent.log y
+/private/tmp/0187-accent-capture.log. Dev local, sin merge/push ni cambios de kit.
+
 Ajuste de texto en 3b1f37f: quitado el nombre del único local («Principal»)
 debajo del selector del paso 1. Typecheck merchant, lint del archivo, guardia
 sin aumentos, formato del archivo y diff --check en 0. Solo se eliminó copy;
