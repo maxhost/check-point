@@ -5,6 +5,18 @@
 
 ## ⇥ 0187 (2026-10-09) — MESAS EN LOCALES Y POS, DEV LOCAL
 
+Último ajuste del owner implementado en fe5803b: modal Cambiar mesa muestra
+libres y la propia, oculta las ocupadas por otras órdenes. Guardar reemplaza
+Listo; deshabilitado sin cambios o selección inválida. PUT directo de mesa con
+versión y productos confirmados; conserva aparte productos editados pendientes.
+Éxito cierra y muestra toast; error literal dentro del modal conserva selección.
+Verificado: 100/100 E2E (9 mesas + 91 POS), 17.3 s; merchant typecheck y lint
+de archivos cambiados en 0; guardia de tres pantallas sin aumentos; formato
+global y diff --check en 0. Captura móvil actual vista. Log
+/private/tmp/0187-direct-save.log. Caché ahora usa productos como borrador;
+texto libre comprueba fallo/reintento y conservación/guardado separado del
+borrador de productos. Dev local, sin merge/push ni cambios API/kit/DB.
+
 Ajuste posterior del owner: reserva 227a798, implementación 6851d7a.
 Selector con chips como el badge, borde de 1 px y sin ring exterior recortado.
 Cambiar mesa elimina «Mesa seleccionada» y «Usar nombre de mesa»; texto libre
