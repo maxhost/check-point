@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { getDb } from "@mi-pasaporte/db";
+import { seedTrialSubscription } from "./counter-integration-support";
 import {
   businesses,
   loyaltyProgramEvents,
@@ -46,6 +47,7 @@ export async function seedUnverifiedOwner(tag: string): Promise<OwnerSeed> {
     countryCode: "EC",
     timezone: "America/Guayaquil",
   });
+  await seedTrialSubscription(businessId);
   await db
     .insert(memberships)
     .values({ businessId, userId: ownerId, role: "owner" });

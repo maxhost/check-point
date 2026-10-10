@@ -11,7 +11,7 @@ import {
 } from "./counter-integration-support";
 import { conCookie, cookieDe } from "./permissions-integration-support";
 import { getDb } from "@mi-pasaporte/db";
-import { memberships, users } from "@mi-pasaporte/db/schema";
+import { memberships, subscriptions, users } from "@mi-pasaporte/db/schema";
 import { POST as CREATE_CATEGORY } from "../app/api/catalog/category/route";
 import {
   DELETE as DELETE_CATEGORY,
@@ -250,13 +250,21 @@ describe.skipIf(!enabled)(
      * **sin una línea nueva**. Lo que hay que defender es el inverso: que el guard nuevo no
      * se haya vuelto un segundo camino que llegue al `INSERT` sin pasar por el writer.
      *
-     * El negocio sembrado no tiene suscripción → `locations.max` cae al fallback (1) y ya
-     * tiene su local, así que el segundo choca. **Es el oráculo de la mutación M6.**
+     * Spec 0189: el negocio paga el plan BASE (1 local; la prueba de 3 vencida) y ya tiene su
+     * local, así que el segundo choca. **Es el oráculo de la mutación M6.**
      *
      * El `409 location_limit` es además la prueba de que el integrante llegó al WRITER: un
      * 403 acá diría que lo frenó el guard, que es otra cosa.
      */
     it("el TOPE DEL PLAN alcanza a un STAFF con `locations`: 409 `location_limit`", async () => {
+      await getDb()
+        .update(subscriptions)
+        .set({
+          plan: "base",
+          stripeSubscriptionId: `sub_perm_${randomUUID().slice(0, 8)}`,
+          trialEndsAt: new Date(Date.now() - 86_400_000),
+        })
+        .where(eq(subscriptions.businessId, a.business.id));
       const response = await CREATE_LOCATION(
         conCookie("/api/locations", "POST", cookieLocalesA, {
           name: `Sucursal ${randomUUID().slice(0, 6)}`,

@@ -7,6 +7,7 @@ import { getDb, withDbTransaction } from "@mi-pasaporte/db";
 import { campaigns, subscriptions } from "@mi-pasaporte/db/schema";
 import { loadWelcomeCampaign } from "@mi-pasaporte/domain/server/marketing/welcome-store";
 import { transitionCampaign } from "./marketing/campaign-actions";
+import { planAllowsCampaign } from "@mi-pasaporte/domain/server/marketing/plan-gate";
 import {
   activeCampaignsOutsideBase,
   pauseCampaignsForBilling,
@@ -42,21 +43,17 @@ async function statusOf(id: string) {
   return row;
 }
 
-/** Una campaña PROPIA (`template_key` NULL) pausada por el owner: la que el base no incluye. */
-function customPaused(seed: Awaited<ReturnType<typeof world>>) {
-  return seedCampaign({
-    businessId: seed.business.id,
-    createdByUserId: seed.userId,
-    locationIds: [seed.locationId],
-    status: "paused",
-    pauseReason: "owner",
-  });
+/** El gate de plan POR PLANTILLA, leído en una transacción como lo lee la escritura. */
+function allowed(businessId: string, templateKey: string | null) {
+  return withDbTransaction((tx) =>
+    planAllowsCampaign(tx, businessId, templateKey),
+  );
 }
 
 describe.skipIf(!integrationEnabled)(
   "Bienvenida y Venta cruzada en el plan base (ADR 0134 §4)",
   () => {
-    it("ORACULO DE M4 (activar): un negocio BASE activa la Bienvenida y la Venta cruzada; una propia es 402", async () => {
+    it("ORACULO DE M4 (activar): un negocio BASE activa la Bienvenida y la Venta cruzada; lo demás no", async () => {
       const base = await world("base", "Base plantillas");
       const welcome = await enableTemplate(
         base.business.id,
@@ -79,13 +76,13 @@ describe.skipIf(!integrationEnabled)(
         pauseReason: null,
       });
 
-      const custom = await customPaused(base);
-      expect(
-        await caught(() =>
-          transitionCampaign(base.business.id, custom, "activate"),
-        ),
-      ).toMatchObject({ status: 402, code: "plan_not_allowed" });
-      expect(await statusOf(custom)).toMatchObject({ status: "paused" });
+      // El control: lo que el base NO incluye. Las campañas propias y el resto de las
+      // plantillas están APAGADAS (ADR 0115, `enabled-campaigns.ts`) y su ruta contesta 404
+      // antes del gate, así que el gate se lee directo, en la transacción, como lo hace la
+      // escritura: `null` (propia) y `at_risk` → no.
+      expect(await allowed(base.business.id, null)).toBe(false);
+      expect(await allowed(base.business.id, "at_risk")).toBe(false);
+      expect(await allowed(base.business.id, "cross")).toBe(true);
     }, 120_000);
 
     it("la entrega LEE la Bienvenida de un negocio base", async () => {
@@ -142,7 +139,7 @@ describe.skipIf(!integrationEnabled)(
       expect(live).toEqual([]);
     }, 120_000);
 
-    it("reanudar en base: la Bienvenida y la cruzada pausadas vuelven (200); una propia es 402", async () => {
+    it("reanudar en base: la Bienvenida y la cruzada pausadas vuelven (200); lo demás no", async () => {
       // Un plus que corría las tres y bajó a base: la forma que deja el cambio de plan.
       const seed = await world("plus", "Base reanudar");
       const welcome = await enableTemplate(
@@ -157,7 +154,6 @@ describe.skipIf(!integrationEnabled)(
         "cross",
         CROSS_GIFT,
       );
-      const custom = await customPaused(seed);
       await transitionCampaign(seed.business.id, welcome.id, "pause");
       await transitionCampaign(seed.business.id, cross.id, "pause");
       await getDb()
@@ -173,11 +169,7 @@ describe.skipIf(!integrationEnabled)(
         );
         expect(resumed.campaign.status).toBe("active");
       }
-      expect(
-        await caught(() =>
-          transitionCampaign(seed.business.id, custom, "activate"),
-        ),
-      ).toMatchObject({ status: 402, code: "plan_not_allowed" });
+      expect(await allowed(seed.business.id, null)).toBe(false);
     }, 120_000);
 
     it("el conteo de la bajada a base NO cuenta Bienvenida ni cruzada; el bloqueo pausa TODAS", async () => {

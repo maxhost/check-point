@@ -127,8 +127,8 @@ describe.skipIf(!integrationEnabled)(
       });
       await withSeed("plus", live("bajar", YEARLY_PRICE), async () => {
         expect((await post(PLAN, { to: "base" })).status).toBe(200);
-        // El MISMO intervalo: anual → anual del base.
-        expect(fake.updateParams[0]).toEqual({
+        // El MISMO intervalo: anual → anual del base. (`at(-1)`: el doble es del `it`.)
+        expect(fake.updateParams.at(-1)).toEqual({
           items: [{ id: "si_0", price: BASE_YEARLY_PRICE }],
           proration_behavior: "none",
           payment_behavior: "error_if_incomplete",

@@ -11,6 +11,7 @@ const enabled =
 if (enabled) process.env.DATABASE_URL = url;
 
 import { getDb } from "@mi-pasaporte/db";
+import { seedTrialSubscription } from "./counter-integration-support";
 import {
   businesses,
   locations,
@@ -78,6 +79,7 @@ describe.skipIf(!enabled)("el TOS y el negocio de verdad (spec 0081)", () => {
       countryCode: "EC",
       timezone: "America/Guayaquil",
     });
+    await seedTrialSubscription(id);
     await db
       .insert(memberships)
       .values({ businessId: id, userId, role: "owner" });

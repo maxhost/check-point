@@ -9,6 +9,7 @@ const enabled =
 if (enabled) process.env.DATABASE_URL = url;
 
 import { getDb } from "@mi-pasaporte/db";
+import { seedTrialSubscription } from "./counter-integration-support";
 import { businesses, loyaltyPrograms, users } from "@mi-pasaporte/db/schema";
 import { getEnrollLanding } from "@mi-pasaporte/domain/server/consumer/enrollment";
 
@@ -54,6 +55,9 @@ describe.skipIf(!enabled)("getEnrollLanding branding against Neon", () => {
         // No logoObjectKey → hasLogo false; brand colors keep their schema defaults.
       },
     ]);
+    // Spec 0189: la fila de prueba del alta (sin ella la landing es `null` por falta de acceso).
+    for (const id of [businessWithLogo, businessNoLogo])
+      await seedTrialSubscription(id);
     await db.insert(loyaltyPrograms).values([
       {
         id: programWithLogo,

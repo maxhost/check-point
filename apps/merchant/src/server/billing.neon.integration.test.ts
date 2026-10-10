@@ -188,10 +188,10 @@ describe.skipIf(!integrationEnabled)(
         expect(
           (await post(CHECKOUT, { plan: "base", interval: "year" })).status,
         ).toBe(200);
-        expect(fake.sessionParams[0]?.line_items).toEqual([
+        expect(fake.sessionParams.at(-1)?.line_items).toEqual([
           { price: BASE_YEARLY_PRICE, quantity: 1 },
         ]);
-        expect(fake.sessionParams[0]?.subscription_data).not.toHaveProperty(
+        expect(fake.sessionParams.at(-1)?.subscription_data).not.toHaveProperty(
           "trial_end",
         );
       });

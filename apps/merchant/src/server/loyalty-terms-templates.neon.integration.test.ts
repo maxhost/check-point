@@ -11,6 +11,7 @@ const enabled =
 if (enabled) process.env.DATABASE_URL = url;
 
 import { getDb } from "@mi-pasaporte/db";
+import { seedTrialSubscription } from "./counter-integration-support";
 import { businesses, memberships, users } from "@mi-pasaporte/db/schema";
 import { openMerchantSession } from "./merchant-session";
 import { GET } from "../app/api/loyalty-terms/templates/route";
@@ -67,6 +68,7 @@ describe.skipIf(!enabled)(
         countryCode,
         timezone: "America/Guayaquil",
       });
+      await seedTrialSubscription(id);
       await db
         .insert(memberships)
         .values({ businessId: id, userId, role: "owner" });

@@ -9,6 +9,7 @@ const enabled =
 if (enabled) process.env.DATABASE_URL = url;
 
 import { getDb } from "@mi-pasaporte/db";
+import { seedTrialSubscription } from "./counter-integration-support";
 import {
   businesses,
   consumerAccounts,
@@ -72,6 +73,8 @@ describe.skipIf(!enabled)("consumer enrollment against Neon", () => {
         timezone: "America/Guayaquil",
       },
     ]);
+    // Spec 0189: la fila de prueba del alta (sin ella, el alta es 404 por falta de acceso).
+    for (const id of [businessA, businessB]) await seedTrialSubscription(id);
     // Distinct createdAt per program in the same business: `core.loyalty_program`
     // has a unique on (business_id, created_at), so the two businessA programs
     // (active + inactive) must not share a timestamp.
