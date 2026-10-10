@@ -7,4 +7,7 @@ ingress:
     service: http://localhost:3201
   - hostname: dev-my.checkpass.club
     service: http://localhost:3200
+  # Spec 0190: panel de plataforma (`apps/platform`).
+  - hostname: dev-admin.checkpass.club
+    service: http://localhost:3002
   - service: http_status:404

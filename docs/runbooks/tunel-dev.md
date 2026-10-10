@@ -7,6 +7,7 @@ HTTPS y direccion fija:
 |---|---|
 | `https://dev-business.checkpass.club` | merchant (`:3201`) |
 | `https://dev-my.checkpass.club` | consumer (`:3200`) |
+| `https://dev-admin.checkpass.club` | panel de plataforma (`:3002`, spec 0190) |
 
 Acceso abierto (decision del owner): cualquiera con la direccion entra, y lo que ve son los datos FICTICIOS de la
 base local. La config de ingress esta en `tools/tunnel/config.yml`; las credenciales del tunel viven en
@@ -27,7 +28,10 @@ cloudflared tunnel login
 cloudflared tunnel create checkpass-dev
 cloudflared tunnel route dns checkpass-dev dev-business.checkpass.club
 cloudflared tunnel route dns checkpass-dev dev-my.checkpass.club
+cloudflared tunnel route dns checkpass-dev dev-admin.checkpass.club
 ```
+
+(El CNAME de `dev-admin.` lo creo Claude el 2026-10-10 con la credencial ya instalada.)
 
 `create` deja `~/.cloudflared/<UUID>.json` (la credencial del tunel). Los dos `route dns` crean los CNAME en
 Cloudflare. Comprobar: `dig +short dev-my.checkpass.club` y `dig +short dev-business.checkpass.club` devuelven IPs.
@@ -65,6 +69,7 @@ compu: los links de login, los pases y los QR se arman con esas direcciones, y l
 | `apps/merchant/.env.local` | `BETTER_AUTH_URL` | `https://dev-business.checkpass.club` |
 | `apps/merchant/.env.local` | `CONSUMER_ORIGIN` | `https://dev-my.checkpass.club` |
 | `apps/consumer/.env.local` | `CONSUMER_ORIGIN` | `https://dev-my.checkpass.club` |
+| `apps/platform/.env.local` | `PLATFORM_AUTH_URL` | `https://dev-admin.checkpass.club` |
 
 Sin `CONSUMER_ORIGIN` en merchant, el rewrite de `/api/public/*` cae a PROD (`apps/merchant/next.config.ts`).
 
