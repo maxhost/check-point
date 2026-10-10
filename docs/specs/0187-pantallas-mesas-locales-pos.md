@@ -110,6 +110,9 @@ libre y se bloquea avanzar/guardar contexto. Con mesas configuradas una nueva
 orden exige tableId. Las órdenes antiguas libres pueden conservar sus productos
 sin forzar reasignación; para cambiar mesa deben elegir una registrada.
 
+Ajuste de copy del owner: quitar el nombre del único local («Principal») debajo
+del selector en el paso 1. El local de la orden y la selección no cambian.
+
 L2 sin adversariales; API 0182 tiene oráculos previos. E2e con HTTP simulado,
 UI y CSS reales. No acredita nuevas pruebas de persistencia real ni una
 corrida de verify global. QA owner y publicación pendientes. Sin DB real ni

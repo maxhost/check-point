@@ -192,8 +192,6 @@ export function PosEditor({
       0,
     ) / 100;
   const money = formatMoney(total, currencyCode);
-  const locationName =
-    locations.find((l) => l.id === locationId)?.name ?? order?.location?.name;
   const contextInvalid =
     (!order || tableId) && !tableOptions.tables
       ? "Carga las mesas del local."
@@ -541,9 +539,6 @@ export function PosEditor({
         surface === "table" ? (
           <>
             {contextFields}
-            {locations.length === 1 && locationName && (
-              <Text variant="small">{locationName}</Text>
-            )}
             {catalogError && (
               <Alert kind="error" title={catalogError}>
                 <Button
