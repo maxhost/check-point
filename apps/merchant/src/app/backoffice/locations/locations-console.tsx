@@ -1,6 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Button } from "../../../ui";
+import { posRequest, type PosSession } from "../pos/pos-types";
+import { LocationTables } from "./location-tables";
 import {
   Archive,
   EditPencil,
@@ -43,6 +46,35 @@ export function LocationsConsole({
   const [toast, setToast] = useState<LocationToast | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<LocationView | null>(null);
+  const [tablesTarget, setTablesTarget] = useState<LocationView | null>(null);
+  const [posEnabled, setPosEnabled] = useState(false);
+  useEffect(() => {
+    let active = true;
+    let generation = 0;
+    function load() {
+      const current = ++generation;
+      void posRequest<PosSession>("/api/merchant/session")
+        .then((session) => {
+          if (active && current === generation) {
+            const enabled = session.business?.posEnabled === true;
+            setPosEnabled(enabled);
+            if (!enabled) setTablesTarget(null);
+          }
+        })
+        .catch(() => {
+          if (active && current === generation) {
+            setPosEnabled(false);
+            setTablesTarget(null);
+          }
+        });
+    }
+    load();
+    window.addEventListener("pos-module-changed", load);
+    return () => {
+      active = false;
+      window.removeEventListener("pos-module-changed", load);
+    };
+  }, []);
 
   const active = locations.filter((l) => l.status === "active");
   const archived = locations.filter((l) => l.status === "archived");
@@ -229,6 +261,15 @@ export function LocationsConsole({
                 >
                   <EditPencil aria-hidden="true" /> Editar
                 </button>
+                {posEnabled && (
+                  <Button
+                    variant="secondary"
+                    isDisabled={busy}
+                    onPress={() => setTablesTarget(location)}
+                  >
+                    Mesas
+                  </Button>
+                )}
                 <button
                   className="archive-button"
                   data-tour="location-archive"
@@ -261,6 +302,15 @@ export function LocationsConsole({
                   <small>Archivado</small>
                 </div>
                 <div className="location-card-actions">
+                  {posEnabled && (
+                    <Button
+                      variant="secondary"
+                      isDisabled={busy}
+                      onPress={() => setTablesTarget(location)}
+                    >
+                      Mesas
+                    </Button>
+                  )}
                   <button
                     className="small-button"
                     disabled={busy}
@@ -286,6 +336,13 @@ export function LocationsConsole({
           }}
         />
         <LocationErrorDialog message={error} onClose={() => setError(null)} />
+        {tablesTarget && (
+          <LocationTables
+            key={tablesTarget.id}
+            location={tablesTarget}
+            onClose={() => setTablesTarget(null)}
+          />
+        )}
       </div>
     </main>
   );
