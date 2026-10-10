@@ -97,6 +97,12 @@ y la opción «Usar nombre de mesa». Se ocultan esos detalles solo en el modal;
 el paso inicial Mesa conserva su alternativa libre. Si la orden ya usa texto
 libre, el modal conserva el input para editar ese nombre.
 
+Nuevo ajuste del owner: Cambiar mesa oculta ocupadas por otras órdenes, conserva
+la mesa propia y usa Guardar directo, habilitado solo con cambio válido. PUT
+persiste la mesa con versión y productos de baseline; los productos aún editados
+se conservan como borrador sin guardarlos accidentalmente. Éxito cierra y muestra
+toast; fallo conserva modal y selección con mensaje HTTP literal.
+
 L2 sin adversariales; API 0182 tiene oráculos previos. E2e con HTTP simulado,
 UI y CSS reales. No acredita nuevas pruebas de persistencia real ni una
 corrida de verify global. QA owner y publicación pendientes. Sin DB real ni

@@ -610,6 +610,7 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
                 tablesRevision={tablesRevision}
                 currencyCode={session.business?.currencyCode ?? "USD"}
                 busy={busy || refreshing || paymentBusy}
+                saveError={error}
                 onError={handleError}
                 onCancel={back}
                 lastLocationId={activeLocation?.id ?? ""}

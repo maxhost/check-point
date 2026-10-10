@@ -162,7 +162,9 @@ async function annul(page: Page) {
 }
 async function fillTable(page: Page, name: string) {
   await page.getByRole("textbox", { name: "Nombre de mesa" }).fill(name);
-  const done = page.getByRole("button", { name: "Listo", exact: true });
+  const done = page
+    .getByRole("dialog", { name: "Cambiar mesa", exact: true })
+    .getByRole("button", { name: "Guardar", exact: true });
   if (await done.isVisible()) await done.click();
 }
 async function editContext(page: Page) {
@@ -1017,12 +1019,11 @@ test("caché POS: catálogo por local reutilizado conserva el borrador", async (
   );
   await open(page);
   await page.getByRole("radio", { name: "Editar", exact: true }).click();
-  await editContext(page);
-  await fillTable(page, "Mesa escrita");
+  await page.getByRole("button", { name: "Agregar Café", exact: true }).click();
   await page.getByRole("radio", { name: /^Pedido/ }).click();
   await page.getByRole("radio", { name: "Editar", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: /^(?:Cambiar mesa: )?Mesa escrita$/ }),
+    page.getByRole("heading", { name: /^(?:Cambiar mesa: )?Mesa 4$/ }),
   ).toBeVisible();
   await page.getByRole("radio", { name: /^Pedido/ }).click();
   await expect(
@@ -1349,7 +1350,9 @@ for (const context of ["signed-out", "revoked", "other-business"] as const) {
     await open(page);
     await page.getByRole("radio", { name: "Editar", exact: true }).click();
     await editContext(page);
-    await fillTable(page, "Borrador privado");
+    await page
+      .getByRole("textbox", { name: "Nombre de mesa" })
+      .fill("Borrador privado");
     await page.route("**/api/merchant/session", (route) =>
       route.fulfill({
         json:

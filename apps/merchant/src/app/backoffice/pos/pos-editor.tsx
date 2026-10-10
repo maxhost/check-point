@@ -60,6 +60,7 @@ export function PosEditor({
   locations,
   currencyCode,
   busy,
+  saveError,
   onSave,
   onCancel,
   onError,
@@ -77,6 +78,7 @@ export function PosEditor({
   locations: PosLocation[];
   currencyCode: string;
   busy: boolean;
+  saveError: string | null;
   onSave: (body: unknown) => Promise<PosOrder | null>;
   onCancel: () => void;
   onError: (error: unknown) => void;
@@ -173,6 +175,8 @@ export function PosEditor({
   const [contextOpen, setContextOpen] = useState(false);
   const [contextTable, setContextTable] = useState(table);
   const [contextTableId, setContextTableId] = useState(tableId);
+  const [contextAttempted, setContextAttempted] = useState(false);
+  const contextSaving = useRef(false);
   const tableOptions = usePosTables(locationId, tablesRevision, onError);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
@@ -364,6 +368,37 @@ export function PosEditor({
       if (order) setUpdatedNotice(true);
     }
   }
+  async function saveTable() {
+    if (!baseline || busy || conflict || contextSaving.current) return;
+    contextSaving.current = true;
+    setContextAttempted(true);
+    setUpdatedNotice(false);
+    const draftLines = lines;
+    const draftRemoved = removedLines;
+    const savedLines = draftItems(baseline);
+    const preserveProducts =
+      JSON.stringify(linePayload(lines)) !==
+      JSON.stringify(linePayload(savedLines));
+    try {
+      const result = await onSave({
+        version: baseline.version,
+        tableLabel: contextTable.trim(),
+        tableId: contextTableId,
+        ...(baseline.location?.id ? { locationId: baseline.location.id } : {}),
+        items: linePayload(savedLines),
+      });
+      if (!result) return;
+      apply(result);
+      if (preserveProducts) {
+        setLines(draftLines);
+        setRemovedLines(draftRemoved);
+      }
+      setContextOpen(false);
+      setUpdatedNotice(true);
+    } finally {
+      contextSaving.current = false;
+    }
+  }
   function removeLine(key: string) {
     const index = lines.findIndex((line) => line.key === key);
     if (busy || conflict || index < 0) return;
@@ -467,6 +502,7 @@ export function PosEditor({
                 onPress={() => {
                   setContextTable(table);
                   setContextTableId(tableId);
+                  setContextAttempted(false);
                   setContextOpen(true);
                 }}
               >
@@ -984,15 +1020,21 @@ export function PosEditor({
       </Dialog>
       <Dialog
         isOpen={contextOpen}
-        onOpenChange={setContextOpen}
+        onOpenChange={(open) => {
+          if (!contextSaving.current) setContextOpen(open);
+        }}
         title="Cambiar mesa"
         isDismissable={!busy}
       >
+        {contextAttempted && saveError && (
+          <Alert kind="error" title={saveError} />
+        )}
         <PosTablePicker
           {...tableOptions}
           tableId={contextTableId}
           name={contextTable}
           showSelectionDetails={false}
+          hideOccupied
           orderId={order?.id}
           disabled={busy || conflict}
           onChange={(id, name) => {
@@ -1013,15 +1055,16 @@ export function PosEditor({
               busy ||
               conflict ||
               !contextTable.trim() ||
+              contextTable.trim().length > 60 ||
+              (contextTableId === (baseline?.tableId ?? null) &&
+                contextTable.trim() === baseline?.tableLabel.trim()) ||
+              (!!contextTableId && !tableOptions.tables) ||
               tableUnavailable(tableOptions.tables, contextTableId, order?.id)
             }
-            onPress={() => {
-              setTable(contextTable.trim());
-              setTableId(contextTableId);
-              setContextOpen(false);
-            }}
+            isLoading={busy && contextAttempted}
+            onPress={() => void saveTable()}
           >
-            Listo
+            Guardar
           </Button>
         </div>
       </Dialog>

@@ -75,6 +75,7 @@ export function PosTablePicker({
   error,
   retry,
   showSelectionDetails = true,
+  hideOccupied = false,
 }: {
   tableId: string | null;
   name: string;
@@ -82,6 +83,7 @@ export function PosTablePicker({
   orderId?: string;
   disabled: boolean;
   showSelectionDetails?: boolean;
+  hideOccupied?: boolean;
 } & ReturnType<typeof usePosTables>) {
   return (
     <div className="grid gap-3">
@@ -97,34 +99,41 @@ export function PosTablePicker({
         <>
           <Text variant="label">Mesas del local</Text>
           <div className="flex max-h-64 flex-wrap items-start gap-2 overflow-y-auto p-1">
-            {tables.map((table) => {
-              const occupied = !!(
-                table.openOrderId && table.openOrderId !== orderId
-              );
-              const status = occupied
-                ? "Ocupada"
-                : table.openOrderId
-                  ? "En esta orden"
-                  : "Libre";
-              return (
-                <Button
-                  key={table.id}
-                  variant="secondary"
-                  className={`max-w-full rounded-full! px-4! py-2! ${tableId === table.id ? "border-primary! bg-primary-soft! text-primary!" : ""}`}
-                  aria-pressed={tableId === table.id}
-                  aria-label={`${table.name} · ${status}`}
-                  isDisabled={disabled || occupied}
-                  onPress={() => onChange(table.id, table.name)}
-                >
-                  <Text variant="label" className="min-w-0 break-words">
-                    {table.name}
-                  </Text>
-                  <Text variant="small" className="shrink-0">
-                    · {status}
-                  </Text>
-                </Button>
-              );
-            })}
+            {tables
+              .filter(
+                (table) =>
+                  !hideOccupied ||
+                  !table.openOrderId ||
+                  table.openOrderId === orderId,
+              )
+              .map((table) => {
+                const occupied = !!(
+                  table.openOrderId && table.openOrderId !== orderId
+                );
+                const status = occupied
+                  ? "Ocupada"
+                  : table.openOrderId
+                    ? "En esta orden"
+                    : "Libre";
+                return (
+                  <Button
+                    key={table.id}
+                    variant="secondary"
+                    className={`max-w-full rounded-full! px-4! py-2! ${tableId === table.id ? "border-primary! bg-primary-soft! text-primary!" : ""}`}
+                    aria-pressed={tableId === table.id}
+                    aria-label={`${table.name} · ${status}`}
+                    isDisabled={disabled || occupied}
+                    onPress={() => onChange(table.id, table.name)}
+                  >
+                    <Text variant="label" className="min-w-0 break-words">
+                      {table.name}
+                    </Text>
+                    <Text variant="small" className="shrink-0">
+                      · {status}
+                    </Text>
+                  </Button>
+                );
+              })}
           </div>
         </>
       ) : (

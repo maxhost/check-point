@@ -374,6 +374,8 @@ test("POS: mesa libre viaja como tableId; orden ocupa mesa; cambiar conserva id"
     .getByRole("button", { name: "Volver al listado de órdenes", exact: true })
     .click();
   state.tables[1].openOrderId = null;
+  state.tables[2].status = "active";
+  state.tables[2].openOrderId = "another-order";
   await page.getByRole("button", { name: "Abrir Mesa 1", exact: true }).click();
   await page
     .getByRole("button", { name: "Cambiar mesa: Mesa 1", exact: true })
@@ -385,6 +387,12 @@ test("POS: mesa libre viaja como tableId; orden ocupa mesa; cambiar conserva id"
   await expect(
     change.getByRole("button", { name: "Mesa 1 · En esta orden", exact: true }),
   ).toBeEnabled();
+  await expect(
+    change.getByRole("button", { name: /Mesa archivada/ }),
+  ).toHaveCount(0);
+  await expect(
+    change.getByRole("button", { name: "Guardar", exact: true }),
+  ).toBeDisabled();
   await expect(change.getByText(/Mesa seleccionada:/)).toHaveCount(0);
   await expect(
     change.getByRole("button", { name: "Usar nombre de mesa", exact: true }),
@@ -404,10 +412,7 @@ test("POS: mesa libre viaja como tableId; orden ocupa mesa; cambiar conserva id"
   await change
     .getByRole("button", { name: "Mesa 2 · Libre", exact: true })
     .click();
-  await change.getByRole("button", { name: "Listo", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Guardar cambios", exact: true })
-    .click();
+  await change.getByRole("button", { name: "Guardar", exact: true }).click();
   await expect(
     page.getByText("Pedido actualizado", { exact: true }),
   ).toBeVisible();
@@ -418,6 +423,12 @@ test("POS: mesa libre viaja como tableId; orden ocupa mesa; cambiar conserva id"
   await page
     .getByRole("button", { name: "Cambiar mesa: Mesa 2", exact: true })
     .click();
+  await expect(
+    change.getByRole("button", { name: /Mesa archivada/ }),
+  ).toHaveCount(0);
+  await expect(
+    change.getByRole("button", { name: "Guardar", exact: true }),
+  ).toBeDisabled();
   await expect(change.getByText(/Mesa seleccionada:/)).toHaveCount(0);
   await expect(
     change.getByRole("button", { name: "Usar nombre de mesa", exact: true }),
@@ -437,6 +448,8 @@ test("POS: una orden con nombre libre conserva el input al cambiar mesa y guarda
   await page
     .getByRole("button", { name: "Guardar pedido", exact: true })
     .click();
+  await page.getByRole("radio", { name: "Editar", exact: true }).click();
+  await page.getByRole("button", { name: "Agregar Café", exact: true }).click();
   await page
     .getByRole("button", { name: "Cambiar mesa: Barra", exact: true })
     .click();
@@ -447,10 +460,19 @@ test("POS: una orden con nombre libre conserva el input al cambiar mesa y guarda
   await change
     .getByRole("textbox", { name: "Nombre de mesa" })
     .fill("Barra norte");
-  await change.getByRole("button", { name: "Listo", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Guardar cambios", exact: true })
-    .click();
+  state.failure = {
+    status: 503,
+    code: "unavailable",
+    error: "No pudimos guardar la mesa. Inténtalo de nuevo.",
+  };
+  await change.getByRole("button", { name: "Guardar", exact: true }).click();
+  await expect(change.getByRole("alert")).toHaveText(state.failure.error);
+  await expect(
+    change.getByRole("textbox", { name: "Nombre de mesa" }),
+  ).toHaveValue("Barra norte");
+  expect(state.order?.tableLabel).toBe("Barra");
+  state.failure = null;
+  await change.getByRole("button", { name: "Guardar", exact: true }).click();
   await expect(
     page.getByText("Pedido actualizado", { exact: true }),
   ).toBeVisible();
@@ -459,6 +481,20 @@ test("POS: una orden con nombre libre conserva el input al cambiar mesa y guarda
     tableLabel: "Barra norte",
     version: 1,
   });
+  expect(state.writes.at(-1)?.body.items).toEqual([
+    { lineId: "line-1", productId, quantity: 1 },
+  ]);
+  await expect(
+    page.getByRole("button", { name: "Guardar cambios", exact: true }),
+  ).toBeEnabled();
+  await page
+    .getByRole("button", { name: "Guardar cambios", exact: true })
+    .click();
+  await expect.poll(() => state.writes.length).toBe(4);
+  expect(state.writes.at(-1)?.body).toMatchObject({ version: 2 });
+  expect(state.writes.at(-1)?.body.items).toEqual([
+    { lineId: "line-1", productId, quantity: 2 },
+  ]);
 });
 
 for (const code of ["table_occupied", "unknown_table"]) {

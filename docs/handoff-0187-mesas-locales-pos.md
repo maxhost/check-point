@@ -2,6 +2,18 @@
 
 ## Ajuste visual posterior del owner
 
+Segundo ajuste: Cambiar mesa muestra solo libres y la mesa propia. Guardar
+reemplaza Listo, se habilita solo ante un cambio válido y persiste directamente
+la mesa usando la versión actual. No guarda los productos pendientes: conserva
+ese borrador y permite guardarlo después. Error HTTP literal dentro del modal,
+selección conservada para reintentar; éxito cierra y muestra Pedido actualizado.
+Verificación actual: 100/100 E2E (9 mesas + 91 POS), typecheck merchant, lint
+de archivos cambiados y guardia de tres pantallas en 0; formato global en 0.
+Log `/private/tmp/0187-direct-save.log`. El test de caché ahora usa productos
+como borrador, porque cambiar mesa dejó de ser un cambio pendiente de la orden.
+El test de texto libre comprueba fallo/reintento, PUT solo de mesa con productos
+confirmados y guardado posterior del borrador de productos con la nueva versión.
+
 Selector compartido con chips redondeados, nombre/estado inline y borde de
 selección de 1 px; sin ring exterior, listado con espacio para foco y hover.
 En Cambiar mesa se eliminan «Mesa seleccionada» y «Usar nombre de mesa».
