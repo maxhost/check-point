@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import { getPlatformAuth } from "../../../../server/auth";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +11,7 @@ const FAILED = "/login?e=link_invalid";
  */
 export async function GET(request: Request) {
   const token = new URL(request.url).searchParams.get("token") ?? "";
-  if (!token) return bounce(request, FAILED);
+  if (!token) return bounce(FAILED);
   let verified: Response;
   try {
     verified = await getPlatformAuth().api.magicLinkVerify({
@@ -20,18 +19,30 @@ export async function GET(request: Request) {
       headers: request.headers,
       asResponse: true,
     });
-  } catch {
-    return bounce(request, FAILED);
+  } catch (error) {
+    console.error("platform_magic_link_failed", {
+      name: error instanceof Error ? error.name : typeof error,
+      message: error instanceof Error ? error.message : undefined,
+    });
+    return bounce(FAILED);
   }
-  const cookie = verified.headers.get("set-cookie");
-  if (verified.status !== 200 || !cookie) return bounce(request, FAILED);
-  const response = bounce(request, "/");
-  for (const value of verified.headers.getSetCookie()) {
-    response.headers.append("set-cookie", value);
+  const cookies = verified.headers.getSetCookie();
+  if (verified.status !== 200 || cookies.length === 0) {
+    console.error("platform_magic_link_rejected", {
+      status: verified.status,
+      location: verified.headers.get("location"),
+    });
+    return bounce(FAILED);
   }
-  return response;
+  return bounce("/", cookies);
 }
 
-function bounce(request: Request, path: string) {
-  return NextResponse.redirect(new URL(path, request.url), 303);
+/**
+ * `Location` RELATIVO, como el merchant: detras del tunel `request.url` es `localhost:3002`, y un
+ * redirect absoluto armado con el mandaba al navegador a `https://localhost:3002`.
+ */
+function bounce(destination: string, cookies: string[] = []): Response {
+  const headers = new Headers({ location: destination });
+  for (const cookie of cookies) headers.append("set-cookie", cookie);
+  return new Response(null, { status: 303, headers });
 }
