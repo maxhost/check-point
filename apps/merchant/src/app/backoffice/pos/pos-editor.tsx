@@ -1030,7 +1030,6 @@ export function PosEditor({
           {...tableOptions}
           tableId={contextTableId}
           name={contextTable}
-          showSelectionDetails={false}
           hideOccupied
           orderId={order?.id}
           disabled={busy || conflict}

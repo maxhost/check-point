@@ -74,7 +74,6 @@ export function PosTablePicker({
   tables,
   error,
   retry,
-  showSelectionDetails = true,
   hideOccupied = false,
 }: {
   tableId: string | null;
@@ -82,7 +81,6 @@ export function PosTablePicker({
   onChange: (id: string | null, name: string) => void;
   orderId?: string;
   disabled: boolean;
-  showSelectionDetails?: boolean;
   hideOccupied?: boolean;
 } & ReturnType<typeof usePosTables>) {
   return (
@@ -119,7 +117,7 @@ export function PosTablePicker({
                   <Button
                     key={table.id}
                     variant="secondary"
-                    className={`max-w-full rounded-full! px-4! py-2! ${tableId === table.id ? "border-primary! bg-primary-soft! text-primary!" : ""}`}
+                    className={`max-w-full rounded-full! px-4! py-2! ${tableId === table.id ? "border-accent! bg-accent-soft!" : ""}`}
                     aria-pressed={tableId === table.id}
                     aria-label={`${table.name} · ${status}`}
                     isDisabled={disabled || occupied}
@@ -150,11 +148,6 @@ export function PosTablePicker({
               : "La mesa seleccionada ya no está disponible. Elige otra."
           }
         />
-      )}
-      {tableId && showSelectionDetails && (
-        <div className="grid gap-2">
-          <Text variant="label">Mesa seleccionada: {name}</Text>
-        </div>
       )}
       {tables?.length === 0 && (
         <TextField

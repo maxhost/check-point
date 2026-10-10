@@ -113,6 +113,10 @@ sin forzar reasignación; para cambiar mesa deben elegir una registrada.
 Ajuste de copy del owner: quitar el nombre del único local («Principal») debajo
 del selector en el paso 1. El local de la orden y la selección no cambian.
 
+El owner pide quitar «Mesa seleccionada» también en el paso 1. Se elimina ese
+detalle del selector compartido y su prop; el chip elegido usa borde de 1 px
+con `accent` y fondo `accent-soft` del kit para indicar selección, sin ring.
+
 L2 sin adversariales; API 0182 tiene oráculos previos. E2e con HTTP simulado,
 UI y CSS reales. No acredita nuevas pruebas de persistencia real ni una
 corrida de verify global. QA owner y publicación pendientes. Sin DB real ni

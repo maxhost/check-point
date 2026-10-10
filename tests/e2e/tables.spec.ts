@@ -358,7 +358,10 @@ test("POS: mesa libre viaja como tableId; orden ocupa mesa; cambiar conserva id"
   await expect(
     page.getByRole("button", { name: "Tomar pedido", exact: true }),
   ).toBeEnabled();
-  await page.screenshot({ path: "/private/tmp/0187-mesas-pos-mobile.png" });
+  await page.screenshot({
+    path: "/private/tmp/0187-mesas-pos-mobile.png",
+    animations: "disabled",
+  });
   await review(page);
   await page
     .getByRole("button", { name: "Guardar pedido", exact: true })
