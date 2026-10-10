@@ -18,12 +18,12 @@ import {
   Heading,
   SegmentedControl,
   Text,
-  TextField,
 } from "../../../ui";
 import { catalogKey, DiscardedPosRead, PosCache } from "./pos-cache";
 import { ConfirmationToast } from "../../components/confirmation-toast";
 import { DetailedSale } from "../counter/sale-forms";
 import { formatMoney } from "../counter/types";
+import { PosTablePicker, tableUnavailable, usePosTables } from "./pos-tables";
 import { PosCoupon } from "./pos-coupon";
 import type { PosPayment } from "./pos-payment";
 import type { PosPrinting } from "./pos-printing";
@@ -44,13 +44,19 @@ import {
   type PosOrder,
 } from "./pos-types";
 
-function signature(table: string, location: string, lines: DraftLine[]) {
-  return JSON.stringify([table.trim(), location, linePayload(lines)]);
+function signature(
+  table: string,
+  location: string,
+  lines: DraftLine[],
+  tableId: string | null,
+) {
+  return JSON.stringify([table.trim(), location, linePayload(lines), tableId]);
 }
 export function PosEditor({
   order,
   cache,
   catalogRevision,
+  tablesRevision,
   locations,
   currencyCode,
   busy,
@@ -67,6 +73,7 @@ export function PosEditor({
   order: PosOrder | null;
   cache: PosCache;
   catalogRevision: number;
+  tablesRevision: number;
   locations: PosLocation[];
   currencyCode: string;
   busy: boolean;
@@ -88,6 +95,7 @@ export function PosEditor({
       : locations.some((l) => l.id === lastLocationId)
         ? lastLocationId
         : "";
+  const [tableId, setTableId] = useState(order?.tableId ?? null);
   const [table, setTable] = useState(order?.tableLabel ?? "");
   const [locationId, setLocationId] = useState(initialLocation);
   const [lines, setLines] = useState<DraftLine[]>(() =>
@@ -99,6 +107,7 @@ export function PosEditor({
       order?.tableLabel ?? "",
       initialLocation,
       order ? draftItems(order) : [],
+      order?.tableId ?? null,
     ),
   );
   const [surface, setSurface] = useState<"table" | "products" | "order">(
@@ -163,11 +172,14 @@ export function PosEditor({
   const [exitTarget, setExitTarget] = useState<string | null>(null);
   const [contextOpen, setContextOpen] = useState(false);
   const [contextTable, setContextTable] = useState(table);
+  const [contextTableId, setContextTableId] = useState(tableId);
+  const tableOptions = usePosTables(locationId, tablesRevision, onError);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const allowExit = useRef(false);
   const scrollPositions = useRef({ table: 0, products: 0, order: 0 });
-  const dirty = signature(table, locationId, lines) !== baselineSignature;
+  const dirty =
+    signature(table, locationId, lines, tableId) !== baselineSignature;
   const conflict = !!order && !!baseline && order.version !== baseline.version;
   const count = lines.reduce((sum, line) => sum + line.quantity, 0);
   const total =
@@ -178,13 +190,18 @@ export function PosEditor({
   const money = formatMoney(total, currencyCode);
   const locationName =
     locations.find((l) => l.id === locationId)?.name ?? order?.location?.name;
-  const contextInvalid = !table.trim()
-    ? "Escribe el nombre de la mesa."
-    : table.trim().length > 60
-      ? "El nombre admite hasta 60 caracteres."
-      : !order && locations.length > 1 && !locationId
-        ? "Elige un local."
-        : null;
+  const contextInvalid =
+    tableId && !tableOptions.tables
+      ? "Carga las mesas del local o usa un nombre de mesa."
+      : tableUnavailable(tableOptions.tables, tableId, order?.id)
+        ? "La mesa seleccionada ya no está disponible. Elige otra o escribe un nombre."
+        : !table.trim()
+          ? "Escribe el nombre de la mesa."
+          : table.trim().length > 60
+            ? "El nombre admite hasta 60 caracteres."
+            : !order && locations.length > 1 && !locationId
+              ? "Elige un local."
+              : null;
   const invalid =
     contextInvalid ??
     (lines.length > 200
@@ -208,11 +225,17 @@ export function PosEditor({
     const nextLines = draftItems(current);
     const nextLocation = current.location?.id ?? "";
     setTable(current.tableLabel);
+    setTableId(current.tableId ?? null);
     setLocationId(nextLocation);
     setLines(nextLines);
     setBaseline(current);
     setBaselineSignature(
-      signature(current.tableLabel, nextLocation, nextLines),
+      signature(
+        current.tableLabel,
+        nextLocation,
+        nextLines,
+        current.tableId ?? null,
+      ),
     );
     setReviewOpen(false);
     setRemovedLines([]);
@@ -299,7 +322,13 @@ export function PosEditor({
     };
   }, [dirty, busy]);
   function changeSurface(next: typeof surface) {
-    if (!order && next !== "table" && (contextInvalid || !catalog)) return;
+    if (
+      !order &&
+      surface === "table" &&
+      next !== "table" &&
+      (contextInvalid || !catalog)
+    )
+      return;
     if (next === "products" || next === "order") setCatalogStarted(true);
     scrollPositions.current[surface] = window.scrollY;
     setSurface(next);
@@ -323,6 +352,7 @@ export function PosEditor({
     const result = await onSave({
       ...(order ? { version: baseline!.version } : {}),
       tableLabel: table.trim(),
+      ...(tableId ? { tableId } : order ? { tableId: null } : {}),
       ...(locationId ? { locationId } : {}),
       items: linePayload(lines),
     });
@@ -358,17 +388,17 @@ export function PosEditor({
         ? "Tomar pedido"
         : "Revisar pedido";
   const contextFields = (
-    <div className="grid gap-3">
-      <TextField
-        label="Nombre de mesa"
-        value={table}
-        onChange={setTable}
-        maxLength={60}
-        isRequired
-        isDisabled={busy || conflict}
-        placeholder="Ej.: Mesa 4"
-      />
-    </div>
+    <PosTablePicker
+      {...tableOptions}
+      tableId={tableId}
+      name={table}
+      orderId={order?.id}
+      disabled={busy || conflict}
+      onChange={(id, name) => {
+        setTableId(id);
+        setTable(name);
+      }}
+    />
   );
   return (
     <div
@@ -436,6 +466,7 @@ export function PosEditor({
                 isDisabled={busy || conflict}
                 onPress={() => {
                   setContextTable(table);
+                  setContextTableId(tableId);
                   setContextOpen(true);
                 }}
               >
@@ -957,14 +988,16 @@ export function PosEditor({
         title="Cambiar mesa"
         isDismissable={!busy}
       >
-        <TextField
-          label="Nombre de mesa"
-          value={contextTable}
-          onChange={setContextTable}
-          maxLength={60}
-          isRequired
-          isDisabled={busy || conflict}
-          placeholder="Ej.: Mesa 4"
+        <PosTablePicker
+          {...tableOptions}
+          tableId={contextTableId}
+          name={contextTable}
+          orderId={order?.id}
+          disabled={busy || conflict}
+          onChange={(id, name) => {
+            setContextTableId(id);
+            setContextTable(name);
+          }}
         />
         <div className="mt-4 flex justify-end gap-3">
           <Button
@@ -975,9 +1008,15 @@ export function PosEditor({
             Cancelar
           </Button>
           <Button
-            isDisabled={busy || conflict || !contextTable.trim()}
+            isDisabled={
+              busy ||
+              conflict ||
+              !contextTable.trim() ||
+              tableUnavailable(tableOptions.tables, contextTableId, order?.id)
+            }
             onPress={() => {
               setTable(contextTable.trim());
+              setTableId(contextTableId);
               setContextOpen(false);
             }}
           >

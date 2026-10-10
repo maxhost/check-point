@@ -26,6 +26,8 @@ export type PosOrder = {
   status: "open" | "closed" | "voided";
   version: number;
   tableLabel: string;
+  /** Optional for older cached snapshots; the current API always supplies it. */
+  tableId?: string | null;
   location: PosLocation | null;
   business: { name: string; currencyCode: string };
   items: PosItem[];
@@ -41,6 +43,7 @@ export type PosSummary = Pick<
   | "id"
   | "status"
   | "tableLabel"
+  | "tableId"
   | "location"
   | "total"
   | "createdAt"

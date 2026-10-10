@@ -1,0 +1,161 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { Alert, Button, Text, TextField } from "../../../ui";
+import { PosError, posRequest } from "./pos-types";
+
+type PosTable = { id: string; name: string; openOrderId: string | null };
+export function usePosTables(
+  locationId: string,
+  revision: number,
+  onError: (cause: unknown) => void,
+) {
+  const [attempt, setAttempt] = useState(0);
+  const [snapshot, setSnapshot] = useState<{
+    location: string;
+    tables: PosTable[] | null;
+    error: string | null;
+  }>({ location: "", tables: null, error: null });
+  useEffect(() => {
+    let active = true;
+    setSnapshot({ location: locationId, tables: null, error: null });
+    if (!locationId) return;
+    void posRequest<{ tables: PosTable[] }>(
+      `/api/pos/tables?locationId=${encodeURIComponent(locationId)}`,
+    )
+      .then((data) => {
+        if (active)
+          setSnapshot({
+            location: locationId,
+            tables: data.tables,
+            error: null,
+          });
+      })
+      .catch((cause: unknown) => {
+        if (!active) return;
+        setSnapshot({
+          location: locationId,
+          tables: null,
+          error:
+            cause instanceof Error
+              ? cause.message
+              : "No pudimos cargar las mesas.",
+        });
+        if (cause instanceof PosError && [401, 403].includes(cause.status ?? 0))
+          onError(cause);
+      });
+    return () => {
+      active = false;
+    };
+  }, [locationId, revision, attempt, onError]);
+  return {
+    tables: snapshot.location === locationId ? snapshot.tables : null,
+    error: snapshot.location === locationId ? snapshot.error : null,
+    retry: () => setAttempt((value) => value + 1),
+  };
+}
+
+export function tableUnavailable(
+  tables: PosTable[] | null,
+  tableId: string | null,
+  orderId?: string,
+) {
+  if (!tableId || !tables) return false;
+  const table = tables.find((item) => item.id === tableId);
+  return !table || !!(table.openOrderId && table.openOrderId !== orderId);
+}
+
+export function PosTablePicker({
+  tableId,
+  name,
+  onChange,
+  orderId,
+  disabled,
+  tables,
+  error,
+  retry,
+}: {
+  tableId: string | null;
+  name: string;
+  onChange: (id: string | null, name: string) => void;
+  orderId?: string;
+  disabled: boolean;
+} & ReturnType<typeof usePosTables>) {
+  return (
+    <div className="grid gap-3">
+      {error ? (
+        <Alert kind="error" title={error}>
+          <Button variant="secondary" isDisabled={disabled} onPress={retry}>
+            Reintentar mesas
+          </Button>
+        </Alert>
+      ) : tables === null ? (
+        <Text>Cargando mesas…</Text>
+      ) : tables.length ? (
+        <>
+          <Text variant="label">Mesas del local</Text>
+          <div className="grid max-h-64 grid-cols-2 gap-3 overflow-y-auto md:grid-cols-3">
+            {tables.map((table) => {
+              const occupied = !!(
+                table.openOrderId && table.openOrderId !== orderId
+              );
+              const status = occupied
+                ? "Ocupada"
+                : table.openOrderId
+                  ? "En esta orden"
+                  : "Libre";
+              return (
+                <Button
+                  key={table.id}
+                  variant="secondary"
+                  className={`min-w-0 flex-col break-words ${tableId === table.id ? "border-primary! bg-primary-soft! ring-2 ring-primary" : ""}`}
+                  aria-pressed={tableId === table.id}
+                  aria-label={`${table.name} · ${status}`}
+                  isDisabled={disabled || occupied}
+                  onPress={() => onChange(table.id, table.name)}
+                >
+                  {table.name}
+                  <Text variant="small">{status}</Text>
+                </Button>
+              );
+            })}
+          </div>
+        </>
+      ) : (
+        <Text>
+          No hay mesas añadidas en este local. Puedes escribir un nombre.
+        </Text>
+      )}
+      {tableUnavailable(tables, tableId, orderId) && (
+        <Alert
+          kind="error"
+          title="La mesa seleccionada ya no está disponible. Elige otra o escribe un nombre."
+        />
+      )}
+      {tableId ? (
+        <div className="grid gap-2">
+          <Text variant="label">Mesa seleccionada: {name}</Text>
+          <div>
+            <Button
+              variant="quiet"
+              isDisabled={disabled}
+              onPress={() => onChange(null, "")}
+            >
+              Usar nombre de mesa
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <TextField
+          label="Nombre de mesa"
+          value={name}
+          onChange={(value) => onChange(null, value)}
+          maxLength={60}
+          isRequired
+          isDisabled={disabled}
+          placeholder="Ej.: Mesa 4"
+        />
+      )}
+    </div>
+  );
+}

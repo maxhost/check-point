@@ -55,6 +55,7 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
   const [refreshing, setRefreshing] = useState(false);
   const [catalogRevision, setCatalogRevision] = useState(0);
   const [lastLocationId, setLastLocationId] = useState(locations[0]?.id ?? "");
+  const [tablesRevision, setTablesRevision] = useState(0);
   const [locationPickerOpen, setLocationPickerOpen] = useState(false);
   const activeLocation =
     locations.find((location) => location.id === lastLocationId) ??
@@ -291,6 +292,11 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
       return null;
     } catch (cause) {
       if (cache.epoch !== epoch) return null;
+      if (
+        cause instanceof PosError &&
+        ["table_occupied", "unknown_table"].includes(cause.code ?? "")
+      )
+        setTablesRevision((value) => value + 1);
       handleError(cause);
       if (
         cause instanceof PosError &&
@@ -601,6 +607,7 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
                 cache={cache}
                 catalogRevision={catalogRevision}
                 locations={locations}
+                tablesRevision={tablesRevision}
                 currencyCode={session.business?.currencyCode ?? "USD"}
                 busy={busy || refreshing || paymentBusy}
                 onError={handleError}
