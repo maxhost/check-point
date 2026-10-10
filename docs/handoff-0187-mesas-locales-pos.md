@@ -1,5 +1,21 @@
 # 0187 — Mesas en Locales y POS
 
+## Regla actual de nombre libre
+
+El campo Nombre de mesa aparece únicamente cuando la consulta del local confirma
+que no tiene mesas, en nueva orden y Cambiar mesa. No aparece con mesas
+configuradas, aunque estén ocupadas, ni durante carga/error. Nueva orden exige
+selección registrada cuando existen mesas. Una orden antigua de nombre libre
+puede conservar sus productos; para cambiar mesa en un local configurado debe
+seleccionar una registrada. Sin mesas, puede editar el nombre y Guardar directo.
+
+Verificación actual: 101/101 E2E (10 mesas + 91 POS), 17.1 s; typecheck merchant,
+lint de los archivos cambiados, guardia de dos pantallas, formato global y
+diff --check en 0. Log `/private/tmp/0187-configured-tables.log`. Se verifica
+también el caso todas ocupadas y que un error de lectura no habilite texto libre;
+solo tras reintentar y confirmar lista vacía aparece el campo. Las cifras
+posteriores corresponden a cierres anteriores.
+
 ## Ajuste visual posterior del owner
 
 Segundo ajuste: Cambiar mesa muestra solo libres y la mesa propia. Guardar

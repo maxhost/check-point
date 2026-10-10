@@ -103,6 +103,13 @@ persiste la mesa con versión y productos de baseline; los productos aún editad
 se conservan como borrador sin guardarlos accidentalmente. Éxito cierra y muestra
 toast; fallo conserva modal y selección con mensaje HTTP literal.
 
+Última regla del owner: nombre libre únicamente si GET de mesas del local
+confirma lista vacía, tanto en paso Mesa como Cambiar mesa. Mesas ocupadas no
+cuentan como ausencia de configuración. Durante carga/error no se ofrece nombre
+libre y se bloquea avanzar/guardar contexto. Con mesas configuradas una nueva
+orden exige tableId. Las órdenes antiguas libres pueden conservar sus productos
+sin forzar reasignación; para cambiar mesa deben elegir una registrada.
+
 L2 sin adversariales; API 0182 tiene oráculos previos. E2e con HTTP simulado,
 UI y CSS reales. No acredita nuevas pruebas de persistencia real ni una
 corrida de verify global. QA owner y publicación pendientes. Sin DB real ni

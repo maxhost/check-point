@@ -211,11 +211,13 @@ async function manage(page: Page) {
   await expect(modal(page)).toBeVisible();
   await expect(modal(page).getByText("Mesa 1", { exact: true })).toBeVisible();
 }
-async function newOrder(page: Page) {
+async function newOrder(page: Page, hasTables = true) {
   await page.goto(harness.url);
   await page.getByRole("button", { name: "Nueva orden", exact: true }).click();
   await expect(
-    page.getByRole("button", { name: "Mesa 1 · Libre", exact: true }),
+    hasTables
+      ? page.getByRole("button", { name: "Mesa 1 · Libre", exact: true })
+      : page.getByRole("textbox", { name: "Nombre de mesa" }),
   ).toBeVisible();
 }
 async function review(page: Page) {
@@ -345,6 +347,9 @@ test("POS: mesa libre viaja como tableId; orden ocupa mesa; cambiar conserva id"
   await page.setViewportSize({ width: 390, height: 844 });
   await newOrder(page);
   await expect(
+    page.getByRole("textbox", { name: "Nombre de mesa" }),
+  ).toHaveCount(0);
+  await expect(
     page.getByRole("button", { name: "Mesa 2 · Ocupada", exact: true }),
   ).toBeDisabled();
   await page
@@ -384,6 +389,9 @@ test("POS: mesa libre viaja como tableId; orden ocupa mesa; cambiar conserva id"
     name: "Cambiar mesa",
     exact: true,
   });
+  await expect(
+    change.getByRole("textbox", { name: "Nombre de mesa" }),
+  ).toHaveCount(0);
   await expect(
     change.getByRole("button", { name: "Mesa 1 · En esta orden", exact: true }),
   ).toBeEnabled();
@@ -442,7 +450,8 @@ test("POS: una orden con nombre libre conserva el input al cambiar mesa y guarda
   page,
 }) => {
   const state = await setup(page);
-  await newOrder(page);
+  state.tables = [];
+  await newOrder(page, false);
   await page.getByRole("textbox", { name: "Nombre de mesa" }).fill("Barra");
   await review(page);
   await page
@@ -497,6 +506,25 @@ test("POS: una orden con nombre libre conserva el input al cambiar mesa y guarda
   ]);
 });
 
+test("POS: todas ocupadas no habilita nombre libre ni avanzar", async ({
+  page,
+}) => {
+  const state = await setup(page);
+  state.tables[0].openOrderId = "occupied";
+  await page.goto(harness.url);
+  await page.getByRole("button", { name: "Nueva orden", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Mesa 1 · Ocupada", exact: true }),
+  ).toBeDisabled();
+  await expect(
+    page.getByRole("textbox", { name: "Nombre de mesa" }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Tomar pedido", exact: true }),
+  ).toBeDisabled();
+  expect(state.writes).toHaveLength(0);
+});
+
 for (const code of ["table_occupied", "unknown_table"]) {
   test(`POS: ${code} refresca mesas y conserva productos y error literal`, async ({
     page,
@@ -517,6 +545,7 @@ for (const code of ["table_occupied", "unknown_table"]) {
     };
     if (code === "table_occupied") state.tables[0].openOrderId = "other";
     else state.tables[0].status = "archived";
+    state.tables[1].openOrderId = null;
     const reads = state.reads;
     await page
       .getByRole("button", { name: "Guardar pedido", exact: true })
@@ -534,10 +563,12 @@ for (const code of ["table_occupied", "unknown_table"]) {
     await page
       .getByRole("button", { name: "Volver a mesa", exact: true })
       .click();
+    await expect(
+      page.getByRole("textbox", { name: "Nombre de mesa" }),
+    ).toHaveCount(0);
     await page
-      .getByRole("button", { name: "Usar nombre de mesa", exact: true })
+      .getByRole("button", { name: "Mesa 2 · Libre", exact: true })
       .click();
-    await page.getByRole("textbox", { name: "Nombre de mesa" }).fill("Barra");
     state.failure = null;
     await page
       .getByRole("button", { name: "Tomar pedido", exact: true })
@@ -554,9 +585,9 @@ for (const code of ["table_occupied", "unknown_table"]) {
       .getByRole("button", { name: "Guardar pedido", exact: true })
       .click();
     await expect.poll(() => state.writes.length).toBe(2);
-    expect(state.writes[1].body).not.toHaveProperty("tableId");
+    expect(state.writes[1].body.tableId).toBe(secondId);
     expect(state.writes[1].body).toMatchObject({
-      tableLabel: "Barra",
+      tableLabel: "Mesa 2",
       items: [{ productId, quantity: 1 }],
     });
   });
@@ -655,15 +686,17 @@ test("Locales: respuesta tardía de Centro no cambia el modal de Norte", async (
   await page.screenshot({ path: "/private/tmp/0187-mesas-local-desktop.png" });
 });
 
-test("POS: mesas pertenecen al local elegido; error de lectura permite texto libre", async ({
+test("POS: mesas pertenecen al local elegido; texto libre solo tras confirmar que no hay mesas", async ({
   page,
 }) => {
   const state = await setup(page);
+  let fail = true;
   await page.route("**/api/pos/tables**", (route) => {
     const location = new URL(route.request().url()).searchParams.get(
       "locationId",
     );
     expect(location).toBe(northId);
+    if (!fail) return route.fulfill({ json: { tables: [] } });
     return route.fulfill({
       status: 503,
       json: { error: "No pudimos cargar las mesas del local." },
@@ -682,6 +715,16 @@ test("POS: mesas pertenecen al local elegido; error de lectura permite texto lib
   await expect(page.getByRole("alert")).toContainText(
     "No pudimos cargar las mesas del local.",
   );
+  await expect(
+    page.getByRole("textbox", { name: "Nombre de mesa" }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Tomar pedido", exact: true }),
+  ).toBeDisabled();
+  fail = false;
+  await page
+    .getByRole("button", { name: "Reintentar mesas", exact: true })
+    .click();
   await page
     .getByRole("textbox", { name: "Nombre de mesa" })
     .fill("Barra norte");

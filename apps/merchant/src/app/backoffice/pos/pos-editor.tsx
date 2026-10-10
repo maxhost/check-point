@@ -195,17 +195,19 @@ export function PosEditor({
   const locationName =
     locations.find((l) => l.id === locationId)?.name ?? order?.location?.name;
   const contextInvalid =
-    tableId && !tableOptions.tables
-      ? "Carga las mesas del local o usa un nombre de mesa."
-      : tableUnavailable(tableOptions.tables, tableId, order?.id)
-        ? "La mesa seleccionada ya no está disponible. Elige otra o escribe un nombre."
-        : !table.trim()
-          ? "Escribe el nombre de la mesa."
-          : table.trim().length > 60
-            ? "El nombre admite hasta 60 caracteres."
-            : !order && locations.length > 1 && !locationId
-              ? "Elige un local."
-              : null;
+    (!order || tableId) && !tableOptions.tables
+      ? "Carga las mesas del local."
+      : !order && tableOptions.tables?.length && !tableId
+        ? "Elige una mesa del local."
+        : tableUnavailable(tableOptions.tables, tableId, order?.id)
+          ? "La mesa seleccionada ya no está disponible. Revisa las mesas del local."
+          : !table.trim()
+            ? "Escribe el nombre de la mesa."
+            : table.trim().length > 60
+              ? "El nombre admite hasta 60 caracteres."
+              : !order && locations.length > 1 && !locationId
+                ? "Elige un local."
+                : null;
   const invalid =
     contextInvalid ??
     (lines.length > 200
@@ -1058,7 +1060,8 @@ export function PosEditor({
               contextTable.trim().length > 60 ||
               (contextTableId === (baseline?.tableId ?? null) &&
                 contextTable.trim() === baseline?.tableLabel.trim()) ||
-              (!!contextTableId && !tableOptions.tables) ||
+              !tableOptions.tables ||
+              (!!tableOptions.tables.length && !contextTableId) ||
               tableUnavailable(tableOptions.tables, contextTableId, order?.id)
             }
             isLoading={busy && contextAttempted}

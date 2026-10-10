@@ -144,24 +144,19 @@ export function PosTablePicker({
       {tableUnavailable(tables, tableId, orderId) && (
         <Alert
           kind="error"
-          title="La mesa seleccionada ya no está disponible. Elige otra o escribe un nombre."
+          title={
+            tables?.length === 0
+              ? "La mesa seleccionada ya no está disponible. Escribe un nombre."
+              : "La mesa seleccionada ya no está disponible. Elige otra."
+          }
         />
       )}
       {tableId && showSelectionDetails && (
         <div className="grid gap-2">
           <Text variant="label">Mesa seleccionada: {name}</Text>
-          <div>
-            <Button
-              variant="quiet"
-              isDisabled={disabled}
-              onPress={() => onChange(null, "")}
-            >
-              Usar nombre de mesa
-            </Button>
-          </div>
         </div>
       )}
-      {!tableId && (
+      {tables?.length === 0 && (
         <TextField
           label="Nombre de mesa"
           value={name}
