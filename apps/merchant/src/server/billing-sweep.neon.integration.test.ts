@@ -58,7 +58,10 @@ describe.skipIf(!integrationEnabled)(
     });
 
     it("pausa sin acceso, reanuda con `base` lo que el base incluye, y es idempotente", async () => {
-      const seed = await campaignWorld("base", "Barrido");
+      // Las campañas se crean con `plus` (que lo permite todo) y el plan pasa a `base` recién
+      // al recuperar el acceso: así el caso de la cruzada mide la REANUDACIÓN con `base`, no
+      // si el base deja crearla (eso es `marketing-welcome-plans…`).
+      const seed = await campaignWorld("plus", "Barrido");
       const [row] = await getDb()
         .select({ id: subscriptions.stripeSubscriptionId })
         .from(subscriptions)
