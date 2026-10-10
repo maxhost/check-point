@@ -3,29 +3,34 @@ import { BrandMark } from "../brand-mark";
 
 const faqs = [
   {
-    question: "¿Qué es CheckPass Club?",
+    question: "¿Qué pasa al terminar los tres meses de prueba?",
     answer:
-      "Es una plataforma para que los comercios locales creen programas de fidelización, premien las visitas de sus clientes y mantengan la relación con ellos mediante campañas. Cada cliente puede ver sus programas y beneficios en una sola cuenta.",
+      "La prueba incluye todas las herramientas. Después puedes continuar con Conecta o Impulso, según lo que tu negocio necesite. Los precios y condiciones definitivos se mostrarán antes de contratar.",
   },
   {
-    question: "¿Cómo se une un cliente a mi programa?",
+    question: "¿Cómo puede la red traerme nuevos clientes?",
     answer:
-      "Cuando visita tu local, escanea el código QR de tu negocio y se une desde su teléfono. No puede unirse desde el explorador de comercios: el primer encuentro ocurre en tu local.",
+      "Cuando alguien compra en otro comercio de la red, puede recibir un regalo sorpresa tuyo. La venta cruzada conecta negocios de rubros distintos a menos de 2 km. Tú defines el beneficio; el cliente recibe un motivo para descubrirte.",
   },
   {
-    question: "¿Necesito instalar una app o comprar equipos?",
+    question: "¿Los puntos sirven en otros comercios?",
     answer:
-      "Tu equipo puede usar CheckPass desde el navegador de un teléfono o computadora. El cliente puede consultar sus programas en la PWA o guardar su pase en Apple o Google Wallet. No necesita instalar una app distinta para cada negocio.",
+      "No. Los puntos, sellos y premios pertenecen al programa de cada negocio y se canjean solo allí. La red conecta a los clientes con regalos sorpresa de otros comercios, sin transferir puntos entre programas.",
   },
   {
-    question: "¿Qué tipos de campañas puedo crear?",
+    question: "¿Mi cliente necesita descargar una app?",
     answer:
-      "Puedes configurar un regalo de bienvenida, campañas para clientes habituales que dejaron de visitar tu negocio y promociones puntuales. Las opciones y canales disponibles dependen del plan que elijas.",
+      "No. Escanea el QR en tu local y se une desde el celular. Puede llevar su pase en Apple Wallet, Google Wallet o el navegador, con sus lugares favoritos en una sola tarjeta.",
   },
   {
-    question: "¿Dónde estará disponible CheckPass?",
+    question: "¿Qué necesito para atender e imprimir tickets?",
     answer:
-      "Comenzamos en Cuenca, Ecuador. Nuestra intención es llevar CheckPass a más ciudades de Latinoamérica.",
+      "Tu equipo puede trabajar desde el navegador con el mostrador o el POS. Para imprimir por Bluetooth necesitas una impresora y un dispositivo compatibles. El POS permite organizar órdenes por mesa, identificar al cliente con su pase y cobrar.",
+  },
+  {
+    question: "¿Dónde empieza la red?",
+    answer:
+      "Empezamos en Cuenca, Ecuador. Puedes explorar los comercios y sus fichas públicas para conocer la red de tu ciudad. Los clientes se unen a tu programa con el QR de tu local.",
   },
 ];
 
@@ -59,52 +64,66 @@ export function ClosingSections() {
         aria-labelledby="plans-title"
       >
         <div className="section-heading plans-heading">
-          <span className="kicker">PLANES PARA EMPEZAR</span>
+          <span className="kicker">
+            HERRAMIENTAS DE CADENA, PARA TU NEGOCIO
+          </span>
           <h2 id="plans-title">
-            Crece a tu <em>propio ritmo.</em>
+            Tres meses para probar. Más motivos para <em>quedarte.</em>
           </h2>
           <p>
-            Comienza con lo esencial. Añade más herramientas cuando tu negocio
-            las necesite.
+            Empieza con todo incluido durante tres meses gratis. Después, elige
+            el plan que acompaña a tu negocio.
           </p>
+        </div>
+        <div className="trial-banner">
+          <strong>3 meses gratis · todo incluido</strong>
+          <span>Conoce la red, prueba las campañas y prepara tu equipo.</span>
         </div>
         <div className="plan-grid">
           <article className="plan-card">
-            <span className="plan-label">PARA EMPEZAR</span>
-            <h3>Gratis</h3>
-            <p>Crea tu programa y empieza a reconocer a quienes vuelven.</p>
-            <div className="plan-price">
-              $0 <span>/ mes</span>
-            </div>
-            <ul>
-              <li>Programa de puntos o sellos</li>
-              <li>QR para invitar clientes en tu local</li>
-              <li>Herramienta de mostrador</li>
-            </ul>
-            <a className="plan-button" href={onboardingUrl}>
-              Comenzar gratis <Arrow />
-            </a>
-          </article>
-          <article className="plan-card plan-card-plus">
-            <span className="plan-label">PARA SEGUIR CRECIENDO</span>
-            <h3>Plus</h3>
+            <span className="plan-label">CONECTA CON TU CIUDAD</span>
+            <h3>Conecta</h3>
             <p>
-              Más formas de conectar con tus clientes y darles razones para
-              volver.
+              Fideliza a quienes ya te conocen y dale a nuevos clientes un
+              motivo para entrar.
             </p>
             <div className="plan-price">
               $20 <span>USD / mes*</span>
             </div>
             <ul>
-              <li>Todo lo incluido en Gratis</li>
-              <li>Campañas y beneficios</li>
-              <li>Más herramientas para tus locales</li>
+              <li>1 local</li>
+              <li>Programa de puntos o sellos y pase digital</li>
+              <li>Mostrador, catálogo y lista de clientes</li>
+              <li>Ficha pública, afiche y QR de inscripción</li>
+              <li>Campañas Bienvenida y Venta cruzada</li>
             </ul>
             <a className="plan-button" href={onboardingUrl}>
-              Explorar Plus <Arrow />
+              Pruébalo gratis 3 meses <Arrow />
+            </a>
+          </article>
+          <article className="plan-card plan-card-plus">
+            <span className="plan-label">DA EL SIGUIENTE PASO</span>
+            <h3>Impulso</h3>
+            <p>
+              Más momentos para conectar con tus clientes y más espacio para tus
+              locales.
+            </p>
+            <div className="plan-price">
+              $45 <span>USD / mes*</span>
+            </div>
+            <ul>
+              <li>Hasta 3 locales</li>
+              <li>Todo lo incluido en Conecta</li>
+              <li>Te extrañamos, Cliente en riesgo y Recuperar</li>
+              <li>Cerca del premio y Premio sin canjear</li>
+              <li>Horas valle y campañas por cercanía</li>
+            </ul>
+            <a className="plan-button" href={onboardingUrl}>
+              Pruébalo gratis 3 meses <Arrow />
             </a>
           </article>
         </div>
+        <p className="pricing-note">Local adicional: $12 USD / mes*.</p>
         <p className="pricing-note">
           * Precio referencial. Los precios y condiciones definitivos se
           mostrarán antes de contratar.
@@ -141,13 +160,13 @@ export function ClosingSections() {
       <section className="final-cta" aria-labelledby="final-title">
         <span className="kicker">EL SIGUIENTE PASO ES TUYO</span>
         <h2 id="final-title">
-          Tu próximo cliente habitual puede empezar <em>hoy.</em>
+          Dale a tu negocio más oportunidades de <em>crecer.</em>
         </h2>
         <p>
-          Prepara tu programa, coloca tu QR y empieza a construir relaciones que
-          duran más de una visita.
+          Conecta con tu ciudad, da más razones para volver y atiende con las
+          herramientas que tu negocio merece. Empieza en Cuenca.
         </p>
-        <SignupLink label="Crear mi negocio gratis" light />
+        <SignupLink label="Pruébalo gratis 3 meses" light />
       </section>
     </>
   );
@@ -166,7 +185,7 @@ export function LandingFooter() {
           checkpass<span>.</span>club
         </span>
       </a>
-      <p>Más motivos para volver. Hecho para negocios locales.</p>
+      <p>Más clientes nuevos. Más razones para volver.</p>
       <div>
         <a href="/explorar">Explorar la ciudad</a>
         <a href="#como-funciona">Cómo funciona</a>
@@ -182,10 +201,6 @@ export function LandingFooter() {
         Fotografías de ejemplo:{" "}
         <a href="https://www.pexels.com/photo/woman-ordering-coffee-in-cafe-13735959/">
           Mizuno K
-        </a>{" "}
-        y{" "}
-        <a href="https://www.pexels.com/photo/church-dome-and-towers-over-street-20608997/">
-          Juan Villarreal
         </a>{" "}
         / Pexels.
       </small>

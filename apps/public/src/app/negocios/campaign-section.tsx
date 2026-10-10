@@ -4,23 +4,44 @@ const moments = [
   {
     number: "01",
     label: "BIENVENIDA",
-    title: "Recibe bien a alguien nuevo",
+    title: "Haz especial la primera visita",
     description:
-      "Un detalle al unirse a tu programa puede hacer que quiera conocerte mejor.",
+      "Un detalle al unirse a tu programa ayuda a empezar la relación con buen pie.",
   },
   {
     number: "02",
-    label: "REACTIVACIÓN",
-    title: "Recuerda a quien solía venir",
+    label: "VENTA CRUZADA",
+    title: "Que te conozcan nuevos clientes",
     description:
-      "Dale un motivo para regresar a ese cliente que hace tiempo no te visita.",
+      "Ofrece un regalo sorpresa a quien compra en otro comercio cercano de la red.",
   },
   {
     number: "03",
-    label: "PROMOCIÓN PUNTUAL",
-    title: "Comparte algo especial",
+    label: "TE EXTRAÑAMOS · EN RIESGO · RECUPERAR",
+    title: "Vuelve a conectar",
     description:
-      "Anuncia un beneficio cuando tengas una ocasión que quieras compartir.",
+      "Dale un motivo para regresar a quien solía visitarte y hace tiempo no viene.",
+  },
+  {
+    number: "04",
+    label: "CERCA DEL PREMIO · PREMIO SIN CANJEAR",
+    title: "Que el premio se vuelva una visita",
+    description:
+      "Recuerda a tus clientes que están cerca de su recompensa o que ya pueden disfrutarla.",
+  },
+  {
+    number: "05",
+    label: "HORAS VALLE",
+    title: "Dale vida a tus horas flojas",
+    description:
+      "Activa un beneficio para invitar a tus clientes cuando tu local tiene más espacio.",
+  },
+  {
+    number: "06",
+    label: "CERCANÍA",
+    title: "Hazte presente cuando están cerca",
+    description:
+      "Un beneficio oportuno puede convertir el paso por tu barrio en una visita.",
   },
 ];
 
@@ -34,15 +55,15 @@ export function CampaignSection() {
       <div className="moments-inner">
         <div className="moments-heading">
           <div>
-            <span className="kicker">MARKETING QUE TIENE SENTIDO</span>
+            <span className="kicker">MARKETING CON UN CLIC</span>
             <h2 id="moments-title">
-              Cada momento tiene su <em>mensaje.</em>
+              Enciende una campaña. Dale otro motivo para <em>volver.</em>
             </h2>
           </div>
           <p>
-            Acompaña a tus clientes desde la primera visita. Crea campañas para
-            darles la bienvenida, volver a conectar o compartir una promoción
-            especial.
+            Elige una plantilla, define el beneficio y actívala con un botón.
+            Las campañas trabajan solas para acompañar a tus clientes en el
+            momento adecuado.
           </p>
         </div>
         <div className="moments-grid">
@@ -59,11 +80,11 @@ export function CampaignSection() {
         </div>
         <div className="moments-bottom">
           <p>
-            Tú eliges el beneficio. CheckPass te ayuda a hacerlo llegar a tus
-            clientes.
+            Bienvenida y Venta cruzada en Conecta. Todas las campañas en
+            Impulso.
           </p>
           <a className="text-link" href={onboardingUrl}>
-            Crear mi negocio <span aria-hidden="true">→</span>
+            Pruébalo gratis 3 meses <span aria-hidden="true">→</span>
           </a>
         </div>
       </div>
