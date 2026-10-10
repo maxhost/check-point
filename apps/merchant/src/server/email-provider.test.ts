@@ -1,8 +1,11 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { EmailProviderError } from "./email/channel";
-import { ConsoleEmailChannel, consoleEmailOutbox } from "./email/console";
-import { emailChannelFromEnv } from "./email/provider";
-import { ResendEmailChannel } from "./email/resend";
+import { EmailProviderError } from "@mi-pasaporte/domain/server/email/channel";
+import {
+  ConsoleEmailChannel,
+  consoleEmailOutbox,
+} from "@mi-pasaporte/domain/server/email/console";
+import { emailChannelFromEnv } from "@mi-pasaporte/domain/server/email/provider";
+import { ResendEmailChannel } from "@mi-pasaporte/domain/server/email/resend";
 
 afterEach(() => {
   consoleEmailOutbox.length = 0;

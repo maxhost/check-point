@@ -1,32 +1,6 @@
-// Channel-agnostic email delivery (ADR 0045 / spec 0046). El unico mail que sale hoy es el
-// del LINK MAGICO del owner, y sale por el adapter que resuelve `emailChannelFromEnv()`: el
-// contrato de abajo es la costura que deja cambiar de proveedor (Resend hoy, otro mañana)
-// sin tocar al que lo llama.
-
-export interface EmailChannel {
-  sendEmail(input: {
-    to: string;
-    subject: string;
-    html: string;
-    text: string;
-  }): Promise<{ provider: string; providerMessageId: string }>;
-}
-
-/** Typed provider failure, mirrors `OtpProviderError` of the SMS side (spec 0032). */
-export class EmailProviderError extends Error {
-  constructor(
-    readonly provider: string,
-    readonly reason:
-      "configuration" | "timeout" | "rejected" | "invalid_response",
-  ) {
-    super(`Email provider ${provider} failed: ${reason}`);
-    this.name = "EmailProviderError";
-  }
-}
-
 /**
- * Spec 0067 §2 — el mail del LINK MAGICO del owner. Mismo canal que ya existe
- * (`emailChannelFromEnv`): esta spec no agrega un proveedor nuevo.
+ * Spec 0067 §2 — el mail del LINK MAGICO del owner. El canal (`emailChannelFromEnv`) vive en
+ * `@mi-pasaporte/domain/server/email` desde la spec 0190; el texto es del comercio y queda aca.
  *
  * `url` apunta a `GET /api/merchant/auth/magic-link?token=…`, ruta PROPIA, y no al
  * endpoint del plugin: los dos que publica estan en `disabledPaths` (`server/auth.ts`).
