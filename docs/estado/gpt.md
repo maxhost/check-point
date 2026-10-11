@@ -3,28 +3,20 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — OWNER RECHAZA ALCANCE DEL CUERPO DE NEGOCIOS; REDISEÑO COMPLETO EN PROPUESTA (2026-10-11)
+## ESTADO — BARRIO CONECTADO ELEGIDO; RETIRADA DE ETIQUETAS (2026-10-11)
 
-
-Owner observa que la entrega cambió sobre todo el hero, conservando cuerpo,
-diagramas, imágenes y buena parte del copy. Se reconoce entrega parcial respecto
-del objetivo; finish técnico de0198 NO significa aceptación del cuerpo.
-Se retoma la misma dirección/identidad, preservando hero aprobado y ampliando
-el diseño a TODA la landing. Plan revisable:
-docs/design-explorations/negocios-redisenio-completo.md.
-Tres propuestas completas generadas, corregidas e inspeccionadas: recorrido,
-barrio y venta/regreso. Fotos/pantallas de ejemplo y copia comercial corregida.
-Propuestas guardadas localmente en a7031f0; código de la app sin nuevos cambios.
-Comparador http://127.0.0.1:59932/, key dd0e8e6b. PNGs y sidecars approved:false
-en apps/public/.impeccable/mocks/completa. Archivo de pregunta:
-apps/public/.impeccable/questions/negocios-completa.json.
-Recoger selección con serve-question --wait --key dd0e8e6b o palabras del owner.
-No marcar propuesta aprobada antes de su respuesta. Recomendación: recorrido.
-No cambiar UI mientras se revisa la nueva composición. No nueva aprobación del
-hero ni entrevista de producto. Página local actual preservada, sin publicar.
+Owner elige «El barrio conectado» y solicita retirar toda mención visible de
+«ejemplo»: Café de ejemplo → Café; eliminar avisos Ejemplo ilustrativo y fondos.
+Esta instrucción sustituye el etiquetado anterior de demostraciones de /negocios;
+no alcanza la home. Hero y condiciones comerciales se conservan.
+La elección corresponde al rediseño COMPLETO, no a aceptar el cuerpo antiguo de0198.
+Propuesta base a7031f0, comparador http://127.0.0.1:59932/, key dd0e8e6b.
+Variante corregida: apps/public/.impeccable/mocks/completa/barrio-sin-etiquetas.png.
+Plan docs/design-explorations/negocios-redisenio-completo.md y brief actualizados.
+Sin nueva implementación de app ni publicación. Pendientes: spec cerrada/reserva
+local, recursos definitivos, implementación del cuerpo y QA real.
 Helper0198 respaldado en .impeccable/history/negocios-0198-antes-revision-completa;
-nuevo build state comps abierto con seed c0e4f966. Pendiente selección de propuesta
-completa, spec de corrección/reserva local, assets/implementación y QA real.
+nuevo build state comps abierto con seed c0e4f966.
 
 Rama dev, sin push/merge/deploy. Implementación08e902f; reserva5e7fbfc.
 Owner aprobó comp combinado («quedo perfecto, avanzamos») y plan/asset («aprobado»).
