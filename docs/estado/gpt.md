@@ -3,7 +3,34 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — U1–U3 IMPLEMENTADAS EN DEV (2026-10-10)
+## ESTADO — 0197 CERRADA Y RESERVADA EN DEV (2026-10-10)
+
+Owner confirmó dos públicos: home de checkpass.club para consumidores y landing
+comercial en /negocios. La home explica CheckPass en esta etapa, sin comercios
+reales que mostrar, con ejemplos identificados. Impeccable init y shape completos;
+concepto «Una visita como ejemplo» seleccionado en la página de decisión y brief
+confirmado explícitamente. PRODUCT.md, comp y prompt/aprobación guardados.
+
+Reserva local `132ac2e`: spec 0197 cerrada y fila INDEX. Sin código de UI nuevo,
+merge ni push. La spec cubre home, traslado comercial, enlaces por audiencia,
+canonical/OG/sitemap y E2E público a 390/1440 claro/oscuro. Nivel L2, sin APIs,
+DB, billing, precios ni cambios a la landing comercial salvo rutas/enlaces.
+
+Verificación documental: check-numbers sin duplicados, diff --check correcto;
+Prettier ejecutado sobre spec e índice. Ningún test o build nuevo ejecutado ni
+DoD de implementación marcado. CI remoto consultado: main9405c93 rojo por capturas
+POS con /private/tmp; fix local preexistente4f37e70 confirmado en historial.
+Pull solicitado al arranque falló inicialmente por sandbox; el reintento fue
+interrumpido por el owner. Dev no tiene upstream y ADR0128 reserva en dev local.
+
+Pendiente: implementar0197 con comp aprobado, verificación específica y QAowner.
+Escena aprobada: apps/public/.impeccable/mocks/decision/ejemplo-visita.png.
+No guardar preferencia global de buildPath: el owner no respondió la pregunta;
+la página de elección devolvió comp para esta sesión. Otros bocetos/config local
+de Impeccable siguen sin commit. Cambio ajeno tools/local-db/huellas-prod.txt
+preservado. Pendientes previos0196 (QAStripe/gate E2E) siguen en bloque siguiente.
+
+## ⇥ U1–U3 IMPLEMENTADAS EN DEV (2026-10-10)
 
 Rama local `dev`. SHA del trabajo UI: `8611689` (spec 0196). Correcciones E2E:
 `da78bbc`. Reserva de spec: `d2b49f6`. Trabajo público anterior: `60590de`.
