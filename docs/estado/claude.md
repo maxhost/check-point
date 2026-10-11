@@ -10,32 +10,36 @@
 > pantalla. El auto-reporte no es evidencia.
 
 
-## ⇥ ESTADO (2026-10-10) — SPEC 0189 (PLANES PAGOS, PRUEBA 90 DIAS) IMPLEMENTADA EN `dev` (`327016f`); PROD sin cambios
+## ⇥ ESTADO (2026-10-10) — 0189 EN `dev`; 0190 (PANEL) Y 0195 (VENCIMIENTO) EN RAMAS; PROD sin cambios
 
-**En PROD:** sin cambios, `main` = `origin/main` = `9405c93`. **La migracion 0069 NO esta aplicada en PROD.**
+**En PROD:** sin cambios, `main` = `origin/main` = `9405c93`. **Migraciones 0069, 0070 y 0071 NO aplicadas en PROD.**
 
-**En `dev` (sin pushear):**
-- `327016f` merge de la rama `spec-0189` (ADR 0134, spec 0189 `implementada`, `7b6e91d`). Muere `free`; alta en
-  `trial` con `trial_ends_at` +90 d; planes `base` ($20/$200) y `plus` ($49/$490); eje de acceso que bloquea con
-  402 panel, mostrador, POS, login del personal, inscripcion, Bienvenida y Venta cruzada; barrido diario
-  `/api/internal/billing-sweep`; skill `/extender-prueba`.
-- Verificacion: implementador `pnpm verify` ok (Neon 409 archivos); revisor FAIL ronda 1 (H1 bucle del layout de
-  `/backoffice` para el owner bloqueado; H2 campañas en `plan_downgraded` tras un evento `incomplete`), corregidos;
-  PASS ronda 2 con `pnpm verify` ok sobre `1ba7ef7`. Reproducido por mi: unit acceso/catalogo/plan-change 31/31,
-  M1 y MH1 rojas, `billing-incomplete.neon` 1/1, `layout-guard` 5/5. N1 del revisor (hueco de cobertura) cerrado
-  por mi en `f5daf5e`: `billing-sweep.neon` 3/3 limpio y rojo bajo R4 («expected {paused:0,resumed:0} to deeply
-  equal {paused:0,resumed:1}»). `pnpm verify` NO se corrio sobre el merge con `dev` (sin solapamiento de archivos
-  con la landing de GPT, `merge-tree` sin conflictos): lo corre el pre-push.
-- GPT: landing 0188 en `dev` (`84df923`, `b34e6bd`) y cambios suyos sin commitear en `apps/public`.
-- Worktree `check-point-wt/spec-0189` todavia existe (borrar cuando no haga falta).
+**En `dev` (sin pushear):** spec 0189 (planes pagos, prueba 90 dias; merge `327016f`), ADR 0135 + spec 0190 (docs
+`77514b7`), tunel `dev-admin.checkpass.club` (`280e6c5`). Stripe test: los 4 precios verificados contra la API
+(20/200 Conecta, 49/490 Impulso, USD, sin prueba propia) y `STRIPE_ENVIRONMENT`/clave/webhook presentes en el
+`.env.local` del merchant (owner 2026-10-10).
 
-**QUE SIGUE (para salir a live, todo con OK del owner):**
-1. Owner: 4 precios de Stripe (test y live) y las 8 env `STRIPE_PRICE_{BASE,PLUS}_{MONTHLY,YEARLY}_{TEST,LIVE}`.
-2. GPT: UI de cobro con el contrato §D10 (la consola actual llama a checkout sin `plan` → 400) y textos «Free».
-3. Snapshot + migracion 0069 a PROD justo antes del push; `merge --ff-only dev` a `main`, probar local, push.
+**Ramas sin mergear (worktrees en `check-point-wt/`):**
+- `spec-0190` (`cdb3ec9`): panel de plataforma `apps/platform`, migracion 0070. Implementada y verificada; login por el
+  tunel probado por el owner («ok, funciona»). Bloqueo del merge a `dev`: GPT tiene `pnpm-lock.yaml` sin commitear en
+  el arbol principal y esta rama tambien lo cambia.
+- `spec-0195` (`e33a3cf`, sobre `spec-0190` por la 0070): ADR 0136 + vencimiento del saldo, migracion 0071. Unit 23/23,
+  Neon 5/5, M1–M3 ROJAS por la propiedad y revertidas; `pnpm verify` verde salvo `format:check` (7 archivos propios,
+  formateados y re-chequeados despues). Mergear DESPUES de `spec-0190`.
+- `spec-0189`: ya mergeada; worktree a borrar.
 
-**Hallazgos a decidir (owner):** regla de `/extender-prueba +N` (hoy: desde el fin actual o desde hoy si vencio,
-la puso el implementador); #3 transitorio (pago `incomplete` → 1 local sin campañas hasta el `active`). Resto de
-hallazgos menores en `docs/handoff-0189-implementacion.md` y `docs/revision-0189.md`.
+**UI pendiente para GPT:** `docs/PARQUEADO.md` §«UI pendiente para GPT» (U1–U3 cobro de la 0189, U4–U6 vencimiento de
+la 0195), pedido del owner: se encarga cuando GPT termine lo suyo.
 
-**Decisiones del owner, no volver a preguntar:** las del ADR 0134 (2026-10-10).
+**QUE SIGUE:**
+1. Cuando GPT commitee `pnpm-lock.yaml`: merge `spec-0190` y despues `spec-0195` a `dev`; sumar platform a
+   `tools/dev-local/up.sh`; noindex del panel (spec 0194 de GPT lo pide).
+2. Salir a live (todo con OK del owner): precios live + `STRIPE_PRICE_*_LIVE` en Vercel (owner), proyecto Vercel
+   `admin.checkpass.club`, snapshot + migraciones 0069/0070/0071, `merge --ff-only dev` a `main`, probar local, push.
+3. Siguiente funcionalidad elegida por el owner: el **reporte de retorno / analitica** (valor percibido).
+
+**Hallazgo a decidir (owner):** la landing de GPT (`closing-sections.tsx`) muestra Impulso a $45 y «local adicional
+$12»; Stripe y el ADR 0134 dicen $49 y sin local adicional.
+
+**Decisiones del owner, no volver a preguntar:** ADR 0134, 0135 y 0136 (2026-10-10).
+
