@@ -22,3 +22,12 @@ Estructuras consideradas, ordenadas por afinidad:
 7. Atención en el mostrador: venta y fidelización integradas en POS.
 
 Seed superficie c0e4f966, candidatos 5/1/3. Página de comparación a0eae026.
+
+## Ajuste solicitado por el owner
+
+Seleccionó «Tu próximo cliente está cerca», conservando imagen y mensaje,
+con la distribución de «Tu barrio puede traerte nuevos clientes»: título,
+subtítulo y CTA dentro del hero sobre el lado izquierdo de la escena.
+Eliminar la banda de introducción sobre la fotografía. La escena de bienvenida
+y la burbuja se mantienen a la derecha, con aviso de ejemplo visible.
+No importar los comercios ni el diagrama de Venta cruzada de la segunda opción.

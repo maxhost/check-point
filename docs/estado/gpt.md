@@ -3,30 +3,25 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — /NEGOCIOS: PROPUESTAS VISUALES EN REVISIÓN (2026-10-10)
+## ESTADO — /NEGOCIOS: COMBINACIÓN SOLICITADA, COMP ACTUALIZADO (2026-10-10)
 
-Owner NO quiere publicar; pidió avanzar en diseño, mensaje y orden de /negocios.
-Prioridad confirmada: nuevos clientes y vender más. Brief confirmado: atraer →
-volver → atender/vender con POS → empezar/prueba/planes → FAQ/registro.
-Identidad de home aprobada se conserva. La home queda fuera de este nuevo alcance.
+Owner NO quiere publicar; pidió revisar diseño, mensaje y orden de /negocios.
+Prioridad nuevos clientes/vender más. Brief atraer → volver → atender/vender con
+POS → empezar/prueba/planes → FAQ/registro confirmado. Home aprobada fuera de alcance.
 
-Tres propuestas comp-led en página http://127.0.0.1:57997/, key a0eae026:
-proxima-visita (invitación sobre panorámica), barrio-conectado (Venta cruzada),
-primera-compra (de descubrir a próxima visita). Seed c0e4f966:5/1/3, sourceapi.
-Payload .impeccable/questions/negocios-crecimiento.json; brief ennegocios-brief.md.
-Comp1 se recompuso para separar la banda de introducción y panorámica.
-Comp2/3 se corrigieron por textos factuales inventados: otros negocios no
-recomiendan activamente; visita sola no otorga sellos. Ejemplos identificados,
-sin métricas, garantía de ventas ni testimonios falsos.
+Propuestas previas guardadas en882476a. Owner eligió «Tu próximo cliente está
+cerca» con misma imagen y mensaje, pero con distribución de «Tu barrio…»:
+texto y CTA integrados a izquierda dentro del hero, sin banda sobre la fotografía.
+Se generó e inspeccionó nueva variante:
+apps/public/.impeccable/mocks/decision/negocios-proxima-visita-integrado.png
+con prompt/refs en sidecar approved:false (render actualizado no confirmado aún).
+Imagen y ejemplo de café de bienvenida conservados, escena reencuadrada a derecha.
+El brief .impeccable/questions/negocios-brief.md registra la decisión del owner.
 
-Las tres versiones finales se guardaron con prompt y approved:false.
-serve-question --wait cerró con salida4 (PAGE CLOSED, sin respuesta); se presentó
-la misma elección mediante request_user_input_async. Esperar selección en chat,
-sin asumir elección ni reutilizar el key cerrado como aprobación.
-Elección visual aún pendiente. No se escribió código ni se reservó spec nueva:
-primero escoger composición, después cerrar spec local antes de implementar.
-0197 está implementada y aprobada localmente; contexto/evidencia debajo.
-Sin merge, push ni deploy. No modificar estado helper anterior como aprobado.
+No reabrir entrevista ni otra terna. Esperar feedback sobre combinación presentada
+inline; después cerrar/reservar spec nueva antes de código. Aún no hay UI modificada.
+Sin merge/push/deploy. Impeccable no autoriza escribir recibo de aprobación en
+nombre del owner. La elección anterior vino por chat; páginaa0eae026 cerró sin respuesta.
 
 ## ⇥ 0197 IMPLEMENTADA LOCAL, APROBADA POR OWNER (2026-10-10)
 
