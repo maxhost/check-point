@@ -14,6 +14,7 @@ el diseño a TODA la landing. Plan revisable:
 docs/design-explorations/negocios-redisenio-completo.md.
 Tres propuestas completas generadas, corregidas e inspeccionadas: recorrido,
 barrio y venta/regreso. Fotos/pantallas de ejemplo y copia comercial corregida.
+Propuestas guardadas localmente en a7031f0; código de la app sin nuevos cambios.
 Comparador http://127.0.0.1:59932/, key dd0e8e6b. PNGs y sidecars approved:false
 en apps/public/.impeccable/mocks/completa. Archivo de pregunta:
 apps/public/.impeccable/questions/negocios-completa.json.
