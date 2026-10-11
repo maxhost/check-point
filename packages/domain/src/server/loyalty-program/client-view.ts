@@ -30,6 +30,7 @@ type ProgramRow = {
   cardBackgroundGradientAngle?: number | null;
   cardBorderColor?: string | null;
   redeemAllowInsufficient?: boolean;
+  balanceExpiryMonths?: number | null;
   accrualMode?: string | null;
   accrualGrant?: number | null;
   accrualBlockAmount?: string | null;
@@ -117,6 +118,8 @@ export function toClientProgram<T extends ProgramRow>(
     cardBackgroundGradientAngle: program.cardBackgroundGradientAngle,
     cardBorderColor: program.cardBorderColor,
     redeemAllowInsufficient: program.redeemAllowInsufficient,
+    /** Spec 0195 / ADR 0136: 3 | 6 | 9 | 12 months, or null when balances never expire. */
+    balanceExpiryMonths: program.balanceExpiryMonths ?? null,
     /**
      * Spec 0069 §D5 — **el path se emite SIEMPRE, con sello o sin el.**
      *

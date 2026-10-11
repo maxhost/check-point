@@ -31,6 +31,10 @@ function row(overrides: Partial<ConsumerProgramRow> = {}): ConsumerProgramRow {
     lastOrderAt: null,
     lastRedemptionAt: null,
     marketingOptOutAt: null,
+    timezone: "America/Guayaquil",
+    balanceExpiryMonths: null,
+    balanceExpirySince: null,
+    lastVisitAt: null,
     ...overrides,
   };
 }

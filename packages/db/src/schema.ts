@@ -29,3 +29,4 @@ export * from "./schema/cross-sale";
 export * from "./schema/dining-table";
 export * from "./schema/pos";
 export * from "./schema/ticket-settings";
+export * from "./schema/balance-expiry";

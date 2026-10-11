@@ -89,6 +89,19 @@ por ahora, decision del owner); marcar 0117 `implementada` tras el QA.
 | **`no-mutations-left.sh` solo ve `.ts`/`.tsx` bajo los `src/`** | medido el 2026-09-16 al implementar la 0066 | Una mutacion sobre un `.md`, un `.sh` o un hook **no la caza nadie**: las dos mutaciones de esta spec (una en una skill, otra en `CLAUDE.md`) habrian sobrevivido al Stop. Se **declara** en vez de arreglarse porque tocar los hooks existentes esta fuera del alcance de la 0066 |
 | Las GitHub Actions tiran **warning de deprecacion de Node 20** (`actions/checkout@v4`, `actions/setup-node@v4`, `pnpm/action-setup@v4` forzadas a correr en Node 24) | fuera de alcance de 0047 y 0048 | No bloquea nada |
 
+## UI pendiente para GPT (contratos de API listos, owner 2026-10-10: «dejar al final de todo lo que sea necesario de UI para gpt parqueado»)
+
+Se encarga a GPT cuando termine su trabajo actual. Cada fila apunta al contrato; la API ya existe y esta probada.
+
+| # | Pantalla | Contrato | Estado de la API |
+|---|---|---|---|
+| U1 | **Cobro**: elegir plan (Conecta/Impulso = `base`/`plus`) y periodo, cambiar de plan, cancelar al fin del periodo y reanudar. La consola de hoy llama al checkout sin `plan` → 400 | spec **0189** §D10 | en `dev` (`327016f`) |
+| U2 | **Textos «Free/Gratis» del panel**: ese plan ya no existe (ADR 0134) | spec **0189** §D10 | en `dev` |
+| U3 | **Comercio bloqueado (402 `payment_required`)** y **dias de prueba** (`billing.trialDaysLeft` de `GET /api/merchant/session`) | spec **0189** §D10 | en `dev` |
+| U4 | **Vencimiento en el panel del programa**: interruptor + selector 3/6/9/12 meses contra `PUT /api/loyalty-program/expiry`; al activar, «empieza a contar hoy para todos tus clientes». Lee `program.balanceExpiryMonths` | spec **0195** §D6 | rama `spec-0195` |
+| U5 | **Vencimiento en la inscripcion**: con `balanceExpiryMonths` del landing, «Tus puntos vencen si pasan 6 meses sin compras ni canjes» junto a los terminos | spec **0195** §D6 | rama `spec-0195` |
+| U6 | **Vencimiento en la PWA**: con `balanceExpiresOn`, «Vencen el 12 abr 2027» bajo el saldo (los avisos ya salen en Actividad) | spec **0195** §D6 | rama `spec-0195` |
+
 ## Pendientes del owner (no son codigo)
 
 | Que | Origen |

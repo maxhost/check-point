@@ -498,6 +498,13 @@
       "when": 1791659729995,
       "tag": "0070_panel_de_plataforma",
       "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1791680118835,
+      "tag": "0071_vencimiento_del_saldo",
+      "breakpoints": true
     }
   ]
 }

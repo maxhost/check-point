@@ -47,7 +47,12 @@ export type CloseInput = {
 };
 
 export type EventAction =
-  "created" | "edited" | "closing_scheduled" | "closing_canceled" | "expired";
+  | "created"
+  | "edited"
+  | "closing_scheduled"
+  | "closing_canceled"
+  | "expired"
+  | "expiry_changed";
 
 export class LoyaltyError extends Error {
   /**

@@ -1,7 +1,7 @@
 ---
 spec: 0195
 fecha: 2026-10-10
-estado: cerrada
+estado: implementada
 resumen: Implementa el ADR 0136 (L2, API + servidor + DB; pantallas de GPT con el contrato de §D6). Migracion 0071 (regla en `core.loyalty_program`, `core.balance_expiration`, `consumer.balance_expiry_notice`, accion `expiry_changed`), `PUT /api/loyalty-program/expiry` (3/6/9/12 meses o apagado), funcion pura de fecha y aviso, barrido dentro del cron `loyalty-expiry` que emite los avisos (20/10/5 dias y «hoy vencen») y vence el saldo solo despues del aviso del dia, y los campos `balanceExpiryMonths` / `balanceExpiresOn` para el comercio, la inscripcion y la PWA.
 disjunta: si
 archivos: packages/db/drizzle/0071_* (+ meta), packages/db/src/schema/{loyalty,balance-expiry}.ts, packages/db/src/schema.ts, packages/domain/src/server/loyalty-program/{balance-expiry,balance-expiry-store,client-view}.ts, packages/domain/src/server/loyalty-program.ts, packages/domain/src/server/wallet/push-text.ts, packages/domain/src/server/consumer/{programs,enroll-landing}.ts, apps/merchant/src/app/api/loyalty-program/expiry/route.ts, apps/merchant/src/app/api/internal/loyalty-expiry/route.ts, tests, docs/INDEX.md
@@ -52,7 +52,8 @@ Wallet (no muestra saldos); un reporte de vencimientos para el comercio; avisos 
 - `noticeDue({ today, expiresOn, sent: number[] }) → 20 | 10 | 5 | 0 | null`: `daysLeft = expiresOn − today`; el
   menor umbral `t ∈ {20, 10, 5, 0}` con `daysLeft ≤ t` (si `daysLeft < 0`, es `0`), solo si `t` no esta en `sent`;
   con `daysLeft > 20`, `null`.
-- `shouldExpire({ today, expiresOn, sent })`: `today > expiresOn` **y** `0 ∈ sent`.
+- `shouldExpire({ today, expiresOn, zeroNoticeOn })`: `today > expiresOn` **y** el aviso `0` emitido un dia local
+  ANTERIOR a `today` (asi un aviso atrasado siempre deja ese dia entero, aunque el barrido corra dos veces).
 - `nextSince({ current, nextMonths, prevMonths, since, now })`: activar o acortar → `now`; alargar → `since`;
   apagar → `null`.
 
@@ -68,6 +69,7 @@ del `PUT` del programa. En una transaccion: `select … for update` del programa
 | cuerpo no JSON | 400 `invalid_body` |
 | `months` fuera de la lista | 400 `invalid_expiry` |
 | sin programa activo | 409 `no_active_program` |
+| otro cambio de la regla en el medio (guard optimista) | 409 `state_changed` |
 | guard | sus codigos de siempre (401 / 403) |
 | base | 503 `program_unavailable` |
 
@@ -79,10 +81,12 @@ del `PUT` del programa. En una transaccion: `select … for update` del programa
 1. **Avisos.** Calcula `expiresOn` y `noticeDue` con `today` = fecha local del negocio. Si hay umbral: en UNA
    sentencia, `insert … balance_expiry_notice … on conflict do nothing returning` y, de lo insertado, la fila de
    `wallet_push_queue` (`transactional`, titulo = nombre del negocio, `not_before` = 10:00 locales de hoy o `now()`
-   si ya paso), y el `queue_id`. Reintento = cero filas nuevas.
+   si ya paso); el `queue_id` se elige antes y el `created_at` del aviso es el `now` del barrido. Reintento = cero
+   filas nuevas. `SweepScope` (`businessIds`) acota el barrido en las suites; produccion corre sin acotar.
 2. **Vencimiento.** Para las que `shouldExpire`: transaccion por membresia; `select … for update` de la membresia;
    re-lee `last_visit_at`, saldo y avisos DESPUES del lock; si la funcion pura sigue diciendo que vence, `update` del
-   saldo a 0 + `insert` en `balance_expiration` (`on conflict do nothing`) + una fila `pass_refresh` como en el canje.
+   saldo a 0 + `insert` en `balance_expiration` (`on conflict do nothing`). Sin `pass_refresh`: el pase no muestra
+   saldos (medido: `wallet/apple.ts` y `google-object.ts` no leen el saldo).
    Si una compra entro en el medio, la fecha se movio y no vence.
 
 Textos (`push-text.ts`, ≤ el tope de `MAX_NOTICE_BODY`): `Tus 120 puntos vencen en 20 días si no compras antes` /
@@ -124,18 +128,18 @@ Devuelve `{ notices, expired }` para el log del cron.
 
 ## Definition of Done
 
-- [ ] Unit `balance-expiry.test.ts`: fin de mes (31 ene + 1 → 28 feb; bisiesto 29 feb), `since` posterior a la
+- [x] Unit `balance-expiry.test.ts`: fin de mes (31 ene + 1 → 28 feb; bisiesto 29 feb), `since` posterior a la
       ultima visita gana, `noticeDue` en 21/20/11/10/6/5/1/0/−3 dias, umbral ya enviado → `null`, `shouldExpire` falso
       sin el aviso 0, `nextSince` en activar/acortar/alargar/apagar.
-- [ ] Unit de la ruta: 400 `invalid_expiry` con 1, 7, `"6"`; 400 `invalid_body`; 200 con `null`.
-- [ ] Neon `balance-expiry.neon.integration.test.ts`: (a) vencida con aviso 0 → saldo 0, fila en
+- [x] Unit de la ruta: 400 `invalid_expiry` con 1, 7, `"6"`; 400 `invalid_body`; 200 con `null`.
+- [x] Neon `balance-expiry.neon.integration.test.ts`: (a) vencida con aviso 0 → saldo 0, fila en
       `balance_expiration`, `pass_refresh` encolado; (b) vencida sin aviso 0 → aviso «hoy vencen», saldo intacto,
       y al otro dia vence; (c) dos corridas el mismo dia → un solo aviso; (d) negocio bloqueado → nada;
       (e) compra con `persistGrant` despues de calcular y antes de vencer → no vence; (f) `PUT` + evento
       `expiry_changed`, y activar con un cliente sin venir hace 1 año no vence nada ese dia.
-- [ ] `listConsumerPrograms` devuelve `balanceExpiresOn` (null con la regla apagada) — en la suite Neon.
-- [ ] `pnpm verify` en verde con Node 24, una sola vez al final, con su tabla.
-- [ ] `rg -n MUTATION apps packages tools` → vacio.
+- [x] `listConsumerPrograms` devuelve `balanceExpiresOn` (null con la regla apagada) — en la suite Neon.
+- [x] `pnpm verify` en verde con Node 24, una sola vez al final, con su tabla.
+- [x] `rg -n MUTATION apps packages tools` → vacio.
 
 ## Mutaciones — presupuesto: 3. Clase: los plausibles
 
@@ -143,7 +147,7 @@ Devuelve `{ notices, expired }` para el log del cron.
 |---|---|---|
 | 1 | `shouldExpire` sin exigir el aviso 0 | Neon (b): el saldo queda en 0 sin aviso |
 | 2 | el vencimiento no re-lee `last_visit_at` despues del lock (usa el valor del paso 1) | Neon (e) |
-| 3 | `nextSince` deja `since` igual al activar | Neon (f): el cliente de hace 1 año queda con aviso o vencido |
+| 3 | `expiresOn` ignora `since` (cuenta solo desde la ultima actividad) | Neon (f): el cliente de hace 1 año recibe aviso el dia que se activa |
 
 **Protocolo y corte:** los de la plantilla chica.
 
@@ -160,3 +164,31 @@ L2: lo implementa Claude, sin subagentes. Sin revisor independiente salvo que al
 ## Abierto
 
 Nada bloquea.
+
+## Cierre (2026-10-10)
+
+Implementada en la rama `spec-0195` (base: `spec-0190`, por la migracion 0070). Desviaciones de la spec cerrada,
+todas escritas arriba: `shouldExpire` pide el aviso `0` de un dia ANTERIOR; sin `pass_refresh`; 409 `state_changed`;
+M3 cambio de mecanismo (`nextSince` al activar no tiene un `since` previo que conservar: mutarlo violaba el CHECK
+de la pareja y daba un rojo por el motivo equivocado).
+
+| Prueba | Resultado |
+|---|---|
+| Unit `balance-expiry.test.ts` (regla pura, textos, validacion de la ruta) | 23/23 |
+| Neon `balance-expiry.neon.integration.test.ts` (a)–(f) | 5/5 |
+
+| # | Mutacion | Resultado ejecutado |
+|---|---|---|
+| M1 | `shouldExpire` = `today > expiresOn` | ROJO (b): «expected { expired: 1, notices: +0 } to deeply equal { expired: +0, notices: 1 }» |
+| M2 | `expireMembership` usa `candidate.lastVisitAt` | ROJO (e): «expected 120 to be +0» |
+| M3 | `expiresOn` sin `since` | ROJO (f): «expected { expired: +0, notices: 1 } to deeply equal { expired: +0, notices: +0 }» (y (a)) |
+
+Las tres revertidas con `diff` contra la copia limpia; `shasum` limpias: `balance-expiry.ts` `0585e951…`,
+`balance-expiry-store.ts` `bc2910a3…` (despues, solo prettier: `5fa75411…`).
+
+`pnpm verify` (Node 24, una vez): typecheck, lint, ui-guard, test, build, e2e y Neon completa (416 archivos, 3345
+tests) ok; `format:check` ROJO por 7 archivos de esta spec, formateados despues con prettier (solo espacios) y
+re-chequeados: `format:check`, typecheck, lint y los unit tocados en verde.
+
+**Pendiente:** pantallas de GPT (§D6, parqueadas en `docs/PARQUEADO.md`); migracion 0071 a PROD con el pase a live.
+
