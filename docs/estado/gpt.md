@@ -3,62 +3,48 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — 0199 RESERVADA; RECURSOS DEFINITIVOS EN REVISIÓN (2026-10-11)
+## ESTADO — 0199 IMPLEMENTADA LOCAL; QA OWNER DEL ENSAMBLADO PENDIENTE (2026-10-11)
 
-Owner confirma «listo elegido»: El barrio conectado sin etiquetas ejemplo.
-Spec0199 cerrada y reservada local890a37e antes de app code. Diseño elegido b973db8.
-Referencia .impeccable/mocks/completa/barrio-sin-etiquetas.png. Home fuera de alcance.
-Sin nueva implementación de app ni publicación: no declarar cuerpo terminado.
+Implementación local9f4e3c5. El barrio conectado elegido y confirmado por owner.
+Spec0199 reserva890a37e,
+recursosf2bee16. Cuerpo /negocios REEMPLAZADO: mapa e invitación, QR/premio sobre
+mesa, tablet y paneles POS, inicio compacto, planes, cinco FAQ y cierre verde.
+Burbujas rectangulares completas con icono a izquierda según nota del owner.
+Todas las referencias visibles a ejemplo retiradas solo de /negocios.
+Hero aprobado preservado, burbuja Café y sin disclaimer. Home y páginas de
+productos preservan defaults; export antiguo de previews conservado.
+URL REAL del ensamblado: http://localhost:3003/negocios. Sin publicación.
 
-Helper reiniciado con comp aprobado: spec cerrada, 65 regiones, cuatro plates,
-26 textos medidos; Arial de identidad prevalece sobre sugerencia de Harmattan.
-Hero reutiliza foto aprobada; tres recursos nuevos generados, vistos y con prompt
-embebido: neighborhood, reward-scene, service-scene. Gate plates los acepta;
-único bloqueo actual es aprobación concreta de plan/recursos requerida por skill.
-Mapa/QR-recompensa/atención están en assets/plates y public/images/negocios-*;
-sidecars de nuevos recursos approved:false. No son crops enviados a producción.
+Plan/recursos aprobados en navegador y chat «aprobado»:
+session07814800c7438f3d7eb890741a4965d08a0583cea2d4409c2b080ca7d8ef63bc,
+revision3cc9cc3c35f01b29749200b09ec171d295fa84016018e2a74d0f4436513cd873.
+Referencia actual .impeccable/mocks/completa/barrio-burbujas-integradas.png,
+corregida a pedido del owner, vista y guardada. Tres plates nuevas aprobadas
+con prompt embebido, public/images/negocios-{neighborhood,reward-scene,service-scene}.
+No crops enviados a producción, sidecars con evidencia de aprobación real.
 
-Revisión ABIERTA http://127.0.0.1:64126/, navegador abierto para owner.
-Session07814800c7438f3d7eb890741a4965d08a0583cea2d4409c2b080ca7d8ef63bc,
-revision1de1af8bb07239ec64ed633745fadb6e2001bb28da961dc5120284b790457d1e,
-execsession11914, pid13596. Component manifest .impeccable/review/components.json.
-Esperar decisión real; component-review status/verify y build-phase advance después.
-No crear recibos ni votar por owner. La elección del comp está cerrada.
-Siguiente: implementar TODO cuerpo según0199, actualizar landing E2E, QA local.
-No commitear instalación ni carpetas helper generales. Recursos definitivos nuevos
-se guardan con procedencia; no cambiar contratos API, home o páginas de productos.
+Node24: tipos/ESLint/formato0, diffcheck0, numeración0. Landing final9/9 en10.5s,
+/private/tmp/0199-e2e-final.log; build público final0,
+/private/tmp/0199-build-final.log. Capturas1440/390 claro/oscuro vistas, sin
+pageerrors ni overflow. Scan de provenance3/3 sin faltantes. Revisión inline L2,
+sin subagentes, DB/Neon/adversarial o verify global. Detector sin hallazgos.
+Comp-diff76% drift; corrección de encabezado, orden móvil y planes/FAQ hecha.
+Quedan diferencias de tamaño/posición de burbujas, paneles y cierre; ningún módulo
+omitido. No afirmar igualdad pixel a pixel ni aprobación del sitio ensamblado.
+
+IMPORTANTE workflow helper: spec65 regiones y26 textos medidos. Medición de
+fuentes después de aprobación cambió hash de spec: recibo técnico stale aunque
+recibo REAL de recursos sí existe y owner aprobó. Se continuó bajo esa aprobación
+explícita, sin nueva solicitud redundante, sin fabricar recibos ni forzar gates.
+Plates sigue abierto, hero/sections/motion/responsive pendientes en helper;
+finish ship rechazado por fases abiertas. Cierre del helper pendiente de resolver
+stale o aceptación real del ensamblado; no certificarlo completo.
+QA OWNER del sitio completo pendiente. No nueva ronda de elección de diseño.
+
+No push/merge/deploy. No commitear instalación ni helpers/capturas temporales.
 CI main9405c93 rojo histórico por screenshots tmp, fix local4f37e70 ya existente.
-
-Rama dev, sin push/merge/deploy. Implementación08e902f; reserva5e7fbfc.
-Owner aprobó comp combinado («quedo perfecto, avanzamos») y plan/asset («aprobado»).
-/negocios tiene hero con contenido dentro de escena, primer bloque visita→regreso,
-marketing→fidelización→POS→empezar→planes/FAQ/registro. Home fuera de alcance.
-Fotos y previews identificados; precios/condiciones actuales preservados.
-Footer sin crédito Pexels incorrecto para imagen generada. Componentes compartidos
-preservan defaults, estilos nuevos acotados a business-shell.
-
-Registro técnico anterior de0198: spec/plates/hero/sections/motion/responsive/review
-cerrados, finish ship. Este registro corresponde al cambio parcial anterior.
-Hero y responsive78%, sin force ni recibos inventados. Revisión inline porADR0129,
-no independiente. Brief comercial commiteado. Evidencia helper temporal en
-apps/public/.impeccable/review; finish-0198.md y document-0198.md.
-Differences menores respecto del comp: Arial y tonos de identidad, reflujo móvil,
-conector con posición de unos3px diferente; pares de crops inspeccionados.
-No crear DESIGN.md/sidecar como reparación incidental de ausencia anterior.
-
-Verificación Node24 real: tipos/ESLint públicos0, Prettier código0 y diffcheck0;
-landing9/9 en11.4s, configuración /private/tmp/checkpass-0197-playwright.cjs,
-PUBLIC_LANDING_TEST_URL=http://localhost:3003. Sin webServers compartidos/DB.
-Capturas390/1440 claro/oscuro y hero1536x1024 vistas; sin overflow/pageerrors.
-Build público final0: /private/tmp/0198-build-final.log. Prompt embebido en PNG,
-scan1/1 sin faltantes. No verify global ni Neon, conforme L2/ADR0129.
-
-Disponible para owner: http://localhost:3003/negocios. QA del ensamblado pendiente;
-DoD técnico comprobado, checkbox QA abierto. User NO quiere publicar aún.
-No commitear instalación .agents/.claude/.codex/.github ni helpers/capturas/duplicados.
-Siguiente paso: elegir propuesta completa, cerrar spec de corrección e implementar
-el cuerpo rediseñado. Publicación exige autorización
-explícita y verify. Pendientes0196/Stripe y CI remoto previos siguen abajo.
+Siguiente: owner revisa localhost; aceptar/corregir solo hallazgos concretos.
+Para publicación se necesita autorización expresa y verify previo.
 
 ## ⇥ 0197 IMPLEMENTADA LOCAL, APROBADA POR OWNER (2026-10-10)
 
