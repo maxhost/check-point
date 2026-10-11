@@ -35,7 +35,7 @@ export const subscriptions = core.table(
       withTimezone: true,
     }),
     /** Spec 0189 / ADR 0134 §3: el fin de la prueba de 90 dias. SE GUARDA, no se calcula:
-     * el owner la extiende a mano (skill `/extender-prueba`). NULL = sin prueba. */
+     * el owner la extiende desde el panel de plataforma (spec 0190). NULL = sin prueba. */
     trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
     /** `created` del último evento de Stripe APLICADO (guard de orden, D5.h). */
     lastEventAt: timestamp("last_event_at", { withTimezone: true }),

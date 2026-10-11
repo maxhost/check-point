@@ -1,7 +1,7 @@
 ---
 spec: 0190
 fecha: 2026-10-10
-estado: cerrada
+estado: implementada
 resumen: Implementa el ADR 0135 (L2, todo Claude). `apps/platform` en `admin.checkpass.club` con login por link al correo para la lista blanca `PLATFORM_ADMIN_EMAILS` (Better Auth propio en `platform_auth`, migracion 0070 aditiva), una lista de los comercios (alta, dueño, plan, acceso, fin de prueba y dias que quedan) y la ficha de cada uno para sumar dias o fijar la fecha de fin de la prueba, con registro en `platform_auth.audit_log`. Reusa el kit de UI del comercio por ruta relativa. El correo pasa a `packages/domain`. Borra la skill `/extender-prueba`.
 disjunta: si
 archivos: packages/db/drizzle/0070_* (+ meta), packages/db/src/schema/{_schemas,platform-auth}.ts, packages/db/src/schema.ts, packages/domain/src/server/email/* (movido de apps/merchant/src/server/email), apps/merchant/src/server/{auth.ts,email-provider.test.ts,email/*}, apps/platform/** (package.json, next.config.ts, postcss, globals.css, app, server, tests), tools/neon-test.sh (`--app platform`), .claude/skills/extender-prueba (se borra), docs/INDEX.md
@@ -180,3 +180,22 @@ con `diff`. **Corte:** dos vueltas de «el fix abrio la siguiente» → al owner
 
 Nada que bloquee. Despues: proyecto de Vercel `admin.checkpass.club` + variables (ADR 0135, Consecuencias), con OK del
 owner; migracion 0070 a PROD en el mismo pase a live.
+
+## Cierre (2026-10-10)
+
+Implementada en la rama `spec-0190` (`191b97b`), sin implementador ni revisor separados (L2).
+
+- **Unit:** `admin-emails`, `trial`, `admin-guard`: 24/24. **Neon** (`tools/neon-test.sh --app platform`):
+  `panel` 6/6 (incluye la relectura de la 0070: 5 tablas y el check de `audit_log`) y `auth-start` 3/3.
+- **Mutaciones (3/3 rojas, revertidas con `diff` y mismo shasum):**
+  - M1 `admin-guard.ts` (`8da53e0e…`), sin mirar la lista → «expected true to be false» en «correo SACADO de la lista».
+  - M2 `businesses.ts` (`572dfbb4…`), sin `hasLiveSubscription` → «expected { kind: 'ok', … } to deeply equal
+    { kind: 'subscription_live' }».
+  - M3 `trial.ts` (`c04d3938…`), sin `max(…, now)` → «expected 1789646400000 to be 1792238400000».
+- **QA visual local** (Playwright, base de Docker, link por consola): login, lista en 1280 y 390 px (en 390 pasa a
+  tarjetas, `scrollWidth` 390), ficha, sumar dias, fijar fecha pasada con confirmacion, registro; correo fuera de la
+  lista → 200 sin link; API sin sesion → 401.
+- **`pnpm verify`** (Node 24): typecheck, lint, ui-guard, format, test, build y e2e ok; Neon completo 407 passed /
+  7 rojos por red (`fetch failed`, timeouts de 60 s en suites del comercio que esta spec no toca). Los 7 re-corridos:
+  33/33 verdes.
+- **Pendiente para live:** proyecto de Vercel `admin.checkpass.club` con sus variables (ADR 0135) y la 0070 en PROD.

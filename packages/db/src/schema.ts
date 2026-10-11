@@ -2,6 +2,7 @@
 // file-size budget; every `from "./schema"` import resolves here unchanged.
 export * from "./schema/_schemas";
 export * from "./schema/auth";
+export * from "./schema/platform-auth";
 export * from "./schema/auth-start";
 export * from "./schema/business";
 export * from "./schema/membership";

@@ -139,7 +139,7 @@ describe.skipIf(!integrationEnabled)(
         .where(where);
       const sweep = () => runBillingSweep(new Date(), [seed.business.id]);
       expect(await sweep()).toEqual({ paused: 1, resumed: 0 });
-      // `/extender-prueba`: solo mueve `trial_ends_at`.
+      // El panel de plataforma (spec 0190): solo mueve `trial_ends_at`.
       await getDb()
         .update(subscriptions)
         .set({ trialEndsAt: new Date(Date.now() + 7 * 86_400_000) })

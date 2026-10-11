@@ -8,7 +8,7 @@ import { syncCampaignsWithAccess } from "./plan-brake";
 /**
  * Spec 0189 §D4 — EL BARRIDO DIARIO DE COBRO (`/api/internal/billing-sweep`). Vencer la prueba
  * no dispara ningún evento: sin esto, las campañas activas de un negocio que perdió el acceso
- * seguirían enviando. Y al revés, una prueba EXTENDIDA a mano (skill `/extender-prueba`) no
+ * seguirían enviando. Y al revés, una prueba EXTENDIDA desde el panel de plataforma (spec 0190) no
  * pasa por el webhook: el barrido es lo que le devuelve las campañas.
  *
  * Dos pasos:
