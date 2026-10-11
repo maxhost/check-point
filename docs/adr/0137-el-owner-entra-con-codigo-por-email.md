@@ -28,13 +28,16 @@ resumen: El owner entra al panel con un CODIGO de 6 digitos que vence en 10 minu
    (`verify-email`) siguen mandando link magico. Owner: «Solo entrar».
 3. Tecnico (Claude): el codigo lo emite y verifica el plugin `emailOTP` de better-auth (1.7.6) **solo por
    `auth.api.*`** desde rutas propias; sus 9 rutas HTTP van a `disabledPaths` (gotcha del repo: un plugin agrega
-   superficie HTTP). 5 intentos por codigo; el codigo se guarda hasheado; pedir uno nuevo anula el anterior. Los
+   superficie HTTP). 5 intentos por codigo y 10 equivocados por dia por email; el codigo se guarda hasheado; pedir uno nuevo anula el anterior. Los
    limites de pedido son los de hoy (`START_RATE_LIMITS`: 20/h por IP, 5/h y 10/dia por email).
 
 ## Consecuencias
 
-- Adivinar un codigo: 5 intentos por codigo y como mucho 10 codigos por dia por email → 50 intentos sobre 10⁶
-  combinaciones por dia (5 en 100.000).
+- Adivinar un codigo: 5 intentos por codigo y, ademas, **10 codigos equivocados por dia por email** (owner
+  2026-10-11, al ver que 50 por dia durante un año acumulaban casi 2 %): como mucho 3.650 intentos por año sobre 10⁶
+  combinaciones (0,37 %). Cada codigo pedido le llega al owner, asi que un ataque se ve.
+- Costo del tope: quien conozca el email del owner puede dejarlo sin entrar al panel 24 h tipeando 10 codigos
+  equivocados (el staff sigue entrando). Aceptado en la etapa de pruebas.
 - El login funciona igual en computadora, Android y iPhone, con o sin la PWA instalada.
 - El link magico sigue vivo para el alta y la verificacion: el plugin `magicLink` y `GET /api/merchant/auth/magic-link`
   no se tocan.

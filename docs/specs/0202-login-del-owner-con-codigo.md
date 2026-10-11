@@ -2,7 +2,7 @@
 spec: 0202
 fecha: 2026-10-11
 estado: cerrada
-resumen: El owner entra al panel con un codigo de 6 digitos por email (vence en 10 min, 5 intentos) en vez de link magico, para poder entrar desde la PWA instalada en iPhone. Solo el login; alta y verificacion siguen con link.
+resumen: El owner entra al panel con un codigo de 6 digitos por email (vence en 10 min, 5 intentos por codigo, 10 fallidos por dia por email) en vez de link magico, para poder entrar desde la PWA instalada en iPhone. Solo el login; alta y verificacion siguen con link.
 disjunta: si
 archivos: apps/merchant/src/server/auth.ts, apps/merchant/src/server/email/login-code-email.ts, apps/merchant/src/server/merchant-login.ts, apps/merchant/src/app/api/merchant/auth/login/route.ts, apps/merchant/src/app/api/merchant/auth/login/verify/route.ts, apps/merchant/src/app/api/merchant/auth/magic-link/route.ts, tests de esas rutas; UI (GPT): onboarding/_components/account-step.tsx y onboarding/_lib/onboarding-api.ts
 ---
@@ -72,8 +72,14 @@ auth_unavailable` (mensaje: «No pudimos enviar el código. Intenta de nuevo.»)
 Cuerpo `{ email: string, code: string }`.
 
 1. `normalizeEmail(email)`; `code` tiene que ser exactamente `/^\d{6}$/` despues de `trim()`.
-2. `auth.api.signInEmailOTP({ body: { email, otp: code }, headers, asResponse: true })`.
-3. Con 200 y `set-cookie`: mismo corte que el link — negocio `closed` → borrar las sesiones del usuario y responder
+2. **Tope de fallidos (owner 2026-10-11):** si el email tiene **10 o mas** filas en `merchant_auth.verification` con
+   `identifier = 'login-code-failure-' || email` y `expires_at > now()` → `429 too_many_failures`, **sin llamar al
+   plugin** (tampoco un codigo correcto entra). Cada respuesta `code_incorrect` inserta una de esas filas con
+   `expires_at = now() + interval '24 hours'` (ventana movil de 24 h). Se usa la tabla generica de verificaciones con
+   un prefijo propio para no necesitar migracion; el prefijo no choca con los de better-auth (`sign-in-otp-`, tokens
+   del link). Con esto el maximo es 10 intentos por dia por cuenta: 3.650 por año sobre 10⁶ (0,37 %).
+3. `auth.api.signInEmailOTP({ body: { email, otp: code }, headers, asResponse: true })`.
+4. Con 200 y `set-cookie`: mismo corte que el link — negocio `closed` → borrar las sesiones del usuario y responder
    403; sin negocio → destino `/es/business/onboarding`; si no → `/backoffice`. Esa logica (`verifiedUserId`,
    `businessStatus`) se mueve de `magic-link/route.ts` a `server/merchant-login.ts` y la usan las dos rutas.
 
@@ -87,6 +93,7 @@ Respuestas (JSON; la cookie viaja en el 200):
 | 400 | `invalid_code` | el codigo no son 6 digitos | «El código tiene 6 números.» |
 | 400 | `code_incorrect` | codigo equivocado, o no hay codigo para ese email (plugin `INVALID_OTP`) | «El código no es correcto.» |
 | 400 | `code_expired` | vencido (`OTP_EXPIRED`) o 5 intentos gastados (`TOO_MANY_ATTEMPTS`, 403 del plugin) | «El código venció. Pedí uno nuevo.» |
+| 429 | `too_many_failures` | 10 codigos equivocados para ese email en las ultimas 24 h | «Demasiados intentos. Probá de nuevo mañana.» |
 | 403 | `business_closed` | negocio cerrado; sesion revocada | «Este negocio está cerrado.» |
 | 503 | `auth_unavailable` | cualquier otro error | «No pudimos verificar el código. Intenta de nuevo.» |
 
@@ -95,7 +102,7 @@ El mapeo del error del plugin se hace por su `code` (`EMAIL_OTP_ERROR_CODES` de 
 **Para la UI (GPT):** despues de un 200 de la D2, la pantalla pasa a «Te mandamos un código a {email}»: un campo de
 6 digitos con `inputMode="numeric"` y `autoComplete="one-time-code"`, boton «Entrar», «Reenviar código» (vuelve a
 llamar a la D2) y «Usar otro email». Con 200 de la D4: `window.location.assign(destination)`. `code_expired` muestra
-el mensaje y deja reenviar. Hoy el paso es `MagicLinkState` en `account-step.tsx`; la funcion nueva en
+el mensaje y deja reenviar; `too_many_failures` muestra el mensaje y no deja reenviar. Hoy el paso es `MagicLinkState` en `account-step.tsx`; la funcion nueva en
 `onboarding-api.ts` es `verifyMerchantLoginCode(email, code)`.
 
 ## Archivos
@@ -128,24 +135,31 @@ el mensaje y deja reenviar. Hoy el paso es `MagicLinkState` en `account-step.tsx
   - vencido (fila con `expires_at` en el pasado) → `code_expired`;
   - pedir dos veces → el primer codigo da `code_incorrect` y el segundo entra;
   - negocio `closed` → 403 `business_closed` y 0 filas en `merchant_auth.session` para ese usuario;
-  - `merchant_auth.verification.value` no contiene el codigo en claro.
+  - `merchant_auth.verification.value` no contiene el codigo en claro;
+  - 10 codigos equivocados (pidiendo codigos nuevos en el medio) → el siguiente intento, aun con el codigo correcto,
+    da `429 too_many_failures`; con esas filas movidas a `expires_at` en el pasado, el codigo correcto entra.
 - [ ] Las suites del link siguen verdes: `tools/neon-test.sh src/server/magic-link.neon.integration.test.ts` y
       `src/server/magic-link-business-closed.neon.integration.test.ts`.
 - [ ] `pnpm --filter ./apps/merchant exec tsc --noEmit -p .` y eslint de los archivos tocados, exit 0, Node 24.
 - [ ] `rg -n MUTATION apps tools` → vacio.
 - [ ] QA del owner con la UI de GPT: entrar desde la PWA instalada en iPhone con el codigo.
 
-## Mutaciones — presupuesto: 3. Clase: los plausibles
+## Mutaciones — presupuesto: 4. Clase: los plausibles
 
 | # | Mutacion | Oraculo que tiene que ponerse ROJO |
 |---|---|---|
 | 1 | Sacar `/sign-in/email-otp` de `disabledPaths` | `merchant-auth-disabled-paths.test.ts` |
 | 2 | No borrar el codigo anterior en la D2 | «pedir dos veces → el primero da `code_incorrect`» |
 | 3 | Saltear el corte `closed` en la D4 | «negocio `closed` → 403 y 0 sesiones» |
+| 4 | Chequear el tope de fallidos DESPUES de llamar al plugin | «10 equivocados → el correcto da 429» |
 
 **Protocolo:** skill `protocolo-de-verificacion`. De a una, con bitacora en `docs/TASKS.md` y revertidas con `diff`.
 
 ## Declarado AFUERA (sin oraculo, a proposito)
+
+- **El tope de fallidos permite bloquear al owner un dia**: quien conozca su email puede tipear 10 codigos
+  equivocados y dejarlo sin entrar al panel por 24 h (el staff sigue entrando con PIN). Es el costo de cualquier tope
+  por cuenta; contarlo por IP no protege porque las IP se rotan. Se acepta en la etapa de pruebas.
 
 - **Sin limite por IP en la verificacion.** Lo acota el plugin: 5 intentos por codigo y, por email, 10 codigos por
   dia. Probar muchos emails desde una IP necesita pedir codigos, y eso ya tiene 20/h por IP.
