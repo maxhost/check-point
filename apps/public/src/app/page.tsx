@@ -1,25 +1,33 @@
+import {
+  ArrowRight,
+  ArrowUpRight,
+  Check,
+  Clock,
+  Gift,
+  Group,
+} from "iconoir-react";
 import type { Metadata } from "next";
 import { BrandMark } from "./brand-mark";
 import {
   DashboardPreview,
   HeroPreview,
+  LoyaltyJourney,
   NetworkPreview,
 } from "./negocios/preview";
 import { ClosingSections, LandingFooter } from "./negocios/closing-sections";
-import { CampaignSection } from "./negocios/campaign-section";
 import { onboardingUrl, siteUrl } from "./site-config";
 import "./negocios/negocios.css";
 
 export const metadata: Metadata = {
-  title: "Red de fidelización para comercios en Cuenca",
+  title: "Fidelización, marketing y punto de venta | CheckPass Club",
   description:
-    "Conecta con comercios de Cuenca para que nuevos clientes te descubran. Fidelización en el celular, campañas automáticas y POS con mesas en CheckPass Club.",
+    "Fideliza a tus clientes, activa campañas automáticas y gestiona pedidos y cobros desde tu celular. CheckPass Club para comercios en Cuenca.",
   alternates: { canonical: "/" },
   openGraph: {
     type: "website",
     locale: "es_EC",
     url: siteUrl,
-    title: "CheckPass Club | Más clientes nuevos, más razones para volver",
+    title: "CheckPass Club | Atrae nuevos clientes y dales motivos para volver",
     description:
       "Una red de comercios en Cuenca, fidelización, campañas y POS para tu negocio local.",
     siteName: "CheckPass Club",
@@ -28,7 +36,15 @@ export const metadata: Metadata = {
 };
 
 function Arrow({ diagonal = false }: { diagonal?: boolean }) {
-  return <span aria-hidden="true">{diagonal ? "↗" : "→"}</span>;
+  return (
+    <span aria-hidden="true">
+      {diagonal ? (
+        <ArrowUpRight className="landing-icon" />
+      ) : (
+        <ArrowRight className="landing-icon" />
+      )}
+    </span>
+  );
 }
 
 function SignupLink({
@@ -52,6 +68,14 @@ export default function MerchantLandingPage() {
   const structuredData = {
     "@context": "https://schema.org",
     "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": `${siteUrl}/#website`,
+        name: "CheckPass Club",
+        url: siteUrl,
+        inLanguage: "es-EC",
+        publisher: { "@id": `${siteUrl}/#organization` },
+      },
       {
         "@type": "Organization",
         "@id": `${siteUrl}/#organization`,
@@ -103,7 +127,7 @@ export default function MerchantLandingPage() {
           </a>
           <nav className="desktop-nav" aria-label="Navegación principal">
             <a href="/explorar">Explorar</a>
-            <a href="#como-funciona">Cómo funciona</a>
+            <a href="#como-funciona">Cómo empezar</a>
             <a href="#red">La red</a>
             <a href="#planes">Planes</a>
             <a href="#preguntas">Preguntas</a>
@@ -117,26 +141,27 @@ export default function MerchantLandingPage() {
           <section className="hero" aria-labelledby="hero-title">
             <div className="hero-copy">
               <span className="eyebrow">
-                <span className="eyebrow-line" /> RED DE COMERCIOS · CUENCA
+                <span className="eyebrow-line" /> PARA COMERCIOS LOCALES
               </span>
               <h1 id="hero-title">
-                Más clientes nuevos. Más razones para <em>volver.</em>
+                Atrae nuevos clientes y dales motivos para <em>volver.</em>
               </h1>
               <p className="hero-lede">
-                Las herramientas de una gran cadena, ahora para tu negocio:
-                fidelización en el celular, campañas que trabajan solas y una
-                caja con mesas. Además, una red de comercios en Cuenca que ayuda
-                a nuevos clientes a descubrirte.
+                Un programa de fidelización, marketing automático y punto de
+                venta para tu negocio. Reconoce a quienes te eligen, invita a
+                nuevos clientes y gestiona pedidos y cobros desde tu celular.
               </p>
               <div className="hero-actions">
                 <SignupLink label="Pruébalo gratis 3 meses" />
                 <a className="text-link" href="#como-funciona">
-                  Descubre cómo funciona <Arrow />
+                  Cómo empezar <Arrow />
                 </a>
               </div>
               <div className="hero-assurance">
-                <span className="assurance-icon">✓</span> Todo incluido durante
-                la prueba · Cuenca, Ecuador
+                <span className="assurance-icon">
+                  <Check className="landing-icon" aria-hidden="true" />
+                </span>{" "}
+                Todo incluido durante la prueba · Empezamos en Cuenca
               </div>
             </div>
             <HeroPreview />
@@ -146,9 +171,55 @@ export default function MerchantLandingPage() {
             className="ribbon"
             aria-label="Lo que puedes hacer con CheckPass"
           >
-            <div>Que te descubran</div>
-            <div>Que tus clientes vuelvan</div>
-            <div>Que tu negocio atienda mejor</div>
+            <div className="ribbon-benefit">
+              <Group className="ribbon-icon" aria-hidden="true" />
+              <p>
+                <strong>Atrae nuevos clientes</strong>
+                <span>
+                  Llega a personas que viven y compran cerca de tu negocio.
+                </span>
+              </p>
+            </div>
+            <div className="ribbon-benefit">
+              <Gift className="ribbon-icon" aria-hidden="true" />
+              <p>
+                <strong>Motívalos a volver</strong>
+                <span>Premia sus compras para que vuelvan a elegirte.</span>
+              </p>
+            </div>
+            <div className="ribbon-benefit">
+              <Clock className="ribbon-icon" aria-hidden="true" />
+              <p>
+                <strong>Ahorra tiempo al atender</strong>
+                <span>
+                  Organiza pedidos y cobros desde tu celular y dedica más tiempo
+                  a tus clientes.
+                </span>
+              </p>
+            </div>
+          </section>
+
+          <section
+            className="section loyalty-section"
+            id="programa"
+            aria-labelledby="loyalty-title"
+          >
+            <div className="section-heading">
+              <span className="kicker">RECONOCE A QUIENES TE ELIGEN</span>
+              <h2 id="loyalty-title">
+                Dales un motivo para volver a <em>elegirte.</em>
+              </h2>
+              <p>
+                Tus clientes se unen con el QR de tu local, acumulan puntos o
+                sellos y canjean las recompensas que tú eliges.
+              </p>
+            </div>
+            <LoyaltyJourney />
+            <div className="section-more">
+              <a className="text-link" href="/programa-de-fidelizacion">
+                Descubre el programa de recompensas para tu negocio <Arrow />
+              </a>
+            </div>
           </section>
 
           <section
@@ -158,55 +229,69 @@ export default function MerchantLandingPage() {
           >
             <div className="feature-layout">
               <div className="feature-copy">
-                <span className="kicker">TU BARRIO TAMBIÉN TE RECOMIENDA</span>
+                <span className="kicker">QUE TU BARRIO TE DESCUBRA</span>
                 <h2 id="network-title">
-                  Tu próximo cliente ya compra <em>cerca de ti.</em>
+                  ¿Cuántas personas compran cerca de ti y todavía{" "}
+                  <em>no conocen tu negocio?</em>
                 </h2>
                 <p className="feature-lede">
-                  Tu tarjeta premia a quienes ya te conocen. La red ayuda a que
-                  te descubran quienes todavía no han entrado a tu local.
+                  Llega al teléfono de tus clientes y de quienes compran cerca.
+                  Activa campañas automáticas con beneficios que los inviten a
+                  visitarte.
                 </p>
                 <ul className="feature-list">
                   <li>
-                    <span aria-hidden="true">↗</span>
+                    <span aria-hidden="true">
+                      <ArrowUpRight className="landing-icon" />
+                    </span>
                     <div>
-                      <strong>Otros comercios abren la puerta</strong>
+                      <strong>Haz que tus clientes vuelvan</strong>
                       <p>
-                        Después de comprar en un comercio de la red, un cliente
-                        puede recibir un regalo sorpresa tuyo.
+                        Los clientes inscritos en tu programa reciben avisos en
+                        su teléfono con los regalos y beneficios que tú eliges.
                       </p>
                     </div>
                   </li>
                   <li>
-                    <span aria-hidden="true">↗</span>
+                    <span aria-hidden="true">
+                      <ArrowUpRight className="landing-icon" />
+                    </span>
                     <div>
-                      <strong>Un vecino, un nuevo descubrimiento</strong>
+                      <strong>Actívalo una vez. CheckPass se encarga.</strong>
                       <p>
-                        La venta cruzada conecta negocios de rubros distintos a
-                        menos de 2 km. Tú defines el beneficio que ofreces.
+                        Elige una campaña para dar la bienvenida, invitar a
+                        quienes llevan tiempo sin venir o promocionar tus horas
+                        más tranquilas. Los avisos se envían automáticamente.
                       </p>
                     </div>
                   </li>
                   <li>
-                    <span aria-hidden="true">↗</span>
+                    <span aria-hidden="true">
+                      <ArrowUpRight className="landing-icon" />
+                    </span>
                     <div>
-                      <strong>Tu negocio tiene un lugar en la ciudad</strong>
+                      <strong>Invita a nuevos clientes</strong>
                       <p>
-                        Una ficha pública para mostrar lo que haces y ayudarte a
-                        dar el primer paso con nuevos clientes.
+                        Con la campaña de Venta cruzada, una persona que compra
+                        en otro comercio cercano puede recibir un regalo tuyo y
+                        un motivo para visitar tu local.
                       </p>
                     </div>
                   </li>
                 </ul>
-                <a className="text-link feature-link" href="/explorar">
-                  Explora la red en Cuenca <Arrow />
-                </a>
               </div>
               <NetworkPreview />
             </div>
+            <div className="start-actions">
+              <SignupLink label="Pruébalo gratis 3 meses" />
+              <p>Todo incluido durante la prueba.</p>
+            </div>
+            <div className="section-more section-more-left">
+              <a className="text-link" href="/marketing-para-comercios">
+                Descubre cómo funciona el marketing para tu negocio <Arrow />
+              </a>
+            </div>
           </section>
-
-          <CampaignSection />
 
           <section
             className="feature-section"
@@ -215,49 +300,66 @@ export default function MerchantLandingPage() {
           >
             <div className="feature-layout">
               <div className="feature-copy">
-                <span className="kicker">DEL MOSTRADOR A LA MESA</span>
+                <span className="kicker">MENOS PASOS PARA ATENDER</span>
                 <h2 id="benefits-title">
-                  Atiende con orden. Cobra con <em>confianza.</em>
+                  Dedica menos tiempo a cobrar y más a <em>tus clientes.</em>
                 </h2>
                 <p className="feature-lede">
-                  Menos pasos para tu equipo. Una experiencia más profesional
-                  para quien se sienta a tu mesa o compra en el mostrador.
+                  Un sistema de punto de venta en tu teléfono para gestionar tu
+                  catálogo, tomar pedidos y cobrar. Con el programa de
+                  fidelización integrado, también puedes reconocer a tus
+                  clientes y premiarlos al atenderlos.
                 </p>
                 <ul className="feature-list">
                   <li>
-                    <span aria-hidden="true">↗</span>
+                    <span aria-hidden="true">
+                      <ArrowUpRight className="landing-icon" />
+                    </span>
                     <div>
-                      <strong>Una caja que entiende tus mesas</strong>
+                      <strong>Tu catálogo listo con ayuda de IA</strong>
                       <p>
-                        Organiza órdenes por mesa, escanea el pase del cliente y
-                        cobra. Imprime su ticket por Bluetooth desde un
-                        dispositivo compatible.
+                        Carga una foto o un PDF de tu menú y usa la IA para
+                        preparar tu catálogo de productos.
                       </p>
                     </div>
                   </li>
                   <li>
-                    <span aria-hidden="true">↗</span>
+                    <span aria-hidden="true">
+                      <ArrowUpRight className="landing-icon" />
+                    </span>
                     <div>
-                      <strong>Premiar también es parte de atender</strong>
+                      <strong>De la mesa al cobro, desde tu teléfono</strong>
                       <p>
-                        Desde el mostrador, suma puntos o sellos, canjea premios
-                        y valida cupones.
+                        Crea y administra las mesas de tu local, toma pedidos y
+                        cobra. También puedes imprimir tickets por Bluetooth con
+                        una impresora y un dispositivo compatibles.
                       </p>
                     </div>
                   </li>
                   <li>
-                    <span aria-hidden="true">↗</span>
+                    <span aria-hidden="true">
+                      <ArrowUpRight className="landing-icon" />
+                    </span>
                     <div>
-                      <strong>Tu menú listo, tu equipo preparado</strong>
+                      <strong>Cobra y recompensa en el mismo lugar</strong>
                       <p>
-                        Carga el catálogo con IA desde una foto o un PDF. Asigna
-                        PIN y permisos al personal y organiza tus locales.
+                        Escanea el pase para identificar al cliente, suma puntos
+                        o sellos por su compra y canjea sus premios.
                       </p>
                     </div>
                   </li>
                 </ul>
               </div>
               <DashboardPreview />
+            </div>
+            <div className="start-actions">
+              <SignupLink label="Pruébalo gratis 3 meses" />
+              <p>Todo incluido durante la prueba.</p>
+            </div>
+            <div className="section-more section-more-left">
+              <a className="text-link" href="/punto-de-venta">
+                Descubre el punto de venta para tu negocio <Arrow />
+              </a>
             </div>
           </section>
 
@@ -267,83 +369,38 @@ export default function MerchantLandingPage() {
             aria-labelledby="how-title"
           >
             <div className="section-heading">
-              <span className="kicker">ASÍ EMPIEZA TU CLUB</span>
+              <span className="kicker">EMPIEZA CON TU NEGOCIO</span>
               <h2 id="how-title">
-                Tú haces lo tuyo. Nosotros te ayudamos a <em>conectar.</em>
+                Prepara tu negocio e invita a <em>tu primer cliente.</em>
               </h2>
               <p>
-                Empieza en tu local y crece con tu ciudad. No necesitas un
-                equipo de marketing para dar el primer paso.
+                Configura lo que necesitas para empezar. Puedes sumar las demás
+                herramientas a medida que las necesites.
               </p>
             </div>
             <div className="steps">
               <article>
                 <span className="step-number">01</span>
-                <h3>Prepara tu negocio</h3>
+                <h3>Prepara tu local</h3>
                 <p>
-                  Elige puntos o sellos, define tu premio y dale a tu tarjeta el
-                  estilo de tu marca.
+                  Completa los datos de tu negocio. Añade productos y mesas si
+                  vas a usar el punto de venta.
                 </p>
               </article>
               <article>
                 <span className="step-number">02</span>
-                <h3>Invita con tu QR</h3>
-                <p>
-                  Coloca el afiche en tu local. Tus clientes escanean, se unen y
-                  llevan su pase en el celular.
-                </p>
+                <h3>Activa tu programa</h3>
+                <p>Elige puntos o sellos y el premio que ofrecerás.</p>
               </article>
               <article>
                 <span className="step-number">03</span>
-                <h3>Activa la red y tus campañas</h3>
-                <p>
-                  Enciende los beneficios que encajan con tu negocio. Consulta
-                  tus clientes y su etapa: nuevos, frecuentes o en riesgo.
-                </p>
+                <h3>Invita a tu primer cliente</h3>
+                <p>Comparte el QR de tu local para que se una a tu programa.</p>
               </article>
             </div>
-          </section>
-
-          <section
-            className="local-section customer-section"
-            aria-labelledby="customer-title"
-          >
-            <div
-              className="customer-pass"
-              aria-label="Ejemplo de pase del cliente"
-            >
-              <span className="kicker">UN PASE · MUCHOS DESCUBRIMIENTOS</span>
-              <strong>Tu ciudad, en tu bolsillo.</strong>
-              <div className="customer-pass-row">
-                <span>Café de la esquina</span>
-                <span>● ● ● ○ ○ ○</span>
-              </div>
-              <div className="customer-pass-row">
-                <span>Tu tienda favorita</span>
-                <span>120 puntos</span>
-              </div>
-              <div className="customer-pass-gift">
-                Un regalo sorpresa te espera en un comercio vecino.
-              </div>
-              <small>
-                Ejemplo ilustrativo · cada comercio tiene su propio programa
-              </small>
-            </div>
-            <div>
-              <span className="kicker">FÁCIL DE QUERER, FÁCIL DE USAR</span>
-              <h2 id="customer-title">
-                Sus lugares favoritos, en una sola <em>tarjeta.</em>
-              </h2>
-              <p>
-                Sin descargar una app. Tus clientes llevan su pase en Apple
-                Wallet, Google Wallet o el navegador y reciben avisos push con
-                motivos para volver.
-              </p>
-              <p>
-                Además, pueden descubrir regalos sorpresa de comercios vecinos.
-                Los puntos y sellos de cada negocio se acumulan y se canjean
-                solo en ese negocio.
-              </p>
+            <div className="start-actions">
+              <SignupLink label="Pruébalo gratis 3 meses" />
+              <p>Todo incluido durante la prueba.</p>
             </div>
           </section>
 

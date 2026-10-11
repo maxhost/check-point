@@ -4,6 +4,7 @@ import "./wallet.css";
 
 export const metadata: Metadata = {
   title: "CheckPass Club",
+  robots: { index: false, follow: false },
   icons: {
     icon: [
       {

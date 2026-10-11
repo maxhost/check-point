@@ -3,7 +3,219 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
+## ⇥ 0192 — REVISIÓN UX APLICADA, LOCAL (2026-10-10)
+
+Owner pidió agente independiente y aprobó recomendaciones. Informe antes en
+/private/tmp/0192-ux-review.md. Hero sustituye NetworkPreview por una invitación
+compacta. Campañas con condición→beneficio y párrafos reducidos; estilos propios
+marketing.css, sin plan-card/plan-grid. Eyebrow «Campañas automáticas para tu
+negocio», títulos más concretos, Impulso compacto, pasos/FAQ/CTA conservados.
+Componente compartido NetworkPreview y landing intactos.
+
+Verificación real: typecheck public/lint/formato/diff0. Agente revisó Chromium3003
+390/1440 claro/oscuro: HTTP200,H1 único,canonical/anclas, sin overflow/pageerror.
+Hero desktop886→609px; móvil1427→848px. Gráfico745→260pxdesktop,757→201mobile;
+flows114pxdesktop,110/134mobile, labels16px. JSON /private/tmp/0192-ux-after.json.
+Capturas /private/tmp/0192-after-{hero,campaigns}-{390,1440}-{light,dark}.png;
+root inspeccionó hero escritorio claro y campañas móvil claro. Informe posterior
+/private/tmp/0192-ux-after.md. QA owner pendiente; sin suite/verify, commit/merge/push.
+
+## ⇥ 0191 — CONSISTENCIA CON LANDING COMPROBADA (2026-10-10)
+
+Owner pide pasada de colores/tipografía/tamaños respecto a landing. Medición
+Chromium de estilos calculados en ambas rutas390/1440 claro/oscuro: hero, Arial,
+body, pesos/interlineados, CTA/enlaces, labels y header ya coincidían. Diferencias
+corregidas en programa.css: títulos de split56/36→escala heredada65/41; radios de
+paneles12 como POS landing; tarjetas1.7 de interlineado; elimina verde oscuro propio
+#244638 y usa color-mix naranja10%/paper que ya usa landing. Variables base iguales.
+Selectores huérfanos de notas/encabezados retirados. Pase ampliado aprobado conservado;
+transición compacta y cifras de cálculo mantienen jerarquía propia intencional.
+
+Verificación final real: /tmp/0191-consistency-final.json, 4 comparaciones pares
+(claro/oscuro390/1440) sin diferencias en tokens/h1/h2 principales/body/CTA/link/
+kicker/header, HTTP200 y sin overflow/pageerror. Capturas completas ambas rutas
+/tmp/0191-consistency-{landing,program}-{390,1440}-{light,dark}.png. Vistas landing
+escritorio claro y programa escritorio claro/móvil oscuro. Typecheck public/lint/
+diff0; Prettier de CSS/spec. Sin suite/verify ni commit/merge/push, QAowner pendiente.
+
+Último visual atención aprobado: solo paseQR, 300pxdesktop/260mobile, logo64 y
+QR156/128. Escena de productos/leyendas retirada; también quitada leyenda de cuenta.
+Cálculo30→3→27, modalidades6sellos→café/30puntos→café. Server3003 activo y responde.
+
+## ⇥ 0191 — ESCENA DE ATENCIÓN EN PRUEBA (2026-10-10)
+
+Owner rechazó vista simplificada de Mostrador; aprobó escena con menos texto:
+«Sus favoritos, a mano», paseQR→café y empanada, frase «Identifica al cliente y
+encuentra lo que suele pedir». Aplicada con HTML/CSS y SVG Iconoir. Copy de la
+sección conservado. Supersede visual anterior, sin capturas ficticias de producto.
+
+Checks reales Node24: typecheck public/lint/diff0; Prettier aplicado. Localhost3003
+HTTP200, H1/canonical/anclas, sin overflow/pageerror390/1440. Captura móvil de
+escena vista /tmp/0191-history-390.png; también generada1440. QA owner pendiente.
+Sin suite/verify ni commit/merge/push. Servidor público3003 sigue activo.
+
+## ⇥ 0191 — ATENCIÓN CON UI DE HABITUALES, LOCAL (2026-10-10)
+
+Owner pide visual coherente con atención personalizada. Aplicada ilustración
+simplificada de Mostrador: cliente identificado, Habituales de este cliente en
+bloque destacado superior, resto del catálogo debajo. Basada en sale-forms.tsx
+(sección habitual) y CSS merchant existente, sin tocar merchant/kit. No es captura
+real ni promesa de habituales en editor POS, que todavía pasa lista vacía.
+Investigación NN/G imagery-in-visual-design prioriza visuales informativos.
+
+Localhost3003 fue reiniciado por pedido explícito owner: antiguoPID67362 no liberó
+lock con TERM, cerrado con KILL; Next webpack actual sesion88478 activo. HTTP200.
+Typecheck public/lint/diff0 y formato. QA390/1440 en3003: HTTP200, H1/canonical,
+anclas, sin overflow/pageerror. Capturas /tmp/0191-history-{390,1440}.png vistas.
+
+Cambios iterativos previos conservados: leyendas retiradas, cálculo30→3→27 sin
+porcentajes; reglas simplificadas6sellos→café y30puntos→café; encabezado hero
+retirado. Sin suite/verify ni commit/merge/push. Capturas reales demo y QAowner
+pendientes. Representaciones son ilustraciones, no clientes/operaciones reales.
+
+## ⇥ 0191 — HERO EN CUADRÍCULA, LOCAL (2026-10-10)
+
+Owner pidió retirar nota del hero, más separación entre encabezado y título, y
+texto mayor o foto/cuadrícula con criterio UX. Elegida cuadrícula informativa
+con NN/G imagery-in-visual-design: QR/entrada protagonista, acumulación y canje.
+Encabezado «Lo que antes quedaba en un cartón / Una historia que puedes seguir»
+con gap18 y título28–36; tarjetas con títulos23–29, texto16/1.65 e iconos mayores.
+Nota inferior retirada. Sin foto decorativa ni métricas inventadas.
+
+Typecheck public/lint/diff0 y Prettier aplicados. Copia temporal3013 actualizada:
+HTTP200, H1 único/canonical/anclas, sin overflow/errores390/1440; capturas hero
+/tmp/0191-hero-{390,1440}.png vistas. Diseño legible y espacio aprovechado con
+bloque grande superior y dos inferiores; móvil en columna. Server3003 sigue
+agotando curl10s0bytes, por tanto owner puede estar viendo versión anterior.
+Sin reiniciar3003, sin suite/verify, commit/merge/push. Servidor QA3013 detenido.
+
+## ⇥ 0191 — REVISIÓN UX APLICADA, LOCAL (2026-10-10)
+
+Owner pidió agente UX/UI independiente y aprobó sus propuestas. Informe en
+/private/tmp/0191-ux-review.md; auditoría previa sustentada en código e investigación,
+sin render porque localhost3003 agotó espera. Implementación: hero nombra puntos y
+sellos; transición breve; reglas con ejemplos visuales en dos columnas y cashback
+secundario; cálculo $50→$5 con 10% destacado; historial ilustrativo y diagrama de
+una cuenta con dos programas/saldos separados. Títulos concretos, sin filas de
+3 tarjetas. CSS propio programa.css, paleta adaptada a modo oscuro. Conservadas
+las dos eliminaciones de copy pedidas por owner. Sin capturas demo verificables:
+esquemas explícitamente ilustrativos, no supuestas capturas reales.
+
+Checks reales Node24: typecheck public, lint de página, Prettier y diff --check 0.
+Localhost3003 volvió a agotar 30s. Para QA, copia exacta temporal de app en
+/private/tmp/0191-public-qa con Next webpack3013, sin reiniciar servidor compartido.
+HTTP200, H1 único, canonical propio, sin anclas rotas, overflow ni errores de página
+390/1440 claro y oscuro. Capturas /tmp/product-programa-de-fidelizacion-{390,1440}.png
+inspeccionadas, además móvil oscuro; diagramas y cifras legibles, composición vista.
+QA owner en entorno habitual3003 y capturas reales demo pendientes. Sin suite ni
+verify global; sin commit/merge/push. Material actual conserva scope Mostrador para
+productos habituales y previsión consumo/precio de venta, no margen por costos.
+
+## ⇥ 0191 — REENFOQUE APROBADO, LOCAL (2026-10-10)
+
+Owner aprobó sustituir la repetición de landing por origen para comercios de
+barrio, actividad registrada, reglas de sellos/puntos, previsión antes de activar,
+historial y una cuenta común con programas/saldos/datos separados. Aplicado en
+programa-de-fidelizacion/page.tsx; retirados LoyaltyJourney y pasos de preparación
+repetidos. Metadatos propios actualizados; CTA y precios conservados. Ejemplos
+explícitamente ilustrativos, sin capturas ficticias de producto ni clientes reales.
+Cashback Próximamente. Productos habituales mencionados en Mostrador, donde
+existen; no prometidos durante edición de pedidos POS.
+
+Previsión aprobada: consumo necesario frente a precio de venta del premio.
+Ejemplo 1 punto/$1, premio $5 por 50 puntos: $50 de consumo, premio equivalente
+al 10%. No llamarlo margen real: faltan costos y gastos. FAQ explica alcance.
+
+Checks reales con Node 24: typecheck public, eslint de página y diff --check en 0;
+Prettier aplicado. Revisión Chromium intentada a 390/1440: sandbox bloqueó el
+inicio; repetida con escalación, navegación agotó 30 s esperando localhost:3003.
+El puerto tiene un proceso escuchando, pero la página no respondió a la sonda.
+No se afirma QA visual nuevo; capturas anteriores pertenecen a la versión previa.
+QA visual owner y capturas reales de demo pendientes. Sin suite ni verify global,
+sin commit, merge ni push; cambios previos del árbol conservados.
+
+## ⇥ 0191–0194 — PÁGINAS DE PRODUCTO Y SEO LOCAL (2026-10-10)
+
+Tres agentes por autorización del owner crearon rutas independientes de fidelización,
+marketing y POS. Root revisó contenido, integró enlaces y sitemap, ajustó footer para
+anclas de raíz y crédito de foto solo en landing. Metadatos de raíz actualizados y
+WebSite añadido. Precios expresamente conservados; cashback Próximamente.
+
+Typecheck public/merchant/consumer y lint afectados en 0. HTTP 200, H1 único,
+canonical propio, anclas válidas, sin errores de página ni overflow en las tres rutas
+a 390/1440 con Chromium. Se inspeccionaron seis capturas /tmp/product-*-{390,1440}.png.
+No se corrió suite de tests ni verify completo para estas páginas informativas.
+
+Noindex aplicado a layouts raíz merchant/consumer; comprobado en HTML local de
+onboarding y raíz consumer. Admin es zona Claude: encargo concreto y siguientes
+pasos en docs/plan-seo-merchant-2026-10-10.md. Noindex global de respuestas no HTML,
+validación producción y retirada de índices siguen pendientes. Sin merge ni push.
+
+Capturas de producto aún por preparar con datos demo, para páginas interiores:
+editor/pase en programa, campañas en marketing, catálogo/mesas/pedido en POS.
+Imagen social pendiente. No hay casos reales: no inventarlos. QA owner pendiente.
+La landing conserva los ajustes iterativos aprobados sin commit aún.
+
 ## ⇥ 0188 (2026-10-10) — LANDING EN DEV, QA LOCAL
+
+Ajustes de copy L0 aprobados por el owner, aplicados localmente sin commit aún:
+hero «Atrae nuevos clientes y dales motivos para volver», eyebrow «PARA COMERCIOS
+LOCALES», descripción en lenguaje concreto y «Empezamos en Cuenca». Franja con
+personas/regalo/reloj: Atrae nuevos clientes, Motívalos a volver y Ahorra tiempo al
+atender, cada uno con la descripción aprobada. Tres columnas en escritorio y los
+tres beneficios visibles en una columna móvil. Por indicación del owner no se
+corren tests para estos ajustes; QA visual en localhost a cargo del owner. La
+aserción existente del título se actualizó mecánicamente, sin ejecutar E2E.
+
+Iconoir aplicado en toda la landing por pedido del owner: franja (Group, Gift,
+Clock), flechas, confirmaciones, listas de planes, plus de FAQ y sellos ilustrados
+(Circle). Dependencia directa iconoir-react 7.11.0 en public, misma versión que
+merchant; lock actualizado sin descargas. Sin SVG de iconos hechos a mano ni
+glifos usados como iconos. Marca y números ilustrativos conservados. Typecheck
+public y lint de componentes en 0; sin E2E ni revisión visual automatizada: owner
+comprueba en localhost. Cambios locales todavía sin commit.
+
+Gráfico de red actualizado según opción aprobada por owner: tres momentos con
+María/peluquería → regalo destacado de café → motivo para visitar tu cafetería.
+Iconoir Scissor/User/Gift/CoffeeCup y flechas; se eliminan rubro, distancia y Cuenca
+del gráfico. Nota explícita de ejemplo ilustrativo y beneficio elegido por negocio.
+QA visual pendiente del owner en localhost; sin E2E para este ajuste.
+
+Owner reemplaza la historia individual por diagrama de convergencia: grupos de
+personas en gimnasio/peluquería/veterinaria → café de bienvenida → tu local.
+Grupos Iconoir arriba, conexiones CSS, regalo central y destino «Nuevas personas
+descubren tu negocio / Más oportunidades de recibir nuevos clientes». Sin métricas
+ni visitas garantizadas. Tres fuentes visibles también en móvil; QA local por owner.
+
+Owner aprueba reordenamiento de contenido L0 sin tests: sección Programa de
+recompensas antes de la red, explicando QR, puntos/sellos y canje de premios.
+La sección de red conserva pregunta y gráfico, integra canal de avisos al teléfono,
+campañas automatizadas y Venta cruzada como ejemplo para atraer nuevos clientes.
+CampaignSection y seis tarjetas retirados de la landing; archivo conservado.
+Texto de futura página del programa ubicado en su propia sección, sin enlace aún.
+Asersión de tarjetas actualizada mecánicamente, sin corrida; QA visual por owner.
+
+Owner pide probar secuencia visual del programa: mismo pase digital con 0, 3 y
+6 sellos, QR ilustrativo Iconoir al unirse y regalo disponible al completar.
+Escenas Se une / Avanza hacia su premio / Disfruta su recompensa conectadas por
+flechas horizontales en escritorio y verticales en móvil. Sustituye los tres
+bloques textuales de fidelización. QA local por owner, sin ejecutar tests.
+
+Último ajuste aprobado: owner descarta tres pases similares. Secuencia simplificada
+con escenas distintas (celular frente a QR, tres sellos grandes, café de recompensa),
+sin tarjetas ni texto pequeño. Título y una frase por escena, Iconoir y flechas.
+QA visual por owner en localhost; sin tests. Los diseños anteriores son históricos.
+
+Ilustración POS sustituida por teléfono central con pedido, mesa, cliente y cobro;
+acompañan catálogo desde foto/PDF con IA, mesas y recompensa +1 sello. Solo SVG
+Iconoir, sin leyendas de ejemplo ni datos reales. Adaptación responsiva de la
+composición. QA visual del owner en localhost, sin tests.
+
+Última propuesta POS aprobada: cuadrícula de cinco bloques de tamaños distintos,
+Pedidos/cobros protagonista, Catálogo IA, Mesas, Fidelización y Tickets. Reemplaza
+composición alrededor del teléfono. Iconoir, poco texto y paleta propia; en móvil
+pedido a ancho completo y cuatro bloques en dos columnas. QA en localhost por
+owner, sin tests ni publicación. Los previews anteriores son históricos.
 
 Trabajo del owner implementado en `84df923`, después de reservar spec cerrada en
 `b101434`. Rama dev; sin merge a main, push, publicación ni cambios de billing.
@@ -952,3 +1164,21 @@ emisor «CheckPass Club», plantilla y `reviewStatus=approved`. Siguiente secuen
 verificación de pase viejo/nuevo y QR/enlace reales, confirmar acceso de publicación del
 emisor en Console y PASS independiente. [Handoff](../handoff-0122-google-wallet-trama-viva-2026-10-01.md)
 y [guía de diseño/publicación](../wallet/google-wallet-design-and-release.md).
+
+Ajuste L0 de landing (2026-10-10): retiradas la sección «FÁCIL DE QUERER, FÁCIL DE USAR» y su ilustración. Selectores existentes actualizados; sin correr tests, conforme a la instrucción del owner para estos ajustes. Revisión en localhost pendiente del owner.
+
+Ajuste L0 aprobado (2026-10-10): el cierre práctico queda en este orden: 01 Prepara tu local, 02 Activa tu programa, 03 Invita a tu primer cliente. Aplicado sin tests; el owner revisa en localhost.
+
+Ajuste L0 aprobado (2026-10-10): encabezado de planes cambiado a «MÁS POSIBILIDADES PARA TU NEGOCIO». Sin tests; revisión en localhost por el owner.
+
+Ajuste L0 aprobado (2026-10-10): título de planes directo, banner de prueba con las tres herramientas y campañas explicadas por beneficio. POS mencionado como herramienta de la plataforma sin asignarlo a un plan: el encargo mantiene esa decisión abierta. Precios sin cambios. Sin tests; revisión del owner en localhost.
+
+Decisión del owner (2026-10-10), aplicada a la comparación de planes: POS, catálogo con IA, mesas, pedidos, Bienvenida, Venta cruzada, push y ficha pública en ambos; puntos y sellos en Conecta; Impulso agrega cashback y todas las campañas avanzadas, sin enumerar campañas pendientes de definir. Locales y precios sin cambios. Push con nota de límites futuros por tipo de cuenta (hoy sin límites); precio referencial con doble asterisco para distinguirlo. Esta decisión reemplaza la restricción de copy sobre cashback del encargo original; no implementa cashback ni cambia contratos de API. Requiere coordinar esa funcionalidad con Claude antes de publicar la promesa. Ajuste L0, sin tests, revisión del owner en localhost.
+
+Ajuste L0 aprobado (2026-10-10): FAQ con «Resuelve tus dudas antes de empezar», sin bajada redundante, nueve preguntas sobre prueba, fin de prueba, uso independiente del programa, app, premios, Venta cruzada, puntos/sellos, equipos y locales. Fin de prueba descrito conforme al ADR 0134 (bloqueo sin suscripción y conservación de datos). Selector de pregunta actualizado; sin tests, revisión del owner en localhost.
+
+Ajuste L0 aprobado (2026-10-10): cierre final «PRUÉBALO EN TU NEGOCIO», título «Empieza hoy. Descubre lo que puedes lograr en tres meses», resumen de fidelización, contacto y ventas con prueba gratuita. CTA de registro conservado. Sin tests; revisión del owner en localhost.
+
+Ajuste L0 aprobado (2026-10-10): CTA de registro «Pruébalo gratis 3 meses» y nota «Todo incluido durante la prueba» añadidos en las secciones de marketing y POS usando SignupLink y start-actions existentes, como en el cierre práctico. Accesos informativos futuros conservados. Sin tests; revisión del owner en localhost.
+
+Ajustes L0 aprobados tras revisión UX (2026-10-10): hero identifica fidelización, marketing y POS; programa explica QR → acumulación → canje; marketing distingue clientes propios y nuevos; planes resumen diferencias, simplifican POS y avisos al teléfono y explican campañas avanzadas; preparación del POS opcional en paso 1; anclas de configuración dicen Cómo empezar. Diseño, precios y mecanismo de cashback conservados. Selectores de copy actualizados; sin tests, conforme a instrucción del owner. Revisión en localhost pendiente.

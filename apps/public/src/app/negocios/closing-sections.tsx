@@ -1,41 +1,66 @@
+import { ArrowRight, ArrowUpRight, Check, Plus } from "iconoir-react";
 import { onboardingUrl } from "../site-config";
 import { BrandMark } from "../brand-mark";
 
 const faqs = [
   {
-    question: "¿Qué pasa al terminar los tres meses de prueba?",
+    question: "¿Qué incluye la prueba gratuita?",
     answer:
-      "La prueba incluye todas las herramientas. Después puedes continuar con Conecta o Impulso, según lo que tu negocio necesite. Los precios y condiciones definitivos se mostrarán antes de contratar.",
+      "Durante tres meses puedes usar todas las herramientas: programa de fidelización, campañas de marketing y punto de venta. Así puedes probarlas con tu equipo y tus clientes.",
   },
   {
-    question: "¿Cómo puede la red traerme nuevos clientes?",
+    question: "¿Qué pasa cuando termina la prueba?",
     answer:
-      "Cuando alguien compra en otro comercio de la red, puede recibir un regalo sorpresa tuyo. La venta cruzada conecta negocios de rubros distintos a menos de 2 km. Tú defines el beneficio; el cliente recibe un motivo para descubrirte.",
+      "Para continuar, elige Conecta o Impulso y contrata tu suscripción. Si no contratas, el acceso a las herramientas queda bloqueado, pero los datos de tu negocio y tus clientes se conservan.",
   },
   {
-    question: "¿Los puntos sirven en otros comercios?",
+    question:
+      "¿Necesito usar el punto de venta para tener mi programa de fidelización?",
     answer:
-      "No. Los puntos, sellos y premios pertenecen al programa de cada negocio y se canjean solo allí. La red conecta a los clientes con regalos sorpresa de otros comercios, sin transferir puntos entre programas.",
+      "No. Puedes usar el mostrador para sumar puntos o sellos y canjear premios, sin gestionar pedidos ni mesas. Activa el punto de venta cuando lo necesites.",
   },
   {
-    question: "¿Mi cliente necesita descargar una app?",
+    question: "¿Mis clientes necesitan descargar una app?",
     answer:
-      "No. Escanea el QR en tu local y se une desde el celular. Puede llevar su pase en Apple Wallet, Google Wallet o el navegador, con sus lugares favoritos en una sola tarjeta.",
+      "No. Escanean el QR de tu local y se unen desde su celular. Pueden guardar su pase en Apple Wallet, Google Wallet o usarlo desde el navegador.",
   },
   {
-    question: "¿Qué necesito para atender e imprimir tickets?",
+    question: "¿Quién decide los premios y beneficios?",
     answer:
-      "Tu equipo puede trabajar desde el navegador con el mostrador o el POS. Para imprimir por Bluetooth necesitas una impresora y un dispositivo compatibles. El POS permite organizar órdenes por mesa, identificar al cliente con su pase y cobrar.",
+      "Tú eliges las recompensas de tu programa y los beneficios que ofreces en tus campañas. Por ejemplo, un café al completar seis visitas o un regalo de bienvenida.",
   },
   {
-    question: "¿Dónde empieza la red?",
+    question: "¿Cómo puedo llegar a nuevos clientes?",
     answer:
-      "Empezamos en Cuenca, Ecuador. Puedes explorar los comercios y sus fichas públicas para conocer la red de tu ciudad. Los clientes se unen a tu programa con el QR de tu local.",
+      "Con Venta cruzada, alguien que compra en otro comercio cercano puede recibir un regalo de tu negocio. Por ejemplo, después de visitar una peluquería, recibe una invitación para probar un café en tu local. Participan comercios de rubros distintos a menos de 2 km; tú decides qué ofrecer.",
+  },
+  {
+    question: "¿Los puntos y sellos pueden usarse en otro negocio?",
+    answer:
+      "No. Los puntos y sellos pertenecen al programa de cada negocio y se canjean solo allí. Venta cruzada ofrece beneficios de otros comercios, sin transferir puntos ni sellos entre programas.",
+  },
+  {
+    question: "¿Necesito comprar equipos?",
+    answer:
+      "Puedes gestionar tu negocio y atender desde el navegador de tu teléfono, tablet o computadora con conexión a internet. Para imprimir tickets por Bluetooth, necesitas además una impresora y un dispositivo compatibles.",
+  },
+  {
+    question: "¿Puedo usarlo en varios locales?",
+    answer:
+      "Sí. Conecta incluye un local e Impulso incluye hasta tres. También puedes añadir locales por un costo adicional.",
   },
 ];
 
 function Arrow({ diagonal = false }: { diagonal?: boolean }) {
-  return <span aria-hidden="true">{diagonal ? "↗" : "→"}</span>;
+  return (
+    <span aria-hidden="true">
+      {diagonal ? (
+        <ArrowUpRight className="landing-icon" />
+      ) : (
+        <ArrowRight className="landing-icon" />
+      )}
+    </span>
+  );
 }
 
 function SignupLink({
@@ -64,11 +89,9 @@ export function ClosingSections() {
         aria-labelledby="plans-title"
       >
         <div className="section-heading plans-heading">
-          <span className="kicker">
-            HERRAMIENTAS DE CADENA, PARA TU NEGOCIO
-          </span>
+          <span className="kicker">MÁS POSIBILIDADES PARA TU NEGOCIO</span>
           <h2 id="plans-title">
-            Tres meses para probar. Más motivos para <em>quedarte.</em>
+            Prueba todo durante tres meses. Después, elige <em>tu plan.</em>
           </h2>
           <p>
             Empieza con todo incluido durante tres meses gratis. Después, elige
@@ -77,25 +100,63 @@ export function ClosingSections() {
         </div>
         <div className="trial-banner">
           <strong>3 meses gratis · todo incluido</strong>
-          <span>Conoce la red, prueba las campañas y prepara tu equipo.</span>
+          <span>
+            Prueba el programa de fidelización, el marketing y el punto de
+            venta.
+          </span>
         </div>
         <div className="plan-grid">
           <article className="plan-card">
             <span className="plan-label">CONECTA CON TU CIUDAD</span>
             <h3>Conecta</h3>
             <p>
-              Fideliza a quienes ya te conocen y dale a nuevos clientes un
-              motivo para entrar.
+              <strong>1 local · puntos y sellos</strong>
+              <br />
+              Campañas de Bienvenida y Venta cruzada.
             </p>
             <div className="plan-price">
-              $20 <span>USD / mes*</span>
+              $20 <span>USD / mes**</span>
             </div>
             <ul>
-              <li>1 local</li>
-              <li>Programa de puntos o sellos y pase digital</li>
-              <li>Mostrador, catálogo y lista de clientes</li>
-              <li>Ficha pública, afiche y QR de inscripción</li>
-              <li>Campañas Bienvenida y Venta cruzada</li>
+              <li>
+                <Check className="plan-check" aria-hidden="true" />1 local
+              </li>
+              <li>
+                <Check className="plan-check" aria-hidden="true" />
+                Punto de venta desde tu celular
+              </li>
+              <li>
+                <Check className="plan-check" aria-hidden="true" />
+                Catálogo gestionado con IA
+              </li>
+              <li>
+                <Check className="plan-check" aria-hidden="true" />
+                Gestión de mesas
+              </li>
+              <li>
+                <Check className="plan-check" aria-hidden="true" />
+                Gestión de órdenes y pedidos
+              </li>
+              <li>
+                <Check className="plan-check" aria-hidden="true" />
+                Programa de fidelización con puntos y sellos
+              </li>
+              <li>
+                <Check className="plan-check" aria-hidden="true" />
+                Campaña de Bienvenida
+              </li>
+              <li>
+                <Check className="plan-check" aria-hidden="true" />
+                Campaña de Venta cruzada
+              </li>
+              <li>
+                <Check className="plan-check" aria-hidden="true" />
+                Avisos al teléfono de tus clientes*
+              </li>
+              <li>
+                <Check className="plan-check" aria-hidden="true" />
+                Ficha pública en CheckPass.club
+              </li>
             </ul>
             <a className="plan-button" href={onboardingUrl}>
               Pruébalo gratis 3 meses <Arrow />
@@ -105,27 +166,73 @@ export function ClosingSections() {
             <span className="plan-label">DA EL SIGUIENTE PASO</span>
             <h3>Impulso</h3>
             <p>
-              Más momentos para conectar con tus clientes y más espacio para tus
-              locales.
+              <strong>Hasta 3 locales · cashback próximamente</strong>
+              <br />
+              Todas las campañas de marketing, incluidas las avanzadas.
             </p>
             <div className="plan-price">
-              $45 <span>USD / mes*</span>
+              $45 <span>USD / mes**</span>
             </div>
             <ul>
-              <li>Hasta 3 locales</li>
-              <li>Todo lo incluido en Conecta</li>
-              <li>Te extrañamos, Cliente en riesgo y Recuperar</li>
-              <li>Cerca del premio y Premio sin canjear</li>
-              <li>Horas valle y campañas por cercanía</li>
+              <li>
+                <Check className="plan-check" aria-hidden="true" />
+                Hasta 3 locales
+              </li>
+              <li>
+                <Check className="plan-check" aria-hidden="true" />
+                Punto de venta desde tu celular
+              </li>
+              <li>
+                <Check className="plan-check" aria-hidden="true" />
+                Catálogo gestionado con IA
+              </li>
+              <li>
+                <Check className="plan-check" aria-hidden="true" />
+                Gestión de mesas
+              </li>
+              <li>
+                <Check className="plan-check" aria-hidden="true" />
+                Gestión de órdenes y pedidos
+              </li>
+              <li>
+                <Check className="plan-check" aria-hidden="true" />
+                Programa de fidelización con puntos y sellos; cashback
+                próximamente
+              </li>
+              <li>
+                <Check className="plan-check" aria-hidden="true" />
+                Campaña de Bienvenida
+              </li>
+              <li>
+                <Check className="plan-check" aria-hidden="true" />
+                Campaña de Venta cruzada
+              </li>
+              <li>
+                <Check className="plan-check" aria-hidden="true" />
+                Avisos al teléfono de tus clientes*
+              </li>
+              <li>
+                <Check className="plan-check" aria-hidden="true" />
+                Ficha pública en CheckPass.club
+              </li>
+              <li>
+                <Check className="plan-check" aria-hidden="true" />
+                Campañas avanzadas para recuperar clientes y promover visitas en
+                horarios tranquilos
+              </li>
             </ul>
             <a className="plan-button" href={onboardingUrl}>
               Pruébalo gratis 3 meses <Arrow />
             </a>
           </article>
         </div>
-        <p className="pricing-note">Local adicional: $12 USD / mes*.</p>
         <p className="pricing-note">
-          * Precio referencial. Los precios y condiciones definitivos se
+          * Las notificaciones push no tienen límites actualmente. Los límites
+          pueden cambiar según el tipo de cuenta.
+        </p>
+        <p className="pricing-note">Local adicional: $12 USD / mes**.</p>
+        <p className="pricing-note">
+          ** Precio referencial. Los precios y condiciones definitivos se
           mostrarán antes de contratar.
         </p>
       </section>
@@ -138,18 +245,17 @@ export function ClosingSections() {
         <div>
           <span className="kicker">PREGUNTAS FRECUENTES</span>
           <h2 id="faq-title">
-            Conversemos
-            <br />
-            <em>sin vueltas.</em>
+            Resuelve tus dudas antes de <em>empezar.</em>
           </h2>
-          <p>Lo esencial para empezar con claridad.</p>
         </div>
         <div className="faq-list">
           {faqs.map((faq) => (
             <details key={faq.question}>
               <summary>
                 {faq.question}
-                <span aria-hidden="true">+</span>
+                <span aria-hidden="true">
+                  <Plus className="landing-icon" />
+                </span>
               </summary>
               <p>{faq.answer}</p>
             </details>
@@ -158,13 +264,13 @@ export function ClosingSections() {
       </section>
 
       <section className="final-cta" aria-labelledby="final-title">
-        <span className="kicker">EL SIGUIENTE PASO ES TUYO</span>
+        <span className="kicker">PRUÉBALO EN TU NEGOCIO</span>
         <h2 id="final-title">
-          Dale a tu negocio más oportunidades de <em>crecer.</em>
+          Empieza hoy. Descubre lo que puedes lograr en <em>tres meses.</em>
         </h2>
         <p>
-          Conecta con tu ciudad, da más razones para volver y atiende con las
-          herramientas que tu negocio merece. Empieza en Cuenca.
+          Activa tu programa de fidelización, llega a tus clientes y gestiona
+          tus ventas. Prueba todas las herramientas gratis durante tres meses.
         </p>
         <SignupLink label="Pruébalo gratis 3 meses" light />
       </section>
@@ -172,7 +278,11 @@ export function ClosingSections() {
   );
 }
 
-export function LandingFooter() {
+export function LandingFooter({
+  showPhotoCredit = true,
+}: {
+  showPhotoCredit?: boolean;
+}) {
   return (
     <footer className="site-footer">
       <a
@@ -188,22 +298,24 @@ export function LandingFooter() {
       <p>Más clientes nuevos. Más razones para volver.</p>
       <div>
         <a href="/explorar">Explorar la ciudad</a>
-        <a href="#como-funciona">Cómo funciona</a>
-        <a href="#planes">Planes</a>
-        <a href="#preguntas">Preguntas</a>
+        <a href="/#como-funciona">Cómo empezar</a>
+        <a href="/#planes">Planes</a>
+        <a href="/#preguntas">Preguntas</a>
         <a href="/es/privacy">Privacidad</a>
         <a href="/es/tos">Términos de uso</a>
       </div>
       <small>
         © {new Date().getFullYear()} CheckPass Club · Cuenca, Ecuador
       </small>
-      <small className="merchant-photo-credit">
-        Fotografías de ejemplo:{" "}
-        <a href="https://www.pexels.com/photo/woman-ordering-coffee-in-cafe-13735959/">
-          Mizuno K
-        </a>{" "}
-        / Pexels.
-      </small>
+      {showPhotoCredit && (
+        <small className="merchant-photo-credit">
+          Fotografías de ejemplo:{" "}
+          <a href="https://www.pexels.com/photo/woman-ordering-coffee-in-cafe-13735959/">
+            Mizuno K
+          </a>{" "}
+          / Pexels.
+        </small>
+      )}
     </footer>
   );
 }

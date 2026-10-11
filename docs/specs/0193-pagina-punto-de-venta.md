@@ -1,7 +1,7 @@
 ---
 spec: 0193
 fecha: 2026-10-10
-estado: cerrada
+estado: implementada
 resumen: Página pública de punto de venta para explicar el producto y permitir QA local.
 disjunta: si
 archivos: apps/public/src/app/punto-de-venta/page.tsx
@@ -28,10 +28,10 @@ Crear apps/public/src/app/punto-de-venta/page.tsx. El integrador cambia enlaces 
 
 ## Definition of Done
 
-- [ ] Ruta devuelve 200 y contenido principal en HTML con H1 único, canonical y CTA.
-- [ ] Typecheck public y lint de los archivos nuevos en 0.
-- [ ] Revisión responsiva de 390 y 1440 px con evidencia; no marcar hecha sin ejecutarla.
-- [ ] QA local del owner pendiente explícita; sin merge ni push.
+- [x] Ruta devuelve 200 y contenido principal en HTML con H1 único, canonical y CTA.
+- [x] Typecheck public y lint de los archivos nuevos en 0.
+- [x] Revisión responsiva de 390 y 1440 px con evidencia; no marcar hecha sin ejecutarla.
+- [x] QA local del owner pendiente explícita; sin merge ni push.
 
 ## Mutaciones
 
@@ -48,3 +48,7 @@ Implementador: agente asignado. Revisor: root. Registrar evidencia y límites an
 ## Abierto
 
 Ninguna decisión bloquea la primera versión local.
+
+## Evidencia ejecutada
+
+Root revisó código, HTTP 200, H1 único, canonical, enlaces internos sin destino inexistente, ausencia de errores de página y de overflow a 390 y 1440 px con Chromium. Se inspeccionaron las dos capturas /tmp/product-punto-de-venta-{390,1440}.png. Typecheck public y lint en 0 con Node 24. Precios no modificados, cashback Próximamente. QA owner aún pendiente.

@@ -43,3 +43,7 @@ Root implementa y verifica. Admin y cabeceras globales quedan en petición concr
 ## Abierto
 
 Nada bloquea el ajuste local de los dos layouts.
+
+## Evidencia local
+
+Typecheck merchant y consumer, lint layouts y diff check en 0. En HTML de onboarding merchant (3201) y raíz consumer (3200) se verificó meta robots noindex, nofollow. No se afirma estado del índice ni publicación; admin pendiente de Claude.

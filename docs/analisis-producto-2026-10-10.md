@@ -44,3 +44,36 @@ Resumen de la sesion de posicionamiento con el owner (2026-10-10). Lo decidido y
 
 Que preguntas responde el reporte, para quien (dueño vs. encargado), con que periodicidad, que se puede atribuir de
 verdad a la red o a una campaña sin inventar causalidad, y en que plan va.
+
+## Inventario de datos (medido 2026-10-10: schema de `packages/db` + `information_schema` de PROD)
+
+**Volumen en PROD hoy:** 3 comercios, 3 locales, 73 productos, 3 `pos_order` (10 items), **0 clientes, 0 ventas
+acreditadas, 0 cupones, 0 decisiones de venta cruzada** (`pg_stat_user_tables.n_live_tup`). No hay datos reales para
+explorar: el reporte se diseña sobre lo que el schema captura, no sobre volumen.
+
+| Hecho (se escribe cuando...) | Tabla | Que trae | Historia |
+|---|---|---|---|
+| Venta acreditada a un cliente con pase (mostrador o POS) | `core.order` + `order_item` | cliente, local, monto, moneda, items (producto, precio, cantidad), sellos/puntos dados, quien la cargo, hora | completa, una fila por venta |
+| Venta del POS (con o sin pase) | `core.pos_order` + `pos_order_item` | local, mesa, items, quien abrio/cerro, hora; `order_id` solo si hubo pase | completa |
+| Alta al programa | `consumer.program_membership` | cliente, comercio, local del QR (`origin_location_id`), fecha, saldo actual, baja de marketing | alta + saldo ACTUAL (sin historia del saldo fuera de `order`/canjes) |
+| Cliente del comercio | `core.business_customer` | primera alta, **ultima** visita, **ultimo** escaneo | solo el ultimo valor: se pisa |
+| Canje de premio del programa | `core.reward_redemption` | premio, tipo, puntos/sellos debitados, saldo antes/despues, quien, hora | completa |
+| Cupon emitido (bienvenida, venta cruzada, valle, campañas) | `core.campaign_coupon` | campaña, cliente, tipo y valor del beneficio, costo declarado, vigencia, canal que lo emitio | completa |
+| Cupon canjeado | `core.coupon_redemption` | cupon, campaña, local, **venta a la que se ato** (`order_id`, puede ser null) y descuento | completa |
+| Decision de venta cruzada (cada venta en A con la funcion prendida) | `core.cross_decision` + `cross_candidate` | origen A, resultado, campaña/cupon elegido de B, candidatos con distancia/segmento, click en el aviso | completa |
+| Aviso push de campaña | `core.campaign_push` | cliente, campaña, **holdout (grupo de control: decidido y NO enviado)**, enviado, click, cancelado | completa |
+| Turno en el pase (proximidad) | `core.campaign_turn` | holdout, resultado con `outcome_order_id`/`outcome_redemption_id` | completa; el canal esta apagado (spec 0138) |
+| Cola de avisos al cliente | `consumer.wallet_push_queue` | clase, texto, estado, enviado | completa |
+| Actividad del cliente en la app | `consumer.consumer_account` | ultima apertura, ultimo push, PWA instalada (`home_launched_at`) | solo ultimo valor |
+| Suscripcion a notificaciones | `consumer.web_push_subscription`, `wallet_pass` | plataforma, alta, ultima vez vista; pase guardado en Google | estado actual |
+| Valle (horas flojas) | `core.valley_detection`, `valley_window` | ventanas detectadas por local, escaneos usados | ultima deteccion |
+| Vencimiento de saldo (0195, en rama) | `core.balance_expiration` | — | completa |
+
+**Huecos medidos:**
+- **Los escaneos no se guardan como eventos**: solo `last_scan_at` (se pisa). Una visita sin venta registrada no deja
+  rastro; la «visita» verificable es la `order`.
+- **Sin pase no hay cliente**: la venta del POS sin pase tiene monto e items pero no persona.
+- **Costo de producto** (`product.unit_cost`) existe pero es declarado por el comercio: margen = «estimado configurado»
+  (ADR 0021), nunca observado.
+- **Holdout solo en push (y proximidad, apagada)**: es el unico lugar con grupo de control → el unico efecto que se
+  puede afirmar sin inventar causalidad. Bienvenida y venta cruzada no tienen grupo de control.

@@ -95,17 +95,19 @@ for (const width of [390, 1440]) {
       await page.emulateMedia({ colorScheme, reducedMotion: "reduce" });
       await page.goto(landingURL);
       await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-        "Más clientes nuevos. Más razones para volver.",
+        "Atrae nuevos clientes y dales motivos para volver.",
       );
       await expect(page).toHaveTitle(
-        /Red de fidelización para comercios en Cuenca/,
+        /Fidelización, marketing y punto de venta | CheckPass Club/,
       );
-      const networkLink = page.getByRole("link", {
-        name: "Explora la red en Cuenca",
-      });
-      await expect(networkLink).toHaveAttribute("href", "/explorar");
-      await expect(page.locator("main > section")).toHaveCount(10);
-      await expect(page.locator(".moment-card")).toHaveCount(6);
+      await expect(
+        page.getByText("Descubre el programa de recompensas para tu negocio"),
+      ).toBeVisible();
+      await expect(page.locator("main > section")).toHaveCount(9);
+      await expect(page.locator(".moment-card")).toHaveCount(0);
+      await expect(
+        page.getByRole("heading", { name: "Escanea y se une" }),
+      ).toBeVisible();
       await expect(page.locator(".plan-card").first()).toContainText("Conecta");
       await expect(page.locator(".plan-card").first()).toContainText("$20");
       await expect(page.locator(".plan-card").first()).toContainText(
@@ -132,21 +134,23 @@ for (const width of [390, 1440]) {
       );
       await page
         .locator("summary")
-        .filter({ hasText: "¿Los puntos sirven en otros comercios?" })
+        .filter({
+          hasText: "¿Los puntos y sellos pueden usarse en otro negocio?",
+        })
         .click();
       await expect(page.locator("details[open]")).toContainText(
         "se canjean solo allí",
       );
       await page
         .locator("summary")
-        .filter({ hasText: "¿Qué pasa al terminar los tres meses de prueba?" })
+        .filter({ hasText: "¿Qué pasa cuando termina la prueba?" })
         .click();
       await expect(
         page.locator("details[open]").filter({ hasText: "prueba" }),
-      ).toContainText("antes de contratar");
+      ).toContainText("los datos de tu negocio y tus clientes se conservan");
       await page
         .locator("summary")
-        .filter({ hasText: "¿Mi cliente necesita descargar una app?" })
+        .filter({ hasText: "¿Mis clientes necesitan descargar una app?" })
         .click();
       await expect(
         page.locator("details[open]").filter({ hasText: "descargar" }),
@@ -158,11 +162,7 @@ for (const width of [390, 1440]) {
           ),
         )
         .toBe(true);
-      for (const selector of [
-        ".network-preview",
-        ".dashboard-preview",
-        ".customer-pass",
-      ]) {
+      for (const selector of [".network-preview", ".pos-platform-preview"]) {
         const box = await page.locator(selector).boundingBox();
         expect(box).not.toBeNull();
         expect(box!.x).toBeGreaterThanOrEqual(0);
@@ -189,10 +189,10 @@ for (const width of [390, 1440]) {
       await page.locator(".plans-section").screenshot({
         path: testInfo.outputPath(`planes-${width}-${colorScheme}.png`),
       });
-      await page.getByRole("link", { name: "Descubre cómo funciona" }).click();
+      await page.getByRole("link", { name: "Cómo empezar" }).click();
       await expect(page).toHaveURL(/#como-funciona$/);
       await expect(
-        page.getByRole("heading", { name: "Prepara tu negocio" }),
+        page.getByRole("heading", { name: "Prepara tu local" }),
       ).toBeInViewport();
       await page.goto(`${landingURL}/negocios`);
       await expect(page).toHaveURL(`${landingURL}/`);

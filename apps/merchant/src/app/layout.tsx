@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
-export const metadata: Metadata = { title: "CheckPass Club · Negocios" };
+export const metadata: Metadata = {
+  title: "CheckPass Club · Negocios",
+  robots: { index: false, follow: false },
+};
 
 export default function RootLayout({
   children,

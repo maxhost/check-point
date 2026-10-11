@@ -1,3 +1,4 @@
+import { ArrowRight } from "iconoir-react";
 import { onboardingUrl } from "../site-config";
 
 const moments = [
@@ -84,7 +85,10 @@ export function CampaignSection() {
             Impulso.
           </p>
           <a className="text-link" href={onboardingUrl}>
-            Pruébalo gratis 3 meses <span aria-hidden="true">→</span>
+            Pruébalo gratis 3 meses{" "}
+            <span aria-hidden="true">
+              <ArrowRight className="landing-icon" />
+            </span>
           </a>
         </div>
       </div>
