@@ -1,9 +1,10 @@
 {
-  "approved": false,
+  "approved": true,
   "purpose": "Owner chose proxima-visita imagery/copy with barrio-conectado layout; revised comp awaiting feedback",
   "prompt": "Edit reference image 1 (CheckPass 'Dale a tu próximo cliente...' business landing) according to the owner's precise request. Reference image 2 supplies ONLY the layout of text INSIDE the hero. Keep image 1's exact cafe scene, same woman proprietor in green sweater and brown apron handing a white coffee cup to the same male customer, same cafe setting, same benefit notification, same Spanish message and lower section. REMOVE image 1's separate introduction band above the photograph. Directly under a calm cream navigation header, make one large full-width photographic hero with image 1's cafe scene extending throughout. Integrate the headline, subtitle and CTA vertically INSIDE the LEFT of the hero, like image 2's distribution, with a subtle cream fade behind text for readability. Reframe image 1's existing scene so the proprietor and customer occupy the right, clearly visible without face overlap from text. Keep only image 1's message: 'Dale a tu próximo cliente un motivo para entrar.' dark green title with 'para entrar.' terracotta; supporting copy 'Llega a personas que compran cerca. Invítalas a conocer tu negocio y dales razones para volver.' Below it the primary 'Pruébalo gratis 3 meses', secondary 'Cómo funciona', small 'Todo incluido durante la prueba.' Retain the inclined 'Un café de bienvenida' / 'Café de ejemplo' notification over their coffee exchange at right and explicit 'Ejemplo ilustrativo. No es una oferta vigente.' at lower right. Header checkpass.club, Cómo funciona, Planes, Preguntas, Pruébalo gratis. Keep the lower pale green section exactly from image 1: 'La primera visita es solo el comienzo.' and the invite→reward diagram. Do NOT copy image 2's gym, hairdresser, vet, outdoor street, people, network arrows, headline or lower copy. Do not add a top text band, devices, testimonials, metrics or new claims. Finished desktop web screenshot, 1536x1024 landscape, crisp Spanish text.",
   "references": [
     "negocios-proxima-visita.png",
     "negocios-barrio-conectado.png"
-  ]
+  ],
+  "approvalEvidence": "Owner viewed image in system viewer and said: quedo perfecto, avanzamos"
 }
