@@ -1,0 +1,7 @@
+{
+  "prompt": "Regenerate this portrait café service photograph as a clean production website asset at high resolution, portrait 0.818:1 at least 800 pixels wide. Preserve composition, framing and people exactly: smiling woman with dark hair in loose bun, forest green shirt, ochre apron, holding tablet with both hands at wooden café counter; male customer in dark shirt seen from behind on right; warm café blur behind. REMOVE every white arrow/connector/UI line along the left and restore plain dark green background there; webpage draws its own panels. Do not add text, cards, titles, labels, badges or ejemplo. No mask holes, no new props. Match natural light and real anatomy. Opaque background.",
+  "source": "native imagegen",
+  "comp": "barrio-sin-etiquetas.png",
+  "approved": false,
+  "scope": "Recurso pendiente de revisión, sin UI ensamblada"
+}

@@ -3,20 +3,31 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — BARRIO CONECTADO ELEGIDO; RETIRADA DE ETIQUETAS (2026-10-11)
+## ESTADO — 0199 RESERVADA; RECURSOS DEFINITIVOS EN REVISIÓN (2026-10-11)
 
-Owner elige «El barrio conectado» y solicita retirar toda mención visible de
-«ejemplo»: Café de ejemplo → Café; eliminar avisos Ejemplo ilustrativo y fondos.
-Esta instrucción sustituye el etiquetado anterior de demostraciones de /negocios;
-no alcanza la home. Hero y condiciones comerciales se conservan.
-La elección corresponde al rediseño COMPLETO, no a aceptar el cuerpo antiguo de0198.
-Propuesta base a7031f0, comparador http://127.0.0.1:59932/, key dd0e8e6b.
-Variante corregida: apps/public/.impeccable/mocks/completa/barrio-sin-etiquetas.png.
-Plan docs/design-explorations/negocios-redisenio-completo.md y brief actualizados.
-Sin nueva implementación de app ni publicación. Pendientes: spec cerrada/reserva
-local, recursos definitivos, implementación del cuerpo y QA real.
-Helper0198 respaldado en .impeccable/history/negocios-0198-antes-revision-completa;
-nuevo build state comps abierto con seed c0e4f966.
+Owner confirma «listo elegido»: El barrio conectado sin etiquetas ejemplo.
+Spec0199 cerrada y reservada local890a37e antes de app code. Diseño elegido b973db8.
+Referencia .impeccable/mocks/completa/barrio-sin-etiquetas.png. Home fuera de alcance.
+Sin nueva implementación de app ni publicación: no declarar cuerpo terminado.
+
+Helper reiniciado con comp aprobado: spec cerrada, 65 regiones, cuatro plates,
+26 textos medidos; Arial de identidad prevalece sobre sugerencia de Harmattan.
+Hero reutiliza foto aprobada; tres recursos nuevos generados, vistos y con prompt
+embebido: neighborhood, reward-scene, service-scene. Gate plates los acepta;
+único bloqueo actual es aprobación concreta de plan/recursos requerida por skill.
+Mapa/QR-recompensa/atención están en assets/plates y public/images/negocios-*;
+sidecars de nuevos recursos approved:false. No son crops enviados a producción.
+
+Revisión ABIERTA http://127.0.0.1:64126/, navegador abierto para owner.
+Session07814800c7438f3d7eb890741a4965d08a0583cea2d4409c2b080ca7d8ef63bc,
+revision1de1af8bb07239ec64ed633745fadb6e2001bb28da961dc5120284b790457d1e,
+execsession11914, pid13596. Component manifest .impeccable/review/components.json.
+Esperar decisión real; component-review status/verify y build-phase advance después.
+No crear recibos ni votar por owner. La elección del comp está cerrada.
+Siguiente: implementar TODO cuerpo según0199, actualizar landing E2E, QA local.
+No commitear instalación ni carpetas helper generales. Recursos definitivos nuevos
+se guardan con procedencia; no cambiar contratos API, home o páginas de productos.
+CI main9405c93 rojo histórico por screenshots tmp, fix local4f37e70 ya existente.
 
 Rama dev, sin push/merge/deploy. Implementación08e902f; reserva5e7fbfc.
 Owner aprobó comp combinado («quedo perfecto, avanzamos») y plan/asset («aprobado»).
