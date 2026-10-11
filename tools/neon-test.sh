@@ -8,6 +8,7 @@
 #   tools/neon-test.sh                                    # toda la suite
 #   tools/neon-test.sh src/server/x.test.ts               # un archivo (relativo a apps/merchant)
 #   tools/neon-test.sh --app consumer src/server/x.test.ts # un archivo de apps/consumer (spec 0117)
+#   tools/neon-test.sh --app platform src/server/x.test.ts # un archivo de apps/platform (spec 0190)
 #   tools/neon-test.sh --app merchant --related /abs/a.ts  # las suites que importan esos archivos
 #                                                          # (`vitest related`, spec 0133); lista vacia → sale 0
 #
@@ -17,11 +18,11 @@ set -euo pipefail
 APP="merchant"
 if [ "${1:-}" = "--app" ]; then
   APP="${2:-}"
-  shift 2 || { echo "uso: tools/neon-test.sh [--app merchant|consumer] [--related] [archivos...]"; exit 1; }
+  shift 2 || { echo "uso: tools/neon-test.sh [--app merchant|consumer|platform] [--related] [archivos...]"; exit 1; }
 fi
 case "$APP" in
-  merchant | consumer) ;;
-  *) echo "app desconocida: '$APP' (merchant | consumer)"; exit 1 ;;
+  merchant | consumer | platform) ;;
+  *) echo "app desconocida: '$APP' (merchant | consumer | platform)"; exit 1 ;;
 esac
 RELATED=0
 if [ "${1:-}" = "--related" ]; then

@@ -2,8 +2,8 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { magicLink } from "better-auth/plugins";
 import { getDb } from "@mi-pasaporte/db";
-import { magicLinkEmail } from "./email/channel";
-import { emailChannelFromEnv } from "./email/provider";
+import { magicLinkEmail } from "./email/magic-link-email";
+import { emailChannelFromEnv } from "@mi-pasaporte/domain/server/email/provider";
 import * as schema from "@mi-pasaporte/db/schema";
 
 export function getMerchantAuth() {
