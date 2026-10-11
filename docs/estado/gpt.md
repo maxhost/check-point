@@ -3,7 +3,19 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — 0203 MARKETING FUNCIONAL Y COPY LOCAL (2026-10-11)
+## ESTADO — 0204 FIDELIZACIÓN FUNCIONAL Y COPY LOCAL (2026-10-11)
+
+Commit4469753, reservae5055c2. Owner pidió auditoría de /programa-de-fidelizacion para lograr lo mismo que marketing: estructura, visual y copy Funcional. Aplicada localmente, QA owner pendiente; sin autorización para publicar.
+
+Hero «Puntos o sellos. Motivos para volver.». Secuencia QR/compra acreditada/canje confirmado por equipo; transición e historial compactos; reglas por modalidad y ejemplos3/6 y30 puntos preservados. Previsión ahora compara$30 de consumo con$3 precio de venta del premio, sin «quedan $27» ni sugerir ganancia. FAQ conserva alcance sin costos/margen. Habituales en Mostrador; programas, saldos y registros separados; cashback Próximamente. No cambia backend, funciones ni condiciones. CSS exclusivo program-page, sin stylesheet viejo; guía/PRODUCT/sidecar actualizados, POS queda pendiente.
+
+Node24: typecheck público, ESLint específico, formato, diffcheck y números0. Build público0; landing17/17 en13.1s (home, negocios, marketing preservadas y4 nuevos casos de fidelización). Capturas1440/390 claro/oscuro,320/768 claro vistas: ocho secciones,17px, sin overflow/errores JS/anclas rotas; salto al contenido y FAQ teclado6/6. Evidencia /private/tmp/0204-review.json,0204-after-*.png,0204-e2e.log y0204-build.log. Altura5255→3639 desktop;7655→5957 móvil390. No evidencia de conversión o comprensión. CI main verde4c40a6a consultado.
+
+Detector0 primarios y25 advisory compactos/responsive; Arial conservado por filosofía aprobada, ignore-value estrecho programa.css. Sin ignore-file/rule. Auditoría inline ADR0129, sin revisor independiente. Fuente de producto: spec0191 y reglas/programa/previsión leídos, no editados.
+
+Preview http://localhost:3003/programa-de-fidelizacion. Home0201 hero intacto y aprobado; negocios0200 aprobado; marketing0203 aplicada, QA owner pendiente. Sin push, merge, deploy ni verify global. Cambios paralelos de Claude preservados. Próximo paso: revisión owner de fidelización, o auditoría POS si la solicita.
+
+## HISTÓRICO — 0203 MARKETING FUNCIONAL Y COPY LOCAL (2026-10-11)
 
 Commit9e5b119, reserva441180f. Owner pidió analizar y mejorar estructura, visual y copy de /marketing-para-comercios con la filosofía de /negocios. Implementación local, QA owner del ensamblado pendiente; sin publicar.
 
