@@ -40,6 +40,18 @@ Resumen de la sesion de posicionamiento con el owner (2026-10-10). Lo decidido y
 - WhatsApp y email descartados como canal (costo / nadie usa email). Reseñas de Google: no son nuestras.
 - Cashback, tarjetas de regalo y referidos: futuro, no ahora.
 
+## Decisiones del owner 2026-10-11 (no volver a preguntar)
+
+1. **No se registra cada escaneo como evento**: «se guarda las ventas y canjes, eso es lo importante».
+2. **Redaccion de la atribucion: «la red trajo»**.
+3. **Lo ve el dueño y quien tenga el permiso `marketing`** (`packages/db/src/permissions-catalog.ts`). Periodicidad: sin
+   decidir.
+4. **A NO ve los clientes que mando a otros comercios.**
+5. **El reporte va en el plan de $45**; el base tendra estadisticas mas simples.
+6. **La spec NO se cierra todavia**: falta definir que informacion se puede inferir de lo registrado y para que le
+   sirve al comercio, mas alla de «te llegaron 20 personas por la red» (que prueba el valor de la red, pero no le
+   dice que hacer).
+
 ## Abierto (para trabajar juntos)
 
 Que preguntas responde el reporte, para quien (dueño vs. encargado), con que periodicidad, que se puede atribuir de
