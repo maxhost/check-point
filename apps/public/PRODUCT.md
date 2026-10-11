@@ -58,13 +58,14 @@ Las superficies actuales del código local incluyen:
 
 - `/`: home para consumidores que explica el funcionamiento mediante ejemplos.
 - `/negocios`: landing comercial independiente centrada en atraer nuevos clientes,
-  motivar su regreso y facilitar la atención. El hero integra texto y acciones
-  dentro de una escena ilustrativa; siguen marketing, fidelización, POS, inicio,
-  planes y preguntas. El cuerpo sigue «El barrio conectado»: mapa e invitación,
-  QR y recompensa sobre mesa, escena de atención con paneles POS, inicio y planes
-  compactos. Las cinco FAQ conservan la información comercial en sus respuestas.
-  Por decisión del owner, /negocios no lleva etiquetas «ejemplo»; las burbujas
-  de comercios son rectángulos completos con icono al costado del texto.
+  motivar su regreso y facilitar la atención. Adopta la filosofía **Funcional**
+  aprobada: texto y acciones separados de las fotografías, demostraciones
+  delimitadas, jerarquía constante y acentos puntuales. Conserva el relato de
+  barrio conectado, marketing, fidelización, POS, inicio, planes y cinco FAQ.
+  Los planes muestran listas verticales; solo Conecta tiene un destacado cálido,
+  sin corazones. Por decisión del owner, /negocios no lleva etiquetas «ejemplo».
+  `DESIGN.md` registra esta referencia para revisar otras páginas posteriormente;
+  la home y páginas de producto todavía conservan sus estilos actuales.
 - `/programa-de-fidelizacion`, `/marketing-para-comercios` y `/punto-de-venta`:
   explicación de las herramientas para comercios.
 - `/explorar` y `/lugares/[slug]`: descubrimiento y fichas ilustrativas para

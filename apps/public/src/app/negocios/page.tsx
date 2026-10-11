@@ -12,7 +12,6 @@ import { BusinessHeroScene } from "./preview";
 import { NeighborhoodScene, RewardScene, ServiceScene } from "./barrio-scenes";
 import { BusinessClosingSections, LandingFooter } from "./closing-sections";
 import { onboardingUrl, siteUrl } from "../site-config";
-import "./negocios.css";
 import "./business-landing.css";
 
 export const metadata: Metadata = {

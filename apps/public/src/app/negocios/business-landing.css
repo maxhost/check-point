@@ -1,1496 +1,956 @@
+/* Functional philosophy approved in spec0200. Scoped to /negocios. */
+
+.business-shell * {
+  box-sizing: border-box;
+}
 .business-shell {
-  --business-wash: #edf2e9;
-  --business-icon-paper: #f6eae2;
+  margin: 0;
+  color: var(--ink);
+  background: var(--paper);
+  font:
+    17px/1.65 Arial,
+    sans-serif;
+}
+.business-shell a {
+  color: inherit;
+  text-underline-offset: 5px;
+}
+.business-shell a:hover {
+  opacity: 0.75;
+}
+.business-shell a:focus-visible,
+.business-shell summary:focus-visible {
+  outline: 3px solid #bd5939;
+  outline-offset: 5px;
+}
+.business-shell h1,
+.business-shell h2,
+.business-shell h3,
+.business-shell p,
+.business-shell figure {
+  margin: 0;
+}
+.business-shell h1,
+.business-shell h2 {
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+.business-shell h1 {
+  font-size: 64px;
+}
+.business-shell h2 {
+  font-size: 42px;
+}
+.business-shell h3 {
+  font-size: 21px;
+  line-height: 1.3;
+}
+.business-shell em {
+  font-style: normal;
+}
+.business-shell p {
+  max-width: 65ch;
+}
+.business-shell h1 + p,
+.business-shell h2 + p {
+  margin-top: 22px;
+}
+.business-shell ul {
+  padding-left: 22px;
+}
+.business-shell img {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+}
+.business-shell .site-header,
+.business-shell main,
+.business-shell .site-footer {
+  max-width: 1200px;
+  margin: auto;
+  padding: 0 48px;
+}
+.business-shell .site-header {
+  height: 98px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--line);
+  gap: 25px;
+}
+.business-shell .brand {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  text-decoration: none;
+}
+.business-shell .brand b {
+  display: inline-grid;
+  place-items: center;
+  background: var(--ink);
+  color: var(--paper);
+  width: 32px;
+  height: 32px;
+  border-radius: 7px;
+  margin-right: 8px;
+  font-size: 21px;
+}
+.business-shell .desktop-nav {
+  display: flex;
+  gap: 26px;
+  font-size: 14px;
+}
+.business-shell .desktop-nav a {
+  text-decoration: none;
+}
+.business-shell .button,
+.business-shell .header-cta {
+  display: inline-block;
+  padding: 13px 21px;
+  background: var(--ink);
+  color: var(--paper);
+  text-decoration: none;
+  border: 1px solid var(--ink);
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: var(--radius);
+}
+.business-shell .header-cta {
+  font-size: 13px;
+  padding: 10px 15px;
+}
+.business-shell .business-hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 23px;
+  margin-top: 28px;
+}
+.business-shell .business-how-link {
+  font-size: 15px;
+}
+.business-shell .business-assurance {
+  margin-top: 15px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.business-shell section {
+  padding: 80px 0;
+  border-bottom: 1px solid var(--line);
+}
+.business-shell .business-hero,
+.business-shell .barrio-network,
+.business-shell .barrio-loyalty,
+.business-shell .barrio-service {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  gap: 60px;
+}
+.business-shell .business-hero-copy,
+.business-shell .barrio-copy {
+  grid-column: 1;
+  grid-row: 1;
+}
+.business-shell .business-hero-scene,
+.business-shell .barrio-map,
+.business-shell .barrio-reward,
+.business-shell .barrio-service-visual {
+  grid-column: 2;
+  grid-row: 1;
+}
+.business-shell figure img {
+  border-radius: var(--radius);
+}
+.business-shell .business-welcome {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+  font-size: 13px;
+}
+.business-shell .business-welcome strong,
+.business-shell .business-welcome span {
+  display: inline;
+  margin-right: 10px;
+}
+.business-shell .barrio-shop {
+  display: inline-block;
+  font-size: 11px;
+  line-height: 1.4;
+  margin: 15px 12px 0 0;
+}
+.business-shell .barrio-shop br {
+  display: none;
+}
+.business-shell .barrio-invitation {
+  font-size: 13px;
+  margin-top: 12px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+.business-shell .barrio-invitation br {
+  display: none;
+}
+.business-shell .barrio-invitation strong {
+  font-weight: 600;
+}
+.business-shell .barrio-benefits {
+  list-style: none;
+  padding: 0;
+  margin: 24px 0;
+}
+.business-shell .barrio-benefits li {
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+.business-shell .barrio-more {
+  display: inline-block;
+  text-decoration: underline;
+  font-size: 14px;
+  margin-top: 20px;
+  max-width: 37ch;
+}
+.business-shell .barrio-service-visual {
+  display: grid;
+  grid-template-columns: 1fr 1.05fr;
+  gap: 16px;
+  align-items: start;
+}
+.business-shell .barrio-attention img {
+  height: 340px;
+  object-position: 60% center;
+}
+.business-shell .barrio-pos-panels {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 12px;
+}
+.business-shell .barrio-pos-panels li {
+  padding: 15px 0;
+  border-bottom: 1px solid var(--line);
+}
+.business-shell .barrio-pos-panels h3 {
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+.business-shell .barrio-order div {
+  display: flex;
+  justify-content: space-between;
+}
+.business-shell .barrio-order p {
+  display: flex;
+  justify-content: space-between;
+  border-top: 1px solid var(--line);
+  margin-top: 12px;
+  padding-top: 8px;
+}
+.business-shell .barrio-customer span,
+.business-shell .barrio-charge {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+}
+.business-shell .barrio-charge {
+  margin-top: 6px;
+}
+.business-shell .barrio-start > div {
+  max-width: 600px;
+}
+.business-shell .barrio-steps {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 45px;
+  margin: 45px 0 0;
+}
+.business-shell .barrio-step-number {
+  display: block;
+  margin-bottom: 13px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+}
+.business-shell .barrio-steps h3 {
+  font-size: 18px;
+}
+.business-shell .barrio-steps p {
+  font-size: 14px;
+  margin-top: 12px;
+}
+.business-shell .barrio-plan-layout {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 1fr;
+  gap: 35px;
+}
+.business-shell .barrio-plan-heading h2 {
+  font-size: 36px;
+}
+.business-shell .barrio-plan-heading p {
+  font-size: 14px;
+}
+.business-shell .barrio-plan {
+  padding: 25px 0;
+  border-top: 1px solid var(--ink);
+}
+.business-shell .barrio-plan-price {
+  margin: 18px 0;
+}
+.business-shell .barrio-plan-price strong {
+  font-size: 36px;
+  letter-spacing: -0.04em;
+}
+.business-shell .barrio-plan-price span {
+  font-size: 12px;
+}
+.business-shell .barrio-plan ul {
+  list-style: none;
+  padding: 0;
+  font-size: 13px;
+}
+.business-shell .barrio-plan li {
+  padding: 7px 0;
+}
+.business-shell .barrio-independent {
+  grid-column: 1/-1;
+  border-top: 1px solid var(--line);
+  padding-top: 20px;
+  display: flex;
+  gap: 24px;
+  align-items: baseline;
+}
+.business-shell .barrio-independent h3 {
+  font-size: 16px;
+}
+.business-shell .barrio-independent p {
+  font-size: 13px;
+}
+.business-shell .barrio-plan-notes {
+  margin-top: 24px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.business-shell .barrio-plan-notes p {
+  max-width: none;
+  margin: 6px 0;
+}
+.business-shell .barrio-faq-list {
+  margin-top: 35px;
+  max-width: 760px;
+}
+.business-shell details {
+  border-bottom: 1px solid var(--line);
+  padding: 18px 0;
+}
+.business-shell summary {
+  cursor: pointer;
+  font-size: 16px;
+}
+.business-shell details p {
+  font-size: 14px;
+  margin-top: 20px;
+}
+.business-shell .barrio-final {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 30px;
+}
+.business-shell .barrio-final h2 {
+  font-size: 36px;
+}
+.business-shell .barrio-final p {
+  font-size: 15px;
+  margin-top: 14px;
+}
+.business-shell .site-footer {
+  padding-top: 35px;
+  padding-bottom: 40px;
+  display: flex;
+  justify-content: space-between;
+  gap: 25px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.business-shell ::selection {
+  background: #d7e4d6;
+}
+@media (max-width: 760px) {
+  .business-shell .site-header,
+  .business-shell main,
+  .business-shell .site-footer {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+  .business-shell .site-header {
+    height: 80px;
+  }
+  .business-shell .site-header .desktop-nav {
+    display: none;
+  }
+  .business-shell .brand {
+    font-size: 18px;
+  }
+  .business-shell .header-cta {
+    font-size: 11px;
+    padding: 9px;
+  }
+  .business-shell h1 {
+    font-size: 42px;
+  }
+  .business-shell h2 {
+    font-size: 32px;
+  }
+  .business-shell section {
+    padding: 48px 0;
+  }
+  .business-shell .business-hero,
+  .business-shell .barrio-network,
+  .business-shell .barrio-loyalty,
+  .business-shell .barrio-service {
+    grid-template-columns: 1fr;
+    gap: 30px;
+  }
+  .business-shell .business-hero-copy,
+  .business-shell .barrio-copy {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .business-shell .business-hero-scene,
+  .business-shell .barrio-map,
+  .business-shell .barrio-reward,
+  .business-shell .barrio-service-visual {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .business-shell .business-hero-actions {
+    flex-wrap: wrap;
+    gap: 18px;
+  }
+  .business-shell .barrio-steps {
+    grid-template-columns: 1fr;
+    gap: 26px;
+  }
+  .business-shell .barrio-plan-layout {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+  .business-shell .barrio-independent {
+    display: block;
+  }
+  .business-shell .barrio-independent p {
+    margin-top: 12px;
+  }
+  .business-shell .barrio-final {
+    display: block;
+  }
+  .business-shell .barrio-final .button {
+    margin-top: 24px;
+  }
+  .business-shell .barrio-attention img {
+    height: 290px;
+  }
+  .business-shell .barrio-faq-list {
+    margin-top: 24px;
+  }
+  .business-shell .site-footer {
+    flex-wrap: wrap;
+  }
+  .business-shell .prototype-bar {
+    font-size: 11px;
+  }
+}
+.business-shell {
+  --ink: #17382f;
+  --paper: #fff;
+  --muted: #52685f;
+  --accent: #386a58;
+  --line: #dce6e1;
+  --radius: 7px;
+}
+.business-shell .site-header,
+.business-shell main,
+.business-shell .site-footer {
+  max-width: 1190px;
+}
+.business-shell h1 {
+  font-size: 59px;
+  max-width: 15ch;
+}
+.business-shell h2 {
+  font-size: 37px;
+}
+.business-shell em {
+  color: #386a58;
+}
+.business-shell .business-hero {
+  grid-template-columns: 1.05fr 1fr;
+  gap: 65px;
+  padding: 74px 0;
+}
+.business-shell .business-hero-scene {
+  border: 1px solid var(--line);
+  padding: 12px;
+  border-radius: 9px;
+  background: #f6f9f7;
+}
+.business-shell .business-hero-scene img {
+  aspect-ratio: 4/3;
+  object-position: 65% center;
+}
+.business-shell .business-welcome {
+  padding: 3px 8px;
+}
+.business-shell .business-hero-actions .button {
+  border-radius: 7px;
+}
+.business-shell .barrio-network,
+.business-shell .barrio-loyalty,
+.business-shell .barrio-service {
+  padding: 65px 0;
+  gap: 80px;
+}
+.business-shell .barrio-map,
+.business-shell .barrio-reward,
+.business-shell .barrio-service-visual {
+  padding: 22px;
+  background: #f5f8f6;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+.business-shell .barrio-map img {
+  height: 260px;
+  object-fit: contain;
+}
+.business-shell .barrio-reward img {
+  aspect-ratio: 4/3;
+  object-position: right;
+}
+.business-shell .barrio-map .barrio-invitation {
+  background: white;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+}
+.business-shell .barrio-service-visual {
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+.business-shell .barrio-attention img {
+  height: 180px;
+  object-position: center 35%;
+}
+.business-shell .barrio-pos-panels {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 13px;
+}
+.business-shell .barrio-pos-panels li {
+  border: 0;
+  padding: 0;
+}
+.business-shell .barrio-pos-panels h3 {
+  font-size: 11px;
+  min-height: 30px;
+}
+.business-shell .barrio-order div,
+.business-shell .barrio-customer p,
+.business-shell .barrio-redeem p {
+  font-size: 10px;
+}
+.business-shell .barrio-start {
+  background: #f5f8f6;
+  padding: 40px;
+  margin: 60px 0;
+  border-radius: 9px;
+}
+.business-shell .barrio-start h2 {
+  font-size: 32px;
+}
+.business-shell .barrio-start > div {
+  max-width: none;
+  display: flex;
+  align-items: center;
+  gap: 35px;
+}
+.business-shell .barrio-start > div p {
+  margin: 0;
+  max-width: 38ch;
+  font-size: 15px;
+}
+.business-shell .barrio-steps {
+  gap: 40px;
+}
+.business-shell .barrio-plan-layout {
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+.business-shell .barrio-plan-heading {
+  grid-column: 1/-1;
+}
+.business-shell .barrio-plan {
+  border: 1px solid var(--line);
+  padding: 28px;
+  border-radius: 7px;
+}
+.business-shell .barrio-plan ul {
+  display: block;
+}
+.business-shell .barrio-independent {
+  background: #f5f8f6;
+  border: 0;
+  padding: 18px;
+  border-radius: 7px;
+}
+.business-shell .barrio-faq {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 50px;
+}
+.business-shell .barrio-faq-list {
+  margin: 0;
+}
+.business-shell .barrio-final {
+  background: #17382f;
+  color: white;
+  margin: 50px 0;
+  padding: 38px;
+  border-radius: 8px;
+  border: 0;
+}
+.business-shell .barrio-final .button {
+  background: #fff;
+  color: #17382f;
+  border-color: white;
+}
+.business-shell .barrio-final h2 {
+  font-size: 31px;
+}
+@media (max-width: 760px) {
+  .business-shell h1 {
+    font-size: 41px;
+  }
+  .business-shell .business-hero,
+  .business-shell .barrio-network,
+  .business-shell .barrio-loyalty,
+  .business-shell .barrio-service,
+  .business-shell .barrio-faq {
+    grid-template-columns: 1fr;
+    gap: 28px;
+    padding: 45px 0;
+  }
+  .business-shell .barrio-start {
+    padding: 24px;
+    margin: 40px 0;
+  }
+  .business-shell .barrio-start > div {
+    display: block;
+  }
+  .business-shell .barrio-start > div p {
+    margin-top: 18px;
+  }
+  .business-shell .barrio-plan-layout {
+    grid-template-columns: 1fr;
+  }
+  .business-shell .barrio-plan ul {
+    grid-template-columns: 1fr;
+  }
+  .business-shell .barrio-final {
+    padding: 28px;
+  }
+  .business-shell .barrio-map,
+  .business-shell .barrio-reward,
+  .business-shell .barrio-service-visual {
+    padding: 15px;
+  }
+}
+.business-shell {
+  --cream: var(--paper);
+  --orange: #9b432c;
+  --lime: #d7e4d6;
+  --panel: #f5f8f6;
+  --panel-border: #dce6e1;
+  --plan-accent: #9b432c;
+  --plan-wash: #fffaf7;
+  --plan-border: #e8cbbb;
 }
 .business-shell h1,
 .business-shell h2,
 .business-shell h3 {
-  letter-spacing: -0.04em;
+  font-family: Arial, Helvetica, sans-serif;
+  font-weight: 700;
 }
-.business-shell .site-header {
-  height: 84px;
-  max-width: none;
-  padding-inline: 4.5%;
+.business-shell h1 em,
+.business-shell h2 em {
+  font-weight: inherit;
+  font-style: normal;
 }
 .business-shell .desktop-nav {
   margin-left: auto;
-  font-size: 16px;
-  gap: 32px;
-}
-.business-shell .header-cta {
-  min-height: 53px;
-  font-size: 16px;
-  padding-inline: 22px;
-}
-.business-hero {
-  position: relative;
-  min-height: 652px;
-  height: 42.45vw;
-  max-height: 790px;
-  isolation: isolate;
-}
-.business-hero-scene {
-  position: absolute;
-  inset: 0;
-  margin: 0;
-  z-index: -1;
-}
-.business-hero-scene img {
-  object-fit: cover;
-  object-position: center;
-}
-.business-hero-scene::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    90deg,
-    var(--cream) 0%,
-    color-mix(in srgb, var(--cream) 95%, transparent) 22%,
-    color-mix(in srgb, var(--cream) 80%, transparent) 37%,
-    transparent 62%
-  );
-}
-.business-hero-copy {
-  padding: 91px 4.5% 60px;
-  position: relative;
-  width: 100%;
-}
-.business-hero h1 {
-  max-width: 750px;
-  margin: 0 0 22px;
-  font-size: clamp(52px, 4.17vw, 76px);
-  line-height: 1.03;
-  text-wrap: balance;
-}
-.business-hero h1 em {
-  display: block;
-}
-.business-hero-lede {
-  max-width: 490px;
-  margin: 0;
-  font-size: 23px;
-  line-height: 1.36;
-  color: var(--muted);
-}
-.business-hero-actions {
-  display: flex;
   align-items: center;
-  gap: 14px;
-  margin-top: 30px;
-}
-.business-hero-actions .button {
-  min-height: 60px;
-  padding-inline: 27px;
-  font-size: 20px;
-  gap: 15px;
-}
-.business-how-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 22px;
-  min-height: 60px;
-  padding: 0 24px;
-  border: 1px solid var(--line);
-  border-radius: 5px;
-  font-size: 18px;
-  font-weight: 700;
-  background: var(--cream);
-}
-.business-how-link:hover {
-  border-color: var(--ink);
-}
-.business-assurance {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 12px 0 0;
-  font-size: 17px;
-  color: var(--muted);
-}
-.business-assurance svg {
-  width: 24px;
-  height: 24px;
-  color: var(--orange);
-}
-.business-welcome {
-  position: absolute;
-  left: 64.1%;
-  top: 44%;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  gap: 13px;
-  width: 240px;
-  min-height: 110px;
-  padding: 20px;
-  border-radius: 10px;
-  background: #fffaf5;
-  color: #1d332c;
-  transform: rotate(-5deg);
-  box-shadow: 0 10px 28px #1d332c26;
-}
-.business-welcome svg {
-  width: 35px;
-  height: 35px;
-  flex: none;
-  color: #a55a43;
-}
-.business-welcome strong {
-  display: block;
-  font-size: 19px;
-  line-height: 1.2;
-}
-.business-welcome span {
-  display: block;
-  margin-top: 8px;
-  font-size: 12px;
-  color: #52645a;
-}
-.business-hero-scene figcaption {
-  position: absolute;
-  right: 25px;
-  bottom: 13px;
-  z-index: 1;
-  padding: 10px 14px;
-  background: #faf9f5e8;
-  color: #35473e;
-  font-size: 12px;
-}
-.business-next {
-  display: grid;
-  grid-template-columns: 43% 1fr;
-  align-items: start;
-  gap: 3%;
-  padding: 32px 4.5% 36px;
-  background: var(--business-wash);
-}
-.business-next h2 {
-  max-width: 575px;
-  margin: 0 0 15px;
-  font-size: clamp(38px, 3.5vw, 54px);
-  line-height: 1.06;
-}
-.business-next h2 em {
-  display: block;
-}
-.business-next-copy p {
-  max-width: 580px;
-  font-size: 22px;
-  line-height: 1.35;
-  margin: 0;
-  color: var(--muted);
-}
-.business-visit-journey {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  position: relative;
-  gap: 15%;
-  text-align: center;
-}
-.business-visit-icon {
-  width: 120px;
-  height: 120px;
-  margin: 0 auto 13px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: var(--business-icon-paper);
-  color: var(--orange);
-}
-.business-visit-icon svg {
-  width: 55px;
-  height: 55px;
-}
-.business-visit-step h3 {
-  margin: 0 0 10px;
-  font-size: 22px;
-  letter-spacing: -0.025em;
-  line-height: 1.25;
-}
-.business-visit-step p {
-  max-width: 255px;
-  margin: 0 auto;
-  font-size: 17px;
-  line-height: 1.4;
-  color: var(--muted);
-}
-@media (prefers-color-scheme: dark) {
-  .business-shell {
-    --business-wash: #18382f;
-    --business-icon-paper: #354537;
-  }
-}
-@media (max-width: 1100px) {
-  .business-shell .desktop-nav {
-    gap: 20px;
-    font-size: 14px;
-  }
-  .business-shell .header-cta {
-    font-size: 14px;
-  }
-  .business-hero {
-    min-height: 620px;
-  }
-  .business-hero h1 {
-    max-width: 630px;
-    font-size: 60px;
-  }
-  .business-hero-lede {
-    max-width: 420px;
-    font-size: 20px;
-  }
-  .business-welcome {
-    left: auto;
-    right: 4%;
-    top: 65%;
-  }
-  .business-next-copy p {
-    font-size: 18px;
-  }
-  .business-visit-step h3 {
-    font-size: 19px;
-  }
-}
-@media (max-width: 800px) {
-  .business-shell .site-header {
-    height: 76px;
-  }
-  .business-shell .header-cta {
-    font-size: 12px;
-    padding-inline: 12px;
-    min-height: 43px;
-  }
-  .business-hero {
-    height: auto;
-    max-height: none;
-    min-height: 0;
-    padding-bottom: 350px;
-  }
-  .business-hero-copy {
-    padding: 40px 5% 30px;
-  }
-  .business-hero h1 {
-    font-size: clamp(43px, 7.5vw, 60px);
-    max-width: 620px;
-  }
-  .business-hero-scene {
-    top: auto;
-    height: 350px;
-  }
-  .business-hero-scene img {
-    object-position: 73% center;
-  }
-  .business-hero-scene::after {
-    background: linear-gradient(180deg, var(--cream), transparent 22%);
-  }
-  .business-hero-lede {
-    font-size: 19px;
-    max-width: 500px;
-  }
-  .business-hero-actions {
-    flex-wrap: wrap;
-    gap: 12px;
-    margin-top: 24px;
-  }
-  .business-hero-actions .button {
-    font-size: 17px;
-    min-height: 54px;
-  }
-  .business-how-link {
-    font-size: 16px;
-    min-height: 54px;
-  }
-  .business-assurance {
-    font-size: 14px;
-  }
-  .business-welcome {
-    right: 6%;
-    top: 45%;
-    width: 210px;
-    min-height: 95px;
-    padding: 16px;
-  }
-  .business-welcome strong {
-    font-size: 17px;
-  }
-  .business-hero-scene figcaption {
-    right: 12px;
-    bottom: 12px;
-    font-size: 11px;
-  }
-  .business-next {
-    grid-template-columns: 1fr;
-    gap: 30px;
-    padding: 36px 5%;
-  }
-  .business-next h2 {
-    font-size: 39px;
-    max-width: 570px;
-  }
-  .business-visit-journey {
-    gap: 12%;
-  }
-  .business-visit-icon {
-    width: 92px;
-    height: 92px;
-  }
-  .business-visit-icon svg {
-    width: 43px;
-    height: 43px;
-  }
-  .business-visit-step h3 {
-    font-size: 18px;
-  }
-  .business-visit-step p {
-    font-size: 15px;
-  }
-}
-@media (max-width: 420px) {
-  .business-shell .brand-name {
-    font-size: 18px;
-  }
-  .business-shell .brand-mark {
-    width: 30px;
-    height: 30px;
-  }
-  .business-shell .header-cta {
-    font-size: 11px;
-    gap: 5px;
-    padding-inline: 9px;
-  }
-  .business-hero h1 {
-    font-size: 44px;
-  }
-  .business-hero-actions {
-    align-items: stretch;
-  }
-  .business-hero-actions .button {
-    width: 100%;
-  }
-  .business-how-link {
-    justify-content: center;
-    width: 100%;
-  }
-  .business-next h2 {
-    font-size: 37px;
-  }
-}
-
-@media (min-width: 1101px) {
-  .business-shell .brand-name {
-    font-size: 30px;
-  }
-  .business-shell .brand-mark {
-    width: 44px;
-    height: 44px;
-  }
-  .business-shell .header-cta {
-    width: 254px;
-    justify-content: center;
-    background: #b1351c;
-    color: #fff;
-    font-weight: 500;
-    font-size: 20px;
-    min-height: 48px;
-    border-radius: 9px;
-  }
-  .business-shell .header-cta > span {
-    display: none;
-  }
-  .business-hero h1 {
-    font-size: clamp(54px, 4.427vw, 78px);
-    line-height: 0.96;
-    margin-bottom: 18px;
-    max-width: 48.83vw;
-  }
-  .business-hero-lede {
-    line-height: 1.24;
-    max-width: 31.38vw;
-    font-size: 1.693vw;
-  }
-  .business-hero-actions {
-    margin-top: 1.758vw;
-  }
-  .business-hero-actions .button {
-    font-weight: 500;
-    color: #fff;
-    border-radius: 6px;
-    white-space: nowrap;
-    gap: 24px;
-    padding-inline: 24px;
-    background: #b44027;
-    width: 20.51vw;
-    min-height: 3.906vw;
-    font-size: 1.302vw;
-  }
-  .business-how-link {
-    padding-inline: 20px;
-    border-color: var(--ink);
-    gap: 14px;
-    white-space: nowrap;
-    font-weight: 500;
-    width: 14.19vw;
-    min-height: 3.906vw;
-    font-size: 1.302vw;
-  }
-  .business-assurance {
-    margin-top: 12px;
-  }
-  .business-assurance svg {
-    padding: 3px;
-    background: #1d5545;
-    color: white;
-    border-radius: 50%;
-  }
-  .business-welcome {
-    min-height: 83px;
-    padding: 18px;
-    transform: rotate(-10deg);
-    top: 46%;
-  }
-  .business-welcome strong {
-    font-size: 15px;
-    white-space: nowrap;
-  }
-  .business-welcome span {
-    font-size: 13px;
-    margin-top: 4px;
-  }
-  .business-visit-journey {
-    justify-content: space-between;
-    gap: 0;
-    grid-template-columns: 18.359vw 16.927vw;
-    margin-right: 5.013vw;
-  }
-  .business-next h2 {
-    color: #0b2424;
-    line-height: 1.02;
-    font-size: 3.776vw;
-  }
-  .business-next-copy p {
-    max-width: 35.156vw;
-    font-size: 1.432vw;
-  }
-  .business-visit-step h3 {
-    margin-top: 0;
-    color: #0b2424;
-    font-size: 1.432vw;
-  }
-  .business-visit-step p {
-    margin-top: -2px;
-    font-size: 1.172vw;
-  }
-  .business-next {
-    padding-top: 1.888vw;
-    padding-bottom: 2.344vw;
-  }
-  .business-visit-icon {
-    margin-bottom: 8px;
-    width: 7.812vw;
-    height: 7.812vw;
-  }
-  .business-shell .site-header {
-    padding-right: 4.2%;
-    height: 5.469vw;
-  }
-  .business-hero-actions .landing-icon {
-    width: 24px;
-    height: 24px;
-  }
-  .business-hero {
-    min-height: 0;
-  }
-  .business-hero-copy {
-    padding-top: 5.925vw;
-  }
-}
-.business-visit-journey::after {
-  content: "";
-  position: absolute;
-  left: 34%;
-  right: 34%;
-  top: 58px;
-  height: 1px;
-  background: var(--orange);
-}
-.business-visit-journey::before {
-  content: "";
-  position: absolute;
-  right: 34%;
-  top: 52px;
-  width: 12px;
-  height: 12px;
-  border-top: 1px solid var(--orange);
-  border-right: 1px solid var(--orange);
-  transform: rotate(45deg);
-}
-@media (max-width: 800px) {
-  .business-visit-journey::after {
-    top: 45px;
-  }
-  .business-visit-journey::before {
-    top: 39px;
-  }
-}
-
-.business-welcome {
-  animation: business-welcome-settle 700ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-@keyframes business-welcome-settle {
-  from {
-    filter: blur(1px);
-    box-shadow: 0 5px 14px #1d332c15;
-  }
-  to {
-    filter: blur(0);
-    box-shadow: 0 10px 28px #1d332c26;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .business-welcome {
-    animation: none;
-  }
-}
-@media (prefers-color-scheme: dark) {
-  .business-visit-step h3 {
-    color: var(--ink);
-  }
-}
-
-@media (min-width: 1101px) {
-  .business-next h2 em {
-    color: #b1351c;
-  }
-}
-@media (prefers-color-scheme: dark) {
-  .business-next h2 {
-    color: var(--ink);
-  }
-  .business-next h2 em {
-    color: var(--orange);
-  }
-}
-.business-hero-scene figcaption {
-  border-radius: 8px;
-  background: #faf9f5cc;
-  font-size: 12.5px;
-}
-.business-visit-journey::after {
-  height: 2px;
-  background: #b1351c;
-}
-.business-visit-journey::before {
-  border-width: 2px;
-  border-color: #b1351c;
-}
-@media (min-width: 1101px) {
-  .business-welcome {
-    left: 64.4%;
-    top: 46.5%;
-    width: 228px;
-    min-height: 75px;
-    padding: 16px;
-  }
-  .business-welcome strong {
-    font-size: 14.5px;
-  }
-  .business-welcome span {
-    font-size: 12.5px;
-  }
-}
-@media (prefers-color-scheme: dark) {
-  .business-visit-journey::after {
-    background: var(--orange);
-  }
-  .business-visit-journey::before {
-    border-color: var(--orange);
-  }
-}
-
-/* El barrio conectado: full-page composition from the approved commercial comp. */
-.business-shell {
-  --barrio-accent: #b1351c;
-}
-.business-shell main > section {
-  scroll-margin-top: 24px;
-}
-.business-shell main h2 {
-  font-size: clamp(32px, 4.12vw, 64px);
-  line-height: 1.04;
-  margin: 0 0 22px;
-}
-.business-shell main h2 em {
-  display: block;
-  font-style: normal;
-  color: var(--barrio-accent);
-}
-.barrio-network,
-.barrio-loyalty,
-.barrio-service {
-  position: relative;
-  isolation: isolate;
-}
-.barrio-network {
-  min-height: 52.9vw;
-}
-.barrio-loyalty {
-  min-height: 44.2vw;
-}
-.barrio-map,
-.barrio-reward {
-  margin: 0;
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-}
-.barrio-map img,
-.barrio-reward img {
-  object-fit: cover;
-}
-.barrio-copy {
-  position: relative;
-  width: 36%;
-  padding: 6.5vw 0 4vw 5%;
-}
-.barrio-copy p {
-  margin: 0;
-  color: var(--muted);
-  font-size: clamp(17px, 1.85vw, 28px);
-  line-height: 1.4;
-}
-.barrio-benefits {
-  padding: 0;
-  margin: 28px 0 0;
-  list-style: none;
-  display: grid;
-  gap: 20px;
-  font-size: clamp(15px, 1.6vw, 24px);
-}
-.barrio-benefits li {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-}
-.barrio-benefits svg {
-  width: 30px;
-  height: 30px;
-  padding: 6px;
-  background: #15483e;
-  color: white;
-  border-radius: 50%;
-  flex: none;
-}
-.barrio-more {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: clamp(14px, 1.35vw, 20px);
-  margin-top: 24px;
-  text-decoration: underline;
-  text-underline-offset: 5px;
-  line-height: 1.4;
-}
-.barrio-more svg {
-  width: 20px;
-  height: 20px;
-  flex: none;
-}
-.barrio-shop,
-.barrio-invitation {
-  position: absolute;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: #fffdf7;
-  color: #102c2a;
-  border-radius: 8px;
-  padding: 12px;
-  box-shadow: 0 4px 18px #153b2914;
-  font-size: clamp(12px, 1.45vw, 21px);
-  line-height: 1.2;
-}
-.barrio-shop svg {
-  width: clamp(22px, 3vw, 38px);
-  height: clamp(22px, 3vw, 38px);
-  color: #28594a;
-  flex: none;
-}
-.barrio-shop span {
-  font-weight: 700;
-}
-.barrio-bakery {
-  left: 52%;
-  top: 13%;
-}
-.barrio-bookshop {
-  right: 3%;
-  top: 13%;
-}
-.barrio-cafe {
-  left: 63.5%;
-  top: 57.5%;
-}
-.barrio-florist {
-  left: 33%;
-  top: 74%;
-}
-.barrio-invitation {
-  left: 67%;
-  top: 33.5%;
-  padding: 18px;
-  align-items: flex-start;
-  width: 27%;
-  font-size: clamp(12px, 1.5vw, 22px);
-}
-.barrio-invitation > svg {
-  flex: none;
-  width: 38px;
-  height: 38px;
-  color: var(--barrio-accent);
-}
-.barrio-invitation p {
-  margin: 0;
-}
-.barrio-invitation strong {
-  display: block;
-  color: var(--barrio-accent);
-  font-weight: 500;
-}
-.barrio-loyalty .barrio-copy {
-  padding-top: 4vw;
-}
-.barrio-reward::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, #fae6d1e8, #fae6d1c9 28%, transparent 40%);
-}
-.barrio-loyalty .barrio-copy {
-  color: #102c2a;
-}
-.barrio-loyalty .barrio-copy p {
-  color: #465749;
-}
-.barrio-service {
-  background: #103b33;
-  color: #fffdf7;
-  min-height: 44.9vw;
-}
-.barrio-service .barrio-copy {
-  padding-top: 5.6vw;
-}
-.barrio-service .barrio-copy p {
-  color: #d4e4da;
-}
-.barrio-service-visual {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-}
-.barrio-attention {
-  position: absolute;
-  inset: 0 0 0 63.3%;
-  margin: 0;
-}
-.barrio-attention img {
-  object-fit: cover;
-}
-.barrio-attention::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, #103b33, transparent 15%);
-}
-.barrio-pos-panels {
-  list-style: none;
-  position: absolute;
-  left: 36.8%;
-  top: 7%;
-  width: 24.3%;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  gap: 12px;
-  color: #102c2a;
-  font-size: clamp(12px, 1.5vw, 22px);
-}
-.barrio-pos-panels > li {
-  background: #fffdf7;
-  border-radius: 8px;
-  padding: 15px;
-  position: relative;
-}
-.barrio-pos-panels h3 {
-  font-size: inherit;
-  line-height: 1.3;
-  margin: 0 0 16px;
-  letter-spacing: -0.025em;
-}
-.barrio-pos-panels svg {
-  width: 30px;
-  height: 30px;
-  flex: none;
-  color: #28594a;
-}
-.barrio-order > div {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-block: 16px;
-}
-.barrio-order b {
-  margin-left: auto;
-  font-size: 0.9em;
-}
-.barrio-order > p {
-  margin: 22px 0 0;
-  border-top: 1px solid #dce2d9;
-  padding-top: 15px;
-  display: flex;
-  justify-content: space-between;
-}
-.barrio-pos-panels strong {
-  font-variant-numeric: tabular-nums;
-}
-.barrio-customer > div,
-.barrio-redeem > div {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-.barrio-customer p,
-.barrio-redeem p {
-  margin: 0;
-  line-height: 1.3;
-  flex: 1;
-}
-.barrio-customer span {
-  display: block;
-  font-size: 0.8em;
-  color: #52635b;
-}
-.barrio-redeem svg {
-  color: var(--barrio-accent);
-  width: 42px;
-  height: 42px;
-}
-.barrio-charge {
-  display: block;
-  background: #15483e;
-  color: white;
-  padding: 7px 12px;
-  border-radius: 4px;
-  margin-top: 7px;
-  font-size: 0.9em;
-  text-align: center;
-}
-.barrio-order::after,
-.barrio-customer::after {
-  content: "";
-  position: absolute;
-  left: 100%;
-  top: 50%;
-  width: 36px;
-  height: 90%;
-  border: 1px solid #d4e4da;
-  border-left: 0;
-  border-radius: 0 7px 7px 0;
-}
-.barrio-start {
-  display: grid;
-  grid-template-columns: 32% 1fr;
-  gap: 3%;
-  padding: 3.8vw 5%;
-  background: var(--business-wash);
-}
-.barrio-start p,
-.barrio-plan-heading p {
-  color: var(--muted);
-  font-size: clamp(17px, 1.8vw, 26px);
-  margin: 0;
-  line-height: 1.35;
-}
-.barrio-steps {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 30px;
-  text-align: center;
-}
-.barrio-steps li {
-  position: relative;
-}
-.barrio-step-number {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background: #15483e;
-  color: #fff;
-  margin: 0 auto 20px;
-}
-.barrio-step-icon {
-  display: block;
-  width: 52px;
-  height: 52px;
-  color: var(--barrio-accent);
-  margin: 0 auto 24px;
-}
-.barrio-steps h3 {
-  font-size: clamp(15px, 1.6vw, 24px);
-  line-height: 1.2;
-  margin: 0 0 10px;
-}
-.barrio-steps p {
-  font-size: clamp(14px, 1.5vw, 22px);
-}
-.barrio-step-arrow {
-  position: absolute;
-  width: 24px;
-  height: 24px;
-  top: 80px;
-  right: -25px;
-  color: var(--muted);
-}
-.barrio-plans {
-  padding: 4.2vw 5% 2.5vw;
-}
-.barrio-plan-layout {
-  display: grid;
-  grid-template-columns: 1.4fr 1fr 1fr 0.8fr;
-  gap: 16px;
-  align-items: stretch;
-}
-.business-shell .barrio-plan {
-  padding: 24px;
-  border: 1px solid #96b8b6;
-  border-radius: 8px;
-  background: transparent;
-}
-.business-shell .barrio-plan-plus {
-  border-color: #cc6d55;
-}
-.barrio-plan h3 {
-  font-size: clamp(22px, 2.3vw, 34px);
-  margin: 0 0 12px;
-}
-.business-shell .barrio-plan-price {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 5px;
-  margin: 0 0 22px;
+  font-weight: 400;
   color: var(--ink);
 }
-.barrio-plan-price strong {
-  font-size: clamp(30px, 3.1vw, 46px);
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-.barrio-plan-price span {
-  font-size: clamp(12px, 1.2vw, 18px);
-}
-.business-shell .barrio-plan ul {
-  padding: 0;
-  margin: 0;
-  list-style: none;
-  display: grid;
-  gap: 14px;
-}
-.business-shell .barrio-plan li {
-  display: flex;
-  gap: 9px;
-  align-items: flex-start;
-  font-size: clamp(14px, 1.35vw, 20px);
-  line-height: 1.35;
-}
-.barrio-plan li svg {
-  width: 21px;
-  height: 21px;
-  color: #28594a;
-  flex: none;
-}
-.barrio-independent {
-  background: var(--business-wash);
-  padding: 24px 18px;
-  border-radius: 8px;
-}
-.barrio-independent > svg {
-  width: 54px;
-  height: 54px;
-  color: #28594a;
-  display: block;
-  margin: 8px auto 24px;
-}
-.barrio-independent h3 {
-  font-size: clamp(17px, 1.65vw, 24px);
-  line-height: 1.2;
-  margin: 0 0 15px;
-}
-.barrio-independent p {
-  font-size: clamp(15px, 1.4vw, 20px);
-  line-height: 1.35;
-  color: var(--muted);
-  margin: 0;
-}
-.barrio-plan-notes {
-  max-width: 900px;
-  margin: 20px auto 0;
-  text-align: center;
-  font-size: 14px;
-  color: var(--muted);
-  line-height: 1.4;
-}
-.barrio-plan-notes p {
-  margin: 6px 0;
-}
-.barrio-faq {
-  padding: 2vw 5% 3.5vw;
-}
-.business-shell .barrio-faq h2 {
-  font-size: clamp(30px, 3.2vw, 48px);
-}
-.barrio-faq-list {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px 30px;
-  align-items: start;
-}
-.barrio-faq-list details {
-  border: 1px solid var(--line);
+.business-shell .brand-mark {
+  width: 32px;
+  height: 32px;
   border-radius: 7px;
-  background: var(--cream);
 }
-.barrio-faq-list summary {
-  display: flex;
+.business-shell .brand-name {
+  font-size: 22px;
+  letter-spacing: -0.04em;
+}
+.business-shell .button {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 15px;
-  cursor: pointer;
-  padding: 18px;
-  list-style: none;
-  font-size: 17px;
-  line-height: 1.3;
-  min-height: 62px;
+  min-height: 0;
+  gap: 12px;
+  line-height: 1.65;
 }
-.barrio-faq-list summary::-webkit-details-marker {
+.business-shell .button span,
+.business-shell .header-cta span {
+  display: inline-flex;
+}
+.business-shell .business-hero-actions .button > span,
+.business-shell .header-cta > span {
   display: none;
 }
-.barrio-faq-list summary svg {
-  width: 22px;
-  height: 22px;
-  flex: none;
+.business-shell .button svg,
+.business-shell .header-cta svg,
+.business-shell .barrio-more svg,
+.business-shell .business-how-link svg {
+  width: 16px;
+  height: 16px;
 }
-.barrio-faq-list details[open] summary svg {
+.business-shell .header-cta {
+  min-height: 0;
+  padding: 10px 15px;
+  font-weight: 600;
+  line-height: 1.65;
+  gap: 10px;
+}
+.business-shell .business-how-link {
+  text-decoration: underline;
+  text-underline-offset: 5px;
+}
+.business-shell .business-how-link span,
+.business-shell .barrio-more span {
+  display: none;
+}
+.business-shell .button:hover,
+.business-shell .header-cta:hover {
+  background: var(--ink);
+  transform: none;
+}
+.business-shell .desktop-nav a:hover,
+.business-shell .site-footer a:hover {
+  color: var(--ink);
+}
+.business-shell .business-welcome svg,
+.business-shell .business-assurance svg,
+.business-shell .barrio-benefits svg,
+.business-shell .barrio-shop svg,
+.business-shell .barrio-invitation svg,
+.business-shell .barrio-pos-panels svg,
+.business-shell .barrio-steps svg,
+.business-shell .barrio-plan svg,
+.business-shell .barrio-independent svg {
+  display: none;
+}
+.business-shell .barrio-plan:not(.barrio-plan-plus) {
+  background: var(--plan-wash);
+  border-color: var(--plan-border);
+}
+.business-shell .barrio-plan:not(.barrio-plan-plus) .barrio-plan-price strong {
+  color: var(--plan-accent);
+}
+.business-shell .barrio-plan {
+  background: var(--paper);
+}
+.business-shell .barrio-plan-price {
+  color: var(--ink);
+  border: 0;
+  padding: 0;
+}
+.business-shell .barrio-plan-plus .barrio-plan-price strong {
+  color: var(--ink);
+}
+.business-shell .barrio-plan ul {
+  margin: 16px 0 0;
+  padding: 0;
+  border: 0;
+}
+.business-shell .barrio-plan li::before {
+  content: none;
+}
+.business-shell .business-hero-scene,
+.business-shell .barrio-map,
+.business-shell .barrio-reward,
+.business-shell .barrio-service-visual {
+  background: var(--panel);
+  border-color: var(--panel-border);
+}
+.business-shell .barrio-map .barrio-invitation {
+  background: var(--paper);
+}
+.business-shell .barrio-start,
+.business-shell .barrio-independent {
+  background: var(--panel);
+}
+.business-shell .barrio-map img {
+  background: var(--panel);
+}
+.business-shell .barrio-pos-panels p {
+  margin: 0;
+}
+.business-shell .barrio-order p {
+  margin-top: 12px;
+}
+.business-shell .barrio-order div {
+  gap: 8px;
+}
+.business-shell .barrio-redeem p {
+  margin: 0;
+}
+.business-shell .barrio-steps li {
+  min-width: 0;
+}
+.business-shell .barrio-shop span {
+  margin-right: 3px;
+}
+.business-shell .barrio-shop br::after,
+.business-shell .barrio-invitation br::after {
+  content: " ";
+}
+.business-shell .barrio-faq summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 26px;
+  list-style: none;
+}
+.business-shell .barrio-faq summary::-webkit-details-marker {
+  display: none;
+}
+.business-shell .barrio-faq summary svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  transition: transform 160ms ease;
+}
+.business-shell .barrio-faq details[open] summary svg {
   transform: rotate(45deg);
 }
-.barrio-faq-list details p {
-  margin: 0;
-  padding: 0 18px 20px;
-  color: var(--muted);
-  font-size: 17px;
-  line-height: 1.55;
+.business-shell .barrio-charge {
+  cursor: default;
 }
-.barrio-final {
-  background: #103b33;
-  color: #fffdf7;
-  margin: 0 5% 4vw;
-  padding: 32px 36px;
-  border-radius: 8px;
-  display: flex;
+.business-shell .site-footer {
+  display: grid;
+  grid-template-columns: 1fr auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 24px;
 }
-.business-shell .barrio-final h2 {
-  margin: 0 0 10px;
-  font-size: clamp(30px, 3.2vw, 48px);
+.business-shell .site-footer .brand {
+  color: var(--ink);
 }
-.barrio-final p {
-  margin: 0;
-  color: #d4e4da;
-  font-size: clamp(17px, 1.8vw, 26px);
-  line-height: 1.4;
-}
-.business-shell .barrio-final .button {
-  background: #b1351c;
-  color: white;
-  white-space: nowrap;
-}
-.business-shell .barrio-footer {
-  padding: 30px 5%;
+.business-shell .site-footer > div {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  gap: 22px;
   flex-wrap: wrap;
-  gap: 24px;
 }
-.barrio-footer > small {
-  width: 100%;
-  font-size: 12px;
-}
-.business-shell .barrio-footer .brand-name {
-  font-size: 25px;
-}
-.business-shell .barrio-footer .brand-mark {
-  width: 35px;
-  height: 35px;
-}
-.business-shell .barrio-footer > div {
-  margin: 0;
+.business-shell .site-footer small {
+  grid-column: 1/-1;
+  color: var(--muted);
 }
 .business-shell a:focus-visible,
 .business-shell summary:focus-visible {
-  outline: 3px solid var(--orange);
-  outline-offset: 5px;
+  outline-color: var(--plan-accent);
 }
 .business-shell ::selection {
-  background: #b1351c;
-  color: white;
+  background: var(--lime);
+  color: var(--ink);
+}
+@media (max-width: 760px) {
+  .business-shell .brand-name {
+    font-size: 18px;
+  }
+  .business-shell .brand-mark {
+    width: 27px;
+    height: 27px;
+  }
+  .business-shell .brand {
+    gap: 7px;
+  }
+  .business-shell .header-cta {
+    font-size: 11px;
+    padding: 9px;
+    gap: 5px;
+  }
+  .business-shell .header-cta svg {
+    width: 12px;
+    height: 12px;
+  }
+  .business-shell .site-footer {
+    grid-template-columns: 1fr;
+  }
+  .business-shell .barrio-final .button {
+    width: auto;
+  }
+}
+@media (max-width: 360px) {
+  .business-shell .site-header {
+    padding-inline: 16px;
+    gap: 8px;
+  }
+  .business-shell .brand-name {
+    font-size: 16px;
+  }
+  .business-shell .header-cta {
+    padding: 9px 7px;
+    font-size: 10px;
+  }
+  .business-shell .header-cta span {
+    display: none;
+  }
+  .business-shell .barrio-pos-panels {
+    gap: 8px;
+  }
 }
 @media (prefers-color-scheme: dark) {
   .business-shell {
-    --barrio-accent: #e69a77;
+    --ink: #e8f0ea;
+    --paper: #10231b;
+    --cream: #10231b;
+    --muted: #b0c3b7;
+    --accent: #9fc9b2;
+    --line: #385448;
+    --panel: #19362b;
+    --panel-border: #385448;
+    --plan-accent: #f0ae91;
+    --plan-wash: #34291f;
+    --plan-border: #9a6e58;
+    --orange: #f0ae91;
+    --lime: #395948;
   }
-  .barrio-network .barrio-copy {
-    color: #102c2a;
+  .business-shell h1 em,
+  .business-shell h2 em {
+    color: var(--accent);
   }
-  .barrio-network .barrio-copy p {
-    color: #465749;
-  }
-  .barrio-network .barrio-copy em,
-  .barrio-loyalty .barrio-copy em {
-    color: #b1351c;
-  }
-  .barrio-invitation strong,
-  .barrio-invitation > svg,
-  .barrio-redeem > div > svg {
-    color: #b1351c;
-  }
-  .barrio-independent > svg,
-  .barrio-plan li svg {
-    color: #a2cebb;
-  }
-}
-@media (max-width: 1100px) and (min-width: 801px) {
-  .barrio-copy {
-    width: 37%;
-  }
-  .barrio-benefits {
-    gap: 12px;
-    margin-top: 20px;
-  }
-  .barrio-benefits svg {
-    width: 24px;
-    height: 24px;
-    padding: 4px;
-  }
-  .barrio-copy p {
-    font-size: 17px;
-  }
-  .barrio-more {
-    margin-top: 15px;
-  }
-  .barrio-pos-panels > li {
-    padding: 10px;
-  }
-  .barrio-pos-panels h3 {
-    margin-bottom: 8px;
-  }
-  .barrio-order > div {
-    margin-block: 10px;
-  }
-  .barrio-plan-layout {
-    grid-template-columns: 1fr 1fr 1fr;
-  }
-  .barrio-plan-heading {
-    grid-column: 1 / -1;
-    max-width: 650px;
-  }
-  .barrio-final {
-    flex-wrap: wrap;
-  }
-}
-@media (max-width: 800px) {
-  .business-shell main h2 {
-    font-size: 38px;
-  }
-  .barrio-network,
-  .barrio-loyalty,
-  .barrio-service {
-    min-height: 0;
-  }
-  .barrio-copy {
-    width: 100%;
-    padding: 40px 5% 30px;
-  }
-  .barrio-copy p {
-    font-size: 18px;
-    max-width: 520px;
-  }
-  .barrio-benefits {
-    font-size: 16px;
-    gap: 14px;
-  }
-  .barrio-more {
-    font-size: 15px;
-  }
-  .barrio-map {
-    position: relative;
-    aspect-ratio: 1.18;
-    margin-top: 0;
-    z-index: 0;
-  }
-  .barrio-network {
-    display: flex;
-    flex-direction: column-reverse;
-  }
-  .barrio-map img {
-    object-fit: cover;
-    object-position: right;
-  }
-  .barrio-network .barrio-copy {
+  .business-shell .barrio-final {
+    background: #193c30;
     color: var(--ink);
-    background: var(--cream);
-  }
-  .barrio-network .barrio-copy p {
-    color: var(--muted);
-  }
-  .barrio-network .barrio-copy em {
-    color: var(--barrio-accent);
-  }
-  .barrio-shop {
-    font-size: 12px;
-    padding: 8px;
-    gap: 6px;
-  }
-  .barrio-bakery {
-    left: 25%;
-    top: 10%;
-  }
-  .barrio-bookshop {
-    right: 2%;
-    top: 10%;
-  }
-  .barrio-cafe {
-    left: 46%;
-    top: 55%;
-  }
-  .barrio-florist {
-    left: 4%;
-    top: 78%;
-  }
-  .barrio-invitation {
-    left: 43%;
-    top: 26%;
-    width: 55%;
-    padding: 10px;
-    gap: 8px;
-    font-size: 12px;
-  }
-  .barrio-invitation > svg {
-    width: 25px;
-    height: 25px;
-  }
-  .barrio-loyalty {
-    padding-bottom: 260px;
-    background: #fae6d1;
-  }
-  .barrio-loyalty .barrio-copy {
-    padding: 40px 5% 28px;
-  }
-  .barrio-reward {
-    top: auto;
-    height: 260px;
-    z-index: 0;
-  }
-  .barrio-reward img {
-    object-position: right;
-  }
-  .barrio-reward::after {
-    background: linear-gradient(180deg, #fae6d1, transparent 20%);
-  }
-  .barrio-service .barrio-copy {
-    padding: 40px 5% 30px;
-  }
-  .barrio-service-visual {
-    position: relative;
-    height: 465px;
-    z-index: 0;
-  }
-  .barrio-attention {
-    left: 40%;
-  }
-  .barrio-pos-panels {
-    left: 5%;
-    width: 53%;
-    top: 6%;
-    font-size: 15px;
-    gap: 10px;
-  }
-  .barrio-pos-panels > li {
-    padding: 12px;
-  }
-  .barrio-pos-panels h3 {
-    margin-bottom: 10px;
-  }
-  .barrio-order > div {
-    gap: 6px;
-    margin-block: 12px;
-  }
-  .barrio-pos-panels svg {
-    width: 23px;
-    height: 23px;
-  }
-  .barrio-order > p {
-    margin-top: 12px;
-    padding-top: 12px;
-  }
-  .barrio-order::after,
-  .barrio-customer::after {
-    width: 20px;
-  }
-  .barrio-start {
-    grid-template-columns: 1fr;
-    padding: 40px 5%;
-    gap: 32px;
-  }
-  .barrio-start p {
-    font-size: 18px;
-  }
-  .barrio-steps {
-    grid-template-columns: 1fr;
-    text-align: left;
-    gap: 26px;
-  }
-  .barrio-steps li {
-    padding-left: 75px;
-    min-height: 70px;
-  }
-  .barrio-step-number {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 24px;
-    height: 24px;
-    font-size: 13px;
-    margin: 0;
-  }
-  .barrio-step-icon {
-    position: absolute;
-    left: 28px;
-    top: 0;
-    width: 32px;
-    height: 32px;
-    margin: 0;
-  }
-  .barrio-steps h3 {
-    font-size: 19px;
-  }
-  .barrio-steps p {
-    font-size: 16px;
-  }
-  .barrio-step-arrow {
-    display: none;
-  }
-  .barrio-plans {
-    padding: 40px 5% 24px;
-  }
-  .barrio-plan-layout {
-    grid-template-columns: 1fr;
-    gap: 18px;
-  }
-  .barrio-plan h3 {
-    font-size: 27px;
-  }
-  .barrio-plan li,
-  .barrio-independent p {
-    font-size: 17px;
-  }
-  .barrio-plan-price strong {
-    font-size: 40px;
-  }
-  .barrio-plan-price span {
-    font-size: 16px;
-  }
-  .barrio-independent {
-    padding: 22px;
-  }
-  .barrio-independent > svg {
-    float: left;
-    margin: 0 18px 20px 0;
-  }
-  .barrio-independent h3 {
-    font-size: 21px;
-  }
-  .barrio-plan-notes {
-    text-align: left;
-    font-size: 13px;
-  }
-  .barrio-faq {
-    padding: 24px 5% 36px;
-  }
-  .barrio-faq-list {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-  .barrio-faq-list summary {
-    font-size: 16px;
-    padding: 16px;
-  }
-  .barrio-final {
-    flex-direction: column;
-    align-items: stretch;
-    padding: 26px 22px;
-    margin-bottom: 32px;
-  }
-  .barrio-final p {
-    font-size: 18px;
   }
   .business-shell .barrio-final .button {
-    justify-content: center;
-    white-space: normal;
-  }
-  .business-shell .barrio-footer {
-    align-items: flex-start;
-    padding-block: 24px;
+    background: #e8f0ea;
+    color: #17382f;
+    border-color: #e8f0ea;
   }
 }
-@media (min-width: 801px) {
-  .business-shell .barrio-network h2 {
-    font-size: clamp(32px, 3.7vw, 58px);
-  }
-}
-@media (max-width: 800px) {
-  .barrio-service {
-    display: flex;
-    flex-direction: column;
-  }
-  .barrio-service > .barrio-copy {
-    order: -1;
-  }
-}
-/* Compact plans and five FAQ entries, as in the selected full-page layout. */
-.business-shell .barrio-plan ul {
-  border: 0;
-  min-height: 0;
-  flex-grow: 0;
-}
-.business-shell .barrio-plan li {
-  margin-bottom: 0;
-}
-@media (min-width: 801px) {
-  .business-shell .barrio-plan-heading h2 {
-    font-size: clamp(32px, 3.65vw, 56px);
-  }
-  .barrio-faq {
-    padding-top: 1vw;
-    padding-bottom: 2vw;
+@media (prefers-reduced-motion: reduce) {
+  .business-shell .barrio-faq summary svg {
+    transition: none;
   }
 }

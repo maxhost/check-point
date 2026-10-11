@@ -20,22 +20,21 @@ export function NeighborhoodScene() {
       <Image
         src="/images/negocios-neighborhood.png"
         alt="Comercios y árboles conectados por un recorrido en las calles del barrio"
-        fill
-        sizes="100vw"
+        width={1724}
+        height={912}
+        sizes="(max-width: 760px) calc(100vw - 80px), (max-width: 1190px) 40vw, 464px"
       />
       <div className="barrio-shop barrio-bakery">
         <CoffeeCup aria-hidden="true" />
         <span>
-          Panadería
-          <br />
+          Panadería <br />
           La Esquina
         </span>
       </div>
       <div className="barrio-shop barrio-bookshop">
         <Book aria-hidden="true" />
         <span>
-          Librería
-          <br />
+          Librería <br />
           El Rincón
         </span>
       </div>
@@ -46,21 +45,17 @@ export function NeighborhoodScene() {
       <div className="barrio-shop barrio-florist">
         <Flower aria-hidden="true" />
         <span>
-          Floristería
-          <br />
+          Floristería <br />
           Verde Aquí
         </span>
       </div>
       <div className="barrio-invitation">
         <Gift aria-hidden="true" />
         <p>
-          Por tu compra en
-          <br />
-          Panadería La Esquina
-          <br />
+          Por tu compra en <br />
+          Panadería La Esquina <br />
           <strong>
-            puedes recibir un beneficio
-            <br />
+            puedes recibir un beneficio <br />
             en Café.
           </strong>
         </p>
@@ -75,8 +70,9 @@ export function RewardScene() {
       <Image
         src="/images/negocios-reward-scene.png"
         alt="Soporte con QR para unirse y tarjeta de recompensas: cinco compras, un café"
-        fill
-        sizes="100vw"
+        width={1886}
+        height={834}
+        sizes="(max-width: 760px) calc(100vw - 80px), (max-width: 1190px) 40vw, 464px"
       />
     </figure>
   );
@@ -89,8 +85,9 @@ export function ServiceScene() {
         <Image
           src="/images/negocios-service-scene.png"
           alt="Dueña de una cafetería atendiendo a un cliente con una tablet"
-          fill
-          sizes="(max-width: 800px) 60vw, 37vw"
+          width={1134}
+          height={1387}
+          sizes="(max-width: 760px) calc(100vw - 80px), (max-width: 1190px) 40vw, 464px"
         />
       </figure>
       <ol className="barrio-pos-panels" aria-label="Del pedido a la recompensa">

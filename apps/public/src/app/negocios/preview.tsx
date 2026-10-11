@@ -21,8 +21,9 @@ export function BusinessHeroScene() {
       <Image
         src="/images/negocios-bienvenida.png"
         alt="Escena ilustrativa: dueña de una cafetería entregando un café a un cliente"
-        fill
-        sizes="100vw"
+        width={1923}
+        height={817}
+        sizes="(max-width: 760px) calc(100vw - 74px), (max-width: 1190px) 42vw, 490px"
         preload
       />
       <div className="business-welcome">

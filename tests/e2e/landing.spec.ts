@@ -236,6 +236,47 @@ for (const width of [390, 1440]) {
       await expect(page.locator(".plan-card").nth(1)).toContainText(
         "Hasta 3 locales",
       );
+      const planPresentation = await page
+        .locator(".barrio-plan")
+        .evaluateAll((plans) =>
+          plans.map((plan) => ({
+            background: getComputedStyle(plan).backgroundColor,
+            priceColor: getComputedStyle(
+              plan.querySelector(".barrio-plan-price strong")!,
+            ).color,
+            items: [...plan.querySelectorAll("li")].map((item) => ({
+              x: item.getBoundingClientRect().x,
+              y: item.getBoundingClientRect().y,
+            })),
+          })),
+        );
+      expect(planPresentation[0].background).not.toBe(
+        planPresentation[1].background,
+      );
+      expect(planPresentation[0].priceColor).not.toBe(
+        planPresentation[1].priceColor,
+      );
+      for (const plan of planPresentation) {
+        expect(new Set(plan.items.map((item) => item.x)).size).toBe(1);
+        expect(
+          plan.items.every(
+            (item, index, items) => index === 0 || item.y > items[index - 1].y,
+          ),
+        ).toBe(true);
+      }
+      const heroCopy = await page.locator(".business-hero-copy").boundingBox();
+      const heroScene = await page
+        .locator(".business-hero-scene")
+        .boundingBox();
+      expect(heroCopy).not.toBeNull();
+      expect(heroScene).not.toBeNull();
+      if (width === 390) {
+        expect(heroCopy!.y + heroCopy!.height).toBeLessThanOrEqual(
+          heroScene!.y,
+        );
+      } else {
+        expect(heroCopy!.x + heroCopy!.width).toBeLessThanOrEqual(heroScene!.x);
+      }
       await expect(
         page.getByRole("heading", { name: /^(Gratis|Plus)$/ }),
       ).toHaveCount(0);
@@ -304,7 +345,7 @@ for (const width of [390, 1440]) {
         .locator(".site-shell")
         .evaluate((element) => getComputedStyle(element).backgroundColor);
       expect(background).toBe(
-        colorScheme === "dark" ? "rgb(16, 35, 27)" : "rgb(250, 249, 245)",
+        colorScheme === "dark" ? "rgb(16, 35, 27)" : "rgb(255, 255, 255)",
       );
       await page.evaluate(() => window.scrollTo(0, 0));
       await page.screenshot({

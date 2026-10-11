@@ -1,0 +1,157 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-11T17:41:56.974694+00:00",
+  "title": "Design System: CheckPass Club",
+  "extensions": {
+    "colorMeta": {
+      "ink": {
+        "role": "primary",
+        "displayName": "Verde profundo"
+      },
+      "accent": {
+        "role": "primary",
+        "displayName": "Verde medio"
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Blanco"
+      },
+      "panel": {
+        "role": "neutral",
+        "displayName": "Verde tenue"
+      },
+      "plan-accent": {
+        "role": "secondary",
+        "displayName": "Terracota"
+      },
+      "plan-wash": {
+        "role": "neutral",
+        "displayName": "Marfil cálido"
+      },
+      "plan-border": {
+        "role": "neutral",
+        "displayName": "Borde cálido"
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Texto secundario"
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Línea suave"
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Titular principal",
+        "purpose": "Beneficio principal; 41px en móvil."
+      },
+      "body": {
+        "displayName": "Explicación",
+        "purpose": "Lectura continua, separada de las imágenes."
+      }
+    },
+    "shadows": [],
+    "motion": [
+      {
+        "name": "disclosure",
+        "value": "transform 160ms ease",
+        "purpose": "Icono de apertura; sin transición con reduced-motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "mobile",
+        "value": "760px"
+      },
+      {
+        "name": "compact-header",
+        "value": "360px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Acción primaria",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Acción principal con foco visible y sin desplazamiento.",
+      "html": "<a class=\"ds-button\" href=\"#\">Pruébalo gratis 3 meses</a>",
+      "css": ".ds-button{display:inline-block;background:var(--ink,#17382f);color:var(--paper,#fff);padding:13px 21px;border:1px solid var(--ink,#17382f);border-radius:7px;font:600 15px/1.65 Arial,sans-serif;text-decoration:none}.ds-button:hover{opacity:.75}.ds-button:focus-visible{outline:3px solid var(--plan-accent,#9b432c);outline-offset:5px}"
+    },
+    {
+      "name": "Acción sobre cierre verde",
+      "kind": "button",
+      "description": "Acción clara sobre una superficie oscura.",
+      "html": "<div class=\"ds-closing\"><a class=\"ds-inverse\" href=\"#\">Pruébalo gratis 3 meses</a></div>",
+      "css": ".ds-closing{background:#17382f;padding:24px}.ds-inverse{display:inline-block;background:#fff;color:#17382f;border:1px solid #fff;padding:13px 21px;border-radius:7px;font:600 15px/1.65 Arial,sans-serif;text-decoration:none}.ds-inverse:hover{opacity:.75}.ds-inverse:focus-visible{outline:3px solid #f0ae91;outline-offset:5px}"
+    },
+    {
+      "name": "Demostración contenida",
+      "kind": "custom",
+      "refersTo": "demonstration",
+      "description": "Agrupación plana: contexto y demostración sin texto sobre fotografía.",
+      "html": "<figure class=\"ds-demo\"><figcaption>Por tu compra en Panadería La Esquina puedes recibir un beneficio en Café.</figcaption></figure>",
+      "css": ".ds-demo{margin:0;padding:22px;border:1px solid var(--line,#dce6e1);background:var(--panel,#f5f8f6);color:var(--ink,#17382f);border-radius:9px;font:400 14px/1.65 Arial,sans-serif}"
+    },
+    {
+      "name": "Plan destacado: Conecta",
+      "kind": "card",
+      "refersTo": "plan-highlight",
+      "description": "Destacado exclusivo de Conecta, con ítems verticales y sin corazones.",
+      "html": "<article class=\"ds-plan\"><h3>Conecta</h3><p><strong>$20</strong> USD / mes**</p><ul><li>1 local</li><li>Puntos y sellos</li><li>Bienvenida y Venta cruzada</li><li>POS, catálogo con IA, mesas y pedidos</li></ul></article>",
+      "css": ".ds-plan{padding:28px;background:var(--plan-wash,#fffaf7);border:1px solid var(--plan-border,#e8cbbb);border-radius:7px;color:var(--ink,#17382f);font:400 13px/1.65 Arial,sans-serif}.ds-plan h3{margin:0;font-size:21px}.ds-plan strong{font-size:36px;color:var(--plan-accent,#9b432c)}.ds-plan ul{list-style:none;padding:0;margin:16px 0 0}.ds-plan li{padding:7px 0}"
+    },
+    {
+      "name": "Pregunta desplegable",
+      "kind": "custom",
+      "description": "Divulgación progresiva mediante HTML nativo y teclado.",
+      "html": "<details class=\"ds-faq\"><summary>¿Mis clientes necesitan descargar una app?</summary><p>No. Pueden acceder desde el navegador.</p></details>",
+      "css": ".ds-faq{color:var(--ink,#17382f);font:400 16px/1.65 Arial,sans-serif;border-bottom:1px solid var(--line,#dce6e1);padding:18px 0}.ds-faq summary{cursor:pointer}.ds-faq summary:hover{opacity:.75}.ds-faq summary:focus-visible{outline:3px solid var(--plan-accent,#9b432c);outline-offset:5px}.ds-faq p{font-size:14px;margin:20px 0 0}"
+    },
+    {
+      "name": "Navegación comercial",
+      "kind": "nav",
+      "description": "Enlaces descriptivos a secciones reales.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Secciones\"><a href=\"#como-funciona\">Cómo funciona</a><a href=\"#planes\">Planes</a><a href=\"#preguntas\">Preguntas</a></nav>",
+      "css": ".ds-nav{display:flex;gap:26px;color:var(--ink,#17382f);font:400 14px/1.65 Arial,sans-serif}.ds-nav a{color:inherit;text-decoration:none}.ds-nav a:hover{opacity:.75}.ds-nav a:focus-visible{outline:3px solid var(--plan-accent,#9b432c);outline-offset:5px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Funcional con calidez",
+    "overview": "La información conduce la experiencia. La jerarquía permite reconocer el beneficio,\nleer su explicación y encontrar la acción. Las fotografías y demostraciones tienen\nun espacio propio; acompañan el mensaje sin actuar como fondo del texto principal.\n\nLa calidez procede del contexto de comercios locales y de acentos puntuales. El\nverde organiza y el terracota destaca una elección concreta. La página tiene un\nritmo estable, con espacio entre temas y agrupación estrecha dentro de cada tema.",
+    "keyCharacteristics": [
+      "Texto e imágenes separados.",
+      "Jerarquía consistente y lectura fácil de recorrer.",
+      "Demostraciones delimitadas y listas verticales.",
+      "Color de acento selectivo.",
+      "Interacciones reconocibles y navegación real."
+    ],
+    "rules": [
+      {
+        "name": "Acento selectivo",
+        "body": "Usar el color cálido para un énfasis identificado; no convertir cada bloque ni cada icono en otro reclamo visual.",
+        "section": "colors"
+      },
+      {
+        "name": "Separación legible",
+        "body": "La explicación y la acción viven fuera de la fotografía. Las imágenes muestran contexto o funcionamiento dentro de un panel.",
+        "section": "layout"
+      }
+    ],
+    "dos": [
+      "**Do** separar titulares, explicaciones y acciones de las fotografías.",
+      "**Do** agrupar información relacionada y dejar espacio entre temas distintos.",
+      "**Do** utilizar un acento para una prioridad concreta.",
+      "**Do** mantener listas de características verticales y condiciones visibles.",
+      "**Do** verificar orden móvil, foco y contraste en ambos temas."
+    ],
+    "donts": [
+      "**Don't** convertir cada sección en una composición publicitaria autónoma.",
+      "**Don't** competir por atención con iconos, etiquetas y colores simultáneos.",
+      "**Don't** inventar testimonios, recomendaciones o cifras para llenar el diseño.",
+      "**Don't** copiar el layout completo a otra página sin revisar sus tareas.",
+      "**Don't** usar el texto pequeño del mock POS como regla para contenido esencial."
+    ]
+  }
+}

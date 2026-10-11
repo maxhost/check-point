@@ -422,4 +422,4 @@ técnica, Definition of Done y plan de pruebas antes de que su estado pase a `ce
 
 | 0199 | 2026-10-11 | Rediseño completo de /negocios: El barrio conectado, sin etiquetas de ejemplo. | implementada local; 9/9 E2E, QA visual y cierre workflow pendientes | no | `specs/0199-negocios-barrio-conectado.md` |
 
-| 0200 | 2026-10-11 | Filosofía Funcional aprobada en /negocios y guía de diseño de la web pública. | cerrada; implementación local autorizada | no | `specs/0200-negocios-filosofia-funcional.md` |
+| 0200 | 2026-10-11 | Filosofía Funcional aprobada en /negocios y guía de diseño de la web pública. | implementada local; build y 9/9 E2E, diseño aprobado, publicación pendiente | no | `specs/0200-negocios-filosofia-funcional.md` |

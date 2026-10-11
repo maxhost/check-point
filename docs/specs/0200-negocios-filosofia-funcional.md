@@ -1,7 +1,7 @@
 ---
 spec: 0200
 fecha: 2026-10-11
-estado: cerrada
+estado: implementada
 resumen: Aplicar la propuesta Funcional aprobada a negocios y registrar la filosofía de diseño de la web pública.
 disjunta: no
 archivos: apps/public/src/app/negocios/**, apps/public/DESIGN.md, apps/public/PRODUCT.md, apps/public/.impeccable/design.json, tests/e2e/landing.spec.ts
@@ -37,27 +37,27 @@ Referencia aprobada: `/private/tmp/checkpass-philosophies/funcional.html` y capt
 
 ## Archivos
 
-| Archivo | Acción |
-| --- | --- |
+| Archivo                                           | Acción                                                   |
+| ------------------------------------------------- | -------------------------------------------------------- |
 | apps/public/src/app/negocios/business-landing.css | reemplazar composición por Funcional con scope comercial |
-| apps/public/src/app/negocios/page.tsx | ajustar importación de estilos |
-| apps/public/src/app/negocios/preview.tsx | adaptar exclusivamente BusinessHeroScene |
-| apps/public/src/app/negocios/barrio-scenes.tsx | dimensiones y tamaños de las imágenes |
-| apps/public/DESIGN.md | documentar sistema aprobado |
-| apps/public/.impeccable/design.json | registrar extensiones del sistema |
-| apps/public/PRODUCT.md | actualizar descripción visual vigente |
-| apps/public/.impeccable/mocks/funcional/*.png | referencia visual aprobada |
-| tests/e2e/landing.spec.ts | actualizar expectativas visuales afectadas |
+| apps/public/src/app/negocios/page.tsx             | ajustar importación de estilos                           |
+| apps/public/src/app/negocios/preview.tsx          | adaptar exclusivamente BusinessHeroScene                 |
+| apps/public/src/app/negocios/barrio-scenes.tsx    | dimensiones y tamaños de las imágenes                    |
+| apps/public/DESIGN.md                             | documentar sistema aprobado                              |
+| apps/public/.impeccable/design.json               | registrar extensiones del sistema                        |
+| apps/public/PRODUCT.md                            | actualizar descripción visual vigente                    |
+| apps/public/.impeccable/mocks/funcional/*.png     | referencia visual aprobada                               |
+| tests/e2e/landing.spec.ts                         | actualizar expectativas visuales afectadas               |
 
 No disjunta de0199: la sustituye visualmente; variantes compartidas y otras páginas preservadas.
 
 ## Definition of Done
 
-- [ ] Typecheck y ESLint de app pública; formato y diffcheck salida0.
-- [ ] Suite landing específica verde: home preservada, negocios mantiene secciones, copy, precios, CTA, FAQ y no overflow390/1440 claro/oscuro.
-- [ ] Build público salida0.
-- [ ] Capturas negocios y comparación con prototipo desktop/mobile vistas; comprobar320/768 y teclado.
-- [ ] DESIGN.md y sidecar documentan tokens de CSS y la política de énfasis exclusivo de Conecta; PRODUCT actualizado.
+- [x] Typecheck y ESLint de app pública; formato y diffcheck salida0.
+- [x] Suite landing específica verde: home preservada, negocios mantiene secciones, copy, precios, CTA, FAQ y no overflow390/1440 claro/oscuro.
+- [x] Build público salida0.
+- [x] Capturas negocios y comparación con prototipo desktop/mobile vistas; comprobar320/768 y teclado.
+- [x] DESIGN.md y sidecar documentan tokens de CSS y la política de énfasis exclusivo de Conecta; PRODUCT actualizado.
 
 ## Mutaciones
 
@@ -74,3 +74,25 @@ Implementación y revisión inline conforme ADR0129, sin subagentes. El owner ap
 ## Abierto
 
 Ninguna decisión de diseño o producto pendiente para este alcance.
+
+## Verificación local — 2026-10-11
+
+Node24: typecheck y ESLint salida0; formato y diffcheck0; números sin duplicados.
+Suite landing9/9; `/private/tmp/0200-e2e.log`. Build público final salida0;
+`/private/tmp/0200-build-final.log`.
+
+Seis capturas reales:1440/390 claro y oscuro,320 y768 claro. Todas con ocho
+secciones, imágenes cargadas, sin errores JS ni overflow; salto al contenido y
+FAQ verificados con teclado. Evidencia en `/private/tmp/0200-review.json` y
+`/private/tmp/0200-*-*.png`. Colores principales verificados: texto claro12.78:1,
+secundario5.99:1, precio Conecta6.27:1; equivalentes oscuros14.15:1,8.87:1,7.53:1.
+Son comprobaciones acotadas, no certificación de accesibilidad completa.
+
+Comparación visual inline con el prototipo aprobado: composición Funcional,
+demostraciones separadas, planes verticales y destacado exclusivo de Conecta
+preservados. Se conservaron marca, enlaces, FAQ y footer reales, y se añadió
+adaptación oscura. Referencias aprobadas guardadas junto a README de procedencia.
+Guía y sidecar describen el sistema vigente; no afirman adopción en otras páginas.
+
+Sin revisor independiente por ADR0129; el diseño está aprobado por el owner,
+y el ensamblado está disponible para su revisión. Sin push, merge ni deploy.
