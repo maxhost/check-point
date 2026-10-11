@@ -1,0 +1,63 @@
+{
+  "title": "CheckPass para negocios: nuevos clientes y motivos para volver",
+  "question": "¿Qué propuesta comunica mejor el valor para tu negocio? Puedes elegir una o pedir un ajuste.",
+  "options": [
+    {
+      "id": "proxima-visita",
+      "label": "Tu próximo cliente está cerca",
+      "thesis": "La escena de un comercio muestra cómo un beneficio da una razón para entrar.",
+      "palette": [
+        "#faf9f5",
+        "#1d332c",
+        "#a55a43"
+      ],
+      "materials": [
+        "Identidad CheckPass de la home",
+        "Escenas y beneficios ilustrativos"
+      ],
+      "viewport": "Una invitación ocupa el inicio sobre una escena de atención; después empieza el recorrido de descubrir, volver y comprar.",
+      "risk": "Debe explicar el mecanismo para que no se quede en una frase publicitaria.",
+      "comp": ".impeccable/mocks/decision/negocios-proxima-visita.png"
+    },
+    {
+      "id": "barrio-conectado",
+      "label": "Tu barrio puede traerte nuevos clientes",
+      "thesis": "La Venta cruzada explica cómo personas que compran cerca pueden descubrir tu negocio.",
+      "palette": [
+        "#faf9f5",
+        "#1d332c",
+        "#a55a43"
+      ],
+      "materials": [
+        "Identidad CheckPass de la home",
+        "Escenas y beneficios ilustrativos"
+      ],
+      "viewport": "Una composición de negocios y una invitación conectada llevan al local de ejemplo; la oferta y el registro están siempre visibles.",
+      "risk": "Las conexiones deben identificarse como ejemplos, sin presentar una red activa que todavía no existe.",
+      "comp": ".impeccable/mocks/decision/negocios-barrio-conectado.png"
+    },
+    {
+      "id": "primera-compra",
+      "label": "De la primera visita a la siguiente",
+      "thesis": "Una historia visual conecta descubrir el local, comprar y recibir un motivo para volver.",
+      "palette": [
+        "#faf9f5",
+        "#1d332c",
+        "#a55a43"
+      ],
+      "materials": [
+        "Identidad CheckPass de la home",
+        "Escenas y beneficios ilustrativos"
+      ],
+      "viewport": "El recorrido de una persona organiza el primer viewport como una escena continua; después se explican las herramientas.",
+      "risk": "El primer vistazo debe seguir siendo claro y no convertirse en un diagrama demasiado largo.",
+      "comp": ".impeccable/mocks/decision/negocios-primera-compra.png"
+    }
+  ],
+  "reroll": true,
+  "steer": true,
+  "buildPath": {
+    "value": "comp",
+    "toggle": true
+  }
+}
