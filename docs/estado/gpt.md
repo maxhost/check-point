@@ -3,7 +3,19 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — 0201 HOME FUNCIONAL LOCAL, HERO IDÉNTICO (2026-10-11)
+## ESTADO — 0203 MARKETING FUNCIONAL Y COPY LOCAL (2026-10-11)
+
+Commit9e5b119, reserva441180f. Owner pidió analizar y mejorar estructura, visual y copy de /marketing-para-comercios con la filosofía de /negocios. Implementación local, QA owner del ensamblado pendiente; sin publicar.
+
+Hero centrado en nuevos clientes y regreso; demostración de Bienvenida, campañas por audiencia y condición, pasos compactos, dos situaciones de Impulso, FAQ más directas y cierre contenido. Condiciones2km/rubros, permiso/compatibilidad push, independencia de POS, planes y prueba3 meses conservados. Copy contrastado con spec0192 y reglas locales de marketing leídas; sin tocar backend ni prometer visitas garantizadas. CSS exclusivo marketing, importación del stylesheet viejo retirada de esa página; herencia global de fuente/cierre corregida dentro del scope.
+
+Typecheck público, ESLint específico, formato, diffcheck y números0. Build público0; landing13/13 en12.7s, conserva home/negocios y agrega4 casos marketing. Capturas1440/390 claro/oscuro,320/768 claro vistas: seis secciones, sin overflow, errores JS o anclas rotas; salto al contenido y FAQ por teclado6/6. Texto17px en los seis. Evidencia /private/tmp/0203-review.json,0203-after-*.png,0203-e2e.log y0203-build.log. Altura desktop3777→3244px, móvil5259→4939px; no evidencia de conversión. CI main verde4c40a6a consultado.
+
+DESIGN/PRODUCT y sidecar actualizados; marketing adopta Funcional, fidelización/POS todavía pendientes. Arial preservado por filosofía aprobada; ignore-value estrecho marketing.css. Detector0 primarios,24 advisory de variantes compactas/responsive; sin ignore-file ni ignore-rule. Auditoría inline ADR0129, no estudio de usuarios ni revisión independiente.
+
+Home0201 aprobada por owner, hero intacto; /negocios0200 aprobada intacta. Preview http://localhost:3003/marketing-para-comercios. No push, merge, deploy ni verify global. Mantener cambios paralelos de Claude en auth, tooling y su estado. Siguiente paso: QA owner del marketing, o revisión de otro producto si la solicita.
+
+## HISTÓRICO — 0201 HOME FUNCIONAL LOCAL, HERO IDÉNTICO (2026-10-11)
 
 Commit5da3c84, reserva437c39f. Owner confirmó /negocios Funcional y pidió extender el diseño a la home, excluyendo explícitamente su hero. Sin autorización para publicar.
 
