@@ -40,6 +40,11 @@ dominio. El registro historico de `mistake→rule` vive en `docs/LECCIONES.md`.
   `git init`/`commit`/`checkout` sobre el repo REAL (`core.bare=true`, `core.filemode=true`, `[user] t@t`, la rama
   del worktree movida). Fuera del hook pasan verdes: el sintoma es «rojo solo al pushear». Reparacion: reflog de la
   rama + `git config --file .git/config` (caso en `docs/LECCIONES.md`).
+- **El pre-push verifica la CARPETA DE TRABAJO, no el commit que se pushea** (medido 2026-10-11): con GPT trabajando en
+  `dev` (commits posteriores, `.impeccable/` sin commitear, su `next dev` en `apps/public`) el push de `main` dio rojo en
+  formato y e2e por cosas que no viajaban. Pushear `main` desde un worktree limpio en ese sha (`tools/worktree-new.sh`
+  + `git reset --hard <sha>` + `push origin HEAD:main`). El script NO enlaza `apps/*/.env.local`: sin eso la Neon
+  completa da ROJO («falta apps/merchant/.env.local»); enlazarlos con `ln -s` como hace con los de la raiz.
 - **Worktrees: crealos con `tools/worktree-new.sh <nombre>`** (`node_modules` propio offline; uno
   symlinkeado al repo real hace que `pnpm run`/`exec` intenten purgar las dependencias posta). **Si
   otro agente escribe en este arbol, vos te vas a un worktree** (hook `foreign-staged.sh`). El bloque «Worktrees en
