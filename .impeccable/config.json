@@ -6,36 +6,28 @@
       {
         "rule": "overused-font",
         "value": "arial",
-        "files": [
-          "apps/public/src/app/negocios/business-landing.css"
-        ],
+        "files": ["apps/public/src/app/negocios/business-landing.css"],
         "createdAt": "2026-10-11T17:50:02.230Z",
         "reason": "Owner approved the Functional prototype and closed its design on 2026-10-11. Preserve its Arial typography; evidence: apps/public/DESIGN.md and spec0200."
       },
       {
         "rule": "overused-font",
         "value": "arial",
-        "files": [
-          "apps/public/src/app/consumer-home.css"
-        ],
+        "files": ["apps/public/src/app/consumer-home.css"],
         "createdAt": "2026-10-11T18:26:31.716Z",
         "reason": "Owner confirmó la filosofía Funcional de negocios con Arial y pidió aplicarla al cuerpo de la home; el hero con Arial debe conservarse idéntico."
       },
       {
         "rule": "overused-font",
         "value": "arial",
-        "files": [
-          "apps/public/src/app/marketing-para-comercios/marketing.css"
-        ],
+        "files": ["apps/public/src/app/marketing-para-comercios/marketing.css"],
         "createdAt": "2026-10-11T18:56:27.095Z",
         "reason": "Owner pidió adoptar en marketing la filosofía Funcional aprobada en negocios; se conserva su tipografía Arial documentada en DESIGN.md y spec0203."
       },
       {
         "rule": "overused-font",
         "value": "arial",
-        "files": [
-          "apps/public/src/app/programa-de-fidelizacion/programa.css"
-        ],
+        "files": ["apps/public/src/app/programa-de-fidelizacion/programa.css"],
         "createdAt": "2026-10-11T23:43:24.397Z",
         "reason": "Owner pidió aplicar en fidelización la filosofía Funcional aprobada en negocios y marketing; se conserva Arial de DESIGN.md y spec0204."
       }

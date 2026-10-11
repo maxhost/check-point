@@ -6,11 +6,7 @@
       "id": "proxima-visita",
       "label": "Tu próximo cliente está cerca",
       "thesis": "La escena de un comercio muestra cómo un beneficio da una razón para entrar.",
-      "palette": [
-        "#faf9f5",
-        "#1d332c",
-        "#a55a43"
-      ],
+      "palette": ["#faf9f5", "#1d332c", "#a55a43"],
       "materials": [
         "Identidad CheckPass de la home",
         "Escenas y beneficios ilustrativos"
@@ -23,11 +19,7 @@
       "id": "barrio-conectado",
       "label": "Tu barrio puede traerte nuevos clientes",
       "thesis": "La Venta cruzada explica cómo personas que compran cerca pueden descubrir tu negocio.",
-      "palette": [
-        "#faf9f5",
-        "#1d332c",
-        "#a55a43"
-      ],
+      "palette": ["#faf9f5", "#1d332c", "#a55a43"],
       "materials": [
         "Identidad CheckPass de la home",
         "Escenas y beneficios ilustrativos"
@@ -40,11 +32,7 @@
       "id": "primera-compra",
       "label": "De la primera visita a la siguiente",
       "thesis": "Una historia visual conecta descubrir el local, comprar y recibir un motivo para volver.",
-      "palette": [
-        "#faf9f5",
-        "#1d332c",
-        "#a55a43"
-      ],
+      "palette": ["#faf9f5", "#1d332c", "#a55a43"],
       "materials": [
         "Identidad CheckPass de la home",
         "Escenas y beneficios ilustrativos"
