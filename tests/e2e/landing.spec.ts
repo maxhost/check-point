@@ -401,6 +401,106 @@ for (const width of [390, 1440]) {
   }
 }
 
+for (const width of [390, 1440]) {
+  for (const colorScheme of ["light", "dark"] as const) {
+    test(`marketing ${width}px ${colorScheme}: audiencia, condiciones y acceso`, async ({
+      page,
+    }) => {
+      const errors: string[] = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      await page.setViewportSize({ width, height: 960 });
+      await page.emulateMedia({ colorScheme, reducedMotion: "reduce" });
+      const response = await page.goto(
+        `${landingURL}/marketing-para-comercios`,
+      );
+      expect(response?.status()).toBe(200);
+      await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+      await expect(page.getByRole("heading", { level: 1 })).toContainText(
+        "Invita a nuevos clientes",
+      );
+      expect(
+        await page
+          .locator("#marketing-title")
+          .evaluate((e) => getComputedStyle(e).fontFamily),
+      ).toMatch(/^Arial/);
+      expect(
+        await page
+          .locator(".final-cta")
+          .evaluate((e) => e.getBoundingClientRect().height),
+      ).toBeLessThan(400);
+      await expect(page).toHaveTitle(/Marketing automático para comercios/);
+      await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+        "href",
+        /\/marketing-para-comercios$/,
+      );
+      await expect(
+        page.getByRole("figure", {
+          name: "Ejemplo ilustrativo de una campaña de Bienvenida",
+        }),
+      ).toContainText("cuándo se puede canjear");
+      await page
+        .getByRole("link", { name: "Conoce las campañas", exact: true })
+        .click();
+      await expect(page).toHaveURL(/#campanas$/);
+      await expect(page.locator("#campaigns-title")).toBeInViewport();
+      const welcome = page.getByRole("article", {
+        name: "Bienvenida",
+        exact: true,
+      });
+      const cross = page.getByRole("article", {
+        name: "Venta cruzada",
+        exact: true,
+      });
+      await expect(welcome).toContainText(
+        "personas que se inscriben en tu programa",
+      );
+      await expect(cross).toContainText("otros comercios participantes");
+      await expect(cross).toContainText("rubros distintos");
+      await expect(cross).toContainText("2 km");
+      await expect(cross).toContainText("depende de las condiciones");
+      await expect(page.locator(".marketing-plan-note")).toContainText(
+        "Conecta e Impulso",
+      );
+      await expect(page.locator(".marketing-advanced")).toContainText(
+        "Impulso añade campañas",
+      );
+      await expect(
+        page.getByRole("link", { name: "Compara los planes" }),
+      ).toHaveAttribute("href", "/negocios#planes");
+      await expect(page.locator("details")).toHaveCount(6);
+      await page
+        .getByText("¿Dónde ve el cliente su beneficio?", { exact: true })
+        .click();
+      await expect(page.locator("details[open]")).toContainText(
+        "activar las notificaciones",
+      );
+      await expect(page.locator("details[open]")).toContainText(
+        "no envían mensajes de WhatsApp ni correos electrónicos",
+      );
+      await page
+        .getByText("¿Necesito usar el punto de venta?", { exact: true })
+        .click();
+      await expect(page.locator("details[open]").last()).toContainText("No.");
+      for (const link of await page
+        .getByRole("link", { name: /^Pruébalo gratis/ })
+        .all()) {
+        await expect(link).toHaveAttribute(
+          "href",
+          /^https?:\/\/.+\/onboarding$/,
+        );
+      }
+      await expect
+        .poll(() =>
+          page.evaluate(
+            () => document.documentElement.scrollWidth <= innerWidth,
+          ),
+        )
+        .toBe(true);
+      expect(errors).toEqual([]);
+    });
+  }
+}
+
 test("0197: enlaces entre audiencias, fichas y sitemap", async ({
   page,
   request,

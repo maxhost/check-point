@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-11T18:26:03.282769+00:00",
+  "generatedAt": "2026-10-11T18:56:25.946167+00:00",
   "title": "Design System: CheckPass Club",
   "extensions": {
     "colorMeta": {
@@ -141,6 +141,11 @@
       {
         "name": "Adopción parcial de consumidores",
         "body": "La spec0201 adopta esta filosofía en el cuerpo de la home y su footer: pasos compactos, demostración de pase, recompensa ilustrativa, acceso comercial contenido y FAQ. El header y el hero de consumidores son una excepción aprobada: se conservan exactamente con sus estilos, imagen y notificaciones anteriores.",
+        "section": "layout"
+      },
+      {
+        "name": "Marketing para comercios",
+        "body": "La spec0203 adopta Funcional en /marketing-para-comercios: mensajes centrados en atraer clientes y promover el regreso, campañas por audiencia y demostraciones de condición y beneficio. Fidelización y punto de venta conservan sus estilos anteriores.",
         "section": "layout"
       }
     ],

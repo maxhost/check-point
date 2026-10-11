@@ -94,8 +94,10 @@ app. La spec0201 adopta esta filosofía en el cuerpo de la home y su footer:
 pasos compactos, demostración de pase, recompensa ilustrativa, acceso comercial
 contenido y FAQ. El header y el hero de consumidores son una excepción aprobada:
 se conservan exactamente con sus estilos, imagen y notificaciones anteriores.
-Las páginas de producto aún conservan sus estilos anteriores. Esta guía no
-sustituye el kit de `apps/merchant`.
+La spec0203 adopta Funcional en `/marketing-para-comercios`: mensajes centrados
+en atraer clientes y promover el regreso, campañas por audiencia y demostraciones
+de condición y beneficio. Fidelización y punto de venta conservan sus estilos
+anteriores. Esta guía no sustituye el kit de `apps/merchant`.
 
 ## Colors
 

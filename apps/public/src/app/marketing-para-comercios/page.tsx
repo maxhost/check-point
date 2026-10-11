@@ -12,12 +12,11 @@ import {
 import { BrandMark } from "../brand-mark";
 import { LandingFooter } from "../negocios/closing-sections";
 import { onboardingUrl, siteUrl } from "../site-config";
-import "../negocios/negocios.css";
 import "./marketing.css";
 
 const title = "Marketing automático para comercios en Cuenca";
 const description =
-  "Activa campañas de Bienvenida y Venta cruzada con CheckPass Club. Invita a tus clientes a volver y a personas de comercios cercanos a conocer tu negocio.";
+  "Dales motivos para visitar tu negocio y volver. Campañas de Bienvenida y Venta cruzada con beneficios que tú eliges. Prueba CheckPass gratis 3 meses.";
 
 export const metadata: Metadata = {
   title,
@@ -36,34 +35,34 @@ export const metadata: Metadata = {
 
 const faqs = [
   {
-    question: "¿A quién llegan las campañas de mi negocio?",
+    question: "¿A quién puedo invitar?",
     answer:
-      "Las campañas para tus clientes se dirigen a quienes se han inscrito en tu programa de fidelización. Venta cruzada permite ofrecer un beneficio a personas que compran en otros comercios participantes de la red, de rubros distintos y a menos de 2 km de tu local.",
+      "Bienvenida ofrece un beneficio a quienes se inscriben en tu programa de fidelización. Venta cruzada puede ofrecerlo a personas que compran en otros comercios participantes de la red, de rubros distintos, con un alcance de 2 km. La entrega depende de las condiciones de la campaña.",
   },
   {
-    question: "¿Cómo reciben los beneficios?",
+    question: "¿Dónde ve el cliente su beneficio?",
     answer:
-      "Los beneficios se consultan desde el teléfono. Los avisos push requieren que el cliente active las notificaciones en un dispositivo y navegador compatibles. Estas campañas no envían mensajes de WhatsApp ni correos electrónicos.",
+      "Puede consultarlo desde su teléfono. Para recibir avisos push debe activar las notificaciones en un dispositivo y navegador compatibles. Estas campañas no envían mensajes de WhatsApp ni correos electrónicos.",
   },
   {
-    question: "¿Quién elige el regalo o beneficio?",
+    question: "¿Puedo elegir qué ofrecer?",
     answer:
-      "Tú decides qué ofrecer y configuras las condiciones de la campaña. Por ejemplo, un café para que alguien conozca tu cafetería. CheckPass no elige los regalos por ti ni garantiza que cada invitación termine en una visita.",
+      "Sí. Tú eliges el beneficio y sus condiciones: por ejemplo, un café para conocer tu cafetería. CheckPass entrega el beneficio según la campaña que actives; no elige el regalo por ti ni garantiza que cada invitación termine en una visita.",
   },
   {
-    question: "¿Qué campañas incluye cada plan?",
+    question: "¿Qué incluye cada plan?",
     answer:
-      "Conecta e Impulso incluyen Bienvenida y Venta cruzada. Impulso añade campañas avanzadas, como las que ayudan a recuperar clientes que dejaron de venir o a promover visitas en horarios tranquilos. Durante la prueba gratuita de tres meses puedes probar todas las herramientas.",
+      "Conecta e Impulso incluyen Bienvenida y Venta cruzada. Impulso añade campañas avanzadas para recuperar clientes que dejaron de venir y promover visitas en horarios tranquilos. Durante la prueba gratuita de tres meses puedes probar todas las herramientas.",
   },
   {
     question: "¿Necesito usar el punto de venta?",
     answer:
-      "No. Puedes usar tu programa de fidelización y las campañas sin gestionar mesas ni pedidos. Necesitas que tus clientes se unan al programa para poder dirigirles las campañas para clientes inscritos.",
+      "No. Puedes usar fidelización y campañas sin gestionar mesas ni pedidos. Para las campañas dirigidas a tus clientes, primero deben inscribirse en el programa de tu negocio.",
   },
   {
     question: "¿Hay límites de notificaciones?",
     answer:
-      "Actualmente las notificaciones push no tienen límites. Los límites pueden cambiar según el tipo de cuenta; revisa las condiciones de tu plan antes de contratar.",
+      "Actualmente las notificaciones push no tienen límites. Esto puede cambiar según el tipo de cuenta. Las condiciones definitivas se mostrarán antes de contratar.",
   },
 ];
 
@@ -74,7 +73,7 @@ function SignupLink({ light = false }: { light?: boolean }) {
       href={onboardingUrl}
     >
       Pruébalo gratis 3 meses
-      <ArrowUpRight className="landing-icon" aria-hidden="true" />
+      <ArrowUpRight aria-hidden="true" />
     </a>
   );
 }
@@ -85,13 +84,11 @@ export default function MerchantMarketingPage() {
       <a className="skip-link" href="#contenido">
         Saltar al contenido
       </a>
-      <div className="site-shell marketing-page">
+      <div className="marketing-page">
         <header className="site-header">
           <a className="brand" href="/" aria-label="CheckPass Club, inicio">
             <BrandMark />
-            <span className="brand-name">
-              checkpass<span>.</span>club
-            </span>
+            <span className="brand-name">checkpass.club</span>
           </a>
           <nav className="desktop-nav" aria-label="Navegación de marketing">
             <a href="#campanas">Campañas</a>
@@ -101,45 +98,65 @@ export default function MerchantMarketingPage() {
           </nav>
           <a className="header-cta" href={onboardingUrl}>
             Pruébalo gratis
-            <ArrowUpRight className="landing-icon" aria-hidden="true" />
+            <ArrowUpRight aria-hidden="true" />
           </a>
         </header>
-
         <main id="contenido">
-          <section className="hero" aria-labelledby="marketing-title">
+          <section className="marketing-hero" aria-labelledby="marketing-title">
             <div className="hero-copy">
-              <span className="eyebrow">
-                <span className="eyebrow-line" /> CAMPAÑAS AUTOMÁTICAS PARA TU
-                NEGOCIO
-              </span>
               <h1 id="marketing-title">
-                Dales un motivo para <em>visitarte.</em>
+                Invita a nuevos clientes. <em>Dales motivos para volver.</em>
               </h1>
               <p className="hero-lede">
-                Elige un beneficio y activa la campaña. CheckPass lo entrega
-                cuando se cumplen sus condiciones, tanto a tus clientes como a
-                personas de otros comercios cercanos.
+                Campañas automáticas para tu comercio: ofrece un beneficio a
+                quienes se unen a tu programa y a personas de otros negocios
+                cercanos. Tú eliges qué ofrecer; CheckPass se encarga de la
+                entrega.
               </p>
               <div className="hero-actions">
                 <SignupLink />
                 <a className="text-link" href="#campanas">
                   Conoce las campañas
-                  <ArrowRight className="landing-icon" aria-hidden="true" />
+                  <ArrowRight aria-hidden="true" />
                 </a>
               </div>
               <p className="hero-assurance">
-                <Check className="landing-icon" aria-hidden="true" /> Todo
-                incluido durante la prueba · Empezamos en Cuenca
+                <Check aria-hidden="true" />
+                Todo incluido durante la prueba · Empezamos en Cuenca
               </p>
             </div>
             <figure
               className="marketing-invitation"
-              aria-label="Ejemplo ilustrativo de una invitación de tu negocio"
+              aria-label="Ejemplo ilustrativo de una campaña de Bienvenida"
             >
-              <figcaption className="kicker">TU CAFETERÍA</figcaption>
-              <Gift aria-hidden="true" />
-              <strong>Un café para ti</strong>
-              <p>Un motivo para visitarte.</p>
+              <figcaption>Una bienvenida que invita a volver.</figcaption>
+              <ol className="invitation-sequence">
+                <li>
+                  <User aria-hidden="true" />
+                  <div>
+                    <strong>Se une a tu programa</strong>
+                    <p>Desde el QR de tu local.</p>
+                  </div>
+                </li>
+                <li>
+                  <Gift aria-hidden="true" />
+                  <div>
+                    <strong>Recibe tu beneficio</strong>
+                    <p>Por ejemplo, un café de bienvenida.</p>
+                  </div>
+                </li>
+                <li>
+                  <CoffeeCup aria-hidden="true" />
+                  <div>
+                    <strong>Un motivo para visitarte</strong>
+                    <p>Lo canjea según las condiciones que defines.</p>
+                  </div>
+                </li>
+              </ol>
+              <p className="demonstration-note">
+                Así puede funcionar Bienvenida. Tú decides el beneficio y cuándo
+                se puede canjear.
+              </p>
             </figure>
           </section>
 
@@ -149,118 +166,141 @@ export default function MerchantMarketingPage() {
             aria-labelledby="campaigns-title"
           >
             <div className="section-heading">
-              <span className="kicker">DOS FORMAS DE INVITARLOS</span>
               <h2 id="campaigns-title">
-                Da la bienvenida. Invita a <em>nuevos clientes.</em>
+                Dos formas de invitar a <em>tu negocio.</em>
               </h2>
               <p>
-                Cada campaña tiene un propósito. Tú eliges el beneficio y la
-                activas; CheckPass lo entrega cuando se cumplen sus condiciones.
+                Empieza con quienes ya te conocen o presenta tu negocio a
+                personas de la red cercana.
               </p>
             </div>
             <div className="marketing-campaigns">
-              <article className="marketing-campaign">
-                <span className="kicker">AL UNIRSE A TU PROGRAMA</span>
-                <h3>Bienvenida</h3>
-                <p>
-                  Ofrece un beneficio cuando alguien se inscribe en tu programa
-                  de fidelización. Un primer motivo para seguir eligiendo tu
-                  negocio.
-                </p>
+              <article
+                className="marketing-campaign"
+                aria-labelledby="welcome-title"
+              >
+                <div>
+                  <h3 id="welcome-title">Bienvenida</h3>
+                  <p>
+                    Haz que unirse a tu programa tenga un primer beneficio. Tú
+                    eliges el regalo y las condiciones para canjearlo.
+                  </p>
+                  <p className="campaign-audience">
+                    <strong>Para:</strong> personas que se inscriben en tu
+                    programa.
+                  </p>
+                </div>
                 <ol
                   className="marketing-campaign-flow"
-                  aria-label="Bienvenida: al unirse, recibe tu regalo"
+                  aria-label="Bienvenida: al unirse, recibe tu beneficio"
                 >
                   <li>
                     <User aria-hidden="true" />
-                    <span>Se une</span>
+                    <span>Se une a tu programa</span>
                   </li>
                   <li className="marketing-flow-arrow" aria-hidden="true">
                     <ArrowRight />
                   </li>
                   <li>
                     <Gift aria-hidden="true" />
-                    <span>Recibe tu regalo</span>
+                    <span>Recibe tu beneficio</span>
                   </li>
                 </ol>
               </article>
-              <article className="marketing-campaign">
-                <span className="kicker">
-                  PARA QUIENES TODAVÍA NO TE CONOCEN
-                </span>
-                <h3>Venta cruzada</h3>
-                <p>
-                  Ofrece un beneficio a personas que compran en otros comercios
-                  participantes cerca de tu local.
-                </p>
-                <ol
-                  className="marketing-campaign-flow"
-                  aria-label="Ejemplo de Venta cruzada: compra en peluquería y recibe un café de tu negocio"
-                >
-                  <li>
-                    <Scissor aria-hidden="true" />
-                    <span>Compra en una peluquería</span>
-                  </li>
-                  <li className="marketing-flow-arrow" aria-hidden="true">
-                    <ArrowRight />
-                  </li>
-                  <li>
-                    <CoffeeCup aria-hidden="true" />
-                    <span>Recibe un café de tu negocio</span>
-                  </li>
-                </ol>
-                <p className="marketing-campaign-condition">
-                  Entre comercios de rubros distintos, a menos de 2 km.
-                </p>
+              <article
+                className="marketing-campaign"
+                aria-labelledby="cross-title"
+              >
+                <div>
+                  <h3 id="cross-title">Venta cruzada</h3>
+                  <p>
+                    Alguien compra en otro comercio cercano. Tu beneficio puede
+                    darle un motivo para conocer el tuyo.
+                  </p>
+                  <p className="campaign-audience">
+                    <strong>Para:</strong> personas de otros comercios
+                    participantes.
+                  </p>
+                  <p className="marketing-campaign-condition">
+                    Entre rubros distintos, con un alcance de 2 km. La entrega
+                    depende de las condiciones de la campaña.
+                  </p>
+                </div>
+                <div>
+                  <ol
+                    className="marketing-campaign-flow"
+                    aria-label="Ejemplo de Venta cruzada: compra en peluquería y recibe un café de tu negocio"
+                  >
+                    <li>
+                      <Scissor aria-hidden="true" />
+                      <span>Compra en una peluquería</span>
+                    </li>
+                    <li className="marketing-flow-arrow" aria-hidden="true">
+                      <ArrowRight />
+                    </li>
+                    <li>
+                      <CoffeeCup aria-hidden="true" />
+                      <span>Recibe un café de tu negocio</span>
+                    </li>
+                  </ol>
+                  <p className="demonstration-note">
+                    Un ejemplo si tu negocio es una cafetería. Tú eliges qué
+                    ofrecer.
+                  </p>
+                </div>
               </article>
             </div>
             <p className="marketing-plan-note">
+              <Check aria-hidden="true" />
               Bienvenida y Venta cruzada están incluidas en Conecta e Impulso.
             </p>
           </section>
 
           <section
-            className="section intro-section"
+            className="section marketing-start"
             id="como-funciona"
             aria-labelledby="start-title"
           >
-            <div className="section-heading">
-              <span className="kicker">ACTÍVALA UNA VEZ</span>
+            <div>
               <h2 id="start-title">
-                Tú preparas la campaña. CheckPass <em>entrega el beneficio.</em>
+                Tú eliges el beneficio. <em>CheckPass hace la entrega.</em>
               </h2>
+              <p>
+                Activa la campaña una vez. No tienes que enviar cada beneficio
+                de forma individual.
+              </p>
             </div>
-            <div className="steps">
-              <article>
-                <span className="step-number">01</span>
-                <h3>Activa tu programa</h3>
-                <p>
-                  Invita a tus clientes a inscribirse con el QR de tu local. Así
-                  abres un canal para seguir en contacto desde su teléfono.
-                </p>
-              </article>
-              <article>
-                <span className="step-number">02</span>
-                <h3>Elige qué ofrecer</h3>
-                <p>
-                  Selecciona la campaña y define el beneficio y sus condiciones.
-                  Puedes revisar lo que ofreces antes de activarla.
-                </p>
-              </article>
-              <article>
-                <span className="step-number">03</span>
-                <h3>Deja que trabaje</h3>
-                <p>
-                  La entrega del beneficio ocurre automáticamente cuando se
-                  cumplen las condiciones de la campaña. No tienes que enviarlo
-                  cliente por cliente.
-                </p>
-              </article>
-            </div>
-            <div className="start-actions">
-              <SignupLink />
-              <p>Todo incluido durante la prueba.</p>
-            </div>
+            <ol className="marketing-steps">
+              <li>
+                <span aria-hidden="true">1</span>
+                <div>
+                  <h3>Activa tu programa</h3>
+                  <p>
+                    Invita a tus clientes a inscribirse con el QR del local.
+                  </p>
+                </div>
+              </li>
+              <li>
+                <span aria-hidden="true">2</span>
+                <div>
+                  <h3>Prepara la campaña</h3>
+                  <p>
+                    Elige el beneficio y define las condiciones. Revisa lo que
+                    ofreces antes de activarla.
+                  </p>
+                </div>
+              </li>
+              <li>
+                <span aria-hidden="true">3</span>
+                <div>
+                  <h3>Actívala y deja que trabaje</h3>
+                  <p>
+                    CheckPass entrega el beneficio automáticamente cuando se
+                    cumplen las condiciones de la campaña.
+                  </p>
+                </div>
+              </li>
+            </ol>
           </section>
 
           <section
@@ -268,21 +308,33 @@ export default function MerchantMarketingPage() {
             aria-labelledby="advanced-title"
           >
             <div>
-              <span className="kicker">CAMPAÑAS AVANZADAS · IMPULSO</span>
               <h2 id="advanced-title">
-                Más motivos para <em>regresar.</em>
+                También hay motivos para <em>regresar.</em>
               </h2>
-            </div>
-            <div>
               <p>
-                Recupera el contacto con clientes que dejaron de venir o
-                promueve visitas en horarios tranquilos. Impulso añade campañas
-                para estas situaciones; tú eliges el beneficio.
+                Impulso añade campañas para dos situaciones habituales de tu
+                negocio. Tú sigues eligiendo el beneficio.
               </p>
               <a className="text-link" href="/negocios#planes">
                 Compara los planes
-                <ArrowRight className="landing-icon" aria-hidden="true" />
+                <ArrowRight aria-hidden="true" />
               </a>
+            </div>
+            <div className="advanced-situations">
+              <article>
+                <h3>Cuando dejan de venir</h3>
+                <p>
+                  Ofrece un motivo para retomar el contacto con clientes que
+                  llevan tiempo sin visitar tu negocio.
+                </p>
+              </article>
+              <article>
+                <h3>Cuando el local está tranquilo</h3>
+                <p>
+                  Promueve visitas en horarios de menor actividad con un
+                  beneficio que tenga sentido para tu comercio.
+                </p>
+              </article>
             </div>
           </section>
 
@@ -292,9 +344,8 @@ export default function MerchantMarketingPage() {
             aria-labelledby="faq-title"
           >
             <div>
-              <span className="kicker">PREGUNTAS FRECUENTES</span>
               <h2 id="faq-title">
-                Entiende cómo llegan tus <em>invitaciones.</em>
+                Antes de activar <em>tu primera campaña.</em>
               </h2>
             </div>
             <div className="faq-list">
@@ -302,27 +353,27 @@ export default function MerchantMarketingPage() {
                 <details key={faq.question}>
                   <summary>
                     {faq.question}
-                    <Plus className="landing-icon" aria-hidden="true" />
+                    <Plus aria-hidden="true" />
                   </summary>
                   <p>{faq.answer}</p>
                 </details>
               ))}
             </div>
           </section>
-
           <section className="final-cta" aria-labelledby="final-title">
-            <span className="kicker">PRUÉBALO CON TU NEGOCIO</span>
-            <h2 id="final-title">
-              Tu próxima invitación puede empezar <em>hoy.</em>
-            </h2>
-            <p>
-              Prueba las campañas de marketing, el programa de fidelización y el
-              punto de venta gratis durante tres meses.
-            </p>
+            <div>
+              <h2 id="final-title">
+                Prueba qué funciona <em>para tu negocio.</em>
+              </h2>
+              <p>
+                Tres meses para probar las campañas, tu programa de fidelización
+                y el punto de venta. Todo incluido durante la prueba.
+              </p>
+            </div>
             <SignupLink light />
           </section>
         </main>
-        <LandingFooter showPhotoCredit={false} />
+        <LandingFooter showPhotoCredit={false} compact />
       </div>
     </>
   );

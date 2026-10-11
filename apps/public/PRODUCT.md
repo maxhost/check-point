@@ -69,8 +69,12 @@ Las superficies actuales del código local incluyen:
   sin corazones. Por decisión del owner, /negocios no lleva etiquetas «ejemplo».
   `DESIGN.md` registra esta referencia para revisar otras páginas posteriormente;
   las páginas de producto todavía conservan sus estilos actuales.
-- `/programa-de-fidelizacion`, `/marketing-para-comercios` y `/punto-de-venta`:
-  explicación de las herramientas para comercios.
+- `/marketing-para-comercios`: adopta Funcional (spec0203). Explica Bienvenida y
+  Venta cruzada por audiencia, control del beneficio y entrega automática;
+  distingue campañas básicas de las avanzadas de Impulso. Mantiene condiciones
+  de la red, compatibilidad push, prueba y enlaces reales.
+- `/programa-de-fidelizacion` y `/punto-de-venta`: explicación de las herramientas
+  para comercios, con sus estilos anteriores.
 - `/explorar` y `/lugares/[slug]`: descubrimiento y fichas ilustrativas para
   consumidores.
 - `/es/privacy` y `/es/tos`: documentos legales.

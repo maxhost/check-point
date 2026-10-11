@@ -429,4 +429,4 @@ técnica, Definition of Done y plan de pruebas antes de que su estado pase a `ce
 
 | 0202 | 2026-10-11 | **Login del owner con codigo** (L2, API + servidor; implementa ADR 0137; pantalla de GPT con §D4). **Que es:** `POST /api/merchant/auth/login` manda un codigo y `POST /api/merchant/auth/login/verify` lo canjea por la sesion, con el mismo corte de negocio cerrado que el link. **Por que importa:** entrar desde la PWA instalada en iPhone. | **API implementada** (Neon 7/7 + 106 suites relacionadas, mutaciones M1/M3/M4 rojas, M2 sobrevivio y se saco el codigo redundante); UI de GPT y QA del owner pendientes | si | `specs/0202-login-del-owner-con-codigo.md` |
 
-| 0203 | 2026-10-11 | Marketing Funcional: estructura, demostraciones y copy para comerciantes. | cerrada; implementación local autorizada | no | `specs/0203-marketing-funcional-y-copy.md` |
+| 0203 | 2026-10-11 | Marketing Funcional: estructura, demostraciones y copy para comerciantes. | implementada local; build y13/13 E2E, QA owner pendiente | no | `specs/0203-marketing-funcional-y-copy.md` |
