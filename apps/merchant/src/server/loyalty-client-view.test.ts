@@ -170,6 +170,10 @@ describe("el consumidor hereda el path del sello (spec 0069 §D5)", () => {
       lastOrderAt: null,
       lastRedemptionAt: null,
       marketingOptOutAt: null,
+      timezone: "America/Guayaquil",
+      balanceExpiryMonths: null,
+      balanceExpirySince: null,
+      lastVisitAt: null,
     });
     expect(summary.stampImagePath).toBe(
       "/api/public/loyalty/biz-9/77777777-7777-4777-8777-777777777777/stamp?v=0",

@@ -14,6 +14,11 @@ import {
   toRewardDTO,
 } from "../loyalty-program/client-view";
 import { loadRewardsForPrograms } from "../loyalty-program/persistence";
+import {
+  type ExpiryMonths,
+  expiresOn,
+  isExpiryMonths,
+} from "../loyalty-program/balance-expiry";
 
 export type ConsumerProgramSummary = {
   membershipId: string;
@@ -42,6 +47,11 @@ export type ConsumerProgramSummary = {
    * A boolean and not the timestamp: the switch is the only consumer of it, and the date
    * on which someone opted out is not the consumer's business — it is ours. */
   marketingOptOut: boolean;
+  /** Spec 0195 / ADR 0136: the program's expiry term, or null when balances never expire. */
+  balanceExpiryMonths: ExpiryMonths | null;
+  /** Local `YYYY-MM-DD` the balance expires (end of that day), or null: rule off or no
+   * balance. Same `expiresOn` the nightly sweep uses, from the same `last_visit_at`. */
+  balanceExpiresOn: string | null;
 };
 
 export type ConsumerProgramRow = {
@@ -72,7 +82,30 @@ export type ConsumerProgramRow = {
    * wallet list. `lastActivityAt` is the newest of enroll / order / redemption. */
   lastRedemptionAt: Date | null;
   marketingOptOutAt: Date | null;
+  timezone: string;
+  balanceExpiryMonths: number | null;
+  balanceExpirySince: Date | null;
+  /** `core.business_customer.last_visit_at` — what the sweep reads, NOT `lastOrderAt`. */
+  lastVisitAt: Date | null;
 };
+
+/** The expiry date the consumer sees; null when the rule is off or there is no balance. */
+function balanceExpiresOn(row: ConsumerProgramRow): string | null {
+  const balance = row.kind === "stamps" ? row.stampsCount : row.pointsBalance;
+  if (
+    balance <= 0 ||
+    !isExpiryMonths(row.balanceExpiryMonths) ||
+    row.balanceExpirySince === null
+  )
+    return null;
+  return expiresOn({
+    lastVisitAt: row.lastVisitAt,
+    enrolledAt: row.enrolledAt,
+    since: row.balanceExpirySince,
+    months: row.balanceExpiryMonths,
+    timezone: row.timezone,
+  });
+}
 
 function configurationOf(value: unknown): {
   unitName?: unknown;
@@ -151,6 +184,10 @@ export function toConsumerProgramSummary(
     ).toISOString(),
     rewards,
     marketingOptOut: row.marketingOptOutAt !== null,
+    balanceExpiryMonths: isExpiryMonths(row.balanceExpiryMonths)
+      ? row.balanceExpiryMonths
+      : null,
+    balanceExpiresOn: balanceExpiresOn(row),
   };
 }
 
@@ -184,6 +221,17 @@ export async function listConsumerPrograms(
       stampsCount: programMemberships.stampsCount,
       enrolledAt: programMemberships.enrolledAt,
       marketingOptOutAt: programMemberships.marketingOptOutAt,
+      timezone: businesses.timezone,
+      balanceExpiryMonths: loyaltyPrograms.balanceExpiryMonths,
+      balanceExpirySince: loyaltyPrograms.balanceExpirySince,
+      // Scalar subquery with an explicit alias (gotchas: correlated subqueries); the
+      // projection row is one per (business, consumer), so it never fans out.
+      lastVisitAt:
+        sql<Date | null>`(SELECT bc.last_visit_at FROM core.business_customer bc
+        WHERE bc.business_id = "program_membership"."business_id"
+          AND bc.consumer_id = "program_membership"."consumer_id")`.mapWith(
+          (value: unknown) => (value ? new Date(String(value)) : null),
+        ),
       lastOrderAt,
       lastRedemptionAt,
     })

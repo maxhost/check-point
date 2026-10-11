@@ -75,3 +75,36 @@ export function buildRedemptionBody(
     `Canjeaste «${label}» 🎁 ${verb} ${balanceAfter} ${noun}.`,
   );
 }
+
+/**
+ * Spec 0195 / ADR 0136 §5: the balance-expiry notice, same `transactional` class. 20/10/5
+ * days: `Tus 120 puntos vencen en 20 días si no compras antes`; the day itself: `Hoy vencen
+ * tus 120 puntos. Pasa hoy y no los pierdas`. The business name rides in the title.
+ */
+export function buildExpiryBody(
+  units: number,
+  kind: "points" | "stamps",
+  daysBefore: number,
+): string {
+  const singular = units === 1;
+  const noun =
+    kind === "points"
+      ? singular
+        ? "punto"
+        : "puntos"
+      : singular
+        ? "sello"
+        : "sellos";
+  if (daysBefore === 0) {
+    const verb = singular ? "Hoy vence tu" : "Hoy vencen tus";
+    const pronoun = singular ? "lo" : "los";
+    return withAccountInvite(
+      `${verb} ${units} ${noun}. Pasa hoy y no ${pronoun} pierdas`,
+    );
+  }
+  const verb = singular ? "vence" : "vencen";
+  const owner = singular ? "Tu" : "Tus";
+  return withAccountInvite(
+    `${owner} ${units} ${noun} ${verb} en ${daysBefore} días si no compras antes`,
+  );
+}

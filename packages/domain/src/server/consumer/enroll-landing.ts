@@ -31,6 +31,9 @@ export type EnrollLanding = {
   hasLogo: boolean;
   /** Spec 0107: the welcome gift to announce, or `null` (nothing to show). */
   welcomeOffer: WelcomeOffer | null;
+  /** Spec 0195 / ADR 0136: balances expire after this many months without a purchase or a
+   * redemption (3 | 6 | 9 | 12), or null when they never expire. */
+  balanceExpiryMonths: number | null;
 };
 
 /**
@@ -89,6 +92,7 @@ export async function getEnrollLanding(
         // Selected only to derive `hasLogo`; the internal R2 key is stripped below
         // and never leaves the server (anti-leak rule, CLAUDE.md).
         logoObjectKey: businesses.logoObjectKey,
+        balanceExpiryMonths: loyaltyPrograms.balanceExpiryMonths,
       })
       .from(loyaltyPrograms)
       .innerJoin(businesses, eq(businesses.id, loyaltyPrograms.businessId))

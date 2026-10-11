@@ -63,6 +63,13 @@ export const loyaltyPrograms = core.table(
     redeemAllowInsufficient: boolean("redeem_allow_insufficient")
       .notNull()
       .default(false),
+    // Spec 0195 / ADR 0136: the balance expires after N months without a purchase or a
+    // redemption. Null = off. `since` = when it was turned on or shortened: the clock never
+    // starts before it, so nobody loses anything the day the rule is switched on.
+    balanceExpiryMonths: integer("balance_expiry_months"),
+    balanceExpirySince: timestamp("balance_expiry_since", {
+      withTimezone: true,
+    }),
     createdBy: text("created_by")
       .notNull()
       .references(() => users.id),
@@ -134,6 +141,14 @@ export const loyaltyPrograms = core.table(
       "loyalty_program_accrual_points_mode_check",
       sql`${table.kind} <> 'points' OR ${table.accrualMode} IS NULL OR ${table.accrualMode} = 'per_amount'`,
     ),
+    check(
+      "loyalty_program_balance_expiry_months_check",
+      sql`${table.balanceExpiryMonths} IS NULL OR ${table.balanceExpiryMonths} IN (3, 6, 9, 12)`,
+    ),
+    check(
+      "loyalty_program_balance_expiry_pair_check",
+      sql`(${table.balanceExpiryMonths} IS NULL) = (${table.balanceExpirySince} IS NULL)`,
+    ),
     uniqueIndex("core_loyalty_program_one_operational")
       .on(table.businessId)
       .where(sql`${table.status} in ('active', 'closing')`),
@@ -170,7 +185,7 @@ export const loyaltyProgramEvents = core.table(
   (table) => [
     check(
       "loyalty_program_event_action_check",
-      sql`${table.action} in ('created', 'edited', 'closing_scheduled', 'closing_canceled', 'expired')`,
+      sql`${table.action} in ('created', 'edited', 'closing_scheduled', 'closing_canceled', 'expired', 'expiry_changed')`,
     ),
     index("core_loyalty_program_event_program_idx").on(
       table.programId,
