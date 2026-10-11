@@ -3,6 +3,22 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
+## ESTADO — CAMBIOS COMMITTEADOS EN DEV (2026-10-10)
+
+Owner pidió commit de todo lo pendiente. Commit de trabajo `60590de`:
+landing, páginas de fidelización/marketing/POS, Iconoir, sitemap, noindex de
+apps privadas, selectores E2E, specs y documentación SEO/producto. Incluye las
+iteraciones visuales aprobadas de 0191 y la revisión independiente de 0192.
+Archivo next-env.d.ts regenerado por Next restaurado antes del commit.
+
+Verificación real con Node 24: typecheck public/merchant/consumer, ESLint de
+archivos TS/TSX cambiados, Prettier de todos los archivos pendientes,
+check-numbers y git diff --check, todos correctos. QA visual responsive de
+0191/0192 documentado abajo. Sin suites E2E ni pnpm verify en este cierre.
+QA final del owner pendiente. Sin merge ni push; localhost3003 sigue activo.
+CI remoto conserva el fallo anterior de rutas /private/tmp, corregido localmente
+según el estado previo; no se afirma CI remoto verde.
+
 ## ⇥ 0192 — REVISIÓN UX APLICADA, LOCAL (2026-10-10)
 
 Owner pidió agente independiente y aprobó recomendaciones. Informe antes en
