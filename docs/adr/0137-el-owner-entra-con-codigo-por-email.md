@@ -37,7 +37,7 @@ resumen: El owner entra al panel con un CODIGO de 6 digitos que vence en 10 minu
   2026-10-11, al ver que 50 por dia durante un año acumulaban casi 2 %): como mucho 3.650 intentos por año sobre 10⁶
   combinaciones (0,37 %). Cada codigo pedido le llega al owner, asi que un ataque se ve.
 - Costo del tope: quien conozca el email del owner puede dejarlo sin entrar al panel 24 h tipeando 10 codigos
-  equivocados (el staff sigue entrando). Aceptado en la etapa de pruebas.
+  equivocados (el staff sigue entrando). **Hallazgo a decidir por el owner** (aceptarlo o cambiar el tope).
 - El login funciona igual en computadora, Android y iPhone, con o sin la PWA instalada.
 - El link magico sigue vivo para el alta y la verificacion: el plugin `magicLink` y `GET /api/merchant/auth/magic-link`
   no se tocan.
