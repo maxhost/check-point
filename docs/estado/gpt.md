@@ -3,25 +3,36 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — /NEGOCIOS: COMBINACIÓN SOLICITADA, COMP ACTUALIZADO (2026-10-10)
+## ESTADO — 0198 IMPLEMENTADA LOCAL, QA OWNER PENDIENTE (2026-10-10)
 
-Owner NO quiere publicar; pidió revisar diseño, mensaje y orden de /negocios.
-Prioridad nuevos clientes/vender más. Brief atraer → volver → atender/vender con
-POS → empezar/prueba/planes → FAQ/registro confirmado. Home aprobada fuera de alcance.
+Rama dev, sin push/merge/deploy. Implementación08e902f; reserva5e7fbfc.
+Owner aprobó comp combinado («quedo perfecto, avanzamos») y plan/asset («aprobado»).
+/negocios tiene hero con contenido dentro de escena, primer bloque visita→regreso,
+marketing→fidelización→POS→empezar→planes/FAQ/registro. Home fuera de alcance.
+Fotos y previews identificados; precios/condiciones actuales preservados.
+Footer sin crédito Pexels incorrecto para imagen generada. Componentes compartidos
+preservan defaults, estilos nuevos acotados a business-shell.
 
-Propuestas previas guardadas en882476a. Owner eligió «Tu próximo cliente está
-cerca» con misma imagen y mensaje, pero con distribución de «Tu barrio…»:
-texto y CTA integrados a izquierda dentro del hero, sin banda sobre la fotografía.
-Se generó e inspeccionó nueva variante:
-apps/public/.impeccable/mocks/decision/negocios-proxima-visita-integrado.png
-con prompt/refs en sidecar approved:false (render actualizado no confirmado aún).
-Imagen y ejemplo de café de bienvenida conservados, escena reencuadrada a derecha.
-El brief .impeccable/questions/negocios-brief.md registra la decisión del owner.
+Impeccable: spec/plates/hero/sections/motion/responsive/review cerrados, finish ship.
+Hero y responsive78%, sin force ni recibos inventados. Revisión inline porADR0129,
+no independiente. Brief comercial commiteado. Evidencia helper temporal en
+apps/public/.impeccable/review; finish-0198.md y document-0198.md.
+Differences menores respecto del comp: Arial y tonos de identidad, reflujo móvil,
+conector con posición de unos3px diferente; pares de crops inspeccionados.
+No crear DESIGN.md/sidecar como reparación incidental de ausencia anterior.
 
-No reabrir entrevista ni otra terna. Esperar feedback sobre combinación presentada
-inline; después cerrar/reservar spec nueva antes de código. Aún no hay UI modificada.
-Sin merge/push/deploy. Impeccable no autoriza escribir recibo de aprobación en
-nombre del owner. La elección anterior vino por chat; páginaa0eae026 cerró sin respuesta.
+Verificación Node24 real: tipos/ESLint públicos0, Prettier código0 y diffcheck0;
+landing9/9 en11.4s, configuración /private/tmp/checkpass-0197-playwright.cjs,
+PUBLIC_LANDING_TEST_URL=http://localhost:3003. Sin webServers compartidos/DB.
+Capturas390/1440 claro/oscuro y hero1536x1024 vistas; sin overflow/pageerrors.
+Build público final0: /private/tmp/0198-build-final.log. Prompt embebido en PNG,
+scan1/1 sin faltantes. No verify global ni Neon, conforme L2/ADR0129.
+
+Disponible para owner: http://localhost:3003/negocios. QA del ensamblado pendiente;
+DoD técnico comprobado, checkbox QA abierto. User NO quiere publicar aún.
+No commitear instalación .agents/.claude/.codex/.github ni helpers/capturas/duplicados.
+Siguiente paso: recibir revisión local del owner. Publicación exige autorización
+explícita y verify. Pendientes0196/Stripe y CI remoto previos siguen abajo.
 
 ## ⇥ 0197 IMPLEMENTADA LOCAL, APROBADA POR OWNER (2026-10-10)
 
