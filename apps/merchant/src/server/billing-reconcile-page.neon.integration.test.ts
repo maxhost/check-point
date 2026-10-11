@@ -124,7 +124,7 @@ describe.skipIf(!integrationEnabled)(
       ]);
       // El owner ve el plan RECONCILIADO en este render y NO el «Elegir un plan» que
       // llevaba al doble cobro.
-      expect(html).toContain("Plan Plus");
+      expect(html).toContain("Plan Impulso");
       expect(html).not.toContain("Elegir un plan");
       expect(fake.calls).toContain("subscriptions.list");
     }, 60_000);
@@ -147,7 +147,7 @@ describe.skipIf(!integrationEnabled)(
       expect(await readSubscriptionRow(seed.business.id)).toEqual(antes);
       expect(html).toContain("No pudimos confirmar tu suscripción con Stripe");
       // Y la sección NO se bloquea: sigue mostrando el plan y sus operaciones.
-      expect(html).toContain("Plan Plus");
+      expect(html).toContain("Plan Impulso");
       expect(html).toContain("Cancelar suscripción");
     }, 60_000);
 
@@ -170,7 +170,7 @@ describe.skipIf(!integrationEnabled)(
       expect(await readSubscriptionRow(seed.business.id)).toEqual(antes);
       // LO QUE IMPORTA DEL CASO: la sección sigue viva y operable con lo de la DB. Si el
       // fallo tumbara la página, el owner perdería la sección entera por un timeout de red.
-      expect(html).toContain("Plan Plus");
+      expect(html).toContain("Plan Impulso");
       expect(html).toContain("Pasar a anual");
       expect(html).toContain("Cancelar suscripción");
     }, 60_000);
@@ -214,7 +214,7 @@ describe.skipIf(!integrationEnabled)(
       expect(html).toContain("No pudimos confirmar tu suscripción con Stripe");
       // CONTROL: sí se le preguntó a Stripe — el aviso no viene de un `catch`.
       expect(fake.calls).toContain("subscriptions.list");
-      expect(html).toContain("Plan Plus");
+      expect(html).toContain("Plan Impulso");
     }, 60_000);
   },
 );

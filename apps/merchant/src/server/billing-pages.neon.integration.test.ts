@@ -137,9 +137,9 @@ describe.skipIf(!integrationEnabled)(
       expect(html).not.toContain(requestedAt.toISOString());
       // PISO DE LA ASERCIÓN: las cinco negativas de arriba no pasan por haber renderizado
       // una página vacía o un error. El estado sembrado es «cancelación programada CON fecha»
-      // (la copy «baja a Free» es de la consola de GPT, que todavía no se rehízo).
+      // (copy de cancelación al final del período, contrato 0189).
       expect(html).toContain("Suscripción");
-      expect(html).toContain("Tu plan baja a Free el");
+      expect(html).toContain("Tu suscripción termina el");
       expect(html.length).toBeGreaterThan(800);
     }, 60_000);
 
@@ -159,7 +159,7 @@ describe.skipIf(!integrationEnabled)(
       seed = await seedBillingBusiness("trial", { status: "canceled" });
       useBusiness(seed, "Negocio en prueba cancelado");
       const cancelado = await renderHome();
-      expect(cancelado).toContain("Prueba gratis");
+      expect(cancelado).toContain("Prueba de 90 días");
       expect(cancelado).not.toContain("confirmando pago");
       expect(cancelado).toContain("cancelada");
     }, 90_000);

@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 import { ModuleHeader, Toast } from "../../components/ui";
-import { Alert } from "../../../ui";
+import { Alert, Link, PageHeader } from "../../../ui";
+import { BillingExtras } from "./billing-extras";
+import { billingPlanName, type BillingState } from "./billing-state";
+import { BLOCK_ACTIONS } from "./block-actions";
 import { CancelDialog } from "./cancel-dialog";
 import { IntervalDialog } from "./interval-dialog";
 import { UpgradeCard } from "./upgrade-card";
@@ -16,37 +19,6 @@ import type { BillingFactsView } from "../../../server/billing/facts";
 
 const JSON_HEADERS = { "content-type": "application/json" };
 
-/**
- * Spec 0063, D7 — LA SECCIÓN DE SUSCRIPCIÓN. Patrón de `locations-console.tsx`
- * (`ModuleHeader` + `Toast` + `ConfirmDialog`).
- *
- * ESTA CONSOLA NO DECIDE QUÉ SE OFRECE. Lee `offers`, que lo decidió `subscriptionOffers`
- * —función pura con su tabla de casos en `billing-offers.test.ts`— en el server component.
- * Un `if` de producto acá sería una segunda regla que puede divergir de esa tabla, y encima
- * sin oráculo: es el hueco exacto que la tarea 38 pagó tres veces.
- *
- * Los tipos se importan como `import type`, así que se borran en compilación y nada de
- * `server/` entra al bundle del cliente.
- *
- * DESPUÉS DE CADA OPERACIÓN SE RECARGA LA PÁGINA, no se parchea el estado local. Las rutas
- * devuelven `{subscription, activeLocations, canCancel}` pero NO las `offers` (las decide el
- * server), y D9 paso 6 es explícito: «la ruta devuelve 200 y la UI re-lee». Recargar además
- * vuelve a pasar por D8, así que lo que el owner ve después de operar está reconciliado con
- * Stripe. El precio es un round-trip; la alternativa es un estado de cliente que puede
- * contradecir a la base.
- *
- * SPEC 0064, FASE B — QUÉ CAMBIÓ Y POR QUÉ ESTE ARCHIVO SE DIVIDIÓ PRIMERO. El QA del owner
- * sobre la 0063 dejó cuatro huecos de UI que ninguna spec había pedido: la sección no decía si
- * el cobro era mensual o anual, no mostraba la fecha de renovación ni el importe cobrado, y el
- * cambio de intervalo movía plata sin confirmar. Sumarlos a un archivo que ya estaba en
- * 264/300 lo habría pasado del límite, así que la tarjeta de alta (`upgrade-card.tsx`), el
- * modal del intervalo (`interval-dialog.tsx`) y el formateo (`subscription-format.ts`) salieron
- * ANTES de agregar nada.
- *
- * EL ORDEN DE LOS `useState` ES PARTE DE UN CONTRATO DE PRUEBA: `billing-click-probe.test.ts`
- * los siembra POR POSICIÓN (su índice 0 es `billingInterval`). Los estados nuevos van AL
- * FINAL; insertar uno en el medio no rompe el typecheck y deja la sonda midiendo otro estado.
- */
 export function SubscriptionConsole({
   subscription,
   offers,
@@ -60,16 +32,13 @@ export function SubscriptionConsole({
 }: {
   subscription: SubscriptionView;
   offers: SubscriptionOffers;
-  /** Spec 0064, A4/O-2: la renovación y la última factura pagada, leídas de Stripe en el
-   * render. Todo `null` es un estado LEGÍTIMO —Stripe no contestó, o el negocio es `free`— y
-   * la sección OMITE el dato en vez de inventarlo. */
+
   facts: BillingFactsView;
   activeLocations: number;
-  /** De `decidePlanChange`, la misma función que las 5 rutas. NO deshabilita nada: decide
-   * el contenido del modal (ADR 0058 §8). */
+
   canCancel: boolean;
   downgradeBlock: { message: string; code: string } | null;
-  /** D8: no pudimos confirmar el estado con Stripe. Avisa y NO bloquea la sección. */
+
   stripeUnconfirmed: boolean;
   timezone: string;
   notice: string | null;
@@ -84,44 +53,62 @@ export function SubscriptionConsole({
   // Estado NUEVO de la spec 0064, y va al final a propósito (ver el docblock de arriba).
   const [confirmingInterval, setConfirmingInterval] = useState(false);
 
-  /** El `error` que se muestra es el del SERVIDOR (`{error, code}` de D6). No se traduce ni
-   * se reemplaza por un genérico: el 409 `downgrade_blocked` ya trae el conteo correcto, y
-   * un texto propio acá sería una segunda versión de la misma regla. */
+  const [selectedPlan, setSelectedPlan] = useState<"base" | "plus">("base");
+  const [billingState, setBillingState] = useState<BillingState | null>(null);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
+
   async function send(endpoint: string, body: unknown, done: string) {
     if (busy) return;
     setBusy(true);
     setError(null);
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: JSON_HEADERS,
-      body: JSON.stringify(body),
-    });
-    const payload = (await response.json().catch(() => null)) as {
-      url?: string;
-      error?: string;
-    } | null;
-    if (!response.ok) {
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: JSON_HEADERS,
+        body: JSON.stringify(body),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        url?: string;
+        error?: string;
+        code?: string;
+      } | null;
+      if (!response.ok) {
+        setBusy(false);
+        setConfirming(false);
+        setConfirmingInterval(false);
+        setError(payload?.error ?? "No pudimos completar la operación.");
+        setErrorCode(payload?.code ?? null);
+        return;
+      }
+      // `checkout` contesta `{url}` y no un estado: se sale a Stripe.
+      window.location.assign(
+        payload?.url ?? `/backoffice/subscription?done=${done}`,
+      );
+    } catch {
       setBusy(false);
       setConfirming(false);
       setConfirmingInterval(false);
-      setError(payload?.error ?? "No pudimos completar la operación.");
-      return;
+      setErrorCode(null);
+      setError("No pudimos conectarnos. Vuelve a intentar.");
     }
-    // `checkout` contesta `{url}` y no un estado: se sale a Stripe.
-    window.location.assign(
-      payload?.url ?? `/backoffice/subscription?done=${done}`,
-    );
   }
 
   return (
     <main className="merchant-shell">
       <div className="brand-page subscription-page pb-24 font-sans">
-        <ModuleHeader
-          eyebrow="Suscripción"
-          title="Tu plan"
-          description="Consulta tu plan, tus cobros y las opciones disponibles para tu negocio."
-          closeHref="/backoffice"
-        />
+        {billingState?.access === "blocked" ? (
+          <PageHeader
+            title="Elige un plan para continuar"
+            description="Recupera el acceso a tu negocio con Conecta o Impulso."
+          />
+        ) : (
+          <ModuleHeader
+            eyebrow="Suscripción"
+            title="Tu plan"
+            description="Consulta tu plan, tus cobros y las opciones disponibles para tu negocio."
+            closeHref="/backoffice"
+          />
+        )}
         <Toast
           message={error ?? toast}
           kind={error ? "error" : "success"}
@@ -129,6 +116,17 @@ export function SubscriptionConsole({
             setError(null);
             setToast(null);
           }}
+        />
+        {error && errorCode && BLOCK_ACTIONS[errorCode] && (
+          <Link href={BLOCK_ACTIONS[errorCode].href}>
+            {BLOCK_ACTIONS[errorCode].label}
+          </Link>
+        )}
+        <BillingExtras
+          onState={setBillingState}
+          onSend={send}
+          busy={busy}
+          timezone={timezone}
         />
         {stripeUnconfirmed && (
           <Alert
@@ -160,11 +158,11 @@ export function SubscriptionConsole({
               id="subscription-current-title"
               className="mt-3 text-xl font-bold"
             >
-              {/* Para `none` la etiqueta ya ES «Sin plan»: anteponer «Plan» imprimía «Plan
-                Sin plan», el string exacto que la home dejó de imprimir (decisión 3).
-                Desde la spec 0064 `offers.plan` trae el INTERVALO («Plus mensual» / «Plus
-                anual»): lo compone `planWithInterval` en el servidor, no un ternario acá. */}
-              {offers.noPlan ? offers.plan : `Plan ${offers.plan}`}
+              {subscription.plan === "trial"
+                ? "Prueba de 90 días"
+                : subscription.plan === "none"
+                  ? "Sin plan"
+                  : `Plan ${billingPlanName(subscription.plan)}${subscription.interval === "year" ? " anual" : subscription.interval === "month" ? " mensual" : ""}`}
             </h2>
             <p className="mt-2 text-sm text-content-muted">
               {activeLocations}{" "}
@@ -189,13 +187,13 @@ export function SubscriptionConsole({
               )}
               {offers.pendingDowngrade === "with_date" && (
                 <Alert title="Baja programada">
-                  Tu plan baja a Free el{" "}
+                  Tu suscripción termina el{" "}
                   {formatDate(subscription.pendingPlanAt, timezone)}.
                 </Alert>
               )}
               {offers.pendingDowngrade === "without_date" && (
                 <Alert title="Baja programada">
-                  Tu plan baja a Free al final del período actual.
+                  Tu suscripción termina al final del período actual.
                 </Alert>
               )}
             </div>
@@ -203,9 +201,6 @@ export function SubscriptionConsole({
               <div className="mt-6 grid gap-3 border-t border-border pt-6">
                 {offers.intervalUpgrade && (
                   <>
-                    {/* F2-2 — EL BOTÓN YA NO COBRA: ABRE EL MODAL. Hasta la spec 0064 este
-                  `onClick` posteaba a `/api/billing/interval` directo, y esa ruta cobra
-                  inmediato (`always_invoice`). Era plata sin confirmar. */}
                     <button
                       data-variant="primary"
                       className="inline-flex min-h-11 w-full items-center justify-center rounded-md bg-primary px-4 py-2.5 text-base font-bold text-on-primary transition-colors hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:bg-disabled disabled:text-on-disabled"
@@ -239,6 +234,10 @@ export function SubscriptionConsole({
             <UpgradeCard
               label={offers.upgrade}
               billingInterval={billingInterval}
+              selectedPlan={selectedPlan}
+              onSelectPlan={setSelectedPlan}
+              prices={billingState?.prices ?? null}
+              trialDaysLeft={billingState?.trialDaysLeft ?? null}
               onSelectInterval={setBillingInterval}
               busy={busy}
               onCheckout={() =>
@@ -246,7 +245,11 @@ export function SubscriptionConsole({
                   "/api/billing/checkout",
                   // `from: "subscription"` decide a dónde vuelve Stripe ([R2-I8]): sin esto
                   // el que paga acá aterriza en la home del backoffice.
-                  { interval: billingInterval, from: "subscription" },
+                  {
+                    plan: selectedPlan,
+                    interval: billingInterval,
+                    from: "subscription",
+                  },
                   "checkout",
                 )
               }
@@ -285,10 +288,6 @@ export function SubscriptionConsole({
   );
 }
 
-/** `canCancel === false` SIN `downgradeBlock` significa que el servidor bloqueó por una
- * razón que no es ni el conteo de locales ni el de campañas (hoy, `already_on_plan`). No se
- * puede ofrecer «Confirmar» —el 409 está garantizado— y tampoco se puede decir «archivá N»,
- * que sería falso: se dice lo único cierto, y sin `code` el modal no ofrece ningún link. */
 const BLOCK_FALLBACK = {
   message: "Esta baja no está disponible para tu plan actual.",
   code: null,

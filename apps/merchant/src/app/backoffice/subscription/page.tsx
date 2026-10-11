@@ -245,12 +245,14 @@ function noticeFor(params: {
   }
   switch (params.done) {
     case "cancel":
-      // DECÍA «Programamos la baja a Free», que desde el ADR 0063 es FALSO: la baja se aplica
-      // en el acto y no hay nada programado. Un aviso que promete un período de gracia que el
-      // servidor ya no da es la misma clase de mentira que el texto viejo del modal.
+      // Contrato 0189: la cancelación conserva acceso hasta el fin del período.
       return "Cancelaste tu suscripción: sigue activa hasta el final del periodo.";
     case "interval":
       return "Pasaste a facturación anual.";
+    case "plan":
+      return "Actualizaste tu plan.";
+    case "resume":
+      return "Reanudaste tu suscripción.";
     default:
       return null;
   }

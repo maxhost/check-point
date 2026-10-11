@@ -89,6 +89,20 @@ por ahora, decision del owner); marcar 0117 `implementada` tras el QA.
 | **`no-mutations-left.sh` solo ve `.ts`/`.tsx` bajo los `src/`** | medido el 2026-09-16 al implementar la 0066 | Una mutacion sobre un `.md`, un `.sh` o un hook **no la caza nadie**: las dos mutaciones de esta spec (una en una skill, otra en `CLAUDE.md`) habrian sobrevivido al Stop. Se **declara** en vez de arreglarse porque tocar los hooks existentes esta fuera del alcance de la 0066 |
 | Las GitHub Actions tiran **warning de deprecacion de Node 20** (`actions/checkout@v4`, `actions/setup-node@v4`, `pnpm/action-setup@v4` forzadas a correr en Node 24) | fuera de alcance de 0047 y 0048 | No bloquea nada |
 
+## UI pendiente para GPT (contratos de API listos)
+
+Handoff de Claude recuperado de `spec-0195`; U1–U3 se trabajan en `dev` con la
+spec 0196. U4–U6 esperan el merge de 0195 autorizado por el owner.
+
+| # | Pantalla | Contrato | Estado |
+|---|---|---|---|
+| U1 | Cobro: Conecta/Impulso, período, cambio de plan, cancelación al fin del período y reanudación | 0189 §D10 | UI 0196 implementada local, E2E específicos verdes; QA owner pendiente |
+| U2 | Retirar el plan Free/Gratis del panel | 0189 §D10 | UI 0196 implementada local, E2E específicos verdes; QA owner pendiente |
+| U3 | Comercio bloqueado y días de prueba del contrato de sesión | 0189 §D10 | UI 0196 implementada local, E2E específicos verdes; QA owner pendiente |
+| U4 | Vencimiento en programa: interruptor y 3/6/9/12 meses; explicar inicio del plazo | 0195 §D6 | Pendiente de merge de 0195 |
+| U5 | Vencimiento en inscripción junto a términos | 0195 §D6 | Pendiente de merge de 0195 |
+| U6 | Vencimiento bajo saldo en PWA | 0195 §D6 | Pendiente de merge de 0195 |
+
 ## Pendientes del owner (no son codigo)
 
 | Que | Origen |

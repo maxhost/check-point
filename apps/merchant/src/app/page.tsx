@@ -2,6 +2,8 @@ import { getSessionCookie } from "better-auth/cookies";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getMerchantAuth } from "../server/auth";
+import { Alert } from "../ui";
+import { SignOutButton } from "./components/sign-out-button";
 
 type EntrySearchParams = Record<string, string | string[] | undefined>;
 
@@ -26,7 +28,8 @@ export default async function MerchantEntryPage({
 }: {
   searchParams: Promise<EntrySearchParams>;
 }) {
-  if (hasBounceCode((await searchParams).e)) return <EntryCover />;
+  const reason = (await searchParams).e;
+  if (hasBounceCode(reason)) return <EntryCover reason={reason} />;
 
   const requestHeaders = await headers();
   // Solo la cookie de sesión de Better Auth puede autenticar esta página. Otras
@@ -41,9 +44,15 @@ export default async function MerchantEntryPage({
   redirect("/backoffice");
 }
 
-function EntryCover() {
+function EntryCover({ reason }: { reason: string | string[] | undefined }) {
   return (
     <main className="merchant-shell">
+      {reason === "payment_required" && (
+        <Alert kind="warning" title="El negocio necesita un plan activo">
+          Pide a la persona propietaria que reactive la suscripción para
+          continuar. <SignOutButton />
+        </Alert>
+      )}
       <section className="panel login-panel">
         <p className="eyebrow">CheckPass Club · Negocios</p>
         <h1>Fidelización simple para tu negocio</h1>

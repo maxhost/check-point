@@ -1,3 +1,4 @@
+import { billingPlanName } from "./subscription/billing-state";
 import Link from "next/link";
 import { eq } from "drizzle-orm";
 import {
@@ -12,7 +13,7 @@ import {
   StatsUpSquare,
 } from "iconoir-react";
 import { requireOwner } from "../../server/auth-guards";
-import { planLabel, statusLabel } from "../../server/billing";
+import { statusLabel } from "../../server/billing";
 import { getDb } from "@mi-pasaporte/db";
 import { subscriptions } from "@mi-pasaporte/db/schema";
 
@@ -116,7 +117,7 @@ export default async function BackofficePage() {
         </div>
         <Link className="dashboard-plan" href="/backoffice/subscription">
           <CreditCard aria-hidden="true" width={18} height={18} />
-          <span>{planLabel(plan)}</span>
+          <span>{billingPlanName(plan)}</span>
           <small>{statusLabel(status)}</small>
         </Link>
       </header>

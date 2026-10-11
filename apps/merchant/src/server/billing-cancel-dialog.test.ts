@@ -262,22 +262,25 @@ describe("el aviso de cuándo conviene bajar (spec 0064, ADR 0063)", () => {
       }),
     );
 
-  it("con fecha de renovación dice que es inmediata, sin devolución, y da la fecha conveniente", async () => {
+  it("con fecha de renovación conserva el acceso y permite reanudar", async () => {
     const html = await render(RENEWAL);
-    // Las dos condiciones que el owner tiene que leer ANTES de confirmar (ADR 0063).
-    expect(html).toContain("La baja es inmediata");
-    expect(html).toContain("no se devuelve el tiempo que ya pagaste");
+    // Contrato 0189: cancelar al final del período y poder reanudar.
+    expect(html).toContain(
+      "Tu suscripción seguirá activa hasta el final del período actual",
+    );
+    expect(html).toContain("Puedes reanudarla antes de esa fecha");
     // Hasta cuándo pagó: la renovación misma.
     expect(html).toContain("1 de diciembre de 2026");
-    // Y la fecha CONVENIENTE = renovación − 2 días. El literal va escrito a mano y no
-    // calculado con la misma resta que el código, que sería el oráculo circular.
-    expect(html).toContain("29 de noviembre de 2026");
+    // Ya no se recomienda volver dos días antes: la baja se programa.
+    expect(html).not.toContain("29 de noviembre de 2026");
   });
 
   it("SIN fecha de renovación omite el aviso entero y no inventa ninguna fecha", async () => {
     const html = await render(null);
     // Sigue diciendo lo que la baja hace…
-    expect(html).toContain("La baja es inmediata");
+    expect(html).toContain(
+      "Tu suscripción seguirá activa hasta el final del período actual",
+    );
     // …y NO dice ni «ya pagaste hasta» ni «conviene».
     expect(html).not.toContain("Ya pagaste hasta");
     expect(html).not.toContain("conviene");

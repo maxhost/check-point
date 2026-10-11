@@ -216,6 +216,7 @@ describe("el click en la consola de suscripción (spec 0063, D7)", () => {
     // EL BODY COMPLETO, no un `toMatchObject`: `from` es justo la clave que faltaba (R10) y
     // un match parcial la dejaría pasar.
     expect(fetchCalls[0].body).toEqual({
+      plan: "base",
       interval: "month",
       from: "subscription",
     });
@@ -233,6 +234,7 @@ describe("el click en la consola de suscripción (spec 0063, D7)", () => {
     click(button(expand(child(tree, "UpgradeCard")), "Elegir un plan"));
 
     expect(fetchCalls[0].body).toEqual({
+      plan: "base",
       interval: "year",
       from: "subscription",
     });
