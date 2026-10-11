@@ -11,7 +11,7 @@
 
 
 
-## ⇥ ESTADO (2026-10-11) — EN PROD: 0189 + 0190 + 0195 + 0196 + landing/SEO (`main` = `origin/main` = `4c40a6a`)
+## ⇥ ESTADO (2026-10-11) — CERRADO POR EL OWNER, EN PROD: 0189 + 0190 + 0195 + 0196 + landing/SEO (`main` = `origin/main` = `4c40a6a`)
 
 **En PROD:** `4c40a6a`, deploy de merchant/customer/public `success` (status de GitHub del commit), `/api/health` 200 en
 `business.` y `my.`, `/programa-de-fidelizacion` 200. **Migraciones 0069/0070/0071 aplicadas** (2026-10-11, snapshot
@@ -21,16 +21,15 @@ Push hecho desde un worktree limpio en `4c40a6a` (verify completo verde con Neon
 
 **En `dev`:** GPT siguio despues de `4c40a6a` (0198/0199 landing, `890a37e`) con archivos `.impeccable/` sin commitear.
 
+**Panel `admin.checkpass.club` en PROD** (proyecto Vercel creado por el owner): `/api/health` ok, `/` → `/login`,
+noindex. **Owner 2026-10-11: «todo funcionando, damos esto por cerrado e implementado»** (0189, 0190, 0195, 0196).
+
 **QUE SIGUE:**
-1. Owner: crear el proyecto Vercel del panel desde GitHub (raiz `apps/platform`, dominio `admin.checkpass.club`).
-   Variables que lee: `DATABASE_URL`, `PLATFORM_AUTH_SECRET`, `PLATFORM_AUTH_URL`, `PLATFORM_ADMIN_EMAILS`,
-   `EMAIL_PROVIDER`, `EMAIL_FROM`, `RESEND_API_KEY`.
-2. Owner: QA en PROD (cobro Conecta/Impulso, dias de prueba, cancelar/reanudar, vencimiento).
-3. Pendientes chicos de Claude: sumar platform a `tools/dev-local/up.sh`; `tools/local-db/huellas.sql` no mira el
+1. Pendientes chicos de Claude: sumar platform a `tools/dev-local/up.sh`; `tools/local-db/huellas.sql` no mira el
    esquema `platform_auth`; borrar worktrees mergeados `spec-0189/0190/0195`.
-4. GPT: U4–U6 (vencimiento, 0195 §D6). Skill `impeccable` instalada sin commitear (lint/formato ya la ignoran, `6b10697`):
+2. GPT: U4–U6 (vencimiento, 0195 §D6). Skill `impeccable` instalada sin commitear (lint/formato ya la ignoran, `6b10697`):
    pregunta abierta al owner de quien la commitea.
-5. Siguiente funcionalidad: reporte de retorno. Inventario en `docs/analisis-producto-2026-10-10.md` §Inventario.
+3. Siguiente funcionalidad: reporte de retorno. Inventario en `docs/analisis-producto-2026-10-10.md` §Inventario.
    Pregunta abierta al owner: registrar cada escaneo como evento.
 
 **Decisiones del owner, no volver a preguntar:** ADR 0134, 0135, 0136 (2026-10-10). Precio de la landing (Impulso
