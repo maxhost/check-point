@@ -10,6 +10,9 @@ export default tseslint.config(
       "**/playwright-report/**",
       "**/test-results/**",
       "**/coverage/**",
+      // Skill de terceros instalada (impeccable): codigo vendorizado y minificado, no es del repo.
+      ".claude/skills/impeccable/**",
+      ".github/skills/impeccable/**",
     ],
   },
   js.configs.recommended,

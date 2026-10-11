@@ -14,3 +14,10 @@ docs/
 
 # Config local del arnes: untracked (ignore global del usuario), nunca llega a CI y el arnes la reescribe sola.
 .claude/settings.local.json
+
+# Skill de terceros instalada (impeccable): codigo vendorizado, no se formatea.
+.claude/skills/impeccable/
+.github/skills/impeccable/
+.github/agents/
+.github/hooks/
+.claude/agents/impeccable-*
