@@ -57,7 +57,10 @@ el repositorio requiere Node 24 mediante `nvm use`.
 Las superficies actuales del código local incluyen:
 
 - `/`: home para consumidores que explica el funcionamiento mediante ejemplos.
-- `/negocios`: landing comercial independiente, con el diseño y contenido previos.
+- `/negocios`: landing comercial independiente centrada en atraer nuevos clientes,
+  motivar su regreso y facilitar la atención. El hero integra texto y acciones
+  dentro de una escena ilustrativa; siguen marketing, fidelización, POS, inicio,
+  planes y preguntas.
 - `/programa-de-fidelizacion`, `/marketing-para-comercios` y `/punto-de-venta`:
   explicación de las herramientas para comercios.
 - `/explorar` y `/lugares/[slug]`: descubrimiento y fichas ilustrativas para

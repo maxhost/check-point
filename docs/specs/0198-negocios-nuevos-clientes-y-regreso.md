@@ -52,10 +52,10 @@ No disjunta de0197/0188/0191–0193; preservar home y estilos/previews compartid
 
 ## Definition of Done
 
-- [ ] Tipos y ESLint de public salida0 con Node24; Prettier y diffcheck salida0.
-- [ ] Suite landing con configuración temporal sin webServer compartidos: home y /negocios a390/1440 claro/oscuro; enlaces, planes, FAQ y registro, sin overflow ni errores de página.
-- [ ] En pruebas: H1 exacto; hero contiene CTA/nota de ejemplo; orden #red antes de #programa antes de #beneficios; escena cargada, fotos/controles accesibles.
-- [ ] Build public salida0. Capturas del hero y secciones vistas por implementador.
+- [x] Tipos y ESLint de public salida0 con Node24; Prettier y diffcheck salida0.
+- [x] Suite landing con configuración temporal sin webServer compartidos: home y /negocios a390/1440 claro/oscuro; enlaces, planes, FAQ y registro, sin overflow ni errores de página.
+- [x] En pruebas: H1 exacto; hero contiene CTA/nota de ejemplo; orden #red antes de #programa antes de #beneficios; escena cargada, fotos/controles accesibles.
+- [x] Build public salida0. Capturas del hero y secciones vistas por implementador.
 - [ ] QA owner del sitio ensamblado, antes de publicar; no afirmar producción verificada.
 
 Verificación L2 específica sin DB, Neon o adversarial (presupuesto0); verify global solo al paso live ADR0128/0129. Barrido previo confirmó símbolos, rutas, etiquetas de planes y número0198 disponible.
@@ -75,3 +75,9 @@ Un implementador, L2 sin subagentes conforme ADR0129. Mantener nueva clase wrapp
 ## Abierto
 
 Ninguna decisión de producto pendiente. Comp aprobado; plan/asset y QA del ensamblado pertenecen a su verificación, no son elecciones inventadas durante el código.
+
+## Verificación local — 2026-10-10
+
+Node24: typecheck y ESLint públicos salida0; Prettier de archivos de código y diffcheck salida0. Suite landing9/9 en11.4s, configuración temporal sin webServers compartidos ni DB. Capturas reales390/1440 claro/oscuro y hero1536x1024 vistas; no overflow/pageerrors. Build público final salida0, registro `/private/tmp/0198-build-final.log`.
+
+Impeccable: recursos aprobados por owner («aprobado»), hero y responsive cerrados78%; finish ship. Revisión inline por ADR0129, no independiente. Comp-diff final conserva diferencias menores de tipografía/tono según identidad fijada; la clasificación contradicted del conector se contrastó con su par de crops: misma línea y punta derecha, diferencia de posición de unos3px, sin omisión ni cambio de recorrido. Foto con prompt embebido; scan1/1 sin faltantes. No subagentes ni verify global. QA owner del ensamblado sigue pendiente. Sin publicación.

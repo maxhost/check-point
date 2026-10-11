@@ -14,6 +14,29 @@ import {
 } from "iconoir-react";
 import Image from "next/image";
 
+// Shipping copy of assets/plates/welcome-scene.png; identical approved PNG bytes.
+export function BusinessHeroScene() {
+  return (
+    <figure className="business-hero-scene">
+      <Image
+        src="/images/negocios-bienvenida.png"
+        alt="Escena ilustrativa: dueña de una cafetería entregando un café a un cliente"
+        fill
+        sizes="100vw"
+        preload
+      />
+      <div className="business-welcome">
+        <Gift aria-hidden="true" />
+        <div>
+          <strong>Un café de bienvenida</strong>
+          <span>Café de ejemplo</span>
+        </div>
+      </div>
+      <figcaption>Ejemplo ilustrativo. No es una oferta vigente.</figcaption>
+    </figure>
+  );
+}
+
 export function HeroPreview() {
   return (
     <figure className="merchant-hero-photo">

@@ -1,27 +1,21 @@
-import {
-  ArrowRight,
-  ArrowUpRight,
-  Check,
-  Clock,
-  Gift,
-  Group,
-} from "iconoir-react";
+import { ArrowRight, ArrowUpRight, Check, Shop, Star } from "iconoir-react";
 import type { Metadata } from "next";
 import { BrandMark } from "../brand-mark";
 import {
   DashboardPreview,
-  HeroPreview,
+  BusinessHeroScene,
   LoyaltyJourney,
   NetworkPreview,
 } from "./preview";
 import { ClosingSections, LandingFooter } from "./closing-sections";
 import { onboardingUrl, siteUrl } from "../site-config";
 import "./negocios.css";
+import "./business-landing.css";
 
 export const metadata: Metadata = {
   title: "Fidelización, marketing y punto de venta | CheckPass Club",
   description:
-    "Fideliza a tus clientes, activa campañas automáticas y gestiona pedidos y cobros desde tu celular. CheckPass Club para comercios en Cuenca.",
+    "Invita a nuevos clientes, dales motivos para volver y gestiona tus ventas. Fidelización, marketing y punto de venta para comercios en Cuenca.",
   alternates: { canonical: "/negocios" },
   openGraph: {
     type: "website",
@@ -50,16 +44,18 @@ function Arrow({ diagonal = false }: { diagonal?: boolean }) {
 function SignupLink({
   label,
   light = false,
+  diagonal = true,
 }: {
   label: string;
   light?: boolean;
+  diagonal?: boolean;
 }) {
   return (
     <a
       className={`button ${light ? "button-light" : "button-dark"}`}
       href={onboardingUrl}
     >
-      {label} <Arrow diagonal />
+      {label} <Arrow diagonal={diagonal} />
     </a>
   );
 }
@@ -113,7 +109,7 @@ export default function MerchantLandingPage() {
       <a className="skip-link" href="#contenido">
         Saltar al contenido
       </a>
-      <div className="site-shell">
+      <div className="site-shell business-shell">
         <header className="site-header">
           <a className="brand" href="/" aria-label="CheckPass Club, inicio">
             <BrandMark />
@@ -122,99 +118,63 @@ export default function MerchantLandingPage() {
             </span>
           </a>
           <nav className="desktop-nav" aria-label="Navegación principal">
-            <a href="/explorar">Explorar</a>
-            <a href="#como-funciona">Cómo empezar</a>
-            <a href="#red">La red</a>
+            <a href="#como-funciona">Cómo funciona</a>
             <a href="#planes">Planes</a>
             <a href="#preguntas">Preguntas</a>
           </nav>
           <a className="header-cta" href={onboardingUrl}>
-            Pruébalo gratis <Arrow diagonal />
+            Pruébalo gratis 3 meses <Arrow diagonal />
           </a>
         </header>
 
         <main id="contenido">
-          <section className="hero" aria-labelledby="hero-title">
-            <div className="hero-copy">
-              <span className="eyebrow">
-                <span className="eyebrow-line" /> PARA COMERCIOS LOCALES
-              </span>
+          <section className="business-hero" aria-labelledby="hero-title">
+            <BusinessHeroScene />
+            <div className="business-hero-copy">
               <h1 id="hero-title">
-                Atrae nuevos clientes y dales motivos para <em>volver.</em>
+                Dale a tu próximo cliente <em>un motivo para entrar.</em>
               </h1>
-              <p className="hero-lede">
-                Un programa de fidelización, marketing automático y punto de
-                venta para tu negocio. Reconoce a quienes te eligen, invita a
-                nuevos clientes y gestiona pedidos y cobros desde tu celular.
+              <p className="business-hero-lede">
+                Llega a personas que compran cerca. Invítalas a conocer tu
+                negocio y dales razones para volver.
               </p>
-              <div className="hero-actions">
-                <SignupLink label="Pruébalo gratis 3 meses" />
-                <a className="text-link" href="#como-funciona">
-                  Cómo empezar <Arrow />
+              <div className="business-hero-actions">
+                <SignupLink label="Pruébalo gratis 3 meses" diagonal={false} />
+                <a className="business-how-link" href="#como-funciona">
+                  Cómo funciona <Arrow />
                 </a>
               </div>
-              <div className="hero-assurance">
-                <span className="assurance-icon">
-                  <Check className="landing-icon" aria-hidden="true" />
-                </span>{" "}
-                Todo incluido durante la prueba · Empezamos en Cuenca
-              </div>
-            </div>
-            <HeroPreview />
-          </section>
-
-          <section
-            className="ribbon"
-            aria-label="Lo que puedes hacer con CheckPass"
-          >
-            <div className="ribbon-benefit">
-              <Group className="ribbon-icon" aria-hidden="true" />
-              <p>
-                <strong>Atrae nuevos clientes</strong>
-                <span>
-                  Llega a personas que viven y compran cerca de tu negocio.
-                </span>
-              </p>
-            </div>
-            <div className="ribbon-benefit">
-              <Gift className="ribbon-icon" aria-hidden="true" />
-              <p>
-                <strong>Motívalos a volver</strong>
-                <span>Premia sus compras para que vuelvan a elegirte.</span>
-              </p>
-            </div>
-            <div className="ribbon-benefit">
-              <Clock className="ribbon-icon" aria-hidden="true" />
-              <p>
-                <strong>Ahorra tiempo al atender</strong>
-                <span>
-                  Organiza pedidos y cobros desde tu celular y dedica más tiempo
-                  a tus clientes.
-                </span>
+              <p className="business-assurance">
+                <Check aria-hidden="true" /> Todo incluido durante la prueba.
               </p>
             </div>
           </section>
 
-          <section
-            className="section loyalty-section"
-            id="programa"
-            aria-labelledby="loyalty-title"
-          >
-            <div className="section-heading">
-              <span className="kicker">RECONOCE A QUIENES TE ELIGEN</span>
-              <h2 id="loyalty-title">
-                Dales un motivo para volver a <em>elegirte.</em>
+          <section className="business-next" aria-labelledby="next-title">
+            <div className="business-next-copy">
+              <h2 id="next-title">
+                La primera visita <em>es solo el comienzo.</em>
               </h2>
               <p>
-                Tus clientes se unen con el QR de tu local, acumulan puntos o
-                sellos y canjean las recompensas que tú eliges.
+                Con CheckPass, puedes invitar nuevos clientes y premiar su
+                regreso con beneficios en tus propios programas de lealtad.
               </p>
             </div>
-            <LoyaltyJourney />
-            <div className="section-more">
-              <a className="text-link" href="/programa-de-fidelizacion">
-                Descubre el programa de recompensas para tu negocio <Arrow />
-              </a>
+            <div className="business-visit-journey">
+              <div className="business-visit-step">
+                <span className="business-visit-icon">
+                  <Shop aria-hidden="true" />
+                </span>
+                <h3>Invita a nuevos clientes</h3>
+                <p>Llega a personas que están cerca de tu negocio.</p>
+              </div>
+              <div className="business-visit-step">
+                <span className="business-visit-icon">
+                  <Star aria-hidden="true" />
+                </span>
+                <h3>Premia su regreso</h3>
+                <p>Crea beneficios que motiven a volver.</p>
+              </div>
             </div>
           </section>
 
@@ -225,15 +185,14 @@ export default function MerchantLandingPage() {
           >
             <div className="feature-layout">
               <div className="feature-copy">
-                <span className="kicker">QUE TU BARRIO TE DESCUBRA</span>
                 <h2 id="network-title">
-                  ¿Cuántas personas compran cerca de ti y todavía{" "}
-                  <em>no conocen tu negocio?</em>
+                  Tu próximo cliente compra cerca.{" "}
+                  <em>Invítalo a conocerte.</em>
                 </h2>
                 <p className="feature-lede">
-                  Llega al teléfono de tus clientes y de quienes compran cerca.
-                  Activa campañas automáticas con beneficios que los inviten a
-                  visitarte.
+                  Con Venta cruzada, una persona que compra en otro comercio
+                  cercano puede recibir un beneficio de tu negocio. Tú eliges
+                  qué ofrecer para darle un motivo para entrar.
                 </p>
                 <ul className="feature-list">
                   <li>
@@ -241,10 +200,11 @@ export default function MerchantLandingPage() {
                       <ArrowUpRight className="landing-icon" />
                     </span>
                     <div>
-                      <strong>Haz que tus clientes vuelvan</strong>
+                      <strong>Un beneficio que invita a conocerte</strong>
                       <p>
-                        Los clientes inscritos en tu programa reciben avisos en
-                        su teléfono con los regalos y beneficios que tú eliges.
+                        Un regalo de bienvenida puede ser el primer paso. El
+                        cliente recibe la invitación en su teléfono y decide
+                        cuándo visitar tu local.
                       </p>
                     </div>
                   </li>
@@ -253,11 +213,11 @@ export default function MerchantLandingPage() {
                       <ArrowUpRight className="landing-icon" />
                     </span>
                     <div>
-                      <strong>Actívalo una vez. CheckPass se encarga.</strong>
+                      <strong>Tu campaña, con tus condiciones</strong>
                       <p>
-                        Elige una campaña para dar la bienvenida, invitar a
-                        quienes llevan tiempo sin venir o promocionar tus horas
-                        más tranquilas. Los avisos se envían automáticamente.
+                        Elige el beneficio y configura la campaña. CheckPass
+                        entrega las invitaciones automáticamente cuando se
+                        cumplen sus condiciones.
                       </p>
                     </div>
                   </li>
@@ -266,7 +226,7 @@ export default function MerchantLandingPage() {
                       <ArrowUpRight className="landing-icon" />
                     </span>
                     <div>
-                      <strong>Invita a nuevos clientes</strong>
+                      <strong>Más oportunidades en tu barrio</strong>
                       <p>
                         Con la campaña de Venta cruzada, una persona que compra
                         en otro comercio cercano puede recibir un regalo tuyo y
@@ -290,13 +250,36 @@ export default function MerchantLandingPage() {
           </section>
 
           <section
+            className="section loyalty-section"
+            id="programa"
+            aria-labelledby="loyalty-title"
+          >
+            <div className="section-heading">
+              <h2 id="loyalty-title">
+                Dales un motivo para volver a <em>elegirte.</em>
+              </h2>
+              <p>
+                Tus clientes se unen con el QR de tu local. Sus compras o las
+                acciones que definas en el programa les permiten acumular puntos
+                o sellos y canjear tus recompensas cuando cumplen sus
+                condiciones.
+              </p>
+            </div>
+            <LoyaltyJourney />
+            <div className="section-more">
+              <a className="text-link" href="/programa-de-fidelizacion">
+                Descubre el programa de recompensas para tu negocio <Arrow />
+              </a>
+            </div>
+          </section>
+
+          <section
             className="feature-section"
             id="beneficios"
             aria-labelledby="benefits-title"
           >
             <div className="feature-layout">
               <div className="feature-copy">
-                <span className="kicker">MENOS PASOS PARA ATENDER</span>
                 <h2 id="benefits-title">
                   Dedica menos tiempo a cobrar y más a <em>tus clientes.</em>
                 </h2>
@@ -365,7 +348,6 @@ export default function MerchantLandingPage() {
             aria-labelledby="how-title"
           >
             <div className="section-heading">
-              <span className="kicker">EMPIEZA CON TU NEGOCIO</span>
               <h2 id="how-title">
                 Prepara tu negocio e invita a <em>tu primer cliente.</em>
               </h2>
@@ -400,10 +382,10 @@ export default function MerchantLandingPage() {
             </div>
           </section>
 
-          <ClosingSections />
+          <ClosingSections showEyebrows={false} />
         </main>
 
-        <LandingFooter />
+        <LandingFooter showPhotoCredit={false} />
       </div>
     </>
   );

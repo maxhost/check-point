@@ -163,7 +163,7 @@ for (const width of [390, 1440]) {
       await commercial.click();
       await expect(page).toHaveURL(landingURL + "/negocios");
       await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-        "Atrae nuevos clientes y dales motivos para volver.",
+        "Dale a tu próximo cliente un motivo para entrar.",
       );
       expect(errors).toEqual([]);
     });
@@ -178,7 +178,7 @@ for (const width of [390, 1440]) {
       const response = await page.goto(landingURL + "/negocios");
       expect(response?.status()).toBe(200);
       await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-        "Atrae nuevos clientes y dales motivos para volver.",
+        "Dale a tu próximo cliente un motivo para entrar.",
       );
       await expect(page).toHaveTitle(
         /Fidelización, marketing y punto de venta \| CheckPass Club/,
@@ -187,6 +187,39 @@ for (const width of [390, 1440]) {
         page.getByText("Descubre el programa de recompensas para tu negocio"),
       ).toBeVisible();
       await expect(page.locator("main > section")).toHaveCount(9);
+      await expect(page.locator(".business-hero")).toContainText(
+        "Llega a personas que compran cerca.",
+      );
+      await expect(
+        page
+          .locator(".business-hero")
+          .getByRole("link", { name: "Pruébalo gratis 3 meses" }),
+      ).toHaveAttribute("href", /\/es\/business\/onboarding$/);
+      await expect(page.locator(".business-hero")).toContainText(
+        "Ejemplo ilustrativo. No es una oferta vigente.",
+      );
+      const photo = page.locator(
+        '.business-hero img[src*="negocios-bienvenida"]',
+      );
+      await expect(photo).toBeVisible();
+      await expect
+        .poll(() =>
+          photo.evaluate((img) => (img as HTMLImageElement).naturalWidth > 0),
+        )
+        .toBe(true);
+      expect(
+        await page
+          .locator("main > section[id]")
+          .evaluateAll((sections) => sections.map((section) => section.id)),
+      ).toEqual([
+        "red",
+        "programa",
+        "beneficios",
+        "como-funciona",
+        "planes",
+        "preguntas",
+      ]);
+
       await expect(page.locator(".moment-card")).toHaveCount(0);
       await expect(
         page.getByRole("heading", { name: "Escanea y se une" }),
@@ -274,7 +307,7 @@ for (const width of [390, 1440]) {
       });
       await page
         .locator("#contenido")
-        .getByRole("link", { name: "Cómo empezar" })
+        .getByRole("link", { name: "Cómo funciona", exact: true })
         .click();
       await expect(page).toHaveURL(/#como-funciona$/);
       await expect(

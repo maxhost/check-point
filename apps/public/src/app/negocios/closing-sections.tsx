@@ -80,7 +80,11 @@ function SignupLink({
   );
 }
 
-export function ClosingSections() {
+export function ClosingSections({
+  showEyebrows = true,
+}: {
+  showEyebrows?: boolean;
+}) {
   return (
     <>
       <section
@@ -89,7 +93,9 @@ export function ClosingSections() {
         aria-labelledby="plans-title"
       >
         <div className="section-heading plans-heading">
-          <span className="kicker">MÁS POSIBILIDADES PARA TU NEGOCIO</span>
+          {showEyebrows && (
+            <span className="kicker">MÁS POSIBILIDADES PARA TU NEGOCIO</span>
+          )}
           <h2 id="plans-title">
             Prueba todo durante tres meses. Después, elige <em>tu plan.</em>
           </h2>
@@ -243,7 +249,7 @@ export function ClosingSections() {
         aria-labelledby="faq-title"
       >
         <div>
-          <span className="kicker">PREGUNTAS FRECUENTES</span>
+          {showEyebrows && <span className="kicker">PREGUNTAS FRECUENTES</span>}
           <h2 id="faq-title">
             Resuelve tus dudas antes de <em>empezar.</em>
           </h2>
@@ -264,7 +270,7 @@ export function ClosingSections() {
       </section>
 
       <section className="final-cta" aria-labelledby="final-title">
-        <span className="kicker">PRUÉBALO EN TU NEGOCIO</span>
+        {showEyebrows && <span className="kicker">PRUÉBALO EN TU NEGOCIO</span>}
         <h2 id="final-title">
           Empieza hoy. Descubre lo que puedes lograr en <em>tres meses.</em>
         </h2>
@@ -285,11 +291,7 @@ export function LandingFooter({
 }) {
   return (
     <footer className="site-footer">
-      <a
-        className="brand"
-        href="/"
-        aria-label="CheckPass Club, inicio"
-      >
+      <a className="brand" href="/" aria-label="CheckPass Club, inicio">
         <BrandMark />
         <span className="brand-name">
           checkpass<span>.</span>club
