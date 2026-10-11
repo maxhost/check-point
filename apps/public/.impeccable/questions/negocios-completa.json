@@ -1,0 +1,63 @@
+{
+  "title": "CheckPass para negocios — propuesta de página completa",
+  "question": "El hero elegido se conserva. ¿Qué propuesta del resto de la página quieres desarrollar? Puedes combinar partes o dejar comentarios.",
+  "options": [
+    {
+      "id": "recorrido",
+      "label": "Recorrido de una invitación",
+      "thesis": "Muestra cómo una compra cercana puede convertirse en la primera visita a tu local.",
+      "viewport": "Invitación, premio para volver y atención con pedido y recompensa; después inicio, planes y dudas.",
+      "risk": "Las escenas y pantallas deben quedar identificadas como ejemplos.",
+      "palette": [
+        "#faf9f5",
+        "#1d332c",
+        "#a55a43"
+      ],
+      "materials": [
+        "Fotografía ilustrativa",
+        "Texto y controles HTML",
+        "Demostraciones del producto"
+      ],
+      "comp": ".impeccable/mocks/completa/recorrido.png"
+    },
+    {
+      "id": "barrio",
+      "label": "El barrio conectado",
+      "thesis": "Explica la oportunidad comercial mediante un mapa ilustrativo de negocios cercanos.",
+      "viewport": "Mapa de una invitación, QR y recompensa sobre la mesa, atención con tablet y comparación de planes.",
+      "risk": "El mapa debe explicar el mecanismo sin sugerir comercios participantes reales.",
+      "palette": [
+        "#faf9f5",
+        "#1d332c",
+        "#a55a43"
+      ],
+      "materials": [
+        "Fotografía ilustrativa",
+        "Texto y controles HTML",
+        "Demostraciones del producto"
+      ],
+      "comp": ".impeccable/mocks/completa/barrio.png"
+    },
+    {
+      "id": "venta",
+      "label": "Venta y regreso",
+      "thesis": "Conecta la invitación con la compra y con una recompensa que da motivos para volver.",
+      "viewport": "Dos momentos de visita, pase y premio, atención y venta; cierre fotográfico que retoma el hero.",
+      "risk": "Hay que evitar que los dispositivos compitan con el beneficio para el dueño.",
+      "palette": [
+        "#faf9f5",
+        "#1d332c",
+        "#a55a43"
+      ],
+      "materials": [
+        "Fotografía ilustrativa",
+        "Texto y controles HTML",
+        "Demostraciones del producto"
+      ],
+      "comp": ".impeccable/mocks/completa/venta.png"
+    }
+  ],
+  "reroll": false,
+  "canon": false,
+  "steer": true
+}

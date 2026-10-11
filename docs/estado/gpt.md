@@ -3,7 +3,27 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — 0198 IMPLEMENTADA LOCAL, QA OWNER PENDIENTE (2026-10-10)
+## ESTADO — OWNER RECHAZA ALCANCE DEL CUERPO DE NEGOCIOS; REDISEÑO COMPLETO EN PROPUESTA (2026-10-11)
+
+
+Owner observa que la entrega cambió sobre todo el hero, conservando cuerpo,
+diagramas, imágenes y buena parte del copy. Se reconoce entrega parcial respecto
+del objetivo; finish técnico de0198 NO significa aceptación del cuerpo.
+Se retoma la misma dirección/identidad, preservando hero aprobado y ampliando
+el diseño a TODA la landing. Plan revisable:
+docs/design-explorations/negocios-redisenio-completo.md.
+Tres propuestas completas generadas, corregidas e inspeccionadas: recorrido,
+barrio y venta/regreso. Fotos/pantallas de ejemplo y copia comercial corregida.
+Comparador http://127.0.0.1:59932/, key dd0e8e6b. PNGs y sidecars approved:false
+en apps/public/.impeccable/mocks/completa. Archivo de pregunta:
+apps/public/.impeccable/questions/negocios-completa.json.
+Recoger selección con serve-question --wait --key dd0e8e6b o palabras del owner.
+No marcar propuesta aprobada antes de su respuesta. Recomendación: recorrido.
+No cambiar UI mientras se revisa la nueva composición. No nueva aprobación del
+hero ni entrevista de producto. Página local actual preservada, sin publicar.
+Helper0198 respaldado en .impeccable/history/negocios-0198-antes-revision-completa;
+nuevo build state comps abierto con seed c0e4f966. Pendiente selección de propuesta
+completa, spec de corrección/reserva local, assets/implementación y QA real.
 
 Rama dev, sin push/merge/deploy. Implementación08e902f; reserva5e7fbfc.
 Owner aprobó comp combinado («quedo perfecto, avanzamos») y plan/asset («aprobado»).
@@ -13,7 +33,8 @@ Fotos y previews identificados; precios/condiciones actuales preservados.
 Footer sin crédito Pexels incorrecto para imagen generada. Componentes compartidos
 preservan defaults, estilos nuevos acotados a business-shell.
 
-Impeccable: spec/plates/hero/sections/motion/responsive/review cerrados, finish ship.
+Registro técnico anterior de0198: spec/plates/hero/sections/motion/responsive/review
+cerrados, finish ship. Este registro corresponde al cambio parcial anterior.
 Hero y responsive78%, sin force ni recibos inventados. Revisión inline porADR0129,
 no independiente. Brief comercial commiteado. Evidencia helper temporal en
 apps/public/.impeccable/review; finish-0198.md y document-0198.md.
@@ -31,7 +52,8 @@ scan1/1 sin faltantes. No verify global ni Neon, conforme L2/ADR0129.
 Disponible para owner: http://localhost:3003/negocios. QA del ensamblado pendiente;
 DoD técnico comprobado, checkbox QA abierto. User NO quiere publicar aún.
 No commitear instalación .agents/.claude/.codex/.github ni helpers/capturas/duplicados.
-Siguiente paso: recibir revisión local del owner. Publicación exige autorización
+Siguiente paso: elegir propuesta completa, cerrar spec de corrección e implementar
+el cuerpo rediseñado. Publicación exige autorización
 explícita y verify. Pendientes0196/Stripe y CI remoto previos siguen abajo.
 
 ## ⇥ 0197 IMPLEMENTADA LOCAL, APROBADA POR OWNER (2026-10-10)
