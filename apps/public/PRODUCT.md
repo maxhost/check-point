@@ -57,6 +57,9 @@ el repositorio requiere Node 24 mediante `nvm use`.
 Las superficies actuales del código local incluyen:
 
 - `/`: home para consumidores que explica el funcionamiento mediante ejemplos.
+  Su cuerpo y footer adoptan Funcional (spec0201): pasos compactos, pase y
+  recompensa ilustrativos delimitados, CTA comercial contenido y FAQ. El owner
+  conserva el hero y el header aprobados, sin cambios.
 - `/negocios`: landing comercial independiente centrada en atraer nuevos clientes,
   motivar su regreso y facilitar la atención. Adopta la filosofía **Funcional**
   aprobada: texto y acciones separados de las fotografías, demostraciones
@@ -65,7 +68,7 @@ Las superficies actuales del código local incluyen:
   Los planes muestran listas verticales; solo Conecta tiene un destacado cálido,
   sin corazones. Por decisión del owner, /negocios no lleva etiquetas «ejemplo».
   `DESIGN.md` registra esta referencia para revisar otras páginas posteriormente;
-  la home y páginas de producto todavía conservan sus estilos actuales.
+  las páginas de producto todavía conservan sus estilos actuales.
 - `/programa-de-fidelizacion`, `/marketing-para-comercios` y `/punto-de-venta`:
   explicación de las herramientas para comercios.
 - `/explorar` y `/lugares/[slug]`: descubrimiento y fichas ilustrativas para

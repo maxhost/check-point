@@ -140,6 +140,24 @@ for (const width of [390, 1440]) {
         page.getByRole("heading", { name: "Así funciona tu pase." }),
       ).toBeInViewport();
       await expect(page.locator(".consumer-how")).toContainText("compras");
+      await expect(page.locator(".consumer-content > section")).toHaveCount(5);
+      const passPreview = page.getByRole("group", {
+        name: "Ejemplo ilustrativo de un pase",
+      });
+      await expect(passPreview).toContainText("Café de ejemplo");
+      await expect(passPreview).toContainText(
+        "Cada comercio lleva su propio saldo",
+      );
+      await expect(page.locator(".consumer-example")).toContainText(
+        "Ejemplo: 6 sellos → un café",
+      );
+      await expect(page.locator(".consumer-example-stamps > span")).toHaveCount(
+        6,
+      );
+      await expect(
+        page.getByRole("link", { name: "Ir a mi pase", exact: true }),
+      ).toHaveAttribute("href", /\/wallet$/);
+
       await page
         .getByText("¿Los puntos sirven en otros negocios?", { exact: true })
         .click();

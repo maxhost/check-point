@@ -425,6 +425,6 @@ técnica, Definition of Done y plan de pruebas antes de que su estado pase a `ce
 
 | 0200 | 2026-10-11 | Filosofía Funcional aprobada en /negocios y guía de diseño de la web pública. | implementada local; build y 9/9 E2E, diseño aprobado, publicación pendiente | no | `specs/0200-negocios-filosofia-funcional.md` |
 
-| 0201 | 2026-10-11 | Home Funcional debajo del hero aprobado, conservado sin cambios. | cerrada; implementación local autorizada | no | `specs/0201-home-filosofia-funcional.md` |
+| 0201 | 2026-10-11 | Home Funcional debajo del hero aprobado, conservado sin cambios. | implementada local; hero idéntico6/6, build y9/9 E2E, publicación pendiente | no | `specs/0201-home-filosofia-funcional.md` |
 
 | 0202 | 2026-10-11 | **Login del owner con codigo** (L2, API + servidor; implementa ADR 0137; pantalla de GPT con §D4). **Que es:** `POST /api/merchant/auth/login` manda un codigo y `POST /api/merchant/auth/login/verify` lo canjea por la sesion, con el mismo corte de negocio cerrado que el link. **Por que importa:** entrar desde la PWA instalada en iPhone. | **cerrada** | si | `specs/0202-login-del-owner-con-codigo.md` |

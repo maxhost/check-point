@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-11T17:49:13.776740+00:00",
+  "generatedAt": "2026-10-11T18:26:03.282769+00:00",
   "title": "Design System: CheckPass Club",
   "extensions": {
     "colorMeta": {
@@ -136,6 +136,11 @@
       {
         "name": "Separación legible",
         "body": "La explicación y la acción viven fuera de la fotografía. Las imágenes muestran contexto o funcionamiento dentro de un panel.",
+        "section": "layout"
+      },
+      {
+        "name": "Adopción parcial de consumidores",
+        "body": "La spec0201 adopta esta filosofía en el cuerpo de la home y su footer: pasos compactos, demostración de pase, recompensa ilustrativa, acceso comercial contenido y FAQ. El header y el hero de consumidores son una excepción aprobada: se conservan exactamente con sus estilos, imagen y notificaciones anteriores.",
         "section": "layout"
       }
     ],

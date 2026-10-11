@@ -90,8 +90,12 @@ ritmo estable, con espacio entre temas y agrupación estrecha dentro de cada tem
 
 Diseño aprobado por el owner el2026-10-11; aplicado inicialmente a `/negocios`
 en la spec0200. Es la referencia para revisar después las demás páginas de esta
-app. La home y páginas de producto aún conservan sus estilos anteriores; esta
-guía no acredita su adopción y no sustituye el kit de `apps/merchant`.
+app. La spec0201 adopta esta filosofía en el cuerpo de la home y su footer:
+pasos compactos, demostración de pase, recompensa ilustrativa, acceso comercial
+contenido y FAQ. El header y el hero de consumidores son una excepción aprobada:
+se conservan exactamente con sus estilos, imagen y notificaciones anteriores.
+Las páginas de producto aún conservan sus estilos anteriores. Esta guía no
+sustituye el kit de `apps/merchant`.
 
 ## Colors
 

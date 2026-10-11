@@ -11,6 +11,15 @@
         ],
         "createdAt": "2026-10-11T17:50:02.230Z",
         "reason": "Owner approved the Functional prototype and closed its design on 2026-10-11. Preserve its Arial typography; evidence: apps/public/DESIGN.md and spec0200."
+      },
+      {
+        "rule": "overused-font",
+        "value": "arial",
+        "files": [
+          "apps/public/src/app/consumer-home.css"
+        ],
+        "createdAt": "2026-10-11T18:26:31.716Z",
+        "reason": "Owner confirmó la filosofía Funcional de negocios con Arial y pidió aplicarla al cuerpo de la home; el hero con Arial debe conservarse idéntico."
       }
     ]
   }

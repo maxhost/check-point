@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { ArrowRight, CoffeeCup, Gift, QrCode, Wallet } from "iconoir-react";
+import { ArrowRight, CoffeeCup, Gift, Wallet } from "iconoir-react";
 import { BrandMark } from "./brand-mark";
 import { consumerWalletUrl, siteUrl } from "./site-config";
 
@@ -115,146 +115,177 @@ export function ConsumerHome() {
             </a>
           </div>
         </section>
-        <section
-          className="consumer-how"
-          id="como-funciona"
-          aria-labelledby="consumer-how-title"
-        >
-          <div>
-            <h2 id="consumer-how-title">
-              Así funciona <em>tu pase.</em>
-            </h2>
-            <p>
-              Una visita puede ser el comienzo de algo bueno. Cada negocio elige
-              su programa y los beneficios que te ofrece.
-            </p>
-          </div>
-          <ol className="consumer-steps">
-            <li>
-              <div className="consumer-step-art">
-                <QrCode aria-hidden="true" />
-                <span>1</span>
-              </div>
-              <h3>Escanea y únete</h3>
-              <p>En el local, escanea su QR y únete a su programa.</p>
-            </li>
-            <li>
-              <div
-                className="consumer-step-art consumer-stamps"
-                aria-hidden="true"
-              >
-                <div>
-                  {Array.from({ length: 6 }, (_, i) => (
-                    <i key={i} />
-                  ))}
-                </div>
-                <span>2</span>
-              </div>
-              <h3>Acumula a tu ritmo</h3>
+        <div className="consumer-content">
+          <section
+            className="consumer-how"
+            id="como-funciona"
+            aria-labelledby="consumer-how-title"
+          >
+            <div>
+              <h2 id="consumer-how-title">
+                Así funciona <em>tu pase.</em>
+              </h2>
               <p>
-                Suma puntos o sellos con las compras o acciones que el negocio
-                defina.
+                Una visita puede ser el comienzo de algo bueno. Cada negocio
+                elige su programa y los beneficios que te ofrece.
               </p>
-            </li>
-            <li>
-              <div className="consumer-step-art">
+            </div>
+            <ol className="consumer-steps">
+              <li>
+                <span className="consumer-step-number" aria-hidden="true">
+                  1
+                </span>
+                <h3>Escanea y únete</h3>
+                <p>En el local, escanea su QR y únete a su programa.</p>
+              </li>
+              <li>
+                <span className="consumer-step-number" aria-hidden="true">
+                  2
+                </span>
+                <h3>Acumula a tu ritmo</h3>
+                <p>
+                  Suma puntos o sellos con las compras o acciones que el negocio
+                  defina.
+                </p>
+              </li>
+              <li>
+                <span className="consumer-step-number" aria-hidden="true">
+                  3
+                </span>
+                <h3>Recibe tu beneficio</h3>
+                <p>
+                  Completa las condiciones del programa y canjea tu recompensa.
+                </p>
+              </li>
+            </ol>
+          </section>
+          <section
+            className="consumer-wallet consumer-section"
+            aria-labelledby="consumer-wallet-title"
+          >
+            <div>
+              <h2 id="consumer-wallet-title">
+                Tus lugares favoritos.
+                <br />
+                Un pase siempre a mano.
+              </h2>
+              <p>
+                Consulta tus programas desde el navegador y guarda tu pase en
+                Apple Wallet o Google Wallet. Cada comercio lleva su propio
+                saldo de puntos o sellos.
+              </p>
+              <a className="consumer-text-link" href={consumerWalletUrl}>
+                Ir a mi pase <ArrowRight aria-hidden="true" />
+              </a>
+            </div>
+            <div
+              className="consumer-pass-preview"
+              role="group"
+              aria-label="Ejemplo ilustrativo de un pase"
+            >
+              <div className="consumer-pass-heading">
+                <BrandMark />
+                <strong>Mi pase</strong>
+                <Wallet aria-hidden="true" />
+              </div>
+              <div className="consumer-pass-program">
                 <CoffeeCup aria-hidden="true" />
-                <span>3</span>
+                <div>
+                  <strong>Café de ejemplo</strong>
+                  <span>Programa de sellos</span>
+                </div>
               </div>
-              <h3>Recibe tu beneficio</h3>
-              <p>
-                Completa las condiciones del programa y canjea tu recompensa.
+              <dl className="consumer-pass-access">
+                <div>
+                  <dt>Consulta tu programa</dt>
+                  <dd>Desde el navegador</dd>
+                </div>
+                <div>
+                  <dt>Guarda tu pase</dt>
+                  <dd>Apple Wallet o Google Wallet</dd>
+                </div>
+              </dl>
+              <p className="consumer-preview-note">
+                Ejemplo ilustrativo. Cada comercio lleva su propio saldo.
               </p>
-            </li>
-          </ol>
-        </section>
-        <section
-          className="consumer-wallet consumer-section"
-          aria-labelledby="consumer-wallet-title"
-        >
-          <Wallet aria-hidden="true" />
-          <div>
-            <h2 id="consumer-wallet-title">
-              Tus lugares favoritos.
-              <br />
-              Un pase siempre a mano.
-            </h2>
-            <p>
-              Consulta tus programas desde el navegador y guarda tu pase en
-              Apple Wallet o Google Wallet. Cada comercio lleva su propio saldo
-              de puntos o sellos.
-            </p>
-            <a className="consumer-text-link" href={consumerWalletUrl}>
-              Ir a mi pase <ArrowRight aria-hidden="true" />
+            </div>
+          </section>
+          <section
+            className="consumer-discover consumer-section"
+            aria-labelledby="consumer-discover-title"
+          >
+            <div>
+              <h2 id="consumer-discover-title">¿Qué podrías encontrar?</h2>
+              <p>
+                Un café después de completar tus sellos. Puntos para tu próxima
+                compra. Un beneficio para conocer un nuevo lugar.
+              </p>
+              <p className="consumer-example-caption">
+                Por ahora, descubre ejemplos de cómo pueden ser los programas.
+                Los beneficios y comercios mostrados son ilustrativos.
+              </p>
+              <a className="consumer-text-link" href="/explorar">
+                Explorar ejemplos <ArrowRight aria-hidden="true" />
+              </a>
+            </div>
+            <div className="consumer-example">
+              <div className="consumer-example-heading">
+                <CoffeeCup aria-hidden="true" />
+                <span>Café de ejemplo</span>
+              </div>
+              <strong>
+                Tu próxima pausa
+                <br />
+                puede tener premio.
+              </strong>
+              <div className="consumer-example-stamps" aria-hidden="true">
+                {Array.from({ length: 6 }, (_, i) => (
+                  <span key={i}>
+                    <CoffeeCup />
+                  </span>
+                ))}
+              </div>
+              <p>Ejemplo: 6 sellos → un café</p>
+            </div>
+          </section>
+          <section
+            className="consumer-business consumer-section"
+            aria-labelledby="consumer-business-title"
+          >
+            <div>
+              <h2 id="consumer-business-title">
+                ¿Tienes un negocio?
+                <br />
+                Dales motivos para volver.
+              </h2>
+              <p>
+                Conoce los programas de fidelización, las campañas automáticas y
+                el punto de venta de CheckPass para comercios locales.
+              </p>
+            </div>
+            <a className="consumer-button" href="/negocios">
+              Conoce CheckPass para tu negocio <ArrowRight aria-hidden="true" />
             </a>
-          </div>
-        </section>
-        <section
-          className="consumer-discover consumer-section"
-          aria-labelledby="consumer-discover-title"
-        >
-          <div>
-            <h2 id="consumer-discover-title">¿Qué podrías encontrar?</h2>
-            <p>
-              Un café después de completar tus sellos. Puntos para tu próxima
-              compra. Un beneficio para conocer un nuevo lugar.
-            </p>
-            <p className="consumer-example-caption">
-              Por ahora, descubre ejemplos de cómo pueden ser los programas. Los
-              beneficios y comercios mostrados son ilustrativos.
-            </p>
-            <a className="consumer-text-link" href="/explorar">
-              Explorar ejemplos <ArrowRight aria-hidden="true" />
-            </a>
-          </div>
-          <div className="consumer-example">
-            <CoffeeCup aria-hidden="true" />
-            <span>Café de ejemplo</span>
-            <strong>
-              Tu próxima pausa
-              <br />
-              puede tener premio.
-            </strong>
-            <p>Ejemplo: 6 sellos → un café</p>
-          </div>
-        </section>
-        <section
-          className="consumer-business consumer-section"
-          aria-labelledby="consumer-business-title"
-        >
-          <div>
-            <h2 id="consumer-business-title">
-              ¿Tienes un negocio?
-              <br />
-              Dales motivos para volver.
-            </h2>
-            <p>
-              Conoce los programas de fidelización, las campañas automáticas y
-              el punto de venta de CheckPass para comercios locales.
-            </p>
-          </div>
-          <a className="consumer-button" href="/negocios">
-            Conoce CheckPass para tu negocio <ArrowRight aria-hidden="true" />
-          </a>
-        </section>
-        <section
-          className="consumer-faq consumer-section"
-          id="preguntas"
-          aria-labelledby="consumer-faq-title"
-        >
-          <h2 id="consumer-faq-title">Antes de tu primera visita.</h2>
-          <div>
-            {questions.map(([q, a]) => (
-              <details key={q}>
-                <summary>
-                  {q}
-                  <ArrowRight aria-hidden="true" />
-                </summary>
-                <p>{a}</p>
-              </details>
-            ))}
-          </div>
-        </section>
+          </section>
+          <section
+            className="consumer-faq consumer-section"
+            id="preguntas"
+            aria-labelledby="consumer-faq-title"
+          >
+            <h2 id="consumer-faq-title">Antes de tu primera visita.</h2>
+            <div>
+              {questions.map(([q, a]) => (
+                <details key={q}>
+                  <summary>
+                    {q}
+                    <ArrowRight aria-hidden="true" />
+                  </summary>
+                  <p>{a}</p>
+                </details>
+              ))}
+            </div>
+          </section>
+        </div>
       </main>
       <footer className="consumer-footer">
         <a
