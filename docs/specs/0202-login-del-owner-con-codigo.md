@@ -159,7 +159,7 @@ el mensaje y deja reenviar; `too_many_failures` muestra el mensaje y no deja ree
 
 - **El tope de fallidos permite bloquear al owner un dia**: quien conozca su email puede tipear 10 codigos
   equivocados y dejarlo sin entrar al panel por 24 h (el staff sigue entrando con PIN). Es el costo de cualquier tope
-  por cuenta; contarlo por IP no protege porque las IP se rotan. **Hallazgo a decidir por el owner.**
+  por cuenta; contarlo por IP no protege porque las IP se rotan. **Aceptado por el owner (2026-10-11), en la etapa de pruebas.**
 
 - **Sin limite por IP en la verificacion.** Lo acota el plugin: 5 intentos por codigo y, por email, 10 codigos por
   dia. Probar muchos emails desde una IP necesita pedir codigos, y eso ya tiene 20/h por IP.
