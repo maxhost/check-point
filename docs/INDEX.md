@@ -405,3 +405,9 @@ El tour de orientación de Staff es la referencia para nuevos tours en todas las
 El protocolo obligatorio de orquestación, implementación, handoff y revisión independiente
 está en [AGENT-WORKFLOW.md](AGENT-WORKFLOW.md). La plantilla de spec exige especificación
 técnica, Definition of Done y plan de pruebas antes de que su estado pase a `cerrada`.
+
+| 0191 | 2026-10-10 | Página pública: Programa de fidelización para QA local y SEO/GEO. | cerrada | si | `specs/0191-pagina-programa-de-fidelizacion.md` |
+
+| 0192 | 2026-10-10 | Página pública: Marketing para comercios para QA local y SEO/GEO. | cerrada | si | `specs/0192-pagina-marketing-para-comercios.md` |
+
+| 0193 | 2026-10-10 | Página pública: Punto de venta para QA local y SEO/GEO. | cerrada | si | `specs/0193-pagina-punto-de-venta.md` |
