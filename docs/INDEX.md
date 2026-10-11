@@ -419,3 +419,5 @@ técnica, Definition of Done y plan de pruebas antes de que su estado pase a `ce
 | 0197 | 2026-10-10 | Home explicativa para consumidores y landing comercial en /negocios. | implementada y aprobada localmente; 9/9 E2E, publicación pendiente | no | `specs/0197-home-consumidores-y-landing-negocios.md` |
 
 | 0198 | 2026-10-10 | Landing /negocios: nuevos clientes y motivos para volver, hero integrado aprobado. | cerrada; implementación local autorizada | no | `specs/0198-negocios-nuevos-clientes-y-regreso.md` |
+
+| 0199 | 2026-10-11 | Rediseño completo de /negocios: El barrio conectado, sin etiquetas de ejemplo. | cerrada; recursos e implementación pendientes | no | `specs/0199-negocios-barrio-conectado.md` |
