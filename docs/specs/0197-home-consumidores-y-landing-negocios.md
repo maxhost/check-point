@@ -151,7 +151,7 @@ de navegación. Sin colisión con servidor, kit, migraciones o tooling de Claude
 - [x] En esa suite, canonical/OG diferenciados por audiencia y sitemap con ambas
       rutas. Capturas mediante `testInfo.outputPath`, vistas por el implementador.
 - [x] `pnpm --filter @mi-pasaporte/public build` en salida 0.
-- [ ] QA local del owner sobre composición aprobada, acceso al pase y separación
+- [x] QA local del owner sobre composición aprobada, acceso al pase y separación
       de audiencias antes de publicar. No afirmar producción verificada.
 
 Pruebas específicas L2, sin DB ni suite Neon. Si los servidores compartidos
@@ -196,10 +196,11 @@ declara el remoto verde ni se altera esa prueba en esta spec.
 
 Ninguna decisión de producto dentro del alcance. Home explicativa, ejemplos
 identificados, `/negocios` y concepto visual confirmados por el owner. QA e
-implementación pendientes; publicación requiere su aprobación según ADR 0128.
+implementación verificadas localmente; publicación requiere su aprobación según ADR 0128.
 
 Verificación local 0197: tipos y ESLint salida 0; build público salida 0.
 Playwright con `pnpm exec playwright test --config=/private/tmp/checkpass-0197-playwright.cjs`: 9/9, configuración temporal sin webServer compartidos;
 servidor autónomo de la suite, sin DB. Capturas finales 390/1440 × claro/oscuro
 en `/private/tmp/checkpass-0197-results`, vistas por GPT. Revisión de assets y plan
-aprobada en navegador, ronda 2. QA del sitio ensamblado por el owner pendiente.
+aprobada en navegador, ronda 2. El owner aprobó el sitio ensamblado en local:
+«ok, me parece bien». Publicación pendiente de autorización explícita.

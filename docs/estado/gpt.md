@@ -3,7 +3,7 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — 0197 IMPLEMENTADA LOCAL, QA OWNER PENDIENTE (2026-10-10)
+## ESTADO — 0197 IMPLEMENTADA LOCAL, APROBADA POR OWNER (2026-10-10)
 
 Home / dirigida a consumidores con escena ilustrativa, tres burbujas HTML (sin
 dispositivo Mi pase flotante), explicación QR→acumular→canjear, acceso a pase,
@@ -29,8 +29,9 @@ Sin overflow ni pageerrors. Numeración y diffcheck correctos. Sin tests Neon.
 No verify global: corresponde al paso live ADR0128/0129.
 
 Servidor para owner: http://localhost:3003, execsession75652.
-Pendiente: revisión del primer viewport ensamblado y QA de todo el sitio por owner;
-no marcar esa casilla ni publicar sin QA. /negocios y / quedan disponibles.
+Owner aprobó la revisión local del sitio ensamblado: «ok, me parece bien».
+QA local de0197 cerrada. /negocios y / quedan disponibles.
+Pendiente: publicación, con autorización explícita y verify previo.
 CI remoto main9405c93 sigue rojo histórico por screenshotsPOS /private/tmp,
 fixlocal4f37e70 previo existente, no regresión introducida por0197.
 

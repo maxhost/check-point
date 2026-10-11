@@ -72,7 +72,7 @@ Organización confirmada por el owner para la web:
   desde el menú, buscadores, enlaces directos y CTA de la home.
 
 La landing comercial usa `/negocios`. La organización está aplicada en código
-local; su publicación y la QA del owner quedan pendientes. No hay comercios reales
+local y aprobada por el owner; su publicación queda pendiente. No hay comercios reales
 para mostrar todavía: la home y el directorio identifican sus ejemplos.
 
 `src/app/site-config.ts` define el dominio público y los accesos por audiencia:
