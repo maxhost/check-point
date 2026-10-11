@@ -54,9 +54,10 @@ el navegador en teléfono, tablet o computadora. El idioma actual es español de
 Ecuador (`es-EC`). El comando de desarrollo de esta app es `pnpm dev`, puerto 3003;
 el repositorio requiere Node 24 mediante `nvm use`.
 
-Las superficies actuales del código, antes de aplicar esta organización, incluyen:
+Las superficies actuales del código local incluyen:
 
-- `/`: landing orientada a comercios; `/negocios` redirige a ella.
+- `/`: home para consumidores que explica el funcionamiento mediante ejemplos.
+- `/negocios`: landing comercial independiente, con el diseño y contenido previos.
 - `/programa-de-fidelizacion`, `/marketing-para-comercios` y `/punto-de-venta`:
   explicación de las herramientas para comercios.
 - `/explorar` y `/lugares/[slug]`: descubrimiento y fichas ilustrativas para
@@ -70,8 +71,9 @@ Organización confirmada por el owner para la web:
 - Landing comercial independiente: orientada a dueños de comercios, accesible
   desde el menú, buscadores, enlaces directos y CTA de la home.
 
-La ruta definitiva de la landing comercial queda por concretar al implementar.
-La organización confirmada todavía no está aplicada al código actual.
+La landing comercial usa `/negocios`. La organización está aplicada en código
+local; su publicación y la QA del owner quedan pendientes. No hay comercios reales
+para mostrar todavía: la home y el directorio identifican sus ejemplos.
 
 `src/app/site-config.ts` define el dominio público y los accesos por audiencia:
 registro de comercios en `business.checkpass.club` y pase de consumidores en

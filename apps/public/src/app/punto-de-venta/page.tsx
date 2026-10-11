@@ -101,7 +101,7 @@ export default function PointOfSalePage() {
           <nav className="desktop-nav" aria-label="Navegación principal">
             <a href="/">Para tu negocio</a>
             <a href="#como-empezar">Cómo empezar</a>
-            <a href="/#planes">Planes</a>
+            <a href="/negocios#planes">Planes</a>
             <a href="#preguntas">Preguntas</a>
           </nav>
           <a className="header-cta" href={onboardingUrl}>

@@ -102,7 +102,7 @@ export default function LoyaltyProgramPage() {
           <nav className="desktop-nav" aria-label="Navegación principal">
             <a href="#tu-programa">Tu programa</a>
             <a href="#prevision">Previsión</a>
-            <a href="/#planes">Planes</a>
+            <a href="/negocios#planes">Planes</a>
             <a href="#preguntas">Preguntas</a>
           </nav>
           <a className="header-cta" href={onboardingUrl}>
@@ -419,7 +419,7 @@ export default function LoyaltyProgramPage() {
             </p>
             <SignupLink light />
             <div className="section-more">
-              <a className="text-link" href="/#planes">
+              <a className="text-link" href="/negocios#planes">
                 Consulta los planes
                 <ArrowRight className="landing-icon" aria-hidden="true" />
               </a>

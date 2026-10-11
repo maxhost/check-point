@@ -86,6 +86,88 @@ test.afterAll(async () => {
 
 for (const width of [390, 1440]) {
   for (const colorScheme of ["light", "dark"] as const) {
+    test(`home consumidores ${width}px ${colorScheme}: explicación, ejemplos y accesos`, async ({
+      page,
+    }, testInfo) => {
+      const errors: string[] = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      await page.setViewportSize({ width, height: 960 });
+      await page.emulateMedia({ colorScheme, reducedMotion: "reduce" });
+      const response = await page.goto(landingURL);
+      expect(response?.status()).toBe(200);
+      await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+      await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+        "Descubre lugares. Encuentra motivos para volver.",
+      );
+      await expect(page).toHaveTitle(/Descubre lugares y beneficios/);
+      await expect(
+        page.getByText("Ejemplo ilustrativo. No es una oferta vigente.", {
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(page.locator(".plan-card")).toHaveCount(0);
+      await expect(
+        page.getByRole("link", { name: /descargar la app/i }),
+      ).toHaveCount(0);
+      const commercial = page
+        .locator("header")
+        .getByRole("link", { name: "Para tu negocio", exact: true });
+      await expect(commercial).toHaveAttribute("href", "/negocios");
+      await expect(
+        page.getByRole("link", { name: "Conoce CheckPass para tu negocio" }),
+      ).toHaveAttribute("href", "/negocios");
+      await expect(
+        page
+          .locator("header")
+          .getByRole("link", { name: "Mi pase", exact: true }),
+      ).toHaveAttribute("href", /\/wallet$/);
+      await expect(
+        page.getByRole("link", { name: "Ver cómo funciona", exact: true }),
+      ).toHaveAttribute("href", "#como-funciona");
+      await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+        "href",
+        /^https?:\/\/[^/]+\/?$/,
+      );
+      await expect(page.locator('meta[property="og:url"]')).toHaveAttribute(
+        "content",
+        /^https?:\/\/[^/]+\/?$/,
+      );
+      await page
+        .getByRole("link", { name: "Ver cómo funciona", exact: true })
+        .click();
+      await expect(page).toHaveURL(/#como-funciona$/);
+      await expect(
+        page.getByRole("heading", { name: "Así funciona tu pase." }),
+      ).toBeInViewport();
+      await expect(page.locator(".consumer-how")).toContainText("compras");
+      await page
+        .getByText("¿Los puntos sirven en otros negocios?", { exact: true })
+        .click();
+      await expect(page.locator("details[open]")).toContainText("solo allí");
+      await expect
+        .poll(() =>
+          page.evaluate(
+            () => document.documentElement.scrollWidth <= innerWidth,
+          ),
+        )
+        .toBe(true);
+      await page.evaluate(() => scrollTo(0, 0));
+      await page.screenshot({
+        path: testInfo.outputPath(`consumer-${width}-${colorScheme}.png`),
+        fullPage: true,
+        animations: "disabled",
+      });
+      await page.locator(".consumer-hero").screenshot({
+        path: testInfo.outputPath(`consumer-hero-${width}-${colorScheme}.png`),
+      });
+      await commercial.click();
+      await expect(page).toHaveURL(landingURL + "/negocios");
+      await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+        "Atrae nuevos clientes y dales motivos para volver.",
+      );
+      expect(errors).toEqual([]);
+    });
+
     test(`landing ${width}px ${colorScheme}: red, planes, FAQ y diseño`, async ({
       page,
     }, testInfo) => {
@@ -93,7 +175,8 @@ for (const width of [390, 1440]) {
       page.on("pageerror", (error) => errors.push(error.message));
       await page.setViewportSize({ width, height: 960 });
       await page.emulateMedia({ colorScheme, reducedMotion: "reduce" });
-      await page.goto(landingURL);
+      const response = await page.goto(landingURL + "/negocios");
+      expect(response?.status()).toBe(200);
       await expect(page.getByRole("heading", { level: 1 })).toHaveText(
         "Atrae nuevos clientes y dales motivos para volver.",
       );
@@ -197,10 +280,63 @@ for (const width of [390, 1440]) {
       await expect(
         page.getByRole("heading", { name: "Prepara tu local" }),
       ).toBeInViewport();
-      await page.goto(`${landingURL}/negocios`);
-      await expect(page).toHaveURL(`${landingURL}/`);
-      await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+      await expect(page).toHaveURL(/\/negocios#como-funciona$/);
+      await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+        "href",
+        /\/negocios$/,
+      );
+      await expect(page.locator('meta[property="og:url"]')).toHaveAttribute(
+        "content",
+        /\/negocios$/,
+      );
       expect(errors).toEqual([]);
     });
   }
 }
+
+test("0197: enlaces entre audiencias, fichas y sitemap", async ({
+  page,
+  request,
+}) => {
+  for (const route of [
+    "/programa-de-fidelizacion",
+    "/marketing-para-comercios",
+    "/punto-de-venta",
+  ]) {
+    await page.goto(landingURL + route);
+    const plans = page
+      .locator("header")
+      .getByRole("link", { name: "Planes", exact: true });
+    await expect(plans).toHaveAttribute("href", "/negocios#planes");
+    await plans.click();
+    await expect(page).toHaveURL(landingURL + "/negocios#planes");
+    await expect(
+      page.getByRole("heading", { name: /Prueba todo durante tres meses/ }),
+    ).toBeInViewport();
+  }
+  await page.goto(landingURL + "/explorar");
+  await expect(
+    page.locator("header").getByRole("link", { name: "Para negocios" }),
+  ).toHaveAttribute("href", "/negocios");
+  await expect(
+    page.getByText("Prototipo interactivo.", { exact: true }),
+  ).toBeVisible();
+  await page.locator(".explore-card-link").first().click();
+  await expect(
+    page.getByRole("link", { name: "Volver a explorar" }),
+  ).toHaveAttribute("href", "/explorar#explorar");
+  await expect(
+    page.locator("header").getByRole("link", { name: "Para negocios" }),
+  ).toHaveAttribute("href", "/negocios");
+  await page.getByRole("link", { name: "Volver a explorar" }).click();
+  await expect(page).toHaveURL(landingURL + "/explorar#explorar");
+  await page.goto(landingURL + "/es/privacy");
+  await expect(
+    page.locator("header").getByRole("link", { name: "Para negocios" }),
+  ).toHaveAttribute("href", "/negocios");
+  const sitemap = await request.get(landingURL + "/sitemap.xml");
+  expect(sitemap.status()).toBe(200);
+  const xml = await sitemap.text();
+  expect(xml).toMatch(/<loc>https?:\/\/[^<]+\/negocios<\/loc>/);
+  expect(xml).toMatch(/<loc>https?:\/\/[^/]+\/?<\/loc>/);
+});

@@ -46,7 +46,12 @@ ofertas activas.
 
 Concepto aprobado: **Una visita como ejemplo**. Referencia visual aprobada:
 `apps/public/.impeccable/mocks/decision/ejemplo-visita.png`, con prompt y aprobación
-en su sidecar. La escena de café, QR, pase y recompensa conduce la explicación.
+en su sidecar. La escena de café, QR y recompensa conduce la explicación.
+Revisión solicitada por el owner: eliminar el teléfono frontal «Mi pase» del hero
+y reemplazarlo por tres burbujas ligeramente inclinadas: «Bienvenido a CheckPass»,
+«Aquí está tu cupón» y «Un café de regalo». Son ejemplos, no notificaciones reales.
+La variante `ejemplo-visita-notificaciones.png` fue aprobada en la ronda 2;
+las burbujas se implementan en HTML accesible sobre la fotografía.
 Se conserva la identidad actual y el sistema claro/oscuro. La composición aprobada
 es referencia de traducción responsive; textos, enlaces, controles y progreso se
 implementan como HTML accesible, no dentro de un bitmap.
@@ -134,18 +139,18 @@ de navegación. Sin colisión con servidor, kit, migraciones o tooling de Claude
 
 ## Definition of Done
 
-- [ ] `pnpm --filter @mi-pasaporte/public typecheck` y lint de los TS/TSX afectados
+- [x] `pnpm --filter @mi-pasaporte/public typecheck` y lint de los TS/TSX afectados
       en salida 0 con Node 24; formato y `git diff --check` en salida 0.
-- [ ] `pnpm exec playwright test tests/e2e/landing.spec.ts`: home y landing en
+- [x] `pnpm exec playwright test tests/e2e/landing.spec.ts`: home y landing en
       390/1440 × claro/oscuro, respuesta 200, H1 único, sin errores de página ni
       overflow. La suite existente conserva los oráculos comerciales en
       `/negocios` y sustituye su expectativa de redirect por respuesta 200.
-- [ ] En esa suite, la home muestra nota de ejemplo, CTA a Cómo funciona, acceso
+- [x] En esa suite, la home muestra nota de ejemplo, CTA a Cómo funciona, acceso
       al pase, navegación y CTA comerciales a `/negocios`; las fichas regresan al
       directorio y los enlaces de planes llegan a `#planes` de `/negocios`.
-- [ ] En esa suite, canonical/OG diferenciados por audiencia y sitemap con ambas
+- [x] En esa suite, canonical/OG diferenciados por audiencia y sitemap con ambas
       rutas. Capturas mediante `testInfo.outputPath`, vistas por el implementador.
-- [ ] `pnpm --filter @mi-pasaporte/public build` en salida 0.
+- [x] `pnpm --filter @mi-pasaporte/public build` en salida 0.
 - [ ] QA local del owner sobre composición aprobada, acceso al pase y separación
       de audiencias antes de publicar. No afirmar producción verificada.
 
@@ -192,3 +197,9 @@ declara el remoto verde ni se altera esa prueba en esta spec.
 Ninguna decisión de producto dentro del alcance. Home explicativa, ejemplos
 identificados, `/negocios` y concepto visual confirmados por el owner. QA e
 implementación pendientes; publicación requiere su aprobación según ADR 0128.
+
+Verificación local 0197: tipos y ESLint salida 0; build público salida 0.
+Playwright con `pnpm exec playwright test --config=/private/tmp/checkpass-0197-playwright.cjs`: 9/9, configuración temporal sin webServer compartidos;
+servidor autónomo de la suite, sin DB. Capturas finales 390/1440 × claro/oscuro
+en `/private/tmp/checkpass-0197-results`, vistas por GPT. Revisión de assets y plan
+aprobada en navegador, ronda 2. QA del sitio ensamblado por el owner pendiente.

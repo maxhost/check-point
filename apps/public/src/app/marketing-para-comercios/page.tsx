@@ -96,7 +96,7 @@ export default function MerchantMarketingPage() {
           <nav className="desktop-nav" aria-label="Navegación de marketing">
             <a href="#campanas">Campañas</a>
             <a href="#como-funciona">Cómo empezar</a>
-            <a href="/#planes">Planes</a>
+            <a href="/negocios#planes">Planes</a>
             <a href="#preguntas">Preguntas</a>
           </nav>
           <a className="header-cta" href={onboardingUrl}>
@@ -279,7 +279,7 @@ export default function MerchantMarketingPage() {
                 promueve visitas en horarios tranquilos. Impulso añade campañas
                 para estas situaciones; tú eliges el beneficio.
               </p>
-              <a className="text-link" href="/#planes">
+              <a className="text-link" href="/negocios#planes">
                 Compara los planes
                 <ArrowRight className="landing-icon" aria-hidden="true" />
               </a>

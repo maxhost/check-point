@@ -14,7 +14,7 @@ export default function LegalLayout({ children }: { children: ReactNode }) {
           <span>checkpass.club</span>
         </a>
         <nav aria-label="Navegación principal">
-          <a href="/">Para negocios</a>
+          <a href="/negocios">Para negocios</a>
           <a href="/explorar">Explorar</a>
         </nav>
       </header>

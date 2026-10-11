@@ -288,7 +288,7 @@ export function LandingFooter({
       <a
         className="brand"
         href="/"
-        aria-label="CheckPass Club, inicio para negocios"
+        aria-label="CheckPass Club, inicio"
       >
         <BrandMark />
         <span className="brand-name">
@@ -298,9 +298,9 @@ export function LandingFooter({
       <p>Más clientes nuevos. Más razones para volver.</p>
       <div>
         <a href="/explorar">Explorar la ciudad</a>
-        <a href="/#como-funciona">Cómo empezar</a>
-        <a href="/#planes">Planes</a>
-        <a href="/#preguntas">Preguntas</a>
+        <a href="/negocios#como-funciona">Cómo empezar</a>
+        <a href="/negocios#planes">Planes</a>
+        <a href="/negocios#preguntas">Preguntas</a>
         <a href="/es/privacy">Privacidad</a>
         <a href="/es/tos">Términos de uso</a>
       </div>

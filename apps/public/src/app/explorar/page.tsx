@@ -109,7 +109,7 @@ export default function HomePage() {
         <nav aria-label="Navegación principal">
           <a href="#explorar">Explorar</a>
           <a href="#como-funciona">Cómo funciona</a>
-          <a href="/">Para negocios</a>
+          <a href="/negocios">Para negocios</a>
         </nav>
         <a className="explore-login" href={consumerWalletUrl}>
           Mi pase <span aria-hidden="true">↗</span>
@@ -273,7 +273,7 @@ export default function HomePage() {
         <nav aria-label="Navegación del pie de página">
           <a href="#explorar">Explorar</a>
           <a href="#como-funciona">Cómo funciona</a>
-          <a href="/">Para negocios</a>
+          <a href="/negocios">Para negocios</a>
           <a href={consumerWalletUrl}>Mi pase</a>
           <a href="/es/privacy">Privacidad</a>
           <a href="/es/tos">Términos de uso</a>

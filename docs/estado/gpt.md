@@ -3,32 +3,40 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — 0197 CERRADA Y RESERVADA EN DEV (2026-10-10)
+## ESTADO — 0197 IMPLEMENTADA LOCAL, QA OWNER PENDIENTE (2026-10-10)
 
-Owner confirmó dos públicos: home de checkpass.club para consumidores y landing
-comercial en /negocios. La home explica CheckPass en esta etapa, sin comercios
-reales que mostrar, con ejemplos identificados. Impeccable init y shape completos;
-concepto «Una visita como ejemplo» seleccionado en la página de decisión y brief
-confirmado explícitamente. PRODUCT.md, comp y prompt/aprobación guardados.
+Home / dirigida a consumidores con escena ilustrativa, tres burbujas HTML (sin
+dispositivo Mi pase flotante), explicación QR→acumular→canjear, acceso a pase,
+ejemplos, CTA comercial y FAQ. /negocios conserva contenido y diseño previo; SEO
+propio, anclas de planes y accesos por audiencia ajustados. PRODUCT actualizado.
+Spec0197 reservada132ac2e; implementación local en dev, sin merge/push/deploy.
 
-Reserva local `132ac2e`: spec 0197 cerrada y fila INDEX. Sin código de UI nuevo,
-merge ni push. La spec cubre home, traslado comercial, enlaces por audiencia,
-canonical/OG/sitemap y E2E público a 390/1440 claro/oscuro. Nivel L2, sin APIs,
-DB, billing, precios ni cambios a la landing comercial salvo rutas/enlaces.
+Owner aceptó el plan y assets en navegador (ronda2) y confirmó en chat.
+Session07814800c7438f3d7eb890741a4965d08a0583cea2d4409c2b080ca7d8ef63bc,
+revision d1645304c943c9abaab37ca5f61943d322dd49254f130badbafd65a8a3d88942.
+Referencia aprobada ejemplo-visita-notificaciones.png y sidecar con evidencia.
+Impeccable build state se reinició sobre esa variante. Su gate reporta revisión
+no aceptada tras remeasure de fuentes, aunque status/verify confirma aceptación
+real; no se fabrica recibo ni se repite aprobación del plan. Ensamblado NextTSX
+verificado con Playwright real. Workflow helper no se declara completado.
 
-Verificación documental: check-numbers sin duplicados, diff --check correcto;
-Prettier ejecutado sobre spec e índice. Ningún test o build nuevo ejecutado ni
-DoD de implementación marcado. CI remoto consultado: main9405c93 rojo por capturas
-POS con /private/tmp; fix local preexistente4f37e70 confirmado en historial.
-Pull solicitado al arranque falló inicialmente por sandbox; el reintento fue
-interrumpido por el owner. Dev no tiene upstream y ADR0128 reserva en dev local.
+Verificación Node24 real: typecheck y ESLint públicos salida0; build público
+salida0 (final /private/tmp/0197-build-final.log); Playwright9/9 (13.5s), segunda
+corrida tras corregir Arial heredado; configtemporal
+/private/tmp/checkpass-0197-playwright.cjs sin servidores compartidos/DB.
+Capturas 390/1440 claro/oscuro vistas en /private/tmp/checkpass-0197-results.
+Sin overflow ni pageerrors. Numeración y diffcheck correctos. Sin tests Neon.
+No verify global: corresponde al paso live ADR0128/0129.
 
-Pendiente: implementar0197 con comp aprobado, verificación específica y QAowner.
-Escena aprobada: apps/public/.impeccable/mocks/decision/ejemplo-visita.png.
-No guardar preferencia global de buildPath: el owner no respondió la pregunta;
-la página de elección devolvió comp para esta sesión. Otros bocetos/config local
-de Impeccable siguen sin commit. Cambio ajeno tools/local-db/huellas-prod.txt
-preservado. Pendientes previos0196 (QAStripe/gate E2E) siguen en bloque siguiente.
+Servidor para owner: http://localhost:3003, execsession75652.
+Pendiente: revisión del primer viewport ensamblado y QA de todo el sitio por owner;
+no marcar esa casilla ni publicar sin QA. /negocios y / quedan disponibles.
+CI remoto main9405c93 sigue rojo histórico por screenshotsPOS /private/tmp,
+fixlocal4f37e70 previo existente, no regresión introducida por0197.
+
+No commitear archivos de instalación .agents/.claude/.codex/.github ni otros
+comps exploratorios, assets/plates duplicados o sesiones helper temporales.
+Pendientes0196 Stripe/verifyglobal siguen en el bloque siguiente.
 
 ## ⇥ U1–U3 IMPLEMENTADAS EN DEV (2026-10-10)
 

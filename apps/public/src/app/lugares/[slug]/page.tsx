@@ -109,15 +109,15 @@ export default async function MockBusinessPage({ params }: Props) {
           </span>
         </Link>
         <nav aria-label="Navegación principal">
-          <Link href="/#explorar">Explorar</Link>
-          <Link href="/">Para negocios</Link>
+          <Link href="/explorar#explorar">Explorar</Link>
+          <Link href="/negocios">Para negocios</Link>
         </nav>
         <a className="explore-login" href={consumerWalletUrl}>
           Mi pase <span aria-hidden="true">↗</span>
         </a>
       </header>
       <main id="contenido" className="explore-detail">
-        <Link className="explore-detail-back" href="/#explorar">
+        <Link className="explore-detail-back" href="/explorar#explorar">
           ← Volver a explorar
         </Link>
         <div className="explore-detail-heading">
@@ -214,7 +214,7 @@ export default async function MockBusinessPage({ params }: Props) {
             Este lugar, sus horarios y beneficios son ejemplos para explorar el
             diseño.
           </p>
-          <Link className="explore-primary" href="/#explorar">
+          <Link className="explore-primary" href="/explorar#explorar">
             Seguir explorando <span aria-hidden="true">→</span>
           </Link>
         </div>
@@ -230,8 +230,8 @@ export default async function MockBusinessPage({ params }: Props) {
           <p>Más motivos para volver. Empezamos en Cuenca.</p>
         </div>
         <nav aria-label="Navegación del pie de página">
-          <Link href="/#explorar">Explorar</Link>
-          <Link href="/">Para negocios</Link>
+          <Link href="/explorar#explorar">Explorar</Link>
+          <Link href="/negocios">Para negocios</Link>
         </nav>
       </footer>
     </div>

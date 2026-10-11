@@ -1,0 +1,7 @@
+{
+  "approved": true,
+  "purpose": "Owner requested revision: remove front-facing Mi pase device, use gently tilted notification bubbles",
+  "source": "ejemplo-visita.png",
+  "prompt": "Edit approved comp preserving all layout, woman, cafe, typography and lower section; replace front-facing phone and existing overlays with Bienvenido a CheckPass / Aqu\u00ed est\u00e1 tu cup\u00f3n / Un caf\u00e9 de regalo notification bubbles that follow real handheld phone angle. No added device. Illustrative disclaimer remains.",
+  "approvalEvidence": "Local-browser review round 2 approved, revision d1645304c943c9abaab37ca5f61943d322dd49254f130badbafd65a8a3d88942; owner confirmed in chat"
+}
