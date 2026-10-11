@@ -46,8 +46,16 @@ const CONSUMER = {
   CONSUMER_ORIGIN: "https://dev-my.checkpass.club",
 };
 
+const PLATFORM = {
+  DATABASE_URL: LOCAL_DB,
+  PLATFORM_AUTH_SECRET: "p".repeat(32),
+  PLATFORM_AUTH_URL: "https://dev-admin.checkpass.club",
+  PLATFORM_ADMIN_EMAILS: "admin@example.test",
+  EMAIL_PROVIDER: "console",
+};
+
 type Env = Record<string, string | undefined>;
-function correr(merchant: Env, consumer: Env = CONSUMER) {
+function correr(merchant: Env, consumer: Env = CONSUMER, platform?: Env) {
   const root = mkdtempSync(join(tmp, "raiz-"));
   const escribir = (rel: string, contenido: string) => {
     mkdirSync(dirname(join(root, rel)), { recursive: true });
@@ -65,6 +73,7 @@ function correr(merchant: Env, consumer: Env = CONSUMER) {
   escribir("tools/local-db/.env.r2-dev", env(R2));
   escribir("apps/merchant/.env.local", env(merchant));
   escribir("apps/consumer/.env.local", env(consumer));
+  if (platform) escribir("apps/platform/.env.local", env(platform));
   escribir(
     "packages/db/.env.prod.local",
     env({
@@ -132,5 +141,53 @@ describe("check-env.ts: origenes de las apps (spec 0168)", () => {
     });
     expect(mal.code).toBe(1);
     for (const r of [bien, mal]) expect(r.out).not.toContain(CENTINELA);
+  });
+});
+
+describe("check-env.ts: el panel de plataforma es opcional (spec 0190)", () => {
+  it("sin el archivo del panel no hay chequeo del panel → exit 0", () => {
+    const r = correr(MERCHANT);
+    expect(r.out).not.toContain("apps/platform");
+    expect(r.code).toBe(0);
+  });
+
+  it("panel con base local y origen del tunel → exit 0", () => {
+    const r = correr(MERCHANT, CONSUMER, PLATFORM);
+    expect(r.out).toMatch(
+      /^ok .*apps\/platform\/\.env\.local DATABASE_URL es la base local$/m,
+    );
+    expect(r.out).not.toMatch(/^MAL/m);
+    expect(r.code).toBe(0);
+  });
+
+  it("panel con DATABASE_URL de PROD → exit 1", () => {
+    const r = correr(MERCHANT, CONSUMER, {
+      ...PLATFORM,
+      DATABASE_URL: `postgresql://u:p@${PROD_FALSO}-pooler.c-1.us-east-2.aws.neon.tech/neondb`,
+    });
+    expect(r.out).toMatch(
+      /^MAL .*apps\/platform\/\.env\.local DATABASE_URL no es PROD$/m,
+    );
+    expect(r.code).toBe(1);
+  });
+
+  it("panel con PLATFORM_AUTH_URL de PROD → exit 1", () => {
+    const r = correr(MERCHANT, CONSUMER, {
+      ...PLATFORM,
+      PLATFORM_AUTH_URL: "https://admin.checkpass.club",
+    });
+    expect(r.out).toMatch(/^MAL .*PLATFORM_AUTH_URL no apunta a PROD$/m);
+    expect(r.code).toBe(1);
+  });
+
+  it("panel sin PLATFORM_AUTH_SECRET (getPlatformAuth lanza) → exit 1", () => {
+    const r = correr(MERCHANT, CONSUMER, {
+      ...PLATFORM,
+      PLATFORM_AUTH_SECRET: undefined,
+    });
+    expect(r.out).toMatch(
+      /^MAL .*PLATFORM_AUTH_SECRET de 32\+ caracteres \(largo 0\)$/m,
+    );
+    expect(r.code).toBe(1);
   });
 });

@@ -3,7 +3,7 @@
 -- Todo ORDER BY va con collate "C": la huella no depende de la collation de la base (ADR 0126 §Medido);
 -- la collation misma es su propia fila.
 with
-esq(n) as (values ('core'), ('consumer'), ('merchant_auth'), ('drizzle')),
+esq(n) as (values ('core'), ('consumer'), ('merchant_auth'), ('platform_auth'), ('drizzle')),
 roles(n) as (values ('neon_superuser'), ('neondb_owner'), ('customer_reader'), ('checkpass_consumer')),
 f(cat, linea) as (
   select 'migraciones', hash || '|' || created_at::text from drizzle.__drizzle_migrations

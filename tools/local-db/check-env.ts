@@ -5,7 +5,9 @@
  * Exit 0 si: ninguna `DATABASE_URL*` de las apps es PROD, las dos apps usan la base local, las 6 claves R2
  * coinciden con `tools/local-db/.env.r2-dev`, y `packages/db/.env.prod.local` tiene la URL directa de PROD.
  * Spec 0168: ningun origen (`*ORIGIN`, `*ORIGINS`, `*_URL`) de las apps apunta a PROD, y los del tunel
- * (`dev-business.` / `dev-my.`) estan donde el codigo cae a PROD si faltan. `CHECK_ENV_ROOT` cambia la raiz (test).
+ * (`dev-business.` / `dev-my.`) estan donde el codigo cae a PROD si faltan. Spec 0190: el panel
+ * (`apps/platform/.env.local`) es OPCIONAL —`pnpm dev:local` lo salta si falta—; si esta, se chequea.
+ * `CHECK_ENV_ROOT` cambia la raiz (test).
  * Autocontenido (Node 24 corre `.ts` quitando tipos, sin resolver imports del repo).
  */
 import { createHash } from "node:crypto";
@@ -22,6 +24,7 @@ const PROD_HOSTS = new Set([
   "www.checkpass.club",
   "business.checkpass.club",
   "my.checkpass.club",
+  "admin.checkpass.club",
 ]);
 const TUNNEL_MERCHANT = "https://dev-business.checkpass.club";
 const TUNNEL_CONSUMER = "https://dev-my.checkpass.club";
@@ -140,6 +143,33 @@ for (const app of ["apps/merchant/.env.local", "apps/consumer/.env.local"]) {
       if (/^(CLICKSEND_|TWILIO_|OTP_PROVIDER$)/.test(k))
         check(false, `${app} sin ${k}`);
   }
+}
+
+// Spec 0190: el panel de plataforma. Opcional (sin el archivo no se levanta); si esta, no toca PROD.
+const platformApp = "apps/platform/.env.local";
+const platform = load(platformApp);
+if (platform) {
+  for (const [k, v] of Object.entries(platform))
+    if (/DATABASE_URL/.test(k) && v)
+      check(endpointSha(v) !== PROD_SHA12, `${platformApp} ${k} no es PROD`);
+  check(
+    LOCAL_HOSTS.has(host(platform.DATABASE_URL ?? "") ?? ""),
+    `${platformApp} DATABASE_URL es la base local`,
+  );
+  const authHost = host(platform.PLATFORM_AUTH_URL ?? "");
+  check(
+    authHost !== null && !PROD_HOSTS.has(authHost),
+    `${platformApp} PLATFORM_AUTH_URL no apunta a PROD`,
+  );
+  // `getPlatformAuth()` lanza sin el (`apps/platform/src/server/auth.ts`).
+  check(
+    (platform.PLATFORM_AUTH_SECRET ?? "").length >= 32,
+    `${platformApp} PLATFORM_AUTH_SECRET de 32+ caracteres (largo ${platform.PLATFORM_AUTH_SECRET?.length ?? 0})`,
+  );
+  check(
+    platform.EMAIL_PROVIDER === "console",
+    `${platformApp} EMAIL_PROVIDER=console`,
+  );
 }
 
 const prod = load("packages/db/.env.prod.local");

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # `pnpm dev:local` — levanta el ambiente local completo en una sola terminal (ADR 0126, ADR 0127):
-# base local en Docker → chequeo de .env → consumer :3200 y merchant :3201 → tunel (recien con las apps
-# respondiendo, para no publicar otro programa en esos puertos). Ctrl+C apaga apps y tunel; la base queda.
+# base local en Docker → chequeo de .env → consumer :3200, merchant :3201 y panel de plataforma :3002 (spec 0190;
+# solo si existe apps/platform/.env.local) → tunel (recien con las apps respondiendo, para no publicar otro
+# programa en esos puertos). Ctrl+C apaga apps y tunel; la base queda.
 # Los logs de cada proceso quedan en .dev-local/ (`pnpm dev:link` saca de ahi el link de login).
 set -euo pipefail
 cd "$(dirname "$0")/../.."
@@ -34,8 +35,18 @@ echo "→ variables (.env.local)"
 node tools/local-db/check-env.ts 2>/dev/null | grep -v '^ok ' || true
 node tools/local-db/check-env.ts >/dev/null 2>&1 || abort "corregi las lineas MAL de arriba (docs/runbooks/tunel-dev.md §4)"
 
+# Spec 0190: el panel es opcional; sin su .env.local no se levanta (getPlatformAuth lanzaria en el login).
+PORTS="3200 3201"
+PLATFORM=0
+if [[ -f apps/platform/.env.local ]]; then
+  PLATFORM=1
+  PORTS="$PORTS 3002"
+else
+  echo "  aviso: sin apps/platform/.env.local el panel de plataforma no se levanta (docs/runbooks/tunel-dev.md §4)"
+fi
+
 echo "→ puertos"
-for port in 3200 3201; do
+for port in $PORTS; do
   pid="$(lsof -tiTCP:"$port" -sTCP:LISTEN 2>/dev/null | head -1 || true)"
   [[ -z "$pid" ]] && continue
   of_repo "$pid" && abort ":$port ya lo usa este repo (pid $pid): el ambiente ya esta corriendo o quedo colgado (kill $pid)"
@@ -49,7 +60,7 @@ cleanup() {
   echo "→ apagando apps y tunel (la base local queda arriba)"
   for pid in ${PIDS[@]+"${PIDS[@]}"}; do pkill -TERM -P "$pid" 2>/dev/null || true; kill "$pid" 2>/dev/null || true; done
   # `next dev` deja nietos: se apaga lo que escuche en los puertos y sea de este repo.
-  for port in 3200 3201; do
+  for port in $PORTS; do
     for pid in $(lsof -tiTCP:"$port" -sTCP:LISTEN 2>/dev/null || true); do
       if of_repo "$pid"; then kill "$pid" 2>/dev/null || true; fi
     done
@@ -63,6 +74,10 @@ pnpm --filter @mi-pasaporte/consumer dev >"$LOGS/consumer.log" 2>&1 &
 PIDS+=($!)
 pnpm --filter @mi-pasaporte/merchant dev >"$LOGS/merchant.log" 2>&1 &
 PIDS+=($!)
+if [[ $PLATFORM == 1 ]]; then
+  pnpm --filter @mi-pasaporte/platform dev >"$LOGS/platform.log" 2>&1 &
+  PIDS+=($!)
+fi
 
 wait_health() {
   local name="$1" url="$2"
@@ -75,6 +90,7 @@ wait_health() {
 }
 wait_health consumer http://localhost:3200/api/health
 wait_health merchant http://localhost:3201/api/health
+if [[ $PLATFORM == 1 ]]; then wait_health platform http://localhost:3002/api/health; fi
 
 echo "→ tunel"
 tools/tunnel/up.sh >"$LOGS/tunnel.log" 2>&1 &
@@ -84,7 +100,9 @@ for _ in $(seq 1 30); do
   sleep 1
 done
 grep -q "Registered tunnel connection" "$LOGS/tunnel.log" || { tail -20 "$LOGS/tunnel.log" >&2; abort "el tunel no conecto (.dev-local/tunnel.log)"; }
-for url in https://dev-my.checkpass.club/api/health https://dev-business.checkpass.club/api/health; do
+URLS="https://dev-my.checkpass.club/api/health https://dev-business.checkpass.club/api/health"
+if [[ $PLATFORM == 1 ]]; then URLS="$URLS https://dev-admin.checkpass.club/api/health"; fi
+for url in $URLS; do
   code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "$url" || true)"
   echo "  $code $url"
 done
@@ -94,8 +112,9 @@ cat <<'EOF'
 Listo. Ambiente local arriba (Ctrl+C para apagar):
   Comercio:  https://dev-business.checkpass.club/es/business/onboarding
   Cliente:   https://dev-my.checkpass.club
+  Panel:     https://dev-admin.checkpass.club (si se levanto; su link de login sale en .dev-local/platform.log)
   Link de login del comercio (email local): pnpm dev:link
-  Logs:      .dev-local/{merchant,consumer,tunnel,db}.log
+  Logs:      .dev-local/{merchant,consumer,platform,tunnel,db}.log
 EOF
 
 while :; do
