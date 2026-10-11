@@ -3,56 +3,17 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — 0200 FUNCIONAL APLICADA LOCAL Y FILOSOFÍA DOCUMENTADA (2026-10-11)
+## ESTADO — 0201 HOME FUNCIONAL LOCAL, HERO IDÉNTICO (2026-10-11)
 
-Commit26f6941, reserva5028328. Owner eligió Funcional entre tres prototipos,
-pidió listas verticales como Cercana, destacó ambos precios con corazones y
-luego confirmó variante final: sin corazones, Impulso neutral, solo Conecta
-terracota. «Perfecto. diseño cerrado»; autorizó aplicar y registrar filosofía
-para revisar otras páginas después.
+Commit5da3c84, reserva437c39f. Owner confirmó /negocios Funcional y pidió extender el diseño a la home, excluyendo explícitamente su hero. Sin autorización para publicar.
 
-/negocios aplicada con texto fuera de fotografías, demostraciones contenidas,
-jerarquía estable, ocho secciones y storytelling conservados. Planes verticales,
-Conecta destacado, Impulso neutral. Marca, CTA/onboarding, legales y FAQ reales
-conservados. Next Image con dimensiones y sizes adecuados. CSS solo business-shell;
-importación del stylesheet viejo retirada exclusivamente de la landing.
-Home y páginas de producto todavía preservan su diseño anterior.
+Home debajo del hero aplicada: pasos numerados compactos, demostración HTML de pase identificada como ejemplo, programa ilustrativo de6 sellos, CTA comercial contenido, FAQ y footer alineados. Conserva orden, copy principal, enlaces y avisos ilustrativos. Scope consumer-content; header, hero, metadata e imagen preservados. Captura de hero idéntica por SHA256 en1440/390 claro/oscuro,320/768 claro (6/6).
 
-Guía nueva apps/public/DESIGN.md: «Funcional con calidez», tokens actuales,
-jerarquía, espacios, roles de color, demonstraciones y reglas para futuras
-revisiones; no es el kit merchant ni exige repetir el mismo layout. Sidecar
-apps/public/.impeccable/design.json schema2 y PRODUCT.md actualizados.
-Referencia aprobada HTML capturada en .impeccable/mocks/funcional/, con README
-honesto: prototipo simplificaba marca, footer y acciones; app preserva reales.
-Arial aprobado; textos10–13px del mock POS son excepción, no norma para UI esencial.
+Typecheck público, ESLint específico, formato y diffcheck0; build público0. Suite landing9/9, última corrida11.2s. CI main verde4c40a6a, comprobado; no publicación de estos commits. Cuerpo sin overflow6/6, sin errores JS, FAQ teclado6/6. Persiste desborde preexistente5px del hero a320px, excluido del alcance. Fuentes secundarias y foco del CTA con contraste calculado y foco real verificado claro/oscuro. Evidencia /private/tmp/0201-before-review.json,0201-after-review.json,0201-e2e.log y0201-build.log.
 
-Node24: typecheck y ESLint0, formato0, diffcheck0, números sin duplicados.
-Suite landing9/9 en9.7s, /private/tmp/0200-e2e.log; build público final0,
-/private/tmp/0200-build-final.log. Capturas1440/390 claro/oscuro más320/768 claro:
-ocho secciones, imágenes cargadas, sin overflow/pageerrors; salto al contenido y
-FAQ comprobados con teclado. /private/tmp/0200-review.json y0200-*.png.
-Contraste de roles claros12.78/5.99/6.27, oscuros14.15/8.87/7.53; no certificación AA
-completa. Pruebas específicas conservan home, precios, enlaces, FAQ, orden;
-verifican listas verticales, énfasis distinto y separación del hero.
+DESIGN y PRODUCT actualizados: adopción de home parcial, excepción de hero/header, productos aún pendientes. Sidecar actualizado. Detector0 primarios,36 avisos de variantes tipográficas y estilos preservados; Arial ignorado solo en consumer-home.css por elección aprobada, sin ignore-file ni ignore-rule.
 
-Revisión visual y documentación inline según ADR0129, sin subagentes ni revisión
-independiente. /private/tmp/0200-finish-review.md: ship al alcance local, con
-adaptaciones declaradas. No afirmar pixel-perfect. Diseño aprobado por owner;
-ensamblado accesible http://localhost:3003/negocios para su revisión.
-
-El estado/helper viejo de0199 queda como historial; no se fuerza ni se presenta
-como aprobación de0200. Nuevo trabajo basado en prototipo HTML aprobado.
-CI main VERDE4c40a6a comprobado al inicio. Sin push/merge/deploy ni verify global.
-No publicar sin autorización expresa; otras páginas se revisan cuando owner lo pida.
-Cambios ajenos Claude preservados, archivos de instalación/helpers excluidos.
-
-Triage hook posterior: Arial aprobado conservado. Excepción persistida únicamente
-para overused-font=arial en apps/public/src/app/negocios/business-landing.css,
-config compartida raíz .impeccable/config.json. Scan confirmó0 overused-font;
-45 advisory de escala/paleta estática quedan como observaciones, sin convertir
-valores sobreescritos ni variantes oscuras en regresiones. No ampliar alcance.
-Sidecar refrescado desde DESIGN.md después de la corrección documental;
-tokens/componentes conservados, generatedAt actualizado. Sin cambio visual.
+/negocios Funcional spec0200 permanece aprobada, intacta: Conecta destacado cálido, Impulso neutral, sin corazones. Home y negocios disponibles en http://localhost:3003. Próximo paso: QA owner de home, o revisión de páginas de producto si la solicita. Sin push, merge ni deploy. Mantener intactos los cambios paralelos de Claude en merchant/auth, tooling y su estado.
 
 ## HISTÓRICO — 0199 IMPLEMENTADA LOCAL; QA OWNER DEL ENSAMBLADO PENDIENTE (2026-10-11)
 

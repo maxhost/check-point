@@ -60,7 +60,7 @@ Revisión inline del propio trabajo (ADR0129); no estudio de usabilidad ni audit
 | Ritmo y ancho distintos de Funcional                | Contenedor1190px, separaciones65/45px, cuerpo17px y superficies de DESIGN.md.                       |
 | Franja comercial compite con contenido consumidor   | CTA comercial contenido dentro del ancho común.                                                     |
 
-Typecheck público, ESLint específico, Prettier y diffcheck salida0; números sin duplicados. Suite landing9/9 (9.9s), incluye nuevos oráculos de pase ilustrativo y programa6 sellos. Build público salida0. CI main verde4c40a6a; no implica publicación del trabajo local.
+Typecheck público, ESLint específico, Prettier y diffcheck salida0; números sin duplicados. Suite landing9/9 (última corrida11.2s), incluye nuevos oráculos de pase ilustrativo y programa6 sellos. Build público salida0. CI main verde4c40a6a; no implica publicación del trabajo local.
 
 Evidencia: `/private/tmp/0201-e2e.log`, `/private/tmp/0201-build.log`, `/private/tmp/0201-before-review.json` y `/private/tmp/0201-after-review.json`.
 
