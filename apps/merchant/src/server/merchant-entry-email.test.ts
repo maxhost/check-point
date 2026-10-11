@@ -6,13 +6,19 @@ const email = vi.hoisted(() => ({
   findUserIdByEmail: vi.fn(),
   createOwnerWithBusiness: vi.fn(),
   signInMagicLink: vi.fn(),
+  sendVerificationOTP: vi.fn(),
   openMerchantSession: vi.fn(),
   assertStartWithinLimits: vi.fn(),
   recordStartAttempt: vi.fn(),
 }));
 
 vi.mock("./auth", () => ({
-  getMerchantAuth: () => ({ api: { signInMagicLink: email.signInMagicLink } }),
+  getMerchantAuth: () => ({
+    api: {
+      signInMagicLink: email.signInMagicLink,
+      sendVerificationOTP: email.sendVerificationOTP,
+    },
+  }),
 }));
 vi.mock("./auth-start", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./auth-start")>()),
@@ -83,9 +89,11 @@ describe("acceso merchant por email", () => {
     expect(response.headers.get("set-cookie")).toBeNull();
     expect(email.createOwnerWithBusiness).not.toHaveBeenCalled();
     expect(email.signInMagicLink).not.toHaveBeenCalled();
+    expect(email.sendVerificationOTP).not.toHaveBeenCalled();
   });
 
-  it("login de una cuenta existente envía un enlace sin abrir sesión", async () => {
+  // Spec 0202 §D2: el login manda un CODIGO, no un link.
+  it("login de una cuenta existente envía un código sin abrir sesión", async () => {
     email.findUserIdByEmail.mockResolvedValue("existing-owner");
     const response = await login(
       post("/api/merchant/auth/login", "OWNER@example.com"),
@@ -94,11 +102,21 @@ describe("acceso merchant por email", () => {
     expect(await response.json()).toEqual({ accepted: true });
     expect(response.headers.get("set-cookie")).toBeNull();
     expect(email.createOwnerWithBusiness).not.toHaveBeenCalled();
-    expect(email.signInMagicLink).toHaveBeenCalledWith(
+    expect(email.sendVerificationOTP).toHaveBeenCalledWith(
       expect.objectContaining({
-        body: { email: "owner@example.com", callbackURL: "/backoffice" },
+        body: { email: "owner@example.com", type: "sign-in" },
       }),
     );
+    expect(email.signInMagicLink).not.toHaveBeenCalled();
+  });
+
+  it("login de un integrante (@staff.invalid) no manda nada", async () => {
+    email.findUserIdByEmail.mockResolvedValue("staff-user");
+    const response = await login(
+      post("/api/merchant/auth/login", "staff-abc123@staff.invalid"),
+    );
+    expect(await response.json()).toEqual({ accepted: true });
+    expect(email.sendVerificationOTP).not.toHaveBeenCalled();
   });
 
   it("un alta nueva envía verificación y conserva la sesión si falla Resend", async () => {

@@ -1,14 +1,10 @@
 import { NextResponse } from "next/server";
-import { and, asc, eq } from "drizzle-orm";
 import { getMerchantAuth } from "../../../../../server/auth";
-import { getDb } from "@mi-pasaporte/db";
-import { businesses, memberships, sessions } from "@mi-pasaporte/db/schema";
+import { settleOwnerLogin } from "../../../../../server/merchant-login";
 
 export const dynamic = "force-dynamic";
 
-/** Adonde cae el owner cuando el link sirvio, y adonde cuando no. */
-const OK_DESTINATION = "/backoffice";
-const ONBOARDING_DESTINATION = "/es/business/onboarding";
+/** Adonde cae el owner cuando el link no sirvio (el destino bueno lo da `settleOwnerLogin`). */
 const FAILED_DESTINATION = "/?e=magic_link_invalid";
 /** Spec 0072 §D4: el negocio esta CERRADO, asi que no se emite sesion. Mismo canal de
  * codigos de rebote que `staff_disabled` (`server/auth-guards.ts`). **`email_not_verified` ya
@@ -62,76 +58,11 @@ export async function GET(request: Request) {
   const cookie = verified.headers.get("set-cookie");
   if (verified.status !== 200 || !cookie) return bounce(FAILED_DESTINATION);
 
-  /**
-   * EL CORTE DE `closed` (spec 0072 §D4), y va ACA y no en `onboarding/signup` (antes `auth/start`), que es deliberado:
-   * su rama del email conocido no resuelve negocio, asi que gatear ahi seria
-   * una consulta nueva — y ademas el owner de un negocio `suspended` **si tiene que entrar**,
-   * para ver el motivo. **El corte va donde se CREA la sesion.**
-   *
-   * `magicLinkVerify` ya creo la sesion en la base antes de contestar
-   * (`internalAdapter.createSession`, `plugins/magic-link/index.mjs`), asi que no alcanza con
-   * no reenviar la cookie: hay que REVOCARLA, con el mismo `DELETE` en forma y alcance que el
-   * de `requireBackofficeSession` y `setStaffStatus`. Sin eso quedaria una sesion viva en la
-   * base — sin cookie hoy, pero viva — y esta ruta no agrega mecanismos de revocacion nuevos.
-   *
-   * Un usuario SIN negocio hoy no existe: el alta crea cuenta y negocio en un mismo
-   * `db.batch` (spec 0155). Si apareciera, va al alta y el guard de `/backoffice` le cierra
-   * la sesion (spec 0166).
-   */
-  const userId = await verifiedUserId(verified);
-  const status = userId ? await businessStatus(userId) : null;
-  if (userId && status === "closed") {
-    await getDb().delete(sessions).where(eq(sessions.userId, userId));
-    return bounce(CLOSED_DESTINATION);
-  }
-  // Sin negocio (hoy imposible, ver arriba) → el alta; con negocio → el panel.
-  return bounce(
-    userId && !status ? ONBOARDING_DESTINATION : OK_DESTINATION,
-    cookie,
-  );
-}
-
-/** El `user.id` del cuerpo JSON del verify. Sin `callbackURL` el plugin contesta
- * `{ token, user, session }`; un cuerpo inesperado devuelve `null` y **no** bloquea el
- * login — un cambio de forma de better-auth no puede dejar a todos afuera. */
-async function verifiedUserId(verified: Response): Promise<string | null> {
-  try {
-    const body = (await verified.clone().json()) as {
-      user?: { id?: unknown };
-    } | null;
-    const id = body?.user?.id;
-    return typeof id === "string" ? id : null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Si «su negocio» esta `closed`. El criterio de «su negocio» es **la membresia mas vieja**, el
- * mismo de `requireBackofficeSession` (`auth-guards.ts:106`) y de `ownerContext`
- * (`staff.ts:88`), y por eso el `orderBy` es OBLIGATORIO y no cosmetico: un `limit(1)` sin
- * orden es **no determinista** —Postgres puede devolver cualquiera de las filas— asi que sin el
- * este guard abriria o cerraria la sesion al azar en cuanto un user tenga dos membresias. El
- * docblock original afirmaba el orden y la consulta no lo tenia (cazado por el revisor de la
- * 0072).
- *
- * **Divergencia que queda declarada, no cerrada:** aca se filtra
- * `memberships.status='active'` y `requireBackofficeSession` **no** lo filtra. Con un solo
- * negocio por usuario —lo que hoy garantiza `api/onboarding/signup`: crea cuenta y negocio juntos y un email conocido no crea nada (spec 0155)— las dos
- * consultas coinciden; el dia que un user tenga dos, hay que unificarlas en un solo
- * resolvedor. Es la misma familia que la divergencia `asc`/`desc` de `loyalty-program.ts:66`.
- */
-async function businessStatus(userId: string) {
-  const [row] = await getDb()
-    .select({ status: businesses.status })
-    .from(memberships)
-    .innerJoin(businesses, eq(businesses.id, memberships.businessId))
-    .where(
-      and(eq(memberships.userId, userId), eq(memberships.status, "active")),
-    )
-    .orderBy(asc(businesses.createdAt))
-    .limit(1);
-  return row?.status ?? null;
+  // El corte de `closed` y el destino son los mismos que los del codigo (spec 0202):
+  // `server/merchant-login.ts`.
+  const outcome = await settleOwnerLogin(verified);
+  if (outcome.kind === "closed") return bounce(CLOSED_DESTINATION);
+  return bounce(outcome.destination, cookie);
 }
 
 /**

@@ -12,7 +12,10 @@ import {
 
 export const dynamic = "force-dynamic";
 
-/** Pide acceso a una cuenta existente; nunca crea un usuario ni revela si existe. */
+/**
+ * Pide acceso a una cuenta existente; nunca crea un usuario ni revela si existe. Spec 0202
+ * (ADR 0137): manda un CODIGO de 6 digitos, que se canjea en `POST /api/merchant/auth/login/verify`.
+ */
 export async function POST(request: Request) {
   try {
     let body: unknown;
@@ -29,8 +32,11 @@ export async function POST(request: Request) {
     await recordStartAttempt({ email, ipHash });
 
     if (!isUndeliverableEmail(email) && (await findUserIdByEmail(email))) {
-      await getMerchantAuth().api.signInMagicLink({
-        body: { email, callbackURL: "/backoffice" },
+      // Un solo codigo vivo sin hacer nada aca: better-auth 1.7.6 consume la fila MAS NUEVA
+      // del email y borra las demas (`internal-adapter.mjs`, `consumeVerificationValue`).
+      // Lo fija «pedir otro codigo anula el anterior» en `login-code.neon.integration.test.ts`.
+      await getMerchantAuth().api.sendVerificationOTP({
+        body: { email, type: "sign-in" },
         headers: request.headers,
       });
     }
@@ -41,12 +47,12 @@ export async function POST(request: Request) {
         { error: error.message, code: error.code },
         { status: error.status },
       );
-    console.error("merchant_login_link_failed", {
+    console.error("merchant_login_code_failed", {
       name: error instanceof Error ? error.name : typeof error,
     });
     return NextResponse.json(
       {
-        error: "No pudimos enviar el enlace. Intenta de nuevo.",
+        error: "No pudimos enviar el código. Intenta de nuevo.",
         code: "auth_unavailable",
       },
       { status: 503 },

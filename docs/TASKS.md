@@ -4,6 +4,18 @@
 [Claude → `estado/claude.md`](estado/claude.md) · [GPT → `estado/gpt.md`](estado/gpt.md). Cada uno escribe solo
 el suyo. Lo que sigue en este archivo es **historico** (bloques ESTADO viejos y bitacoras de mutaciones).
 
+## Bitacora de mutaciones — spec 0202, Claude (L2, 2026-10-11)
+
+Arbol: `dev` con la 0202 sin commitear; restauracion desde copia limpia en el scratchpad + `diff` vacio. Neon: rama
+de CI via `tools/neon-test.sh`. Presupuesto: 4 (spec 0202 §Mutaciones).
+
+| id | archivo | shasum limpio | invariante | resultado EJECUTADO |
+|---|---|---|---|---|
+| M1 | apps/merchant/src/server/auth.ts | ea818abba4b6d9179a1a09fbde0e14b83bef406a | `/sign-in/email-otp` cerrado por HTTP | ROJO: `merchant-auth-disabled-paths.test.ts` «× answers 404 for /api/auth/sign-in/email-otp»; los otros 10 paths verdes |
+| M2 | apps/merchant/src/app/api/merchant/auth/login/route.ts | acf0016b47d93afcdfbfb167b503ebc842d8dedb | pedir otro codigo anula el anterior | SOBREVIVIO (7 passed). Causa medida: better-auth 1.7.6 consume la fila mas nueva y borra las demas (`internal-adapter.mjs:815-848`). El borrado propio se SACO por redundante (spec 0202 §D2 corregida); el caso queda como oraculo de better-auth |
+| M3 | apps/merchant/src/app/api/merchant/auth/login/verify/route.ts | f751400687e9be9f7ae1014626db10567b4fb979 | negocio `closed` → 403 y 0 sesiones | ROJO: «negocio cerrado…» `expected 200 to be 403` (1 failed / 6 passed) |
+| M4 | apps/merchant/src/app/api/merchant/auth/login/verify/route.ts | f751400687e9be9f7ae1014626db10567b4fb979 | el tope de equivocados se chequea ANTES del plugin | ROJO: «10 equivocados…» `expected 200 to be 429` (1 failed / 6 passed) |
+
 ## Bitacora de mutaciones — spec 0156 (A+B+C), REVISOR (2026-10-04)
 
 Arbol: worktree `motor-wt/onboarding-google`, commit 931fa2b (archivos LIMPIOS y commiteados al medir: restauracion con

@@ -1,7 +1,8 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { magicLink } from "better-auth/plugins";
+import { emailOTP, magicLink } from "better-auth/plugins";
 import { getDb } from "@mi-pasaporte/db";
+import { loginCodeEmail } from "./email/login-code-email";
 import { magicLinkEmail } from "./email/magic-link-email";
 import { emailChannelFromEnv } from "@mi-pasaporte/domain/server/email/provider";
 import * as schema from "@mi-pasaporte/db/schema";
@@ -43,7 +44,32 @@ export function getMerchantAuth() {
     // entero en la 0067, asi que era configuracion muerta que igual publicaba 16
     // endpoints de OTP/password en la instancia. El oraculo de que no vuelve se asevera
     // sobre la INSTANCIA y no sobre un 404: `merchant-auth-disabled-paths.test.ts`.
+    // Spec 0202 / ADR 0137: VUELVE, ahora para el LOGIN del owner (codigo de 6 digitos en vez
+    // de link, para entrar desde la PWA instalada en iPhone). Solo se usa por `auth.api.*`
+    // desde `api/merchant/auth/login` y `login/verify`; sus 9 paths HTTP van abajo.
     plugins: [
+      emailOTP({
+        otpLength: 6,
+        // 10 minutos (owner 2026-10-11, ADR 0137).
+        expiresIn: 600,
+        allowedAttempts: 5,
+        storeOTP: "hashed",
+        // Un email desconocido no crea cuenta: el alta vive solo en `onboarding/signup`.
+        disableSignUp: true,
+        sendVerificationOTP: async ({ email, otp, type }) => {
+          // Solo el login emite codigos. Otro tipo es un camino que nadie deberia abrir:
+          // falla ruidoso en vez de mandar un mail que no corresponde.
+          if (type !== "sign-in")
+            throw new Error(`email-otp: tipo no atendido (${type}).`);
+          const { subject, html, text } = loginCodeEmail(otp);
+          await emailChannelFromEnv().sendEmail({
+            to: email,
+            subject,
+            html,
+            text,
+          });
+        },
+      }),
       magicLink({
         // 15 minutos: el owner abre el mail en el momento. El token se consume una sola
         // vez (`consumeVerificationValue`, better-auth 1.6.26).
@@ -77,9 +103,8 @@ export function getMerchantAuth() {
     // `dist/api/index.mjs`: un path deshabilitado contesta 404), que NO afecta a las
     // llamadas server-side `auth.api.*` que hacen nuestras rutas.
     //
-    // Spec 0068 §4: quedan DOS. Los 9 del plugin de OTP por email se fueron con el plugin
-    // — sin el, esos paths dan 404 por INEXISTENTES, no por bloqueados, y listarlos aca
-    // seria una proteccion vacua.
+    // Spec 0068 §4 dejo DOS al borrar `emailOTP`; la spec 0202 lo trae de vuelta y sus 9
+    // paths vuelven a esta lista (ahora existen, asi que bloquearlos SI protege).
     disabledPaths: [
       // Spec 0067 §2: los DOS unicos endpoints que publica el plugin `magicLink`, medidos
       // en `dist/plugins/magic-link/index.mjs` (`createAuthEndpoint("/sign-in/magic-link")`
@@ -87,6 +112,18 @@ export function getMerchantAuth() {
       // registro de intentos; el consumo va por ruta propia via `auth.api.*`.
       "/sign-in/magic-link",
       "/magic-link/verify",
+      // Spec 0202 §D1: los NUEVE que publica `emailOTP`, medidos en
+      // `better-auth@1.7.6/dist/plugins/email-otp/index.mjs`. Por HTTP saltearian el rate
+      // limit, el tope de codigos equivocados y el corte de negocio `closed`.
+      "/email-otp/send-verification-otp",
+      "/email-otp/check-verification-otp",
+      "/email-otp/verify-email",
+      "/sign-in/email-otp",
+      "/email-otp/request-password-reset",
+      "/email-otp/reset-password",
+      "/forget-password/email-otp",
+      "/email-otp/request-email-change",
+      "/email-otp/change-email",
     ],
     secret,
     baseURL,

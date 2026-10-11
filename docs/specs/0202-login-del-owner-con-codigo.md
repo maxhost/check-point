@@ -1,7 +1,7 @@
 ---
 spec: 0202
 fecha: 2026-10-11
-estado: cerrada
+estado: implementada (API); UI de GPT y QA del owner pendientes
 resumen: El owner entra al panel con un codigo de 6 digitos por email (vence en 10 min, 5 intentos por codigo, 10 fallidos por dia por email) en vez de link magico, para poder entrar desde la PWA instalada en iPhone. Solo el login; alta y verificacion siguen con link.
 disjunta: si
 archivos: apps/merchant/src/server/auth.ts, apps/merchant/src/server/email/login-code-email.ts, apps/merchant/src/server/merchant-login.ts, apps/merchant/src/app/api/merchant/auth/login/route.ts, apps/merchant/src/app/api/merchant/auth/login/verify/route.ts, apps/merchant/src/app/api/merchant/auth/magic-link/route.ts, tests de esas rutas; UI (GPT): onboarding/_components/account-step.tsx y onboarding/_lib/onboarding-api.ts
@@ -53,9 +53,11 @@ otro tipo tira `Error`: nadie lo emite, y si alguien lo emite tiene que fallar r
 Igual que hoy (cuerpo `{ email }`, `normalizeEmail`, `assertStartWithinLimits`, `recordStartAttempt`, nunca revela si
 la cuenta existe, `isUndeliverableEmail` no manda nada). Cambia la rama del email conocido:
 
-1. Borrar las filas de `merchant_auth.verification` con `identifier = 'sign-in-otp-' || email` (un solo codigo vivo:
-   la tabla no tiene unico en `identifier`, `packages/db/src/schema/auth.ts:75`).
-2. `auth.api.sendVerificationOTP({ body: { email, type: "sign-in" } })`.
+- `auth.api.sendVerificationOTP({ body: { email, type: "sign-in" } })`.
+- Un solo codigo vivo: lo garantiza better-auth 1.7.6, que consume la fila MAS NUEVA del email y borra las demas
+  (`dist/db/internal-adapter.mjs`, `consumeVerificationValue`). *Corregido en la implementacion:* la spec pedia
+  borrar a mano las filas previas; la mutacion M2 sobrevivio y la lectura del adapter mostro que ese borrado
+  sobraba, asi que se saco. El caso «pedir dos veces» queda como oraculo de la conducta de better-auth.
 
 Respuestas: `200 { accepted: true }` · `400 invalid_body | invalid_email` · `429 rate_limited` · `503
 auth_unavailable` (mensaje: «No pudimos enviar el código. Intenta de nuevo.»).
@@ -149,7 +151,7 @@ el mensaje y deja reenviar; `too_many_failures` muestra el mensaje y no deja ree
 | # | Mutacion | Oraculo que tiene que ponerse ROJO |
 |---|---|---|
 | 1 | Sacar `/sign-in/email-otp` de `disabledPaths` | `merchant-auth-disabled-paths.test.ts` |
-| 2 | No borrar el codigo anterior en la D2 | «pedir dos veces → el primero da `code_incorrect`» |
+| 2 | No borrar el codigo anterior en la D2 | SOBREVIVIO: better-auth ya lo anula; el borrado se saco (ver §D2) |
 | 3 | Saltear el corte `closed` en la D4 | «negocio `closed` → 403 y 0 sesiones» |
 | 4 | Chequear el tope de fallidos DESPUES de llamar al plugin | «10 equivocados → el correcto da 429» |
 

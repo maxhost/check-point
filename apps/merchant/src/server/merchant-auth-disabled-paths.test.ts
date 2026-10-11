@@ -32,6 +32,17 @@ const BLOCKED = [
   // (spec 0068 §4: los 9 del plugin de OTP se fueron con el plugin).
   "/api/auth/sign-in/magic-link",
   "/api/auth/magic-link/verify",
+  // Spec 0202 §D1 — `emailOTP` volvio para el login del owner, y con el sus NUEVE paths
+  // (medidos en `better-auth@1.7.6/dist/plugins/email-otp/index.mjs`).
+  "/api/auth/email-otp/send-verification-otp",
+  "/api/auth/email-otp/check-verification-otp",
+  "/api/auth/email-otp/verify-email",
+  "/api/auth/sign-in/email-otp",
+  "/api/auth/email-otp/request-password-reset",
+  "/api/auth/email-otp/reset-password",
+  "/api/auth/forget-password/email-otp",
+  "/api/auth/email-otp/request-email-change",
+  "/api/auth/email-otp/change-email",
 ];
 
 beforeAll(() => {
@@ -69,19 +80,15 @@ describe("better-auth HTTP surface (spec 0046)", () => {
   });
 
   /**
-   * Spec 0068 §4 — EL ORACULO QUE REEMPLAZA AL QUE SE HABRIA VUELTO VACUO. Se mira la
-   * INSTANCIA, no un 404: las dos claves de abajo las agregaba **solo** el plugin de OTP
-   * por email (medido: con el plugin puesto, `Object.keys(auth.api)` tenia 44 claves e
-   * incluia las dos). Si alguien vuelve a montarlo, este caso se pone rojo.
-   *
-   * `signInMagicLink` es el CONTROL, y no es decorativo: sin el, los dos `not.toContain`
-   * pasarian igual contra un objeto vacio —o contra una instancia que fallo en construirse—
-   * y no probarian nada.
+   * Spec 0202 §D1 — el plugin de OTP por email ESTA montado (la spec 0068 §4 lo habia
+   * borrado; el ADR 0137 lo trae para el login). Esto es lo que hace que los 9 paths de
+   * `emailOTP` en `BLOCKED` prueben algo: existen en la instancia, asi que su 404 es por
+   * `disabledPaths` y no por inexistentes. `signInMagicLink` sigue: alta y verificacion.
    */
-  it("el plugin de OTP por email ya no esta montado", () => {
+  it("el plugin de OTP por email esta montado y el de link sigue", () => {
     const keys = Object.keys(getMerchantAuth().api);
-    expect(keys).not.toContain("signInEmailOTP");
-    expect(keys).not.toContain("forgetPasswordEmailOTP");
+    expect(keys).toContain("signInEmailOTP");
+    expect(keys).toContain("sendVerificationOTP");
     expect(keys).toContain("signInMagicLink");
   });
 
