@@ -9,7 +9,7 @@ Home / dirigida a consumidores con escena ilustrativa, tres burbujas HTML (sin
 dispositivo Mi pase flotante), explicación QR→acumular→canjear, acceso a pase,
 ejemplos, CTA comercial y FAQ. /negocios conserva contenido y diseño previo; SEO
 propio, anclas de planes y accesos por audiencia ajustados. PRODUCT actualizado.
-Spec0197 reservada132ac2e; implementación local en dev, sin merge/push/deploy.
+Spec0197 reservada132ac2e; implementación71a7f91 en dev, sin merge/push/deploy.
 
 Owner aceptó el plan y assets en navegador (ronda2) y confirmó en chat.
 Session07814800c7438f3d7eb890741a4965d08a0583cea2d4409c2b080ca7d8ef63bc,
