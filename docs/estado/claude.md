@@ -25,8 +25,12 @@ Push hecho desde un worktree limpio en `4c40a6a` (verify completo verde con Neon
 noindex. **Owner 2026-10-11: «todo funcionando, damos esto por cerrado e implementado»** (0189, 0190, 0195, 0196).
 
 **QUE SIGUE:**
-1. Pendientes chicos de Claude: sumar platform a `tools/dev-local/up.sh`; `tools/local-db/huellas.sql` no mira el
-   esquema `platform_auth`; borrar worktrees mergeados `spec-0189/0190/0195`.
+1. Tooling hecho (`5d5bb03`): el panel en `pnpm dev:local` (:3002, opcional) y `huellas.sql` con `platform_auth`
+   (local == PROD, 19 categorias; roles del cliente sin acceso a `platform_auth` en PROD). Ramas/worktrees de Claude
+   mergeados borrados (spec-0189, spec-0195, fix-notices-mock, ui-sistema, onboarding-google). **Quedan:** `spec-0190`
+   (su worktree tiene el UNICO `apps/platform/.env.local`: el owner lo mueve al repo, despues se borra), y `motor`
+   (spec 0163 «guardia de UI», version vieja de `tools/ui-guard.ts`; el numero 0163 en `main` es otra spec) y
+   `sin-gate-email` (fix 0155 H4: clave de Google rechazada → 503; NO esta en `main`): sin mergear, decide el owner.
 2. GPT: U4–U6 (vencimiento, 0195 §D6). Skill `impeccable` instalada sin commitear (lint/formato ya la ignoran, `6b10697`):
    pregunta abierta al owner de quien la commitea.
 3. Siguiente funcionalidad: reporte de retorno. Inventario en `docs/analisis-producto-2026-10-10.md` §Inventario.
