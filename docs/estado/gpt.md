@@ -3,21 +3,51 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — CAMBIOS COMMITTEADOS EN DEV (2026-10-10)
+## ESTADO — U1–U3 IMPLEMENTADAS EN DEV (2026-10-10)
 
-Owner pidió commit de todo lo pendiente. Commit de trabajo `60590de`:
-landing, páginas de fidelización/marketing/POS, Iconoir, sitemap, noindex de
-apps privadas, selectores E2E, specs y documentación SEO/producto. Incluye las
-iteraciones visuales aprobadas de 0191 y la revisión independiente de 0192.
-Archivo next-env.d.ts regenerado por Next restaurado antes del commit.
+Rama local `dev`. SHA del trabajo UI: `8611689` (spec 0196). Correcciones E2E:
+`da78bbc`. Reserva de spec: `d2b49f6`. Trabajo público anterior: `60590de`.
+Sin merge ni push; producción sin cambios.
 
-Verificación real con Node 24: typecheck public/merchant/consumer, ESLint de
-archivos TS/TSX cambiados, Prettier de todos los archivos pendientes,
-check-numbers y git diff --check, todos correctos. QA visual responsive de
-0191/0192 documentado abajo. Sin suites E2E ni pnpm verify en este cierre.
-QA final del owner pendiente. Sin merge ni push; localhost3003 sigue activo.
-CI remoto conserva el fallo anterior de rutas /private/tmp, corregido localmente
-según el estado previo; no se afirma CI remoto verde.
+Owner pidió landing.spec.ts y ticket-settings.spec.ts verdes antes del commit:
+selector Cómo empezar acotado a #contenido, título con barra escapada y capturas
+con testInfo.outputPath. Pasaron 7/7 antes de `da78bbc`. Corrida final conjunta
+con billing-ui.spec.ts: 18/18, `/private/tmp/0196-e2e-final.log`.
+
+U1: Conecta/Impulso (base/plus), períodos y precios de GET billing/state; checkout
+con plan/interval/from; cambio confirmado con explicación del cobro; cancelación
+al final del período y reanudación. Recibos y reconciliación conservados. Red,
+402 y 409 permiten corregir/reintentar; topes enlazan Locales/Campañas.
+U2: etiquetas del plan Free/Gratis retiradas del panel, home y cancelación.
+U3: días de prueba del contrato de sesión; bloqueado solo suscripción y salida,
+sin navegación/checklist; rebote payment_required del personal explicado. La
+suspensión del negocio conserva prioridad. Kit existente, sin CSS ni API nueva.
+
+Verificación real Node 24: billing UI 11 E2E; layout 4/4, entrada 2/2, guardias
+layout 5/5, pruebas de cobro existentes 12/12. Vistas capturas 390/1440 sin
+overflow. Mutaciones M1 (checkout sin plan) y M2 (baja inmediata) rojas por su
+aserción y revertidas con SHA256 idéntico. Bitácora /private/tmp/0196-mutations.md.
+Typecheck/lint/ui-guard finales correctos; numeración y diff --check correctos.
+
+pnpm verify --base HEAD ejecutado una vez: tipos, lint, ui-guard, formato,
+2465 unitarias y build de las 4 apps correctos. ROJO: E2E general no arranca por
+Next dev existente en 3200/3201; Neon related 37/41 inicial por etiqueta Plan Plus
+anterior. Textos esperados actualizados y suite fallida repetida por
+ tools/neon-test.sh src/server/billing-reconcile-page.neon.integration.test.ts:
+5/5 en CI. No se repitió todo verify ni se afirma verde. Registros
+/private/tmp/0196-verify.log y /private/tmp/0196-neon-recheck.log. Tres suites E2E
+usaron configuración temporal sin webServer y public3003 existente. Tipos Next
+generados por build restaurados antes del commit.
+
+Zona Claude: solo cambios mecánicos de textos/campos en cuatro pruebas de cobro,
+por §6 de TRABAJO-EN-PARALELO. Sin tocar servidor, kit, API ni tooling.
+Handoff D9 a Claude: la UI usa Conecta/Impulso; planLabel del servidor conserva
+Base/Plus en sus mensajes y puede alinearse en su zona.
+
+Pendiente: QA owner con Stripe real y desbloquear gate E2E general antes de live.
+U4–U6 de PARQUEADO esperan que el owner mergee 0195; no implementadas.
+La sección U1–U6 se recuperó desde spec-0195 en PARQUEADO, preservando sus filas.
+Los bloques siguientes son históricos, no describen el estado actual.
 
 ## ⇥ 0192 — REVISIÓN UX APLICADA, LOCAL (2026-10-10)
 
