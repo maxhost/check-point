@@ -2,6 +2,7 @@
   "prompt": "Regenerate this neighborhood illustration as a clean production website asset at high resolution, landscape 1.89:1, at least 1450 pixels wide. The reference is masked with pale rectangular holes where website text will be placed: REMOVE ALL MASK RECTANGLES and fill naturally with the cream map ground and continuous streets. Preserve the exact composition: left third softly empty cream neighborhood map, small photographic storefront bakery at upper middle, bookshop upper right, larger café lower center with terracotta location pin, florist at bottom right, scattered rounded trees, warm pale grey block-shaped streets, fine dotted terracotta route between shops. Maintain positions, camera perspective, sizes and light cream green terracotta palette. Remove ALL text, labels, badges, white label cards, gift invitation card and pictogram glyphs from the asset; the webpage supplies them in HTML. Storefronts should have no legible signage. Return only artwork, no page layout, no UI, no title, no example badges, opaque background.",
   "source": "native imagegen",
   "comp": "barrio-sin-etiquetas.png",
-  "approved": false,
-  "scope": "Recurso pendiente de revisión, sin UI ensamblada"
+  "approved": true,
+  "scope": "Recurso aprobado e implementado en /negocios",
+  "approvalEvidence": "Revisión local aprobada, revision 3cc9cc3c35f01b29749200b09ec171d295fa84016018e2a74d0f4436513cd873; chat aprobado el 2026-10-11"
 }

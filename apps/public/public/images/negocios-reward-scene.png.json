@@ -2,6 +2,7 @@
   "prompt": "Regenerate this tabletop photograph as a clean production website asset at high resolution, landscape 2.26:1, at least 1450 pixels wide. REMOVE the pale mask rectangles on the left and reconstruct the warm lightly lit wooden tabletop underneath. Preserve exact composition: empty left third, dark green folded CheckPass.club QR stand center-left, opened cream loyalty booklet right with five terracotta earned coffee stamps and outlined empty circles; coffee reward image right page, croissant plate blurred at upper right. Preserve physical printed brand checkpass.club and QR stand text Escanea y únete. Booklet text only Mis compras, Mi premio, Café, (5 compras). Printed markings belong to the physical objects. No website headings or overlay labels, no badges or word ejemplo. Match photographic angle, warmth, object size and positions, clean high quality natural photography, opaque.",
   "source": "native imagegen",
   "comp": "barrio-sin-etiquetas.png",
-  "approved": false,
-  "scope": "Recurso pendiente de revisión, sin UI ensamblada"
+  "approved": true,
+  "scope": "Recurso aprobado e implementado en /negocios",
+  "approvalEvidence": "Revisión local aprobada, revision 3cc9cc3c35f01b29749200b09ec171d295fa84016018e2a74d0f4436513cd873; chat aprobado el 2026-10-11"
 }

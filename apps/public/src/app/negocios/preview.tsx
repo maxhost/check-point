@@ -29,10 +29,9 @@ export function BusinessHeroScene() {
         <Gift aria-hidden="true" />
         <div>
           <strong>Un café de bienvenida</strong>
-          <span>Café de ejemplo</span>
+          <span>Café</span>
         </div>
       </div>
-      <figcaption>Ejemplo ilustrativo. No es una oferta vigente.</figcaption>
     </figure>
   );
 }

@@ -186,7 +186,7 @@ for (const width of [390, 1440]) {
       await expect(
         page.getByText("Descubre el programa de recompensas para tu negocio"),
       ).toBeVisible();
-      await expect(page.locator("main > section")).toHaveCount(9);
+      await expect(page.locator("main > section")).toHaveCount(8);
       await expect(page.locator(".business-hero")).toContainText(
         "Llega a personas que compran cerca.",
       );
@@ -195,9 +195,11 @@ for (const width of [390, 1440]) {
           .locator(".business-hero")
           .getByRole("link", { name: "Pruébalo gratis 3 meses" }),
       ).toHaveAttribute("href", /\/es\/business\/onboarding$/);
-      await expect(page.locator(".business-hero")).toContainText(
-        "Ejemplo ilustrativo. No es una oferta vigente.",
-      );
+      await expect(page.locator("body")).not.toContainText(/ejemplo/i);
+      await expect(page.locator(".barrio-shop")).toHaveCount(4);
+      await expect(
+        page.locator(".barrio-shop").filter({ hasText: "Café" }),
+      ).toContainText("Café");
       const photo = page.locator(
         '.business-hero img[src*="negocios-bienvenida"]',
       );
@@ -222,7 +224,7 @@ for (const width of [390, 1440]) {
 
       await expect(page.locator(".moment-card")).toHaveCount(0);
       await expect(
-        page.getByRole("heading", { name: "Escanea y se une" }),
+        page.getByRole("heading", { name: "Dales razones para volver." }),
       ).toBeVisible();
       await expect(page.locator(".plan-card").first()).toContainText("Conecta");
       await expect(page.locator(".plan-card").first()).toContainText("$20");
@@ -245,13 +247,13 @@ for (const width of [390, 1440]) {
           /\/es\/business\/onboarding$/,
         );
       }
-      await expect(page.locator(".trial-banner")).toContainText(
-        "3 meses gratis · todo incluido",
+      await expect(page.locator(".business-assurance")).toContainText(
+        "Todo incluido durante la prueba.",
       );
       await page
         .locator("summary")
         .filter({
-          hasText: "¿Los puntos y sellos pueden usarse en otro negocio?",
+          hasText: "¿Quién decide los premios y beneficios?",
         })
         .click();
       await expect(page.locator("details[open]")).toContainText(
@@ -278,13 +280,26 @@ for (const width of [390, 1440]) {
           ),
         )
         .toBe(true);
-      for (const selector of [".network-preview", ".pos-platform-preview"]) {
+      for (const selector of [".barrio-map", ".barrio-service-visual"]) {
         const box = await page.locator(selector).boundingBox();
         expect(box).not.toBeNull();
         expect(box!.x).toBeGreaterThanOrEqual(0);
         expect(box!.x + box!.width).toBeLessThanOrEqual(width);
         if (width === 390) expect(box!.width).toBeGreaterThan(width * 0.75);
       }
+      for (const scene of await page
+        .locator(".barrio-map img, .barrio-reward img, .barrio-attention img")
+        .all()) {
+        await expect
+          .poll(() =>
+            scene.evaluate((img) => (img as HTMLImageElement).naturalWidth),
+          )
+          .toBeGreaterThan(0);
+      }
+      await expect(page.locator(".barrio-pos-panels")).toContainText("$5");
+      await expect(page.locator(".barrio-plan-notes")).toContainText(
+        "Local adicional: $12",
+      );
       const background = await page
         .locator(".site-shell")
         .evaluate((element) => getComputedStyle(element).backgroundColor);
@@ -296,13 +311,13 @@ for (const width of [390, 1440]) {
         path: testInfo.outputPath(`hero-${width}-${colorScheme}.png`),
         animations: "disabled",
       });
-      await page.locator(".network-section").screenshot({
+      await page.locator(".barrio-network").screenshot({
         path: testInfo.outputPath(`red-${width}-${colorScheme}.png`),
       });
-      await page.locator(".feature-section").screenshot({
+      await page.locator(".barrio-service").screenshot({
         path: testInfo.outputPath(`pos-${width}-${colorScheme}.png`),
       });
-      await page.locator(".plans-section").screenshot({
+      await page.locator(".barrio-plans").screenshot({
         path: testInfo.outputPath(`planes-${width}-${colorScheme}.png`),
       });
       await page
@@ -344,7 +359,9 @@ test("0197: enlaces entre audiencias, fichas y sitemap", async ({
     await plans.click();
     await expect(page).toHaveURL(landingURL + "/negocios#planes");
     await expect(
-      page.getByRole("heading", { name: /Prueba todo durante tres meses/ }),
+      page.getByRole("heading", {
+        name: /Planes para hacer crecer tu negocio/,
+      }),
     ).toBeInViewport();
   }
   await page.goto(landingURL + "/explorar");

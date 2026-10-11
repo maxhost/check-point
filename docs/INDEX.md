@@ -420,4 +420,4 @@ técnica, Definition of Done y plan de pruebas antes de que su estado pase a `ce
 
 | 0198 | 2026-10-10 | Landing /negocios: nuevos clientes y motivos para volver, hero integrado aprobado. | cerrada; implementación local autorizada | no | `specs/0198-negocios-nuevos-clientes-y-regreso.md` |
 
-| 0199 | 2026-10-11 | Rediseño completo de /negocios: El barrio conectado, sin etiquetas de ejemplo. | cerrada; recursos e implementación pendientes | no | `specs/0199-negocios-barrio-conectado.md` |
+| 0199 | 2026-10-11 | Rediseño completo de /negocios: El barrio conectado, sin etiquetas de ejemplo. | implementada local; 9/9 E2E, QA visual y cierre workflow pendientes | no | `specs/0199-negocios-barrio-conectado.md` |

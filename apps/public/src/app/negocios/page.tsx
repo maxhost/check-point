@@ -1,13 +1,16 @@
-import { ArrowRight, ArrowUpRight, Check, Shop, Star } from "iconoir-react";
+import {
+  ArrowRight,
+  ArrowUpRight,
+  Check,
+  Shop,
+  Gift,
+  Send,
+} from "iconoir-react";
 import type { Metadata } from "next";
 import { BrandMark } from "../brand-mark";
-import {
-  DashboardPreview,
-  BusinessHeroScene,
-  LoyaltyJourney,
-  NetworkPreview,
-} from "./preview";
-import { ClosingSections, LandingFooter } from "./closing-sections";
+import { BusinessHeroScene } from "./preview";
+import { NeighborhoodScene, RewardScene, ServiceScene } from "./barrio-scenes";
+import { BusinessClosingSections, LandingFooter } from "./closing-sections";
 import { onboardingUrl, siteUrl } from "../site-config";
 import "./negocios.css";
 import "./business-landing.css";
@@ -150,242 +153,129 @@ export default function MerchantLandingPage() {
             </div>
           </section>
 
-          <section className="business-next" aria-labelledby="next-title">
-            <div className="business-next-copy">
-              <h2 id="next-title">
-                La primera visita <em>es solo el comienzo.</em>
-              </h2>
-              <p>
-                Con CheckPass, puedes invitar nuevos clientes y premiar su
-                regreso con beneficios en tus propios programas de lealtad.
-              </p>
-            </div>
-            <div className="business-visit-journey">
-              <div className="business-visit-step">
-                <span className="business-visit-icon">
-                  <Shop aria-hidden="true" />
-                </span>
-                <h3>Invita a nuevos clientes</h3>
-                <p>Llega a personas que están cerca de tu negocio.</p>
-              </div>
-              <div className="business-visit-step">
-                <span className="business-visit-icon">
-                  <Star aria-hidden="true" />
-                </span>
-                <h3>Premia su regreso</h3>
-                <p>Crea beneficios que motiven a volver.</p>
-              </div>
-            </div>
-          </section>
-
           <section
-            className="section network-section"
+            className="barrio-network"
             id="red"
             aria-labelledby="network-title"
           >
-            <div className="feature-layout">
-              <div className="feature-copy">
-                <h2 id="network-title">
-                  Tu próximo cliente compra cerca.{" "}
-                  <em>Invítalo a conocerte.</em>
-                </h2>
-                <p className="feature-lede">
-                  Con Venta cruzada, una persona que compra en otro comercio
-                  cercano puede recibir un beneficio de tu negocio. Tú eliges
-                  qué ofrecer para darle un motivo para entrar.
-                </p>
-                <ul className="feature-list">
-                  <li>
-                    <span aria-hidden="true">
-                      <ArrowUpRight className="landing-icon" />
-                    </span>
-                    <div>
-                      <strong>Un beneficio que invita a conocerte</strong>
-                      <p>
-                        Un regalo de bienvenida puede ser el primer paso. El
-                        cliente recibe la invitación en su teléfono y decide
-                        cuándo visitar tu local.
-                      </p>
-                    </div>
+            <NeighborhoodScene />
+            <div className="barrio-copy">
+              <h2 id="network-title">
+                Tu próximo cliente <em>compra cerca.</em>
+              </h2>
+              <p>
+                Una persona que compra en otro comercio cercano puede recibir un
+                beneficio de tu negocio. Tú eliges qué ofrecer y sus
+                condiciones.
+              </p>
+              <ul className="barrio-benefits">
+                {[
+                  "Beneficios para conocer tu local",
+                  "Campañas con tus condiciones",
+                  "Invitaciones automáticas",
+                ].map((benefit) => (
+                  <li key={benefit}>
+                    <Check aria-hidden="true" />
+                    {benefit}
                   </li>
-                  <li>
-                    <span aria-hidden="true">
-                      <ArrowUpRight className="landing-icon" />
-                    </span>
-                    <div>
-                      <strong>Tu campaña, con tus condiciones</strong>
-                      <p>
-                        Elige el beneficio y configura la campaña. CheckPass
-                        entrega las invitaciones automáticamente cuando se
-                        cumplen sus condiciones.
-                      </p>
-                    </div>
-                  </li>
-                  <li>
-                    <span aria-hidden="true">
-                      <ArrowUpRight className="landing-icon" />
-                    </span>
-                    <div>
-                      <strong>Más oportunidades en tu barrio</strong>
-                      <p>
-                        Con la campaña de Venta cruzada, una persona que compra
-                        en otro comercio cercano puede recibir un regalo tuyo y
-                        un motivo para visitar tu local.
-                      </p>
-                    </div>
-                  </li>
-                </ul>
-              </div>
-              <NetworkPreview />
-            </div>
-            <div className="start-actions">
-              <SignupLink label="Pruébalo gratis 3 meses" />
-              <p>Todo incluido durante la prueba.</p>
-            </div>
-            <div className="section-more section-more-left">
-              <a className="text-link" href="/marketing-para-comercios">
-                Descubre cómo funciona el marketing para tu negocio <Arrow />
+                ))}
+              </ul>
+              <a className="barrio-more" href="/marketing-para-comercios">
+                Conoce Venta cruzada <Arrow />
               </a>
             </div>
           </section>
 
           <section
-            className="section loyalty-section"
+            className="barrio-loyalty"
             id="programa"
             aria-labelledby="loyalty-title"
           >
-            <div className="section-heading">
+            <RewardScene />
+            <div className="barrio-copy">
               <h2 id="loyalty-title">
-                Dales un motivo para volver a <em>elegirte.</em>
+                Dales razones <em>para volver.</em>
               </h2>
               <p>
-                Tus clientes se unen con el QR de tu local. Sus compras o las
-                acciones que definas en el programa les permiten acumular puntos
-                o sellos y canjear tus recompensas cuando cumplen sus
-                condiciones.
+                Tus clientes se unen con el QR. Acumulan puntos o sellos con las
+                compras o acciones de tu programa y canjean el premio cuando
+                cumplen sus condiciones.
               </p>
-            </div>
-            <LoyaltyJourney />
-            <div className="section-more">
-              <a className="text-link" href="/programa-de-fidelizacion">
+              <a className="barrio-more" href="/programa-de-fidelizacion">
                 Descubre el programa de recompensas para tu negocio <Arrow />
               </a>
             </div>
           </section>
 
           <section
-            className="feature-section"
+            className="barrio-service"
             id="beneficios"
-            aria-labelledby="benefits-title"
+            aria-labelledby="pos-title"
           >
-            <div className="feature-layout">
-              <div className="feature-copy">
-                <h2 id="benefits-title">
-                  Dedica menos tiempo a cobrar y más a <em>tus clientes.</em>
-                </h2>
-                <p className="feature-lede">
-                  Un sistema de punto de venta en tu teléfono para gestionar tu
-                  catálogo, tomar pedidos y cobrar. Con el programa de
-                  fidelización integrado, también puedes reconocer a tus
-                  clientes y premiarlos al atenderlos.
-                </p>
-                <ul className="feature-list">
-                  <li>
-                    <span aria-hidden="true">
-                      <ArrowUpRight className="landing-icon" />
-                    </span>
-                    <div>
-                      <strong>Tu catálogo listo con ayuda de IA</strong>
-                      <p>
-                        Carga una foto o un PDF de tu menú y usa la IA para
-                        preparar tu catálogo de productos.
-                      </p>
-                    </div>
-                  </li>
-                  <li>
-                    <span aria-hidden="true">
-                      <ArrowUpRight className="landing-icon" />
-                    </span>
-                    <div>
-                      <strong>De la mesa al cobro, desde tu teléfono</strong>
-                      <p>
-                        Crea y administra las mesas de tu local, toma pedidos y
-                        cobra. También puedes imprimir tickets por Bluetooth con
-                        una impresora y un dispositivo compatibles.
-                      </p>
-                    </div>
-                  </li>
-                  <li>
-                    <span aria-hidden="true">
-                      <ArrowUpRight className="landing-icon" />
-                    </span>
-                    <div>
-                      <strong>Cobra y recompensa en el mismo lugar</strong>
-                      <p>
-                        Escanea el pase para identificar al cliente, suma puntos
-                        o sellos por su compra y canjea sus premios.
-                      </p>
-                    </div>
-                  </li>
-                </ul>
-              </div>
-              <DashboardPreview />
-            </div>
-            <div className="start-actions">
-              <SignupLink label="Pruébalo gratis 3 meses" />
-              <p>Todo incluido durante la prueba.</p>
-            </div>
-            <div className="section-more section-more-left">
-              <a className="text-link" href="/punto-de-venta">
-                Descubre el punto de venta para tu negocio <Arrow />
+            <ServiceScene />
+            <div className="barrio-copy">
+              <h2 id="pos-title">
+                Atiende, cobra
+                <br />y recompensa.
+              </h2>
+              <p>
+                Toma pedidos y cobra desde tu teléfono. Identifica al cliente
+                con su pase y suma o canjea sus recompensas al atenderlo.
+              </p>
+              <a className="barrio-more" href="/punto-de-venta">
+                Conoce el punto de venta <Arrow />
               </a>
             </div>
           </section>
 
           <section
-            className="section intro-section"
+            className="barrio-start"
             id="como-funciona"
-            aria-labelledby="how-title"
+            aria-labelledby="start-title"
           >
-            <div className="section-heading">
-              <h2 id="how-title">
-                Prepara tu negocio e invita a <em>tu primer cliente.</em>
+            <div>
+              <h2 id="start-title">
+                Empieza con tu <em>primer cliente.</em>
               </h2>
-              <p>
-                Configura lo que necesitas para empezar. Puedes sumar las demás
-                herramientas a medida que las necesites.
-              </p>
+              <p>Configura tu negocio y empieza a invitar a nuevos clientes.</p>
             </div>
-            <div className="steps">
-              <article>
-                <span className="step-number">01</span>
-                <h3>Prepara tu local</h3>
-                <p>
-                  Completa los datos de tu negocio. Añade productos y mesas si
-                  vas a usar el punto de venta.
-                </p>
-              </article>
-              <article>
-                <span className="step-number">02</span>
-                <h3>Activa tu programa</h3>
-                <p>Elige puntos o sellos y el premio que ofrecerás.</p>
-              </article>
-              <article>
-                <span className="step-number">03</span>
-                <h3>Invita a tu primer cliente</h3>
-                <p>Comparte el QR de tu local para que se una a tu programa.</p>
-              </article>
-            </div>
-            <div className="start-actions">
-              <SignupLink label="Pruébalo gratis 3 meses" />
-              <p>Todo incluido durante la prueba.</p>
-            </div>
+            <ol className="barrio-steps">
+              {[
+                {
+                  title: "Prepara tu local",
+                  text: "Completa los datos de tu negocio.",
+                  Icon: Shop,
+                },
+                {
+                  title: "Activa tu programa",
+                  text: "Elige puntos o sellos y el premio.",
+                  Icon: Gift,
+                },
+                {
+                  title: "Invita a tu primer cliente",
+                  text: "Comparte el QR de tu local.",
+                  Icon: Send,
+                },
+              ].map(({ title, text, Icon }, index) => (
+                <li key={title}>
+                  <span className="barrio-step-number">{index + 1}</span>
+                  <Icon className="barrio-step-icon" aria-hidden="true" />
+                  <h3>{title}</h3>
+                  <p>{text}</p>
+                  {index < 2 && (
+                    <ArrowRight
+                      className="barrio-step-arrow"
+                      aria-hidden="true"
+                    />
+                  )}
+                </li>
+              ))}
+            </ol>
           </section>
-
-          <ClosingSections showEyebrows={false} />
+          <BusinessClosingSections />
         </main>
 
-        <LandingFooter showPhotoCredit={false} />
+        <LandingFooter showPhotoCredit={false} compact />
       </div>
     </>
   );

@@ -60,7 +60,11 @@ Las superficies actuales del código local incluyen:
 - `/negocios`: landing comercial independiente centrada en atraer nuevos clientes,
   motivar su regreso y facilitar la atención. El hero integra texto y acciones
   dentro de una escena ilustrativa; siguen marketing, fidelización, POS, inicio,
-  planes y preguntas.
+  planes y preguntas. El cuerpo sigue «El barrio conectado»: mapa e invitación,
+  QR y recompensa sobre mesa, escena de atención con paneles POS, inicio y planes
+  compactos. Las cinco FAQ conservan la información comercial en sus respuestas.
+  Por decisión del owner, /negocios no lleva etiquetas «ejemplo»; las burbujas
+  de comercios son rectángulos completos con icono al costado del texto.
 - `/programa-de-fidelizacion`, `/marketing-para-comercios` y `/punto-de-venta`:
   explicación de las herramientas para comercios.
 - `/explorar` y `/lugares/[slug]`: descubrimiento y fichas ilustrativas para

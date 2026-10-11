@@ -1,4 +1,4 @@
-import { ArrowRight, ArrowUpRight, Check, Plus } from "iconoir-react";
+import { ArrowRight, ArrowUpRight, Check, Plus, Coins } from "iconoir-react";
 import { onboardingUrl } from "../site-config";
 import { BrandMark } from "../brand-mark";
 
@@ -284,23 +284,148 @@ export function ClosingSections({
   );
 }
 
+export function BusinessClosingSections() {
+  const plans = [
+    {
+      name: "Conecta",
+      price: 20,
+      items: [
+        "1 local",
+        "Puntos y sellos",
+        "Bienvenida y Venta cruzada",
+        "POS, catálogo con IA, mesas y pedidos",
+      ],
+    },
+    {
+      name: "Impulso",
+      price: 45,
+      items: [
+        "Hasta 3 locales",
+        "Todo lo de Conecta",
+        "Campañas avanzadas",
+        "Cashback próximamente",
+      ],
+    },
+  ];
+  const businessFaqs = [
+    {
+      question: faqs[0].question,
+      answer: `${faqs[0].answer} ${faqs[2].answer}`,
+    },
+    faqs[1],
+    faqs[3],
+    {
+      question: faqs[4].question,
+      answer: `${faqs[4].answer.replace("Por ejemplo, un café al completar seis visitas o un regalo de bienvenida.", "Puedes ofrecer un café al completar cinco compras o un regalo de bienvenida.")} ${faqs[5].answer.replace("Por ejemplo, después de visitar una peluquería,", "Después de comprar en una peluquería,")} ${faqs[6].answer}`,
+    },
+    {
+      question: faqs[8].question,
+      answer: `${faqs[8].answer} ${faqs[7].answer}`,
+    },
+  ];
+  return (
+    <>
+      <section
+        className="barrio-plans"
+        id="planes"
+        aria-labelledby="plans-title"
+      >
+        <div className="barrio-plan-layout">
+          <div className="barrio-plan-heading">
+            <h2 id="plans-title">
+              Planes <em>para hacer crecer tu negocio.</em>
+            </h2>
+            <p>Todo incluido durante la prueba.</p>
+          </div>
+          {plans.map((plan) => (
+            <article
+              className={`plan-card barrio-plan ${plan.name === "Impulso" ? "barrio-plan-plus" : ""}`}
+              key={plan.name}
+            >
+              <h3>{plan.name}</h3>
+              <p className="barrio-plan-price">
+                <strong>${plan.price}</strong> <span>USD / mes**</span>
+              </p>
+              <ul>
+                {plan.items.map((item) => (
+                  <li key={item}>
+                    <Check aria-hidden="true" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </article>
+          ))}
+          <aside className="barrio-independent">
+            <Coins aria-hidden="true" />
+            <h3>Cada negocio tiene su programa.</h3>
+            <p>Los puntos y sellos se canjean solo allí.</p>
+          </aside>
+        </div>
+        <div className="barrio-plan-notes">
+          <p>
+            Ambos planes incluyen ficha pública y avisos al teléfono de tus
+            clientes*.
+          </p>
+          <p>
+            * Las notificaciones push no tienen límites actualmente. Los límites
+            pueden cambiar según el tipo de cuenta.
+          </p>
+          <p>Local adicional: $12 USD / mes**.</p>
+          <p>
+            ** Precio referencial. Los precios y condiciones definitivos se
+            mostrarán antes de contratar.
+          </p>
+        </div>
+      </section>
+      <section
+        className="barrio-faq"
+        id="preguntas"
+        aria-labelledby="faq-title"
+      >
+        <h2 id="faq-title">Preguntas frecuentes</h2>
+        <div className="barrio-faq-list">
+          {businessFaqs.map((faq) => (
+            <details key={faq.question}>
+              <summary>
+                {faq.question}
+                <Plus aria-hidden="true" />
+              </summary>
+              <p>{faq.answer}</p>
+            </details>
+          ))}
+        </div>
+      </section>
+      <section className="barrio-final" aria-labelledby="final-title">
+        <div>
+          <h2 id="final-title">Pruébalo gratis 3 meses.</h2>
+          <p>Invita a nuevos clientes y dales motivos para volver.</p>
+        </div>
+        <SignupLink label="Pruébalo gratis 3 meses" />
+      </section>
+    </>
+  );
+}
+
 export function LandingFooter({
   showPhotoCredit = true,
+  compact = false,
 }: {
   showPhotoCredit?: boolean;
+  compact?: boolean;
 }) {
   return (
-    <footer className="site-footer">
+    <footer className={`site-footer ${compact ? "barrio-footer" : ""}`}>
       <a className="brand" href="/" aria-label="CheckPass Club, inicio">
         <BrandMark />
         <span className="brand-name">
           checkpass<span>.</span>club
         </span>
       </a>
-      <p>Más clientes nuevos. Más razones para volver.</p>
+      {!compact && <p>Más clientes nuevos. Más razones para volver.</p>}
       <div>
-        <a href="/explorar">Explorar la ciudad</a>
-        <a href="/negocios#como-funciona">Cómo empezar</a>
+        {!compact && <a href="/explorar">Explorar la ciudad</a>}
+        {!compact && <a href="/negocios#como-funciona">Cómo empezar</a>}
         <a href="/negocios#planes">Planes</a>
         <a href="/negocios#preguntas">Preguntas</a>
         <a href="/es/privacy">Privacidad</a>

@@ -25,6 +25,8 @@ FINISH: Revisiones reales 1536,1440 y390 claro/oscuro, tipos/lint/build y E2E es
 
 ## Ampliación elegida el 2026-10-11
 
-El owner selecciona «El barrio conectado» para rediseñar todo el cuerpo. Referencia: .impeccable/mocks/completa/barrio-sin-etiquetas.png (variante de barrio.png con las retiradas de texto solicitadas). Mapa de comercios e invitación → QR y premio sobre mesa → escena de atención y paneles POS → inicio compacto → planes → FAQ → cierre verde. La selección no acepta el cuerpo antiguo de0198. Implementación y QA del cuerpo pendientes.
+El owner selecciona «El barrio conectado» para rediseñar todo el cuerpo. Referencia: .impeccable/mocks/completa/barrio-burbujas-integradas.png (variante de barrio.png con las retiradas de texto solicitadas). Mapa de comercios e invitación → QR y premio sobre mesa → escena de atención y paneles POS → inicio compacto → planes → FAQ → cierre verde. La selección no acepta el cuerpo antiguo de0198. Cuerpo implementado localmente con escenas nuevas y cinco FAQ agrupadas sin perder información. QA owner pendiente.
 
 Copy: retirar toda mención visible de «ejemplo», sustituir «Café de ejemplo» por «Café» y eliminar avisos «Ejemplo ilustrativo», incluidos sus fondos. No extender el cambio a la home. Conservar condiciones comerciales y no añadir afirmaciones de participación real.
+
+Verificación0199: tipos/lint/formato/build0, landing9/9, capturas1440/390 claro/oscuro vistas sin overflow. Comp-diff76% drift, diferencias de posiciones y cierre pendientes de aceptación del ensamblado. Recibo real de recursos aprobado; helper plates abierto por stale tras mediciones tipográficas, sin recibos inventados ni force.

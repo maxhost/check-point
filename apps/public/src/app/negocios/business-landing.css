@@ -608,3 +608,889 @@
     border-color: var(--orange);
   }
 }
+
+/* El barrio conectado: full-page composition from the approved commercial comp. */
+.business-shell {
+  --barrio-accent: #b1351c;
+}
+.business-shell main > section {
+  scroll-margin-top: 24px;
+}
+.business-shell main h2 {
+  font-size: clamp(32px, 4.12vw, 64px);
+  line-height: 1.04;
+  margin: 0 0 22px;
+}
+.business-shell main h2 em {
+  display: block;
+  font-style: normal;
+  color: var(--barrio-accent);
+}
+.barrio-network,
+.barrio-loyalty,
+.barrio-service {
+  position: relative;
+  isolation: isolate;
+}
+.barrio-network {
+  min-height: 52.9vw;
+}
+.barrio-loyalty {
+  min-height: 44.2vw;
+}
+.barrio-map,
+.barrio-reward {
+  margin: 0;
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+}
+.barrio-map img,
+.barrio-reward img {
+  object-fit: cover;
+}
+.barrio-copy {
+  position: relative;
+  width: 36%;
+  padding: 6.5vw 0 4vw 5%;
+}
+.barrio-copy p {
+  margin: 0;
+  color: var(--muted);
+  font-size: clamp(17px, 1.85vw, 28px);
+  line-height: 1.4;
+}
+.barrio-benefits {
+  padding: 0;
+  margin: 28px 0 0;
+  list-style: none;
+  display: grid;
+  gap: 20px;
+  font-size: clamp(15px, 1.6vw, 24px);
+}
+.barrio-benefits li {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+.barrio-benefits svg {
+  width: 30px;
+  height: 30px;
+  padding: 6px;
+  background: #15483e;
+  color: white;
+  border-radius: 50%;
+  flex: none;
+}
+.barrio-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: clamp(14px, 1.35vw, 20px);
+  margin-top: 24px;
+  text-decoration: underline;
+  text-underline-offset: 5px;
+  line-height: 1.4;
+}
+.barrio-more svg {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+.barrio-shop,
+.barrio-invitation {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #fffdf7;
+  color: #102c2a;
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 4px 18px #153b2914;
+  font-size: clamp(12px, 1.45vw, 21px);
+  line-height: 1.2;
+}
+.barrio-shop svg {
+  width: clamp(22px, 3vw, 38px);
+  height: clamp(22px, 3vw, 38px);
+  color: #28594a;
+  flex: none;
+}
+.barrio-shop span {
+  font-weight: 700;
+}
+.barrio-bakery {
+  left: 52%;
+  top: 13%;
+}
+.barrio-bookshop {
+  right: 3%;
+  top: 13%;
+}
+.barrio-cafe {
+  left: 63.5%;
+  top: 57.5%;
+}
+.barrio-florist {
+  left: 33%;
+  top: 74%;
+}
+.barrio-invitation {
+  left: 67%;
+  top: 33.5%;
+  padding: 18px;
+  align-items: flex-start;
+  width: 27%;
+  font-size: clamp(12px, 1.5vw, 22px);
+}
+.barrio-invitation > svg {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  color: var(--barrio-accent);
+}
+.barrio-invitation p {
+  margin: 0;
+}
+.barrio-invitation strong {
+  display: block;
+  color: var(--barrio-accent);
+  font-weight: 500;
+}
+.barrio-loyalty .barrio-copy {
+  padding-top: 4vw;
+}
+.barrio-reward::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, #fae6d1e8, #fae6d1c9 28%, transparent 40%);
+}
+.barrio-loyalty .barrio-copy {
+  color: #102c2a;
+}
+.barrio-loyalty .barrio-copy p {
+  color: #465749;
+}
+.barrio-service {
+  background: #103b33;
+  color: #fffdf7;
+  min-height: 44.9vw;
+}
+.barrio-service .barrio-copy {
+  padding-top: 5.6vw;
+}
+.barrio-service .barrio-copy p {
+  color: #d4e4da;
+}
+.barrio-service-visual {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+}
+.barrio-attention {
+  position: absolute;
+  inset: 0 0 0 63.3%;
+  margin: 0;
+}
+.barrio-attention img {
+  object-fit: cover;
+}
+.barrio-attention::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, #103b33, transparent 15%);
+}
+.barrio-pos-panels {
+  list-style: none;
+  position: absolute;
+  left: 36.8%;
+  top: 7%;
+  width: 24.3%;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 12px;
+  color: #102c2a;
+  font-size: clamp(12px, 1.5vw, 22px);
+}
+.barrio-pos-panels > li {
+  background: #fffdf7;
+  border-radius: 8px;
+  padding: 15px;
+  position: relative;
+}
+.barrio-pos-panels h3 {
+  font-size: inherit;
+  line-height: 1.3;
+  margin: 0 0 16px;
+  letter-spacing: -0.025em;
+}
+.barrio-pos-panels svg {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  color: #28594a;
+}
+.barrio-order > div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-block: 16px;
+}
+.barrio-order b {
+  margin-left: auto;
+  font-size: 0.9em;
+}
+.barrio-order > p {
+  margin: 22px 0 0;
+  border-top: 1px solid #dce2d9;
+  padding-top: 15px;
+  display: flex;
+  justify-content: space-between;
+}
+.barrio-pos-panels strong {
+  font-variant-numeric: tabular-nums;
+}
+.barrio-customer > div,
+.barrio-redeem > div {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.barrio-customer p,
+.barrio-redeem p {
+  margin: 0;
+  line-height: 1.3;
+  flex: 1;
+}
+.barrio-customer span {
+  display: block;
+  font-size: 0.8em;
+  color: #52635b;
+}
+.barrio-redeem svg {
+  color: var(--barrio-accent);
+  width: 42px;
+  height: 42px;
+}
+.barrio-charge {
+  display: block;
+  background: #15483e;
+  color: white;
+  padding: 7px 12px;
+  border-radius: 4px;
+  margin-top: 7px;
+  font-size: 0.9em;
+  text-align: center;
+}
+.barrio-order::after,
+.barrio-customer::after {
+  content: "";
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  width: 36px;
+  height: 90%;
+  border: 1px solid #d4e4da;
+  border-left: 0;
+  border-radius: 0 7px 7px 0;
+}
+.barrio-start {
+  display: grid;
+  grid-template-columns: 32% 1fr;
+  gap: 3%;
+  padding: 3.8vw 5%;
+  background: var(--business-wash);
+}
+.barrio-start p,
+.barrio-plan-heading p {
+  color: var(--muted);
+  font-size: clamp(17px, 1.8vw, 26px);
+  margin: 0;
+  line-height: 1.35;
+}
+.barrio-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 30px;
+  text-align: center;
+}
+.barrio-steps li {
+  position: relative;
+}
+.barrio-step-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #15483e;
+  color: #fff;
+  margin: 0 auto 20px;
+}
+.barrio-step-icon {
+  display: block;
+  width: 52px;
+  height: 52px;
+  color: var(--barrio-accent);
+  margin: 0 auto 24px;
+}
+.barrio-steps h3 {
+  font-size: clamp(15px, 1.6vw, 24px);
+  line-height: 1.2;
+  margin: 0 0 10px;
+}
+.barrio-steps p {
+  font-size: clamp(14px, 1.5vw, 22px);
+}
+.barrio-step-arrow {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  top: 80px;
+  right: -25px;
+  color: var(--muted);
+}
+.barrio-plans {
+  padding: 4.2vw 5% 2.5vw;
+}
+.barrio-plan-layout {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 0.8fr;
+  gap: 16px;
+  align-items: stretch;
+}
+.business-shell .barrio-plan {
+  padding: 24px;
+  border: 1px solid #96b8b6;
+  border-radius: 8px;
+  background: transparent;
+}
+.business-shell .barrio-plan-plus {
+  border-color: #cc6d55;
+}
+.barrio-plan h3 {
+  font-size: clamp(22px, 2.3vw, 34px);
+  margin: 0 0 12px;
+}
+.business-shell .barrio-plan-price {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 0 0 22px;
+  color: var(--ink);
+}
+.barrio-plan-price strong {
+  font-size: clamp(30px, 3.1vw, 46px);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.barrio-plan-price span {
+  font-size: clamp(12px, 1.2vw, 18px);
+}
+.business-shell .barrio-plan ul {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  display: grid;
+  gap: 14px;
+}
+.business-shell .barrio-plan li {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  font-size: clamp(14px, 1.35vw, 20px);
+  line-height: 1.35;
+}
+.barrio-plan li svg {
+  width: 21px;
+  height: 21px;
+  color: #28594a;
+  flex: none;
+}
+.barrio-independent {
+  background: var(--business-wash);
+  padding: 24px 18px;
+  border-radius: 8px;
+}
+.barrio-independent > svg {
+  width: 54px;
+  height: 54px;
+  color: #28594a;
+  display: block;
+  margin: 8px auto 24px;
+}
+.barrio-independent h3 {
+  font-size: clamp(17px, 1.65vw, 24px);
+  line-height: 1.2;
+  margin: 0 0 15px;
+}
+.barrio-independent p {
+  font-size: clamp(15px, 1.4vw, 20px);
+  line-height: 1.35;
+  color: var(--muted);
+  margin: 0;
+}
+.barrio-plan-notes {
+  max-width: 900px;
+  margin: 20px auto 0;
+  text-align: center;
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+.barrio-plan-notes p {
+  margin: 6px 0;
+}
+.barrio-faq {
+  padding: 2vw 5% 3.5vw;
+}
+.business-shell .barrio-faq h2 {
+  font-size: clamp(30px, 3.2vw, 48px);
+}
+.barrio-faq-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 30px;
+  align-items: start;
+}
+.barrio-faq-list details {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--cream);
+}
+.barrio-faq-list summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  cursor: pointer;
+  padding: 18px;
+  list-style: none;
+  font-size: 17px;
+  line-height: 1.3;
+  min-height: 62px;
+}
+.barrio-faq-list summary::-webkit-details-marker {
+  display: none;
+}
+.barrio-faq-list summary svg {
+  width: 22px;
+  height: 22px;
+  flex: none;
+}
+.barrio-faq-list details[open] summary svg {
+  transform: rotate(45deg);
+}
+.barrio-faq-list details p {
+  margin: 0;
+  padding: 0 18px 20px;
+  color: var(--muted);
+  font-size: 17px;
+  line-height: 1.55;
+}
+.barrio-final {
+  background: #103b33;
+  color: #fffdf7;
+  margin: 0 5% 4vw;
+  padding: 32px 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+.business-shell .barrio-final h2 {
+  margin: 0 0 10px;
+  font-size: clamp(30px, 3.2vw, 48px);
+}
+.barrio-final p {
+  margin: 0;
+  color: #d4e4da;
+  font-size: clamp(17px, 1.8vw, 26px);
+  line-height: 1.4;
+}
+.business-shell .barrio-final .button {
+  background: #b1351c;
+  color: white;
+  white-space: nowrap;
+}
+.business-shell .barrio-footer {
+  padding: 30px 5%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+.barrio-footer > small {
+  width: 100%;
+  font-size: 12px;
+}
+.business-shell .barrio-footer .brand-name {
+  font-size: 25px;
+}
+.business-shell .barrio-footer .brand-mark {
+  width: 35px;
+  height: 35px;
+}
+.business-shell .barrio-footer > div {
+  margin: 0;
+}
+.business-shell a:focus-visible,
+.business-shell summary:focus-visible {
+  outline: 3px solid var(--orange);
+  outline-offset: 5px;
+}
+.business-shell ::selection {
+  background: #b1351c;
+  color: white;
+}
+@media (prefers-color-scheme: dark) {
+  .business-shell {
+    --barrio-accent: #e69a77;
+  }
+  .barrio-network .barrio-copy {
+    color: #102c2a;
+  }
+  .barrio-network .barrio-copy p {
+    color: #465749;
+  }
+  .barrio-network .barrio-copy em,
+  .barrio-loyalty .barrio-copy em {
+    color: #b1351c;
+  }
+  .barrio-invitation strong,
+  .barrio-invitation > svg,
+  .barrio-redeem > div > svg {
+    color: #b1351c;
+  }
+  .barrio-independent > svg,
+  .barrio-plan li svg {
+    color: #a2cebb;
+  }
+}
+@media (max-width: 1100px) and (min-width: 801px) {
+  .barrio-copy {
+    width: 37%;
+  }
+  .barrio-benefits {
+    gap: 12px;
+    margin-top: 20px;
+  }
+  .barrio-benefits svg {
+    width: 24px;
+    height: 24px;
+    padding: 4px;
+  }
+  .barrio-copy p {
+    font-size: 17px;
+  }
+  .barrio-more {
+    margin-top: 15px;
+  }
+  .barrio-pos-panels > li {
+    padding: 10px;
+  }
+  .barrio-pos-panels h3 {
+    margin-bottom: 8px;
+  }
+  .barrio-order > div {
+    margin-block: 10px;
+  }
+  .barrio-plan-layout {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+  .barrio-plan-heading {
+    grid-column: 1 / -1;
+    max-width: 650px;
+  }
+  .barrio-final {
+    flex-wrap: wrap;
+  }
+}
+@media (max-width: 800px) {
+  .business-shell main h2 {
+    font-size: 38px;
+  }
+  .barrio-network,
+  .barrio-loyalty,
+  .barrio-service {
+    min-height: 0;
+  }
+  .barrio-copy {
+    width: 100%;
+    padding: 40px 5% 30px;
+  }
+  .barrio-copy p {
+    font-size: 18px;
+    max-width: 520px;
+  }
+  .barrio-benefits {
+    font-size: 16px;
+    gap: 14px;
+  }
+  .barrio-more {
+    font-size: 15px;
+  }
+  .barrio-map {
+    position: relative;
+    aspect-ratio: 1.18;
+    margin-top: 0;
+    z-index: 0;
+  }
+  .barrio-network {
+    display: flex;
+    flex-direction: column-reverse;
+  }
+  .barrio-map img {
+    object-fit: cover;
+    object-position: right;
+  }
+  .barrio-network .barrio-copy {
+    color: var(--ink);
+    background: var(--cream);
+  }
+  .barrio-network .barrio-copy p {
+    color: var(--muted);
+  }
+  .barrio-network .barrio-copy em {
+    color: var(--barrio-accent);
+  }
+  .barrio-shop {
+    font-size: 12px;
+    padding: 8px;
+    gap: 6px;
+  }
+  .barrio-bakery {
+    left: 25%;
+    top: 10%;
+  }
+  .barrio-bookshop {
+    right: 2%;
+    top: 10%;
+  }
+  .barrio-cafe {
+    left: 46%;
+    top: 55%;
+  }
+  .barrio-florist {
+    left: 4%;
+    top: 78%;
+  }
+  .barrio-invitation {
+    left: 43%;
+    top: 26%;
+    width: 55%;
+    padding: 10px;
+    gap: 8px;
+    font-size: 12px;
+  }
+  .barrio-invitation > svg {
+    width: 25px;
+    height: 25px;
+  }
+  .barrio-loyalty {
+    padding-bottom: 260px;
+    background: #fae6d1;
+  }
+  .barrio-loyalty .barrio-copy {
+    padding: 40px 5% 28px;
+  }
+  .barrio-reward {
+    top: auto;
+    height: 260px;
+    z-index: 0;
+  }
+  .barrio-reward img {
+    object-position: right;
+  }
+  .barrio-reward::after {
+    background: linear-gradient(180deg, #fae6d1, transparent 20%);
+  }
+  .barrio-service .barrio-copy {
+    padding: 40px 5% 30px;
+  }
+  .barrio-service-visual {
+    position: relative;
+    height: 465px;
+    z-index: 0;
+  }
+  .barrio-attention {
+    left: 40%;
+  }
+  .barrio-pos-panels {
+    left: 5%;
+    width: 53%;
+    top: 6%;
+    font-size: 15px;
+    gap: 10px;
+  }
+  .barrio-pos-panels > li {
+    padding: 12px;
+  }
+  .barrio-pos-panels h3 {
+    margin-bottom: 10px;
+  }
+  .barrio-order > div {
+    gap: 6px;
+    margin-block: 12px;
+  }
+  .barrio-pos-panels svg {
+    width: 23px;
+    height: 23px;
+  }
+  .barrio-order > p {
+    margin-top: 12px;
+    padding-top: 12px;
+  }
+  .barrio-order::after,
+  .barrio-customer::after {
+    width: 20px;
+  }
+  .barrio-start {
+    grid-template-columns: 1fr;
+    padding: 40px 5%;
+    gap: 32px;
+  }
+  .barrio-start p {
+    font-size: 18px;
+  }
+  .barrio-steps {
+    grid-template-columns: 1fr;
+    text-align: left;
+    gap: 26px;
+  }
+  .barrio-steps li {
+    padding-left: 75px;
+    min-height: 70px;
+  }
+  .barrio-step-number {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 24px;
+    height: 24px;
+    font-size: 13px;
+    margin: 0;
+  }
+  .barrio-step-icon {
+    position: absolute;
+    left: 28px;
+    top: 0;
+    width: 32px;
+    height: 32px;
+    margin: 0;
+  }
+  .barrio-steps h3 {
+    font-size: 19px;
+  }
+  .barrio-steps p {
+    font-size: 16px;
+  }
+  .barrio-step-arrow {
+    display: none;
+  }
+  .barrio-plans {
+    padding: 40px 5% 24px;
+  }
+  .barrio-plan-layout {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+  .barrio-plan h3 {
+    font-size: 27px;
+  }
+  .barrio-plan li,
+  .barrio-independent p {
+    font-size: 17px;
+  }
+  .barrio-plan-price strong {
+    font-size: 40px;
+  }
+  .barrio-plan-price span {
+    font-size: 16px;
+  }
+  .barrio-independent {
+    padding: 22px;
+  }
+  .barrio-independent > svg {
+    float: left;
+    margin: 0 18px 20px 0;
+  }
+  .barrio-independent h3 {
+    font-size: 21px;
+  }
+  .barrio-plan-notes {
+    text-align: left;
+    font-size: 13px;
+  }
+  .barrio-faq {
+    padding: 24px 5% 36px;
+  }
+  .barrio-faq-list {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .barrio-faq-list summary {
+    font-size: 16px;
+    padding: 16px;
+  }
+  .barrio-final {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 26px 22px;
+    margin-bottom: 32px;
+  }
+  .barrio-final p {
+    font-size: 18px;
+  }
+  .business-shell .barrio-final .button {
+    justify-content: center;
+    white-space: normal;
+  }
+  .business-shell .barrio-footer {
+    align-items: flex-start;
+    padding-block: 24px;
+  }
+}
+@media (min-width: 801px) {
+  .business-shell .barrio-network h2 {
+    font-size: clamp(32px, 3.7vw, 58px);
+  }
+}
+@media (max-width: 800px) {
+  .barrio-service {
+    display: flex;
+    flex-direction: column;
+  }
+  .barrio-service > .barrio-copy {
+    order: -1;
+  }
+}
+/* Compact plans and five FAQ entries, as in the selected full-page layout. */
+.business-shell .barrio-plan ul {
+  border: 0;
+  min-height: 0;
+  flex-grow: 0;
+}
+.business-shell .barrio-plan li {
+  margin-bottom: 0;
+}
+@media (min-width: 801px) {
+  .business-shell .barrio-plan-heading h2 {
+    font-size: clamp(32px, 3.65vw, 56px);
+  }
+  .barrio-faq {
+    padding-top: 1vw;
+    padding-bottom: 2vw;
+  }
+}

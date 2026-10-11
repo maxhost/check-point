@@ -23,10 +23,10 @@ Fuera: publicación, home, páginas de producto, API, kit, precios o funcionalid
 
 ## Diseño
 
-Contrato visual: `apps/public/.impeccable/mocks/completa/barrio-sin-etiquetas.png`. Arial, crema, verde profundo, terracota y hero aprobado se conservan.
+Contrato visual: `apps/public/.impeccable/mocks/completa/barrio-burbujas-integradas.png`. Arial, crema, verde profundo, terracota y hero aprobado se conservan.
 
 1. Hero aprobado, burbuja Café, sin aviso ilustrativo.
-2. #red: Tu próximo cliente compra cerca. Mapa del barrio, comercios genéricos y beneficio tras una compra. Tres beneficios: conocer tu local, condiciones propias, invitaciones automáticas. Enlace informativo a marketing conservado.
+2. #red: Tu próximo cliente compra cerca. Mapa del barrio, comercios genéricos y beneficio tras una compra. Etiquetas de Librería, Café y Floristería: una burbuja rectangular completa, icono al costado del texto, sin saliente inferior (nota de revisión del owner). Tres beneficios: conocer tu local, condiciones propias, invitaciones automáticas. Enlace informativo a marketing conservado.
 3. #programa: Dales razones para volver. Escena de mesa con QR y premio. Compras o acciones acumulan puntos/sellos; canje bajo condiciones. Texto y controles HTML; recursos fotográficos separados. Enlace al programa conservado.
 4. #beneficios: Atiende, cobra y recompensa. Fondo verde, escena de atención con tablet y tres paneles HTML de pedido, identificación y recompensa. Precios demostrativos café $3, croissant $2, total $5. Sin controles de operación fingidamente clicables; enlace al producto.
 5. #como-funciona: Empieza con tu primer cliente. Prepara tu local / completa datos; Activa tu programa / puntos o sellos y premio; Invita a tu primer cliente / comparte el QR.
@@ -52,9 +52,9 @@ No disjunta de0198 y páginas0191–0193: estilos específicos y variantes opt-i
 
 ## Definition of Done
 
-- [ ] Typecheck, ESLint y formato públicos con Node24 salida0; diffcheck0.
-- [ ] Suite landing específica a390/1440 claro/oscuro: imágenes cargadas, navegación, FAQ, CTA, condiciones y ausencia de ejemplo en texto de /negocios; home conserva contrato anterior.
-- [ ] Build public salida0 y capturas desktop/mobile vistas, sin overflow ni pageerrors.
+- [x] Typecheck, ESLint y formato públicos con Node24 salida0; diffcheck0.
+- [x] Suite landing específica a390/1440 claro/oscuro: imágenes cargadas, navegación, FAQ, CTA, condiciones y ausencia de ejemplo en texto de /negocios; home conserva contrato anterior.
+- [x] Build public salida0 y capturas desktop/mobile vistas, sin overflow ni pageerrors.
 - [ ] Comparación real con comp elegido y documentación de diferencias; QA owner del ensamblado pendiente hasta respuesta.
 
 L2: sin subagentes, adversariales o verify global; este último al paso live ADR0128/0129. Reserva local previa al código. Barrido previo confirmó0199 libre y símbolos afectados. Plan y recursos definitivos se revisan conforme Impeccable antes de app code.
@@ -74,3 +74,13 @@ Un implementador; revisión inline declarada, sin revisor independiente por ADR0
 ## Abierto
 
 Sin decisión de producto pendiente. Selección confirmada; revisión concreta de recursos y verificación pendientes.
+
+## Verificación local — 2026-10-11
+
+Recursos y plan aprobados en revisión local revision3cc9cc3c35f01b29749200b09ec171d295fa84016018e2a74d0f4436513cd873, más confirmación «aprobado» en chat. Corrección solicitada de burbujas integrada en referencia nueva y HTML.
+
+Node24: tipos, ESLint y formato públicos salida0; landing9/9 en10.5s; build final0 (`/private/tmp/0199-build-final.log`). Capturas1440/390 claro/oscuro vistas; sin overflow/pageerrors. Numeración y diffcheck0. Tres recursos con prompt embebido, scan3/3 sin faltantes. Revisión inline por ADR0129.
+
+Comparación automática76% drift: mundo, secuencia y todas las escenas presentes. Se corrigieron encabezado de mapa, orden móvil y planes/FAQ compactos. Diferencias aún medidas en posición/tamaño de burbujas, paneles y cierre; hechos comerciales y enlaces específicos conservados amplían el bloque final. No afirmar igualdad pixel a pixel.
+
+Helper Impeccable permanece en plates: medir tipografía después de la aprobación alteró el hash de spec y dejó su recibo stale, aunque la aprobación real de los recursos está registrada. No se fabrica un recibo ni se fuerza gate. `finish ship` fue rechazado por fases abiertas. QA owner del ensamblado y cierre del workflow pendientes; código disponible localmente, sin publicación.
