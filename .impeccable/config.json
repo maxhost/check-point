@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "arial",
+        "files": [
+          "apps/public/src/app/negocios/business-landing.css"
+        ],
+        "createdAt": "2026-10-11T17:50:02.230Z",
+        "reason": "Owner approved the Functional prototype and closed its design on 2026-10-11. Preserve its Arial typography; evidence: apps/public/DESIGN.md and spec0200."
+      }
+    ]
+  }
+}

@@ -46,6 +46,14 @@ CI main VERDE4c40a6a comprobado al inicio. Sin push/merge/deploy ni verify globa
 No publicar sin autorización expresa; otras páginas se revisan cuando owner lo pida.
 Cambios ajenos Claude preservados, archivos de instalación/helpers excluidos.
 
+Triage hook posterior: Arial aprobado conservado. Excepción persistida únicamente
+para overused-font=arial en apps/public/src/app/negocios/business-landing.css,
+config compartida raíz .impeccable/config.json. Scan confirmó0 overused-font;
+45 advisory de escala/paleta estática quedan como observaciones, sin convertir
+valores sobreescritos ni variantes oscuras en regresiones. No ampliar alcance.
+Sidecar refrescado desde DESIGN.md después de la corrección documental;
+tokens/componentes conservados, generatedAt actualizado. Sin cambio visual.
+
 ## HISTÓRICO — 0199 IMPLEMENTADA LOCAL; QA OWNER DEL ENSAMBLADO PENDIENTE (2026-10-11)
 
 Implementación local9f4e3c5. El barrio conectado elegido y confirmado por owner.
