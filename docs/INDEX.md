@@ -416,3 +416,4 @@ técnica, Definition of Done y plan de pruebas antes de que su estado pase a `ce
 
 | 0194 | 2026-10-10 | Noindex en pantallas merchant y consumer; admin coordinado con Claude. | cerrada | si | `specs/0194-noindex-apps-privadas.md` |
 | 0196 | 2026-10-10 | UI de cobro, prueba y bloqueo: U1–U3 del contrato 0189. | implementada local; 18/18 E2E específicos, QA owner y gate E2E general pendientes | no | `specs/0196-ui-cobro-prueba-y-bloqueo.md` |
+| 0197 | 2026-10-10 | Home explicativa para consumidores y landing comercial en /negocios. | cerrada; brief y composición confirmados, implementación pendiente | no | `specs/0197-home-consumidores-y-landing-negocios.md` |
