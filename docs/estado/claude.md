@@ -36,7 +36,8 @@ la 0195), pedido del owner: se encarga cuando GPT termine lo suyo.
    `tools/dev-local/up.sh`; noindex del panel (spec 0194 de GPT lo pide).
 2. Salir a live (todo con OK del owner): precios live + `STRIPE_PRICE_*_LIVE` en Vercel (owner), proyecto Vercel
    `admin.checkpass.club`, snapshot + migraciones 0069/0070/0071, `merge --ff-only dev` a `main`, probar local, push.
-3. Siguiente funcionalidad elegida por el owner: el **reporte de retorno / analitica** (valor percibido).
+3. Siguiente funcionalidad elegida por el owner: el **reporte de retorno / analitica** (valor percibido). Se trabaja
+   JUNTO al owner (exploracion de datos antes de decidir); insumo: `docs/analisis-producto-2026-10-10.md`.
 
 **Hallazgo a decidir (owner):** la landing de GPT (`closing-sections.tsx`) muestra Impulso a $45 y «local adicional
 $12»; Stripe y el ADR 0134 dicen $49 y sin local adicional.
