@@ -30,7 +30,7 @@ const table = (page: Page) =>
 
 test("abrir/cerrar no escribe; cambios persisten al recargar y ambas opciones pueden apagarse", async ({
   page,
-}) => {
+}, testInfo) => {
   await setup(page);
   let saved = { showBusinessName: true, showTable: true };
   const bodies: unknown[] = [];
@@ -48,7 +48,9 @@ test("abrir/cerrar no escribe; cambios persisten al recargar y ambas opciones pu
   await expect(expand(page)).toBeChecked();
   await expect(name(page)).toBeChecked();
   await page.waitForTimeout(300); // Let the kit switch transition settle for the capture.
-  await page.screenshot({ path: "/private/tmp/0186-configuracion-mobile.png" });
+  await page.screenshot({
+    path: testInfo.outputPath("0186-configuracion-mobile.png"),
+  });
   await expand(page).locator("xpath=ancestor::label").click();
   expect(bodies).toEqual([]);
   await expand(page).locator("xpath=ancestor::label").click();
@@ -75,7 +77,7 @@ test("abrir/cerrar no escribe; cambios persisten al recargar y ambas opciones pu
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.waitForTimeout(300); // Capture the settled toggle, not its animation.
   await page.screenshot({
-    path: "/private/tmp/0186-configuracion-desktop.png",
+    path: testInfo.outputPath("0186-configuracion-desktop.png"),
   });
 });
 

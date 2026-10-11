@@ -98,7 +98,7 @@ for (const width of [390, 1440]) {
         "Atrae nuevos clientes y dales motivos para volver.",
       );
       await expect(page).toHaveTitle(
-        /Fidelización, marketing y punto de venta | CheckPass Club/,
+        /Fidelización, marketing y punto de venta \| CheckPass Club/,
       );
       await expect(
         page.getByText("Descubre el programa de recompensas para tu negocio"),
@@ -189,7 +189,10 @@ for (const width of [390, 1440]) {
       await page.locator(".plans-section").screenshot({
         path: testInfo.outputPath(`planes-${width}-${colorScheme}.png`),
       });
-      await page.getByRole("link", { name: "Cómo empezar" }).click();
+      await page
+        .locator("#contenido")
+        .getByRole("link", { name: "Cómo empezar" })
+        .click();
       await expect(page).toHaveURL(/#como-funciona$/);
       await expect(
         page.getByRole("heading", { name: "Prepara tu local" }),
