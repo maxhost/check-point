@@ -10,37 +10,35 @@
 > pantalla. El auto-reporte no es evidencia.
 
 
-## ⇥ ESTADO (2026-10-10) — 0189 EN `dev`; 0190 (PANEL) Y 0195 (VENCIMIENTO) EN RAMAS; PROD sin cambios
 
-**En PROD:** sin cambios, `main` = `origin/main` = `9405c93`. **Migraciones 0069, 0070 y 0071 NO aplicadas en PROD.**
+## ⇥ ESTADO (2026-10-10) — 0190, 0195 Y 0196 MERGEADAS EN `dev` (`6fdb336`); SALIDA A LIVE EN CURSO; PROD sin cambios
 
-**En `dev` (sin pushear):** spec 0189 (planes pagos, prueba 90 dias; merge `327016f`), ADR 0135 + spec 0190 (docs
-`77514b7`), tunel `dev-admin.checkpass.club` (`280e6c5`). Stripe test: los 4 precios verificados contra la API
-(20/200 Conecta, 49/490 Impulso, USD, sin prueba propia) y `STRIPE_ENVIRONMENT`/clave/webhook presentes en el
-`.env.local` del merchant (owner 2026-10-10).
+**En PROD:** sin cambios, `main` = `origin/main` = `9405c93` (CI de `main` ROJO por `/private/tmp` en e2e, ya
+corregido en `dev` por GPT `da78bbc`). **Migraciones 0069, 0070 y 0071 NO aplicadas en PROD.**
 
-**Ramas sin mergear (worktrees en `check-point-wt/`):**
-- `spec-0190` (`cdb3ec9`): panel de plataforma `apps/platform`, migracion 0070. Implementada y verificada; login por el
-  tunel probado por el owner («ok, funciona»). Bloqueo del merge a `dev`: GPT tiene `pnpm-lock.yaml` sin commitear en
-  el arbol principal y esta rama tambien lo cambia.
-- `spec-0195` (`e33a3cf`, sobre `spec-0190` por la 0070): ADR 0136 + vencimiento del saldo, migracion 0071. Unit 23/23,
-  Neon 5/5, M1–M3 ROJAS por la propiedad y revertidas; `pnpm verify` verde salvo `format:check` (7 archivos propios,
-  formateados y re-chequeados despues). Mergear DESPUES de `spec-0190`.
-- `spec-0189`: ya mergeada; worktree a borrar.
+**En `dev` (sin pushear), todo commiteado:** 0189 (planes pagos), merge `964cc18` spec 0190 (panel de plataforma),
+merge `5fbdec7` spec 0195 (vencimiento; conflicto solo en `PARQUEADO.md`, resuelto), `6fdb336` `apps/platform/vercel.json`.
+De GPT: landing + paginas SEO 0191–0194 (`60590de`, e2e corregido en `da78bbc`; `landing.spec.ts` 4/4 verde contra
+:3003) y UI de cobro 0196 = U1–U3 (`8611689`; contrato revisado contra las rutas `checkout`/`plan`/`resume`).
 
-**UI pendiente para GPT:** `docs/PARQUEADO.md` §«UI pendiente para GPT» (U1–U3 cobro de la 0189, U4–U6 vencimiento de
-la 0195), pedido del owner: se encarga cuando GPT termine lo suyo.
+**Salida a live (owner 2026-10-10: «esperamos a GPT y hacemos todo el merge a main»):**
+1. `pnpm verify` completo en `dev` — CORRIENDO al escribir esto (log en scratchpad de la sesion); resultado sin ver.
+   Para correrlo se apagaron los dev servers 3200/3201/3002/3003 (`/entorno-local arrancar` los levanta).
+2. Migraciones 0069/0070/0071: probar en la base local (`tools/local-db`), snapshot de PROD, `pnpm db:migrate:prod`,
+   huellas (runbook `docs/runbooks/migrar-prod.md` §3) — con OK del owner en ese momento.
+3. `merge --ff-only dev` a `main`, owner prueba `main` en local, push con su OK.
+4. Owner crea el proyecto Vercel del panel desde GitHub (raiz `apps/platform`, dominio `admin.checkpass.club`).
+   Variables que lee: `DATABASE_URL`, `PLATFORM_AUTH_SECRET`, `PLATFORM_AUTH_URL`, `PLATFORM_ADMIN_EMAILS`,
+   `EMAIL_PROVIDER`, `EMAIL_FROM`, `RESEND_API_KEY`.
 
-**QUE SIGUE:**
-1. Cuando GPT commitee `pnpm-lock.yaml`: merge `spec-0190` y despues `spec-0195` a `dev`; sumar platform a
-   `tools/dev-local/up.sh`; noindex del panel (spec 0194 de GPT lo pide).
-2. Salir a live (todo con OK del owner): precios live + `STRIPE_PRICE_*_LIVE` en Vercel (owner), proyecto Vercel
-   `admin.checkpass.club`, snapshot + migraciones 0069/0070/0071, `merge --ff-only dev` a `main`, probar local, push.
-3. Siguiente funcionalidad elegida por el owner: el **reporte de retorno / analitica** (valor percibido). Se trabaja
-   JUNTO al owner (exploracion de datos antes de decidir); insumo: `docs/analisis-producto-2026-10-10.md`.
+**Verificado:** Vercel `check-point-merchant` tiene los 8 `STRIPE_PRICE_*` (los `BASE_*` solo en production); el owner
+dice que Stripe live esta completo.
 
-**Hallazgo a decidir (owner):** la landing de GPT (`closing-sections.tsx`) muestra Impulso a $45 y «local adicional
-$12»; Stripe y el ADR 0134 dicen $49 y sin local adicional.
+**Siguiente funcionalidad:** reporte de retorno. Inventario de datos hecho (`docs/analisis-producto-2026-10-10.md`
+§Inventario: PROD tiene 0 clientes/ventas; escaneos no se guardan como evento; holdout solo en push). Pregunta abierta
+al owner: registrar cada escaneo como evento.
 
-**Decisiones del owner, no volver a preguntar:** ADR 0134, 0135 y 0136 (2026-10-10).
+**Pendiente de GPT:** U4–U6 (vencimiento, spec 0195 §D6), API ya en `dev`.
 
+**Decisiones del owner, no volver a preguntar:** ADR 0134, 0135, 0136 (2026-10-10). Precio de la landing (Impulso
+$45 y «local adicional $12», distinto de Stripe $49): «dejalo asi» (2026-10-10).
