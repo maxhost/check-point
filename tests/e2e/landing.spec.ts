@@ -501,6 +501,102 @@ for (const width of [390, 1440]) {
   }
 }
 
+for (const width of [390, 1440]) {
+  for (const colorScheme of ["light", "dark"] as const) {
+    test(`fidelización ${width}px ${colorScheme}: reglas, previsión y autonomía`, async ({
+      page,
+    }) => {
+      const errors: string[] = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      await page.setViewportSize({ width, height: 960 });
+      await page.emulateMedia({ colorScheme, reducedMotion: "reduce" });
+      const response = await page.goto(
+        `${landingURL}/programa-de-fidelizacion`,
+      );
+      expect(response?.status()).toBe(200);
+      await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+      await expect(page.getByRole("heading", { level: 1 })).toContainText(
+        "Puntos o sellos",
+      );
+      expect(
+        await page
+          .locator("#program-title")
+          .evaluate((e) => getComputedStyle(e).fontFamily),
+      ).toMatch(/^Arial/);
+      await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+        "href",
+        /\/programa-de-fidelizacion$/,
+      );
+      await page
+        .getByRole("link", { name: "Cómo funciona", exact: true })
+        .click();
+      await expect(page).toHaveURL(/#tu-programa$/);
+      await expect(page.locator("#story-title")).toBeInViewport();
+      await expect(page.locator(".program-modes")).toContainText(
+        "Por compra o por importe consumido",
+      );
+      await expect(page.locator(".program-modes")).toContainText(
+        "cuántos vale cada recompensa",
+      );
+      await expect(page.locator(".program-stamps")).toHaveAccessibleName(
+        "3 de 6 sellos acumulados",
+      );
+      const forecast = page.getByRole("figure", {
+        name: "Comparación ilustrativa de consumo y precio de venta del premio",
+      });
+      await expect(forecast).toContainText("$30");
+      await expect(forecast).toContainText("$3");
+      await expect(forecast).toContainText("Precio de venta");
+      await expect(forecast).not.toContainText("$27");
+      await expect(forecast).not.toContainText("quedan");
+      await expect(page.locator(".program-history")).toContainText(
+        "Productos habituales en Mostrador",
+      );
+      await expect(page.locator(".program-account-map")).toContainText(
+        "no se mezclan",
+      );
+      await expect(page.locator(".program-assurances")).toContainText(
+        "Otros comercios no ven su actividad",
+      );
+      await expect(page.locator(".program-future")).toContainText(
+        "Próximamente",
+      );
+      await expect(page.locator("details")).toHaveCount(7);
+      await page
+        .getByText("¿Qué me dice la previsión?", { exact: true })
+        .click();
+      await expect(page.locator("details[open]")).toContainText(
+        "no predice ventas futuras ni calcula el margen",
+      );
+      await page
+        .getByText("¿Está disponible el cashback?", { exact: true })
+        .click();
+      await expect(page.locator("details[open]").last()).toContainText(
+        "Todavía no",
+      );
+      for (const link of await page
+        .getByRole("link", { name: /^Pruébalo gratis/ })
+        .all()) {
+        await expect(link).toHaveAttribute(
+          "href",
+          /^https?:\/\/.+\/onboarding$/,
+        );
+      }
+      await expect(
+        page.getByRole("link", { name: "Consulta los planes", exact: true }),
+      ).toHaveAttribute("href", "/negocios#planes");
+      await expect
+        .poll(() =>
+          page.evaluate(
+            () => document.documentElement.scrollWidth <= innerWidth,
+          ),
+        )
+        .toBe(true);
+      expect(errors).toEqual([]);
+    });
+  }
+}
+
 test("0197: enlaces entre audiencias, fichas y sitemap", async ({
   page,
   request,

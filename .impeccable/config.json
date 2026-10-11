@@ -29,6 +29,15 @@
         ],
         "createdAt": "2026-10-11T18:56:27.095Z",
         "reason": "Owner pidió adoptar en marketing la filosofía Funcional aprobada en negocios; se conserva su tipografía Arial documentada en DESIGN.md y spec0203."
+      },
+      {
+        "rule": "overused-font",
+        "value": "arial",
+        "files": [
+          "apps/public/src/app/programa-de-fidelizacion/programa.css"
+        ],
+        "createdAt": "2026-10-11T23:43:24.397Z",
+        "reason": "Owner pidió aplicar en fidelización la filosofía Funcional aprobada en negocios y marketing; se conserva Arial de DESIGN.md y spec0204."
       }
     ]
   }

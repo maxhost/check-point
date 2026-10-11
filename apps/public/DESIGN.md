@@ -96,8 +96,9 @@ contenido y FAQ. El header y el hero de consumidores son una excepción aprobada
 se conservan exactamente con sus estilos, imagen y notificaciones anteriores.
 La spec0203 adopta Funcional en `/marketing-para-comercios`: mensajes centrados
 en atraer clientes y promover el regreso, campañas por audiencia y demostraciones
-de condición y beneficio. Fidelización y punto de venta conservan sus estilos
-anteriores. Esta guía no sustituye el kit de `apps/merchant`.
+de condición y beneficio. La spec0204 adopta Funcional en fidelización: reglas
+de acumulación explícitas, previsión sin promesas de ganancia, historial útil y
+programas independientes. Punto de venta conserva sus estilos anteriores. Esta guía no sustituye el kit de `apps/merchant`.
 
 ## Colors
 

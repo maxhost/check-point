@@ -431,4 +431,4 @@ técnica, Definition of Done y plan de pruebas antes de que su estado pase a `ce
 
 | 0203 | 2026-10-11 | Marketing Funcional: estructura, demostraciones y copy para comerciantes. | implementada local; build y13/13 E2E, QA owner pendiente | no | `specs/0203-marketing-funcional-y-copy.md` |
 
-| 0204 | 2026-10-11 | Fidelización Funcional con mensajes de recompensas, previsión e historial. | cerrada; implementación local autorizada | no | `specs/0204-fidelizacion-funcional-y-copy.md` |
+| 0204 | 2026-10-11 | Fidelización Funcional con mensajes de recompensas, previsión e historial. | implementada local; build y17/17 E2E, QA owner pendiente | no | `specs/0204-fidelizacion-funcional-y-copy.md` |

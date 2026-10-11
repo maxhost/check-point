@@ -3,7 +3,6 @@ import {
   ArrowRight,
   ArrowUpRight,
   Check,
-  Circle,
   CoffeeCup,
   Gift,
   Plus,
@@ -13,12 +12,11 @@ import {
 import { BrandMark } from "../brand-mark";
 import { LandingFooter } from "../negocios/closing-sections";
 import { onboardingUrl, siteUrl } from "../site-config";
-import "../negocios/negocios.css";
 import "./programa.css";
 
 const title = "Programa de fidelización para comercios de barrio | CheckPass";
 const description =
-  "Conoce mejor a tus clientes con un programa de puntos o sellos. Define tus reglas, revisa el valor de las recompensas y registra la actividad de tu negocio.";
+  "Dales motivos para volver con puntos o sellos. Elige recompensas, revisa las reglas antes de activar y consulta las compras y canjes de tus clientes.";
 
 export const metadata: Metadata = {
   title,
@@ -37,7 +35,7 @@ export const metadata: Metadata = {
 
 const faqs = [
   {
-    question: "¿Puedo usar el programa sin el punto de venta de CheckPass?",
+    question: "¿Necesito usar el punto de venta?",
     answer:
       "Sí. Usa el mostrador para identificar al cliente con su pase, acreditar compras y confirmar canjes. No necesitas gestionar pedidos ni mesas para tener tu programa de fidelización.",
   },
@@ -47,7 +45,7 @@ const faqs = [
       "Defines las reglas de acumulación de tu programa y las recompensas. Puedes establecer cuánto debe consumir un cliente para acumular puntos o sellos. En sellos también puedes elegir la acumulación por compra. Antes de activar, revisa el consumo o las compras necesarias para alcanzar cada premio.",
   },
   {
-    question: "¿La previsión me dice cuánto voy a ganar?",
+    question: "¿Qué me dice la previsión?",
     answer:
       "Te muestra el consumo necesario para conseguir una recompensa y, cuando el premio es un producto del catálogo con precio, lo compara con su precio de venta. Si entregas sellos por compra, muestra cuántas compras hacen falta. Es una referencia basada en tus reglas: no predice ventas futuras ni calcula el margen después de costos y gastos.",
   },
@@ -91,15 +89,13 @@ export default function LoyaltyProgramPage() {
       <a className="skip-link" href="#contenido">
         Saltar al contenido
       </a>
-      <div className="site-shell program-page">
+      <div className="program-page">
         <header className="site-header">
           <a className="brand" href="/" aria-label="CheckPass Club, inicio">
             <BrandMark />
-            <span className="brand-name">
-              checkpass<span>.</span>club
-            </span>
+            <span className="brand-name">checkpass.club</span>
           </a>
-          <nav className="desktop-nav" aria-label="Navegación principal">
+          <nav className="desktop-nav" aria-label="Navegación de fidelización">
             <a href="#tu-programa">Tu programa</a>
             <a href="#prevision">Previsión</a>
             <a href="/negocios#planes">Planes</a>
@@ -107,66 +103,60 @@ export default function LoyaltyProgramPage() {
           </nav>
           <a className="header-cta" href={onboardingUrl}>
             Pruébalo gratis
-            <ArrowUpRight className="landing-icon" aria-hidden="true" />
+            <ArrowUpRight aria-hidden="true" />
           </a>
         </header>
-
         <main id="contenido">
-          <section className="hero" aria-labelledby="program-title">
+          <section className="program-hero" aria-labelledby="program-title">
             <div className="hero-copy">
-              <span className="eyebrow">
-                FIDELIZACIÓN PARA COMERCIOS DE BARRIO
-              </span>
               <h1 id="program-title">
-                Conoce mejor a quienes <em>vuelven a tu negocio.</em>
+                Puntos o sellos. <em>Motivos para volver.</em>
               </h1>
               <p className="hero-lede">
-                Un programa de puntos o sellos para tu negocio de barrio. Tú
-                defines las recompensas; CheckPass registra las compras y los
-                canjes para ayudarte a conocer a tus clientes y atenderlos
-                mejor.
+                Premia las compras de tus clientes con un programa propio. Tú
+                eliges las reglas y las recompensas; tu equipo registra las
+                compras y confirma los canjes en CheckPass.
               </p>
               <div className="hero-actions">
                 <SignupLink />
                 <a className="text-link" href="#tu-programa">
                   Cómo funciona
-                  <ArrowRight className="landing-icon" aria-hidden="true" />
+                  <ArrowRight aria-hidden="true" />
                 </a>
               </div>
-              <p className="program-origin">
-                Acercamos a los comercios de barrio herramientas que suelen
-                tener las grandes cadenas, a un precio accesible.
+              <p className="hero-assurance">
+                <Check aria-hidden="true" />
+                Todo incluido durante la prueba de tres meses.
               </p>
-              <p className="hero-assurance">Todo incluido durante la prueba</p>
             </div>
-            <figure className="program-activity">
-              <ol className="program-activity-grid">
-                <li className="program-activity-join">
-                  <div className="program-join-visual" aria-hidden="true">
-                    <QrCode />
-                    <User />
-                  </div>
+            <figure
+              className="program-activity"
+              aria-label="Recorrido de un cliente en tu programa"
+            >
+              <figcaption>De la primera compra a su recompensa.</figcaption>
+              <ol className="program-activity-list">
+                <li>
+                  <QrCode aria-hidden="true" />
                   <div>
-                    <span className="program-activity-number">01</span>
-                    <h3>Se une a tu programa</h3>
-                    <p>El cliente escanea el QR de tu local.</p>
+                    <h3>Se une con tu QR</h3>
+                    <p>Escanea el QR del local y se inscribe en tu programa.</p>
                   </div>
                 </li>
-                <li className="program-activity-earn">
-                  <span className="program-activity-number">02</span>
-                  <div className="program-earn-visual" aria-hidden="true">
-                    <Circle />
-                    <Circle />
-                    <Circle />
+                <li>
+                  <CoffeeCup aria-hidden="true" />
+                  <div>
+                    <h3>Compra y acumula</h3>
+                    <p>
+                      Tu equipo registra la compra y acredita puntos o sellos.
+                    </p>
                   </div>
-                  <h3>Compra y avanza</h3>
-                  <p>Tu equipo registra la compra y entrega puntos o sellos.</p>
                 </li>
-                <li className="program-activity-redeem">
-                  <span className="program-activity-number">03</span>
-                  <Gift className="program-gift-visual" aria-hidden="true" />
-                  <h3>Disfruta su premio</h3>
-                  <p>Tu equipo entrega la recompensa y confirma el canje.</p>
+                <li>
+                  <Gift aria-hidden="true" />
+                  <div>
+                    <h3>Canjea su recompensa</h3>
+                    <p>Tu equipo entrega el premio y confirma el canje.</p>
+                  </div>
                 </li>
               </ol>
             </figure>
@@ -177,14 +167,13 @@ export default function LoyaltyProgramPage() {
             id="tu-programa"
             aria-labelledby="story-title"
           >
-            <span className="kicker">DEL CARTÓN A LA INFORMACIÓN</span>
             <h2 id="story-title">
-              Del cartón de sellos a <em>un historial que puedes consultar.</em>
+              Más que una <em>tarjeta de sellos.</em>
             </h2>
             <p>
-              Una tarjeta de sellos da motivos para volver, pero es difícil
-              saber cómo la usan. Con CheckPass, las compras, la acumulación y
-              los canjes que registras quedan conectados con cada cliente.
+              Las compras, los puntos o sellos y los canjes que registras quedan
+              conectados con cada cliente. Puedes consultar ese historial para
+              conocer cómo usa tu programa.
             </p>
           </section>
 
@@ -192,25 +181,34 @@ export default function LoyaltyProgramPage() {
             className="section program-split"
             aria-labelledby="rules-title"
           >
-            <div className="feature-copy">
-              <span className="kicker">TUS REGLAS, TUS RECOMPENSAS</span>
+            <div>
               <h2 id="rules-title">
-                Tú decides cómo se gana <em>cada recompensa.</em>
+                Tus reglas. <em>Tus recompensas.</em>
               </h2>
-              <p className="feature-lede">
-                Elige puntos o sellos. Define cómo se acumulan y qué recompensas
-                pueden canjear tus clientes.
-              </p>
               <p>
-                En sellos, puedes elegir la acumulación por compra o por importe
-                consumido. En puntos, defines cuántos entrega cada importe y
-                cuántos vale cada premio.
+                Elige cómo se acumula y qué premio puede conseguir tu cliente.
               </p>
+              <dl className="program-modes">
+                <div>
+                  <dt>Sellos</dt>
+                  <dd>
+                    Por compra o por importe consumido. Tú defines cuántos hacen
+                    falta para el premio.
+                  </dd>
+                </div>
+                <div>
+                  <dt>Puntos</dt>
+                  <dd>
+                    Por importe consumido. Tú defines cuántos se entregan y
+                    cuántos vale cada recompensa.
+                  </dd>
+                </div>
+              </dl>
               <p className="program-future">
                 <strong>Cashback · Próximamente</strong>
                 <br />
-                Una parte del consumo convertida en saldo para usar en tu
-                negocio. Previsto para Impulso.
+                Previsto para Impulso: una parte del consumo en saldo para usar
+                en tu negocio.
               </p>
             </div>
             <figure
@@ -218,169 +216,171 @@ export default function LoyaltyProgramPage() {
               aria-label="Ejemplos de recompensas con sellos y puntos"
             >
               <div className="program-rule">
-                <span className="kicker">SELLOS</span>
+                <strong>Sellos</strong>
                 <div
                   className="program-stamps"
+                  role="img"
                   aria-label="3 de 6 sellos acumulados"
                 >
                   {Array.from({ length: 6 }, (_, i) => (
-                    <Circle
+                    <span
                       key={i}
                       className={
                         i < 3 ? "program-stamp filled" : "program-stamp"
                       }
-                      aria-hidden="true"
                     />
                   ))}
                 </div>
                 <p className="program-rule-summary">
-                  6 sellos <ArrowRight aria-hidden="true" />
-                  <CoffeeCup aria-hidden="true" /> un café
+                  6 sellos
+                  <ArrowRight aria-hidden="true" />
+                  <CoffeeCup aria-hidden="true" />
+                  un café
                 </p>
               </div>
               <div className="program-rule">
-                <span className="kicker">PUNTOS</span>
+                <strong>Puntos</strong>
                 <div className="program-points-exchange">
-                  <strong>
-                    30 <span>puntos</span>
-                  </strong>
+                  <span>
+                    <b>30</b> puntos
+                  </span>
                   <ArrowRight aria-hidden="true" />
-                  <div>
+                  <span>
                     <CoffeeCup aria-hidden="true" />
-                    <span>Un café</span>
-                  </div>
+                    Un café
+                  </span>
                 </div>
               </div>
             </figure>
           </section>
 
           <section
-            className="feature-section program-forecast"
+            className="section program-split"
             id="prevision"
             aria-labelledby="forecast-title"
           >
-            <div className="program-forecast-inner">
-              <div className="section-heading">
-                <span className="kicker">ANTES DE ACTIVAR</span>
-                <h2 id="forecast-title">
-                  Revisa los números antes de <em>ofrecer el premio.</em>
-                </h2>
-                <p>
-                  Revisa cuánto debe consumir un cliente para alcanzar cada
-                  premio. Ajusta las reglas de acumulación o las recompensas
-                  antes de activar tu programa.
-                </p>
-              </div>
-              <figure className="program-calculation">
-                <div className="program-calculation-values">
-                  <div>
-                    <strong>$30</strong>
-                    <span>de consumo necesario</span>
-                  </div>
-                  <ArrowRight
-                    className="program-calculation-arrow"
-                    aria-hidden="true"
-                  />
-                  <div>
-                    <strong>$3</strong>
-                    <span>de valor del premio</span>
-                  </div>
-                </div>
-                <p className="program-ratio">
-                  Por cada canje, quedan <strong>$27</strong> después de
-                  descontar el valor del premio.
-                </p>
-              </figure>
+            <div>
+              <h2 id="forecast-title">
+                Revisa las reglas <em>antes de activar.</em>
+              </h2>
+              <p>
+                Consulta cuánto debe consumir el cliente para alcanzar un premio
+                y compáralo con el precio de venta de la recompensa. Ajusta tu
+                programa antes de ofrecerlo.
+              </p>
+              <p>
+                Si entregas sellos por compra, la previsión muestra cuántas
+                compras hacen falta.
+              </p>
             </div>
+            <figure
+              className="program-calculation"
+              aria-label="Comparación ilustrativa de consumo y precio de venta del premio"
+            >
+              <figcaption>Consumo y recompensa, en perspectiva.</figcaption>
+              <dl>
+                <div>
+                  <dt>Consumo necesario para alcanzar el premio</dt>
+                  <dd>$30</dd>
+                </div>
+                <div>
+                  <dt>Precio de venta del premio</dt>
+                  <dd>$3</dd>
+                </div>
+              </dl>
+              <p>
+                Comparación ilustrativa. Los valores dependen de las reglas que
+                elijas.
+              </p>
+            </figure>
           </section>
 
           <section
             className="section program-split"
             aria-labelledby="history-title"
           >
-            <div className="feature-copy">
-              <span className="kicker">INFORMACIÓN PARA ATENDER MEJOR</span>
+            <div>
               <h2 id="history-title">
-                Consulta su historial y <em>atiéndelos más rápido.</em>
+                Reconoce sus compras. <em>Atiende mejor su próxima visita.</em>
               </h2>
-              <p className="feature-lede">
-                Identifica al cliente con su pase para consultar sus compras,
-                puntos y canjes. En Mostrador, encuentra los productos que
-                compró antes para registrar su próxima compra más rápido.
-              </p>
               <p>
-                Usa ese historial como referencia para revisar tu oferta y las
-                recompensas de tu programa.
+                Identifica al cliente con su pase y consulta sus compras, puntos
+                y canjes. En Mostrador, encuentra los productos que compró antes
+                para registrar su siguiente compra más rápido.
               </p>
               <a className="text-link" href="/punto-de-venta">
                 Conoce las herramientas de atención
-                <ArrowRight className="landing-icon" aria-hidden="true" />
+                <ArrowRight aria-hidden="true" />
               </a>
             </div>
             <figure
               className="program-history"
-              aria-label="Pase ilustrativo con QR para identificar al cliente y consultar su historial"
+              aria-label="Ilustración de identificación con pase y consulta de historial"
             >
               <div className="program-scene-pass">
                 <BrandMark />
-                <span>Su pase</span>
+                <strong>Su pase</strong>
                 <QrCode aria-hidden="true" />
+              </div>
+              <div className="program-history-info">
+                <h3>Su historial, a mano.</h3>
+                <ul>
+                  <li>Compras registradas</li>
+                  <li>Puntos o sellos acumulados</li>
+                  <li>Recompensas canjeadas</li>
+                </ul>
+                <p>Productos habituales en Mostrador.</p>
               </div>
             </figure>
           </section>
 
-          <section className="feature-section" aria-labelledby="account-title">
-            <div className="feature-layout program-account-layout">
-              <div className="feature-copy">
-                <span className="kicker">
-                  UNA CUENTA, PROGRAMAS INDEPENDIENTES
-                </span>
-                <h2 id="account-title">
-                  Tus clientes usan una sola cuenta.{" "}
-                  <em>Cada negocio mantiene su programa.</em>
-                </h2>
-                <p className="feature-lede">
-                  Escanean el QR de tu local y se identifican con Google o
-                  Apple, sin un formulario largo ni descargar una app. Si ya
-                  usan CheckPass, se unen sin crear otra cuenta.
-                </p>
-                <ul className="program-assurances">
-                  <li>
-                    <Check aria-hidden="true" />
-                    <span>Tus puntos y sellos se canjean contigo.</span>
-                  </li>
-                  <li>
-                    <Check aria-hidden="true" />
-                    <span>
-                      Otros comercios no ven su actividad en tu negocio.
-                    </span>
-                  </li>
-                </ul>
-              </div>
-              <figure className="program-account-map">
-                <div className="program-account-person">
-                  <User aria-hidden="true" />
+          <section
+            className="section program-split"
+            aria-labelledby="account-title"
+          >
+            <div>
+              <h2 id="account-title">
+                Un solo pase. <em>Tu programa sigue siendo tuyo.</em>
+              </h2>
+              <p>
+                El cliente escanea tu QR y se identifica con Google o Apple, sin
+                descargar una app. Si ya usa CheckPass, se une sin crear otra
+                cuenta.
+              </p>
+              <ul className="program-assurances">
+                <li>
+                  <Check aria-hidden="true" />
+                  <span>Tus puntos y sellos se canjean en tu negocio.</span>
+                </li>
+                <li>
+                  <Check aria-hidden="true" />
+                  <span>Otros comercios no ven su actividad contigo.</span>
+                </li>
+              </ul>
+            </div>
+            <figure
+              className="program-account-map"
+              aria-label="Ejemplo de una cuenta con saldos separados por negocio"
+            >
+              <figcaption>
+                <User aria-hidden="true" />
+                <div>
                   <strong>Una cuenta de Ana</strong>
                   <span>Un solo pase CheckPass</span>
                 </div>
-                <div className="program-account-branches" aria-hidden="true" />
-                <div className="program-businesses">
-                  <div>
-                    <span>Tu cafetería</span>
-                    <strong>4 sellos</strong>
-                    <p>Para tus recompensas</p>
-                  </div>
-                  <div>
-                    <span>Gimnasio</span>
-                    <strong>120 puntos</strong>
-                    <p>Para sus recompensas</p>
-                  </div>
+              </figcaption>
+              <dl>
+                <div>
+                  <dt>Tu cafetería</dt>
+                  <dd>4 sellos</dd>
                 </div>
-                <p className="program-separation">
-                  Los saldos de los programas no se mezclan.
-                </p>
-              </figure>
-            </div>
+                <div>
+                  <dt>Gimnasio</dt>
+                  <dd>120 puntos</dd>
+                </div>
+              </dl>
+              <p>Los saldos de los programas no se mezclan.</p>
+            </figure>
           </section>
 
           <section
@@ -389,9 +389,8 @@ export default function LoyaltyProgramPage() {
             aria-labelledby="faq-title"
           >
             <div>
-              <span className="kicker">PREGUNTAS FRECUENTES</span>
               <h2 id="faq-title">
-                Los detalles de <em>tu programa.</em>
+                Antes de empezar <em>tu programa.</em>
               </h2>
             </div>
             <div className="faq-list">
@@ -399,34 +398,29 @@ export default function LoyaltyProgramPage() {
                 <details key={faq.question}>
                   <summary>
                     {faq.question}
-                    <Plus className="landing-icon" aria-hidden="true" />
+                    <Plus aria-hidden="true" />
                   </summary>
                   <p>{faq.answer}</p>
                 </details>
               ))}
             </div>
           </section>
-
           <section className="final-cta" aria-labelledby="final-title">
-            <span className="kicker">FIDELIZACIÓN EN TU DÍA A DÍA</span>
-            <h2 id="final-title">
-              Prueba tu programa con tus clientes <em>durante tres meses.</em>
-            </h2>
-            <p>
-              Define tus recompensas, invita a tus clientes y empieza a
-              registrar la actividad de tu programa. Tienes tres meses gratis
-              para probar CheckPass con tu equipo.
-            </p>
-            <SignupLink light />
-            <div className="section-more">
+            <div>
+              <h2 id="final-title">Pruébalo con tus clientes.</h2>
+              <p>
+                Define tus recompensas y registra las primeras compras. Tienes
+                tres meses gratis para probar CheckPass con tu equipo.
+              </p>
               <a className="text-link" href="/negocios#planes">
                 Consulta los planes
-                <ArrowRight className="landing-icon" aria-hidden="true" />
+                <ArrowRight aria-hidden="true" />
               </a>
             </div>
+            <SignupLink light />
           </section>
         </main>
-        <LandingFooter showPhotoCredit={false} />
+        <LandingFooter showPhotoCredit={false} compact />
       </div>
     </>
   );

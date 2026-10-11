@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-11T18:56:25.946167+00:00",
+  "generatedAt": "2026-10-11T23:38:50.792336+00:00",
   "title": "Design System: CheckPass Club",
   "extensions": {
     "colorMeta": {
@@ -145,7 +145,12 @@
       },
       {
         "name": "Marketing para comercios",
-        "body": "La spec0203 adopta Funcional en /marketing-para-comercios: mensajes centrados en atraer clientes y promover el regreso, campañas por audiencia y demostraciones de condición y beneficio. Fidelización y punto de venta conservan sus estilos anteriores.",
+        "body": "La spec0203 adopta Funcional en /marketing-para-comercios: mensajes centrados en atraer clientes y promover el regreso, campañas por audiencia y demostraciones de condición y beneficio. Punto de venta conserva sus estilos anteriores.",
+        "section": "layout"
+      },
+      {
+        "name": "Programa de fidelización",
+        "body": "La spec0204 adopta Funcional en fidelización: reglas de acumulación explícitas, previsión sin promesas de ganancia, historial útil y programas independientes. Punto de venta conserva sus estilos anteriores.",
         "section": "layout"
       }
     ],

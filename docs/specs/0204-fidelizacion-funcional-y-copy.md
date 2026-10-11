@@ -1,7 +1,7 @@
 ---
 spec: 0204
 fecha: 2026-10-11
-estado: cerrada
+estado: implementada
 resumen: Fidelización Funcional con copy claro de recompensas, previsión e historial.
 disjunta: no
 archivos: apps/public/src/app/programa-de-fidelizacion/page.tsx, apps/public/src/app/programa-de-fidelizacion/programa.css, apps/public/DESIGN.md, apps/public/PRODUCT.md, apps/public/.impeccable/design.json, tests/e2e/landing.spec.ts
@@ -36,11 +36,11 @@ Los seis archivos del frontmatter, esta spec/INDEX y estado GPT al cerrar. No di
 
 ## Definition of Done
 
-- [ ] Typecheck público, ESLint específico, formato y diffcheck salida0.
-- [ ] E2E landing con casos fidelización: reglas, previsión sin ganancia ficticia, independencia de saldos/datos, cashback pendiente, FAQ, CTA y SEO; home/negocios/marketing conservados.
-- [ ] Build público salida0.
-- [ ] Capturas1440/390 claro/oscuro y320/768 claro vistas: sin overflow ni errores JS, anclas válidas, teclado. Fuente/tamaño y cierre aislados de globals.
-- [ ] DESIGN/PRODUCT y sidecar registran adopción. Informe inline con hallazgos corregidos, evidencia y límites.
+- [x] Typecheck público, ESLint específico, formato y diffcheck salida0.
+- [x] E2E landing con casos fidelización: reglas, previsión sin ganancia ficticia, independencia de saldos/datos, cashback pendiente, FAQ, CTA y SEO; home/negocios/marketing conservados.
+- [x] Build público salida0.
+- [x] Capturas1440/390 claro/oscuro y320/768 claro vistas: sin overflow ni errores JS, anclas válidas, teclado. Fuente/tamaño y cierre aislados de globals.
+- [x] DESIGN/PRODUCT y sidecar registran adopción. Informe inline con hallazgos corregidos, evidencia y límites.
 
 ## Mutaciones
 
@@ -57,3 +57,27 @@ Implementación y revisión inline ADR0129. QA owner del ensamblado local pendie
 ## Abierto
 
 Ninguna decisión de producto pendiente para el alcance solicitado.
+
+## Auditoría y evidencia local — 2026-10-11
+
+Revisión inline del propio trabajo según ADR0129, no revisión independiente ni investigación de comprensión/conversión. Capturas antes y después de la página real. Se vio1440/390 claro y oscuro,320/768 claro.
+
+| Hallazgo                                                    | Resultado                                                                                                                   |
+| ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Previsión «quedan $27» puede sugerir ganancia               | Retirada la resta; comparación$30 de consumo con$3 de precio de venta del premio. FAQ conserva límites de cálculo y costos. |
+| Hero explica conocimiento sin priorizar beneficio de volver | «Puntos o sellos. Motivos para volver.»; equipo acredita compras y confirma canjes explícitamente.                          |
+| Reglas repartidas entre párrafos y diagramas                | Sellos por compra/importe; puntos por importe; ejemplos3/6 y30 puntos preservados.                                          |
+| QR decorativo y cuenta con tarjetas anidadas                | Pase plano con consultas útiles en Mostrador; programas independientes en filas.                                            |
+| Escala grande y bandas heredadas                            | CSS exclusivo Funcional, títulos/ritmo estables y cierre contenido.                                                         |
+
+Copy cotejado con spec0191 y lecturas de accrual.ts, rewards.ts de loyalty-program y step-review.ts de backoffice/loyalty. No se modificaron esos archivos. No se amplía funcionalidad: habituales siguen en Mostrador, cashback pendiente, programas/saldos/datos separados. Demostraciones ilustrativas, sin capturas falsas ni registros reales.
+
+Node24: typecheck público, ESLint específico, Prettier, diffcheck y números salida0. Build público0. Landing17/17 en13.1s, cuatro casos nuevos de fidelización; home, negocios y marketing conservadas. Comprueba modalidad, ejemplos, previsión sin$27/«quedan», independencia, cashback pendiente, FAQ, SEO y CTA.
+
+Evidencia /private/tmp/0204-review.json,0204-after-_.png,0204-e2e.log y0204-build.log; antes0204-before-_.png. Ocho secciones y texto17px, sin overflow ni errores JS6/6; anclas válidas, salto al contenido y FAQ por teclado6/6. Script de revisión ajustado para seleccionar el botón de prueba específico (el cierre tiene también enlace a planes).
+
+Altura desktop1440:5255→3639px; móvil390:7655→5957px. Son medidas de presentación, no prueba de mayor fidelidad/ventas. Contraste de texto secundario5.99:1 blanco y7.07:1 panel oscuro. Foco de cierre6.80:1 claro y5.59:1 oscuro, colores renderizados verificados. No certificación completa de accesibilidad.
+
+Arial preservado por filosofía aprobada; ignore-value estrecho en programa.css. Detector final0 primarios,25 advisory de variantes compactas/responsive; recomendaciones documentadas sin ignorar archivos o reglas completas. Guía y sidecar registran adopción de fidelización; POS conserva estilos anteriores.
+
+CI main verde4c40a6a consultado. Sin push, merge ni deploy. QA owner del ensamblado local pendiente.
