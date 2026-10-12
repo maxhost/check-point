@@ -82,6 +82,7 @@ export async function createPosOrder(
     : await parseLocation(business.id, raw.locationId);
   // Sin orden todavia no hay lineas existentes: un `lineId` aca es `unknown_line`.
   const { added } = mergeLines([], parseIncomingLines(raw.items));
+  const note = parseNote(raw.note) ?? null;
   const items = await snapshotNewLines(business.id, locationId, added);
 
   const id = await translatingOccupied(() =>
@@ -95,6 +96,7 @@ export async function createPosOrder(
           locationId,
           tableLabel,
           diningTableId: table?.id ?? null,
+          note,
           createdByUserId: userId,
         })
         .returning({ id: posOrders.id });
@@ -138,6 +140,27 @@ export async function withCurrentOrder(
   throw error;
 }
 
+const NOTE_MAX = 1000;
+
+/** La nota de la orden (owner 2026-10-12). `undefined` → `undefined` (el `PUT` conserva la que
+ * hay); `null` o solo espacios → `null` (sin nota); si no, el texto recortado, hasta 1000. */
+export function parseNote(raw: unknown): string | null | undefined {
+  if (raw === undefined) return undefined;
+  if (raw === null) return null;
+  if (typeof raw !== "string") {
+    throw new CounterError(422, "invalid_input", "La nota no es válida.");
+  }
+  const note = raw.trim();
+  if (note.length > NOTE_MAX) {
+    throw new CounterError(
+      422,
+      "invalid_input",
+      `La nota no puede superar los ${NOTE_MAX} caracteres.`,
+    );
+  }
+  return note === "" ? null : note;
+}
+
 export function parseVersion(raw: unknown): number {
   if (!Number.isInteger(raw) || (raw as number) < 1) {
     throw new CounterError(422, "invalid_input", "La versión no es válida.");
@@ -150,7 +173,7 @@ export function parseVersion(raw: unknown): number {
  * CONSERVAN su snapshot (precio fijo al agregar): cambiar el local NO re-snapshotea. `locationId`
  * ausente conserva el local; `null`/`""` lo quita; un uuid lo cambia. `tableId` (spec 0182) igual:
  * ausente conserva la mesa, `null` vuelve a texto libre, un uuid la cambia; con mesa, el nombre se
- * refresca y el local es el de la mesa.
+ * refresca y el local es el de la mesa. `note` igual: ausente la conserva, `null`/`""` la borra.
  */
 export async function updatePosOrder(
   business: OperatorBusiness,
@@ -159,6 +182,7 @@ export async function updatePosOrder(
 ): Promise<PosOrderDTO> {
   const version = parseVersion(raw.version);
   const incoming = parseIncomingLines(raw.items);
+  const note = parseNote(raw.note);
   const current = await readPosOrder(business.id, id);
   if (!current) throw unknownPosOrder();
   const table: ResolvedTable | null =
@@ -194,6 +218,7 @@ export async function updatePosOrder(
             tableLabel,
             diningTableId: table?.id ?? null,
             locationId,
+            ...(note === undefined ? {} : { note }),
             version: sql`${posOrders.version} + 1`,
             updatedAt: new Date(),
           })

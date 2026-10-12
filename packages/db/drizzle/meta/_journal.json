@@ -512,6 +512,13 @@
       "when": 1791770674428,
       "tag": "0072_imprimir_por_negocio",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1791839197172,
+      "tag": "0073_nota_de_orden_pos",
+      "breakpoints": true
     }
   ]
 }

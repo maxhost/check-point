@@ -52,6 +52,8 @@ export type PosOrderDTO = {
   /** Spec 0182: la mesa elegida, o null con texto libre. */
   tableId: string | null;
   location: { id: string; name: string } | null;
+  /** La nota libre de la orden, o null. */
+  note: string | null;
   business: { name: string; currencyCode: string };
   items: PosOrderItemDTO[];
   total: string;
@@ -113,6 +115,7 @@ export async function readPosOrder(
       version: posOrders.version,
       tableLabel: posOrders.tableLabel,
       tableId: posOrders.diningTableId,
+      note: posOrders.note,
       locationId: locations.id,
       locationName: locations.name,
       businessName: businesses.name,
@@ -166,6 +169,7 @@ export async function readPosOrder(
       row.locationId && row.locationName !== null
         ? { id: row.locationId, name: row.locationName }
         : null,
+    note: row.note,
     business: { name: row.businessName, currencyCode: row.currencyCode },
     items,
     total: totalOf(items),

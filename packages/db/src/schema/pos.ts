@@ -46,6 +46,9 @@ export const posOrders = core.table(
       onDelete: "set null",
     }),
     status: text("status").notNull().default("open"),
+    /** Nota libre de la orden (p. ej. los datos para facturar; owner 2026-10-12). Editable solo
+     * con la orden abierta, como el resto; null = sin nota. */
+    note: text("note"),
     version: integer("version").notNull().default(1),
     createdByUserId: text("created_by_user_id")
       .notNull()
@@ -69,6 +72,10 @@ export const posOrders = core.table(
       sql`${table.status} in ('open', 'closed', 'voided')`,
     ),
     check("core_pos_order_version_check", sql`${table.version} >= 1`),
+    check(
+      "core_pos_order_note_check",
+      sql`char_length(${table.note}) between 1 and 1000`,
+    ),
     check(
       "core_pos_order_table_label_check",
       sql`char_length(${table.tableLabel}) between 1 and 60`,

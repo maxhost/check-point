@@ -13,7 +13,7 @@ import {
   seedProduct,
 } from "./pos-integration-support";
 import { getDb } from "@mi-pasaporte/db";
-import { products } from "@mi-pasaporte/db/schema";
+import { posOrders, products } from "@mi-pasaporte/db/schema";
 import { scannedCustomer } from "../counter/coupon-cycle-support";
 
 /**
@@ -48,6 +48,7 @@ describe.skipIf(!posIntegrationEnabled)(
         "id",
         "items",
         "location",
+        "note",
         "sale",
         "status",
         "tableId",
@@ -167,6 +168,51 @@ describe.skipIf(!posIntegrationEnabled)(
       });
       expect(edit.status).toBe(409);
       expect((await edit.json()).code).toBe("pos_order_not_open");
+    }, 120_000);
+
+    it("la nota: se crea, el PUT sin `note` la conserva, se cambia, se borra con espacios; > 1000 → 422; anulada → 409 y no cambia", async () => {
+      const noteOf = async (id: string) =>
+        (
+          await getDb()
+            .select({ note: posOrders.note })
+            .from(posOrders)
+            .where(eq(posOrders.id, id))
+        )[0].note;
+      const created = await pos.create(world.ownerCookie, {
+        tableLabel: "Mesa nota",
+        locationId: world.seed.locationId,
+        items: [],
+        note: "  Factura: Ana Paz\nCI 123  ",
+      });
+      expect(created.status).toBe(201);
+      const order = await created.json();
+      expect(order.note).toBe("Factura: Ana Paz\nCI 123");
+
+      const put = (version: number, extra: Record<string, unknown>) =>
+        pos.update(world.ownerCookie, order.id, {
+          version,
+          tableLabel: order.tableLabel,
+          items: [],
+          ...extra,
+        });
+      expect((await (await put(1, {})).json()).note).toBe(
+        "Factura: Ana Paz\nCI 123",
+      );
+      expect(
+        (await (await put(2, { note: "Factura: Ana Paz, a@b.c" })).json()).note,
+      ).toBe("Factura: Ana Paz, a@b.c");
+      const tooLong = await put(3, { note: "x".repeat(1001) });
+      expect(tooLong.status).toBe(422);
+      expect(await noteOf(order.id)).toBe("Factura: Ana Paz, a@b.c");
+      expect((await (await put(3, { note: "   " })).json()).note).toBeNull();
+      expect(await noteOf(order.id)).toBeNull();
+
+      await put(4, { note: "antes de anular" });
+      expect((await pos.void(world.ownerCookie, order.id)).status).toBe(200);
+      const late = await put(5, { note: "despues" });
+      expect(late.status).toBe(409);
+      expect((await late.json()).code).toBe("pos_order_not_open");
+      expect(await noteOf(order.id)).toBe("antes de anular");
     }, 120_000);
 
     it("el historial: abiertas mas viejas primero; la anulada en `closedToday`", async () => {

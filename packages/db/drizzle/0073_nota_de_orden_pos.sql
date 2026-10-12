@@ -1,0 +1,2 @@
+ALTER TABLE "core"."pos_order" ADD COLUMN "note" text;--> statement-breakpoint
+ALTER TABLE "core"."pos_order" ADD CONSTRAINT "core_pos_order_note_check" CHECK (char_length("core"."pos_order"."note") between 1 and 1000);

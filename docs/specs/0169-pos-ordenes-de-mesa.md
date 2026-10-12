@@ -158,6 +158,7 @@ type PosOrder = {
   version: number;
   tableLabel: string;
   location: { id: string; name: string } | null;
+  note: string | null;                 // nota libre (owner 2026-10-12, migracion 0073)
   business: { name: string; currencyCode: string };   // para imprimir
   items: { lineId: string; productId: string | null; name: string;
            unitPrice: string; quantity: number; lineTotal: string }[];
@@ -182,6 +183,12 @@ type PosOrder = {
 | `GET /api/pos/orders/:id` | | `PosOrder` | `unknown_pos_order` |
 | `PUT /api/pos/orders/:id` | `{ version, tableLabel, locationId?, items: {lineId?, productId, quantity, unitPrice?}[] }` | `PosOrder` | `version_conflict` (409, con `order: PosOrder`), `pos_order_not_open`, `unknown_line` |
 | `POST /api/pos/orders/:id/void` | `{}` | `PosOrder` | `pos_order_not_open` |
+
+**Nota de la orden (owner 2026-10-12, L1, migracion 0073):** `POST` y `PUT /api/pos/orders[/:id]` aceptan
+`note?: string | null`. Crear: ausente o `null` → sin nota. Editar: **ausente conserva** la nota; `null` o solo
+espacios la borra; un texto se guarda recortado, hasta 1000 caracteres (mas → 422 `invalid_input`). Solo con la
+orden abierta: cerrada o anulada → 409 `pos_order_not_open`, como cualquier edicion. Viaja en `PosOrder.note`
+(no en `PosOrderSummary`). La pantalla (textarea de varias lineas) es de GPT.
 | `POST /api/pos/resolve` | `{ qrToken, locationId? }` | igual que `POST /api/counter/resolve` | los del mostrador |
 | `GET /api/pos/coupon-state?membershipId=` | | igual que el mostrador | |
 | `POST /api/pos/coupon-remove` | igual que el mostrador | igual | |
