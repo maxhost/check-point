@@ -61,7 +61,9 @@ forgetDevicePrinter();
 ```
 
 Ajuste del comercio (solo el owner): `GET` / `PUT /api/merchant/business/ticket` con
-`{ showBusinessName: boolean, showTable: boolean }`. Ninguno es obligatorio.
+`{ printingEnabled: boolean, showBusinessName: boolean, showTable: boolean }` (los tres en el `PUT`).
+`printingEnabled` (spec 0206) arranca en `false`: con `false` el POS no muestra «Imprimir». El POS lo
+lee de `GET /api/pos/ticket`.
 
 **Reglas que no se ven en los tipos:**
 

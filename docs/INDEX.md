@@ -434,3 +434,5 @@ técnica, Definition of Done y plan de pruebas antes de que su estado pase a `ce
 | 0204 | 2026-10-11 | Fidelización Funcional con mensajes de recompensas, previsión e historial. | implementada local; build y17/17 E2E, QA owner pendiente | no | `specs/0204-fidelizacion-funcional-y-copy.md` |
 
 | 0205 | 2026-10-11 | Entrada del comercio con login por defecto; registro explícito mediante signup=1 y CTA públicos actualizados. | implementada; pestañas L0 aprobadas `7797b24`, merge local a main, publicación pendiente | no | `specs/0205-entrada-merchant-login-por-defecto.md` |
+
+| 0206 | 2026-10-11 | **Imprimir tickets: si o no, por negocio** (L2, API + migracion 0072; pantallas de GPT). **Que es:** `printingEnabled` en el ajuste del ticket, APAGADO por defecto para todos (owner); con `false` el POS oculta «Imprimir». **Por que importa:** un comercio sin impresora no ve un boton que no sirve. | **API implementada** (Neon 9/9, M1/M2 rojas); UI de GPT pendiente; no pushear sin la UI | no | `specs/0206-imprimir-por-negocio.md` |

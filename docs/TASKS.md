@@ -4,6 +4,16 @@
 [Claude → `estado/claude.md`](estado/claude.md) · [GPT → `estado/gpt.md`](estado/gpt.md). Cada uno escribe solo
 el suyo. Lo que sigue en este archivo es **historico** (bloques ESTADO viejos y bitacoras de mutaciones).
 
+## Bitacora de mutaciones — spec 0206, Claude (L2, 2026-10-11)
+
+Arbol: `dev` con la 0206 sin commitear; restauracion desde copia limpia en el scratchpad + `diff` vacio. Neon: rama
+de CI via `tools/neon-test.sh`. Presupuesto: 2 (spec 0206 §Mutaciones).
+
+| id | archivo | shasum limpio | invariante | resultado EJECUTADO |
+|---|---|---|---|---|
+| M1 | apps/merchant/src/server/ticket-settings/settings.ts | 219d25c9cd697833759e72e6a1ab9ad701f816a1 | sin fila → `printingEnabled: false` | ROJO: «sin fila: owner y POS leen los defaults…» `expected { printingEnabled: true, …(2) } to deeply equal { printingEnabled: false, …(2) }` (1 failed / 8 passed). Revertida, `diff` vacio |
+| M2 | apps/merchant/src/server/ticket-settings/settings.ts | 219d25c9cd697833759e72e6a1ab9ad701f816a1 | cuerpo sin `printingEnabled` → 422 | ROJO: «validacion: campo faltante o no booleano…» `expected 200 to be 422` (1 failed / 8 passed). Revertida, `diff` vacio; `rg MUTATION` vacio |
+
 ## Codigo sin consumidor hoy, conservado a proposito (owner 2026-10-11)
 
 - **Vencimiento del saldo visible al cliente (spec 0195 §D5):** `balanceExpiryMonths` de `enroll-landing.ts` y

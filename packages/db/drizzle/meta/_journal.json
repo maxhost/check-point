@@ -505,6 +505,13 @@
       "when": 1791680118835,
       "tag": "0071_vencimiento_del_saldo",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1791770674428,
+      "tag": "0072_imprimir_por_negocio",
+      "breakpoints": true
     }
   ]
 }

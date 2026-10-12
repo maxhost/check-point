@@ -14,8 +14,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * `GET /api/merchant/business/ticket` (spec 0184, owner) → `{ showBusinessName, showTable }`: que
- * bloques opcionales lleva el ticket impreso del POS. Sin ajuste guardado, los defaults.
+ * `GET /api/merchant/business/ticket` (spec 0184, owner) → `{ printingEnabled, showBusinessName,
+ * showTable }`: si el negocio imprime (spec 0206) y que bloques opcionales lleva el ticket impreso del
+ * POS. Sin ajuste guardado, los defaults (impresion apagada).
  */
 export async function GET(request: Request) {
   try {
@@ -28,8 +29,9 @@ export async function GET(request: Request) {
 }
 
 /**
- * `PUT /api/merchant/business/ticket` (spec 0184, owner): `{ showBusinessName, showTable }`, los dos
- * booleanos y obligatorios en el cuerpo (ninguno obligatorio en `true`) → lo guardado. El negocio
+ * `PUT /api/merchant/business/ticket` (spec 0184 / 0206, owner): `{ printingEnabled,
+ * showBusinessName, showTable }`, los tres booleanos y obligatorios en el cuerpo (ninguno obligatorio
+ * en `true`) → lo guardado. El negocio
  * sale de la SESION, nunca del cuerpo.
  */
 export async function PUT(request: Request) {
@@ -40,8 +42,7 @@ export async function PUT(request: Request) {
     if (!settings) {
       return NextResponse.json(
         {
-          error:
-            "Indica si el ticket muestra el nombre del comercio y la mesa.",
+          error: "Indica si el negocio imprime tickets y qué bloques muestra.",
           code: "invalid_input",
         },
         { status: 422 },

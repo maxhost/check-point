@@ -1,0 +1,1 @@
+ALTER TABLE "core"."ticket_settings" ADD COLUMN "printing_enabled" boolean DEFAULT false NOT NULL;

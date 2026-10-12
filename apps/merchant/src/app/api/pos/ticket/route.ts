@@ -5,8 +5,9 @@ import { readTicketSettings } from "../../../../server/ticket-settings/settings"
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/** `GET /api/pos/ticket` (spec 0184, permiso `pos`) → `{ showBusinessName, showTable }`: lo que el
- * POS lee al abrir para armar el ticket (`printing/buildTicket`). */
+/** `GET /api/pos/ticket` (spec 0184, permiso `pos`) → `{ printingEnabled, showBusinessName,
+ * showTable }`: lo que el POS lee al abrir — si muestra «Imprimir» (spec 0206) y como arma el ticket
+ * (`printing/buildTicket`). */
 export async function GET(request: Request) {
   const auth = await requirePosOperator(request);
   if ("response" in auth) return auth.response;
