@@ -3,7 +3,44 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — PESTAÑAS DE ACCESO APROBADAS Y MERGE LOCAL A MAIN (2026-10-11)
+## ESTADO — 0206 IMPRESIÓN POR NEGOCIO, UI COMMITEADA EN DEV (2026-10-11)
+
+Commit UI `da9c924a8099ee58b28a691c7266a8b1d18d07fc`. API de Claude `1106798` ya en dev. Owner pidió solo pantalla,
+commit en dev sin push ni merge. No se tocaron API, servidor, packages, kit,
+printing/** ni tooling. DTO frontend de tres booleanos compartido entre Ajustes
+ y POS en settings/ticket-settings-types.ts.
+
+Imprimir tickets controla printingEnabled guardado; apagado oculta nombre del
+comercio/mesa sin borrar sus valores. PUT siempre manda los tres booleanos. Carga
+ y errores visibles aun apagado; mientras carga, el interruptor está deshabilitado.
+POS toma el ajuste de pos-printing.ts y oculta Imprimir en orden abierta y detalle
+cuando false o pendiente. Validación exige los tres campos, sin defaults inventados;
+print() también respeta la regla. Fixtures POS, mesas e impresión con enabled=true
+para preservar sus recorridos; casos nuevos prueban false/true y PUT completo.
+
+Node24, salida0: typecheck merchant, ESLint merchant + cuatro e2e, Prettier merchant
++ e2e, guardia UI y diffcheck. Chromium 121/121 específicos de pos.spec,
+pos-printing.spec, ticket-settings.spec y tables.spec (50.6s). Rutas simuladas con
+page.route; sin Neon ni suite completa. Reporte /private/tmp/0206-report/index.html.
+CI main verde4c40a6a consultado. Spec0206 e INDEX actualizados con evidencia y SHA.
+Pendiente QA del owner en local y pase a live con migración0072 (zona Claude).
+
+Ajuste previo del banner de prueba en POS (solo últimos7 días) sigue aplicado
+localmente y SIN commit en trial-notice.tsx; no se mezcló en este commit de0206.
+Se conserva en el histórico siguiente. Main mantiene cierre9496e0b y no incorpora
+API/UI0206. Sin merge, push ni deploy, según instrucción.
+
+## HISTÓRICO — AVISO DE PRUEBA EN POS SOLO ÚLTIMOS 7 DÍAS, LOCAL (2026-10-11)
+
+Ajuste L0 solicitado por el owner: TrialNotice se oculta en /backoffice/pos y sus
+subrutas cuando trialDaysLeft > 7; aparece con 7 días o menos. Otras pantallas
+conservan comportamiento. Usa el dato de sesión existente, sin recalcular fechas.
+Aplicado localmente en dev, sin commit, merge ni push. Revisión del owner pendiente.
+Node24: typecheck y ESLint merchant, formato del archivo, guardia UI y diffcheck en 0.
+Sin suites ni navegador; cambios paralelos de Claude en tickets/DB preservados.
+Pestañas y trabajos anteriores ya quedaron en main/dev con el cierre 9496e0b.
+
+## HISTÓRICO — PESTAÑAS DE ACCESO APROBADAS Y MERGE LOCAL A MAIN (2026-10-11)
 
 Owner aprobó las pestañas en local («funciona perfecto») y autorizó commit +
 merge de todo a main. Commit UI `7797b242f19fd9afdc11361fef7542d117ab8a07`.

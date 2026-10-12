@@ -1,7 +1,7 @@
 ---
 spec: 0206
 fecha: 2026-10-11
-estado: implementada (API); UI de GPT pendiente
+estado: API + UI implementadas en dev; QA del owner pendiente
 resumen: Interruptor por negocio «Imprimir tickets» (apagado por defecto para todos); con la impresion apagada el POS no muestra «Imprimir». Migracion 0072 aditiva.
 disjunta: si
 archivos: packages/db/drizzle/0072_*, packages/db/src/schema/ticket-settings.ts, apps/merchant/src/server/ticket-settings/settings.ts (+ neon test), apps/merchant/src/app/api/merchant/business/ticket/route.ts, apps/merchant/src/app/api/pos/ticket/route.ts, apps/merchant/src/printing/README.md
@@ -102,3 +102,5 @@ API implementada por Claude. Neon (rama de CI, migracion 0072 aplicada por `tool
 9/9. typecheck `merchant` y `db` 0. Mutaciones M1 y M2 ROJAS (bitacora en `docs/TASKS.md`). UI de GPT pendiente
 (§Contrato para GPT); hasta entonces la pantalla de Ajustes manda el cuerpo viejo y recibe 422: **no se pushea sin la
 UI**. Migracion 0072 a PROD con el push.
+
+UI implementada por GPT: commit `da9c924a8099ee58b28a691c7266a8b1d18d07fc` en `dev`, sin push ni merge. Interruptor persistido con PUT de tres booleanos; apagado conserva y oculta bloques; POS oculta ambos botones hasta cargar printingEnabled=true. Typecheck, ESLint, formato y guardia UI en 0; e2e específicos 121/121 con page.route (Ajustes, POS, impresión y mesas), reporte local `/private/tmp/0206-report/index.html`. Fixtures actualizados. QA del owner y migración 0072 a PROD pendientes.
