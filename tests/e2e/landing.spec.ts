@@ -212,7 +212,7 @@ for (const width of [390, 1440]) {
         page
           .locator(".business-hero")
           .getByRole("link", { name: "Pruébalo gratis 3 meses" }),
-      ).toHaveAttribute("href", /\/es\/business\/onboarding$/);
+      ).toHaveAttribute("href", /\/es\/business\/onboarding\?signup=1$/);
       await expect(page.locator("body")).not.toContainText(/ejemplo/i);
       await expect(page.locator(".barrio-shop")).toHaveCount(4);
       await expect(
@@ -303,7 +303,7 @@ for (const width of [390, 1440]) {
         .all()) {
         await expect(link).toHaveAttribute(
           "href",
-          /\/es\/business\/onboarding$/,
+          /\/es\/business\/onboarding\?signup=1$/,
         );
       }
       await expect(page.locator(".business-assurance")).toContainText(
@@ -486,7 +486,7 @@ for (const width of [390, 1440]) {
         .all()) {
         await expect(link).toHaveAttribute(
           "href",
-          /^https?:\/\/.+\/onboarding$/,
+          /^https?:\/\/.+\/onboarding\?signup=1$/,
         );
       }
       await expect
@@ -579,7 +579,7 @@ for (const width of [390, 1440]) {
         .all()) {
         await expect(link).toHaveAttribute(
           "href",
-          /^https?:\/\/.+\/onboarding$/,
+          /^https?:\/\/.+\/onboarding\?signup=1$/,
         );
       }
       await expect(
