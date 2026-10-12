@@ -43,8 +43,8 @@ dominio. El registro historico de `mistake→rule` vive en `docs/LECCIONES.md`.
 - **El pre-push verifica la CARPETA DE TRABAJO, no el commit que se pushea** (medido 2026-10-11): con GPT trabajando en
   `dev` (commits posteriores, `.impeccable/` sin commitear, su `next dev` en `apps/public`) el push de `main` dio rojo en
   formato y e2e por cosas que no viajaban. Pushear `main` desde un worktree limpio en ese sha (`tools/worktree-new.sh`
-  + `git reset --hard <sha>` + `push origin HEAD:main`). El script NO enlaza `apps/*/.env.local`: sin eso la Neon
-  completa da ROJO («falta apps/merchant/.env.local»); enlazarlos con `ln -s` como hace con los de la raiz.
+  + `git reset --hard <sha>` + `push origin HEAD:main`). El script enlaza tambien los archivos de variables de
+  cada app (desde 2026-10-11; antes la Neon completa daba ROJO «falta apps/merchant/...»).
 - **Worktrees: crealos con `tools/worktree-new.sh <nombre>`** (`node_modules` propio offline; uno
   symlinkeado al repo real hace que `pnpm run`/`exec` intenten purgar las dependencias posta). **Si
   otro agente escribe en este arbol, vos te vas a un worktree** (hook `foreign-staged.sh`). El bloque «Worktrees en
@@ -374,6 +374,10 @@ dominio. El registro historico de `mistake→rule` vive en `docs/LECCIONES.md`.
   por spec lo agota (~33 pushes). Mientras siga en Hobby: juntar los commits de docs (estado, reservas) en el push del trabajo,
   y diagnosticar el deploy por el `description` del status, no solo por `failure`. Pendiente del owner: Pro o «Ignored Build
   Step» (PARQUEADO #69). Los pases Apple/Google los sirve SOLO customer (`apps/consumer`): un rate limit en merchant no los afecta.
+- **`list_deployments` del MCP de Vercel con `projectIds` (o `sha`) puede volver VACIO con el deploy en curso**
+  (medido 2026-10-11: 0 resultados para `4c40a6a` mientras GitHub decia «Vercel is deploying your app»). El estado
+  real de un push sale del status del commit: `curl -s https://api.github.com/repos/maxhost/check-point/commits/<sha>/status`
+  (repo publico, sin token; `gh` no esta en el PATH del agente). Esperar con un until-loop sobre ese `state`.
 - **Vercel plan Hobby: crons SOLO de frecuencia diaria** (la doc de 2026-07 ya permite 100 por proyecto; lo que no permite
   es sub-diario, «Hobby accounts are limited to daily cron jobs»). Antes decia «MAXIMO 2 cron jobs». Un 3er cron en
   `apps/merchant/vercel.json`, o un `schedule` sub-diario (`*/5 * * * *`), hace que Vercel

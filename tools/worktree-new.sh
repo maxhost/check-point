@@ -53,6 +53,13 @@ for f in "$root"/.env "$root"/.env.*; do
   [ -f "$f" ] || continue
   ln -s "$f" "$dest/$(basename "$f")" 2>/dev/null && echo "    enlazado $(basename "$f")"
 done
+# Y los de cada app y paquete: sin `apps/merchant/.env.local` la Neon completa del pre-push da ROJO
+# («falta apps/merchant/.env.local», 2026-10-11). Symlink, nunca copia: el worktree no tiene su propia version.
+for f in "$root"/apps/*/.env.local "$root"/packages/*/.env.prod.local; do
+  [ -f "$f" ] || continue
+  rel="${f#"$root"/}"
+  ln -s "$f" "$dest/$rel" 2>/dev/null && echo "    enlazado $rel"
+done
 
 echo "==> pnpm install --offline (node_modules propio del worktree)"
 export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
