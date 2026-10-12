@@ -3,7 +3,51 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — 0206 IMPRESIÓN POR NEGOCIO, UI COMMITEADA EN DEV (2026-10-11)
+## ESTADO — IMPRESIÓN Y AJUSTES POS APROBADOS, MERGE LOCAL A MAIN (2026-10-11)
+
+Owner probó los ajustes y autorizó commit + merge de todos los cambios, sin tests
+adicionales. Commit L0 `b6a04c7e52c672d23ede5e45f950e4a8cb2bb9ee`: pie de creación/orden abierta al fondo en escritorio,
+banner de prueba en POS solo con 7 días o menos. Main local avanzó por fast-forward
+f42460b → b6a04c7, incorporando también UI0206 da9c924 y cierre022c681.
+SHA main/dev confirmado. Sin push ni deploy; checkout habitual sigue dev y
+servidores locales preservados. Cierre documental se incorpora con otro FF.
+
+Checks ya ejecutados para L0: typecheck, ESLint, formato, guardia UI y diffcheck
+salida0. Revisión visual/funcional del owner aprobada. Sin suites adicionales ni
+verify, por instrucción explícita. UI0206 conserva su evidencia previa121/121 e2e
+específicos con rutas simuladas y gates0; no se presenta como corrida nueva.
+Migración0072 ya aplicada en Docker local (73 migraciones en total); columna
+printing_enabled NOT NULL DEFAULT false y lectura del rol de app verificadas.
+Producción no migrada por GPT; publicación y migración a PROD pendientes del owner/Claude.
+
+Trabajos de UI y documentación guardados; configuración/skills/assets locales
+sin seguimiento preservados y excluidos. API, servidor, packages y kit intactos.
+Próximo paso: publicación solamente si el owner la solicita.
+
+## HISTÓRICO — PIE DEL POS AL FONDO EN ESCRITORIO, LOCAL (2026-10-11)
+
+Ajuste L0 solicitado con dos capturas: en escritorio Tomar pedido y el pie de
+la orden abierta quedaban justo tras el contenido. Main del workspace, wrapper
+ y editor ahora crecen como columna flex; el pie usa mt-auto y sticky bottom-0
+en md. Móvil conserva sus clases existentes. Aplicado en pos-console.tsx y
+pos-editor.tsx, sin commit ni merge/push. Revisión visual del owner pendiente.
+Node24: typecheck, ESLint merchant, formato, guardia UI y diffcheck en0. Sin suites
+ni capturas nuevas para este ajuste rápido. No se tocaron API, servidor, kit o CSS.
+
+UI0206 ya commiteada en dev (da9c924, cierre022c681) y e2e121/121 previos al ajuste
+L0. Migración0072 aplicada después a Docker local, columna printing_enabled
+NOT NULL DEFAULT false confirmada; error503 de Ajustes corregido en ambiente.
+Banner de prueba en POS (últimos7 días) sigue pendiente de commit junto con
+este ajuste; no incluir otros archivos sin seguimiento ni trabajo de Claude.
+
+## HISTÓRICO — 0206 IMPRESIÓN POR NEGOCIO, UI COMMITEADA EN DEV (2026-10-11)
+
+Corrección del ambiente local (2026-10-11): 503 en Ajustes por SQLSTATE42703.
+Confirmado por logs y information_schema: faltaba printing_enabled. Ejecutado
+el migrador db:local:migrate con URL fija de Docker local: salida0,73 migraciones.
+Columna printing_enabled verificada NOT NULL DEFAULT false; lectura de los tres
+campos con neondb_owner en0. No se modificó código ni se migró producción.
+El owner debe recargar Ajustes para renovar la lectura que había fallado.
 
 Commit UI `da9c924a8099ee58b28a691c7266a8b1d18d07fc`. API de Claude `1106798` ya en dev. Owner pidió solo pantalla,
 commit en dev sin push ni merge. No se tocaron API, servidor, packages, kit,
