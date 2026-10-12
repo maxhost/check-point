@@ -433,4 +433,4 @@ técnica, Definition of Done y plan de pruebas antes de que su estado pase a `ce
 
 | 0204 | 2026-10-11 | Fidelización Funcional con mensajes de recompensas, previsión e historial. | implementada local; build y17/17 E2E, QA owner pendiente | no | `specs/0204-fidelizacion-funcional-y-copy.md` |
 
-| 0205 | 2026-10-11 | Entrada del comercio con login por defecto; registro explícito mediante signup=1 y CTA públicos actualizados. | cerrada; implementación UI local pendiente | no | `specs/0205-entrada-merchant-login-por-defecto.md` |
+| 0205 | 2026-10-11 | Entrada del comercio con login por defecto; registro explícito mediante signup=1 y CTA públicos actualizados. | implementada local `0af3d6a`; e2e18/18, publicación pendiente | no | `specs/0205-entrada-merchant-login-por-defecto.md` |

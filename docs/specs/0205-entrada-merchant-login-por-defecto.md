@@ -1,7 +1,7 @@
 ---
 spec: 0205
 fecha: 2026-10-11
-estado: cerrada
+estado: implementada local
 resumen: El dominio del comercio abre login por defecto; signup=1 abre el registro y los CTA públicos de alta llevan ese parámetro.
 disjunta: no
 archivos: apps/merchant/src/app/page.tsx, apps/merchant/src/app/[locale]/(merchant)/business/onboarding/page.tsx, apps/merchant/src/app/[locale]/(merchant)/business/onboarding/_components/onboarding-wizard.tsx, apps/public/src/app/site-config.ts, tests/e2e/merchant-entry.spec.ts, tests/e2e/merchant-login-code.spec.ts, tests/e2e/onboarding-google-places.spec.ts
@@ -44,11 +44,11 @@ Los enumerados en el frontmatter, y docs/INDEX.md/estado/gpt.md para el cierre.
 
 ## Definition of Done
 
-- [ ] E2E: raíz y onboarding sin parámetro muestran login; signup=1 muestra alta;
+- [x] E2E: raíz y onboarding sin parámetro muestran login; signup=1 muestra alta;
       signup=0 sigue en login; Crear un negocio permite alta desde login.
-- [ ] E2E existentes de código y alta pasan con sus entradas actualizadas.
-- [ ] Typecheck, ESLint y formato de merchant/public, guardia UI y diffcheck en 0.
-- [ ] El URL público de alta tiene signup=1 y se preserva el override de entorno.
+- [x] E2E existentes de código y alta pasan con sus entradas actualizadas.
+- [x] Typecheck, ESLint y formato de merchant/public, guardia UI y diffcheck en 0.
+- [x] El URL público de alta tiene signup=1 y se preserva el override de entorno.
 
 ## Mutaciones
 
@@ -66,3 +66,15 @@ instrucción vigente de no push en dev. No hay subagentes.
 ## Abierto
 
 Nada.
+
+## Cierre
+
+Commit UI `0af3d6a38a1d538fb631b91dfda32935c725998c` en dev. Reserva local `b8201e3`. Sin push ni merge.
+Node 24.20.0: typecheck merchant/public, ESLint ambos paquetes y e2e,
+Prettier ambos paquetes y archivos tocados, guardia UI y diffcheck, salida 0.
+E2E 18/18: ocho de entrada, siete de código y tres de alta/Places; reporte
+`/private/tmp/0205-report/index.html`. Unit existentes 4/4 (entry-billing y
+onboarding-flow). URL público de alta comprobado con default y con override
+`MERCHANT_ONBOARDING_URL` que conserva campaign=qa. Sesión y rebotes mantienen
+su manejo; no se cambió autenticación ni se ejecutó integración contra la base.
+Revisión del owner y pase conjunto a live pendientes.

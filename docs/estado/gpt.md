@@ -3,7 +3,31 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — 0195 VENCIMIENTO SOLO EN WIZARD, COMMITEADO EN DEV (2026-10-11)
+## ESTADO — 0205 LOGIN POR DEFECTO EN MERCHANT, COMMITEADO EN DEV (2026-10-11)
+
+Commit UI `0af3d6a38a1d538fb631b91dfda32935c725998c`, reserva local `b8201e3`. Sin push ni merge.
+Owner pidió que business.checkpass.club abra login; registro solo por enlace
+explícito. Raíz y /es/business/onboarding abren login sin sesión por defecto.
+`?signup=1` abre alta desde la raíz o desde onboarding; otros valores/duplicados
+no habilitan registro. Crear un negocio cambia manualmente al alta, e Iniciar
+sesión regresa al login. Sesión válida sigue al panel y rebotes ?e= conservan
+prioridad. Metadata acompaña la entrada pedida. Los CTA compartidos de alta de
+la web pública llevan signup=1, preservando MERCHANT_ONBOARDING_URL y sus queries.
+
+Verificación real Node 24.20.0, salida 0: typecheck merchant/public, ESLint ambos
+paquetes y e2e, Prettier ambos paquetes/archivos, guardia UI y diffcheck. E2E18/18
+(entrada8, login código7, alta3), unit existentes4/4 (entry-billing y onboarding-flow).
+Reporte `/private/tmp/0205-report/index.html`. URL de alta con default y override
+comprobado: signup=1 y campaign=qa preservados. CI main verde4c40a6a consultado.
+Sin API, servidor, paquetes, kit, CSS ni tooling tocados. Sin base de producción
+para pruebas; no se corrió verify global (queda para el pase conjunto a live).
+
+Spec0205 e INDEX cerrados con evidencia. Revisión local del owner pendiente.
+Merchant local en http://localhost:3101 sirve el cambio. Acumulado en dev: login
+con código0202 (`c59ef50`), vencimiento solo en wizard0195 (`0f44916`) y esta entrada.
+Main no incorpora esas UIs nuevas; publicación conjunta a cargo del owner.
+
+## HISTÓRICO — 0195 VENCIMIENTO SOLO EN WIZARD, COMMITEADO EN DEV (2026-10-11)
 
 Commit UI `0f449164e14030688124526e90decbebf1b02498`. Alcance final del owner: solo configurar en el paso
 «Unidades» (puntos) / «Sello y objetivo» (sellos), tanto creación como edición.
