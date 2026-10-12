@@ -8,6 +8,12 @@ import { resolveSession } from "@mi-pasaporte/domain/server/consumer/session";
 import { AuthErrorNotice, ProviderButtons } from "../../provider-buttons";
 import { MemberNotMe, OneTapEnroll } from "./enroll-buttons";
 import { WelcomeOffer } from "./welcome-offer";
+import {
+  BusinessIdentity,
+  EntryBrand,
+  EnrollmentIntro,
+} from "../../entry-brand";
+import styles from "../../consumer-entry.module.css";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -18,8 +24,8 @@ const first = (value: string | string[] | undefined) =>
 /**
  * La landing del QR de un comercio (spec 0119 / ADR 0111). Sin sesion: los dos botones de
  * proveedor (tocar uno es el consentimiento de sumarse a ESTE programa). Con sesion: «Ya sos
- * parte» si ya es miembro, si no el alta de un toque. El marco es el de siempre: logo o nombre
- * del negocio, su color en el boton primario y la oferta de bienvenida.
+ * parte» si ya es miembro, si no el alta de un toque. Spec0208: identidad real del comercio
+ * y marco Club cotidiano/paletaA; la oferta de bienvenida conserva su condición de existencia.
  */
 export default async function EnrollPage({
   params,
@@ -39,20 +45,20 @@ export default async function EnrollPage({
 
   if (!landing) {
     return (
-      <main
-        style={{
-          maxWidth: 420,
-          margin: "0 auto",
-          padding: "48px 20px",
-          fontFamily: "system-ui, sans-serif",
-          textAlign: "center",
-        }}
-      >
-        <h1 style={{ fontSize: 22 }}>Este programa no está disponible</h1>
-        <p style={{ color: "#555", marginTop: 12 }}>
-          El enlace puede haber vencido o el programa ya no admite nuevos
-          registros. Pedile al local un código actualizado.
-        </p>
+      <main className={`${styles.page} ${styles.unavailable}`}>
+        <div className={styles.content}>
+          <EntryBrand large />
+          <div className={styles.intro}>
+            <h1>Este programa no está disponible</h1>
+            <p>
+              El enlace puede haber vencido o el programa ya no admite nuevos
+              registros. Pide al local un código actualizado.
+            </p>
+          </div>
+          <a className={styles.passLink} href="/wallet">
+            Ir a mi wallet
+          </a>
+        </div>
       </main>
     );
   }
@@ -65,64 +71,49 @@ export default async function EnrollPage({
   );
 
   return (
-    <main
-      style={{
-        maxWidth: 420,
-        margin: "0 auto",
-        padding: "32px 20px",
-        fontFamily: "system-ui, sans-serif",
-      }}
-    >
-      <p style={{ color: "#888", fontSize: 13, letterSpacing: 0.4 }}>
-        CheckPass Club
-      </p>
-      {landing.hasLogo ? (
-        // Public logo route serves from R2 without exposing the object key.
-        <img
-          alt={landing.businessName}
-          src={`/api/public/brands/${landing.businessId}/logo?v=${landing.logoVersion}`}
-          style={{
-            display: "block",
-            height: 64,
-            maxWidth: "100%",
-            objectFit: "contain",
-            marginTop: 8,
-          }}
-        />
-      ) : (
-        <h1 style={{ fontSize: 24, marginTop: 4 }}>{landing.businessName}</h1>
-      )}
-      {member && account ? (
-        <MemberNotMe
-          programId={programId}
-          loc={loc}
+    <main className={styles.page}>
+      <div className={styles.content}>
+        <BusinessIdentity
           businessName={landing.businessName}
-          firstName={account.firstName}
-          primaryColor={landing.brandPrimaryColor}
-          isIos={isIos}
+          logoUrl={
+            landing.hasLogo
+              ? `/api/public/brands/${landing.businessId}/logo?v=${landing.logoVersion}`
+              : undefined
+          }
         />
-      ) : (
-        <section>
-          {landing.welcomeOffer && (
-            <WelcomeOffer offer={landing.welcomeOffer} />
-          )}
-          <p style={{ color: "#555", marginTop: 8 }}>
-            Sumate al programa de fidelidad de {landing.businessName}.
-          </p>
-          {first(query.error) === "auth" && <AuthErrorNotice />}
-          {account ? (
-            <OneTapEnroll
-              programId={programId}
-              loc={loc}
-              firstName={account.firstName}
-              primaryColor={landing.brandPrimaryColor}
-              isIos={isIos}
-            />
-          ) : (
+        {first(query.error) === "auth" && <AuthErrorNotice />}
+        {member && account ? (
+          <MemberNotMe
+            programId={programId}
+            loc={loc}
+            businessName={landing.businessName}
+            firstName={account.firstName}
+            isIos={isIos}
+          />
+        ) : account ? (
+          <OneTapEnroll
+            programId={programId}
+            loc={loc}
+            firstName={account.firstName}
+            businessName={landing.businessName}
+            welcomeOffer={landing.welcomeOffer}
+            isIos={isIos}
+          />
+        ) : (
+          <>
+            <EnrollmentIntro businessName={landing.businessName} />
+            {landing.welcomeOffer && (
+              <WelcomeOffer offer={landing.welcomeOffer} />
+            )}
             <ProviderButtons programId={programId} loc={loc} isIos={isIos} />
-          )}
-        </section>
-      )}
+            <p className={styles.supportNote}>
+              Al continuar, te unes al programa de este comercio con tu cuenta
+              de CheckPass.
+            </p>
+          </>
+        )}
+        <EntryBrand />
+      </div>
     </main>
   );
 }

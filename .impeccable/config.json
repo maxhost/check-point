@@ -30,6 +30,13 @@
         "files": ["apps/public/src/app/programa-de-fidelizacion/programa.css"],
         "createdAt": "2026-10-11T23:43:24.397Z",
         "reason": "Owner pidió aplicar en fidelización la filosofía Funcional aprobada en negocios y marketing; se conserva Arial de DESIGN.md y spec0204."
+      },
+      {
+        "rule": "icon-tile-stack",
+        "value": "*",
+        "files": ["docs/qa/0207/mocks/index.html"],
+        "createdAt": "2026-10-12T20:33:26.062Z",
+        "reason": "User confirmed concept 2 Club cotidiano and palette A in this session. The coral membership seal above the confirmation heading marks completed enrollment, as shown in the selected mock; it is an intentional status symbol, not a repeated feature-card template. Scoped to this prototype HTML only."
       }
     ]
   }

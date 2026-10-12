@@ -48,7 +48,7 @@ describe("ProviderButtons — marca de Google y Apple", () => {
       "google",
       "apple",
     ]);
-    for (const a of ios) expect(a).toContain("height:48px");
+    for (const a of ios) expect(a).toContain("height:52px");
   });
 
   it("los enlaces llevan el programa y el local al start", () => {

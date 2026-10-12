@@ -31,10 +31,12 @@ vi.mock("@mi-pasaporte/db", async (importOriginal) => ({
 }));
 
 describe("el portal sin sesión (spec 0065, fase D / ADR 0068)", () => {
-  it("responde «Tu tarjeta no está abierta» sin shell y sin una sola consulta", async () => {
+  it("responde con acceso a la wallet sin shell y sin una sola consulta", async () => {
     const { default: WalletPage } = await import("./page");
     const html = renderToStaticMarkup(await WalletPage({}));
-    expect(html).toContain("Tu tarjeta no está abierta");
+    expect(html).toContain(
+      "Inicia sesión en tu wallet para acceder a tu pase y beneficios.",
+    );
     // Ni la barra inferior ni la pestaña: si el shell se renderizara, acá habría botones.
     expect(html).not.toContain("consumer-bottom-nav");
     expect(html).not.toContain("Configuración");

@@ -3,7 +3,31 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — IMPRESIÓN Y AJUSTES POS APROBADOS, MERGE LOCAL A MAIN (2026-10-11)
+## ESTADO — ENTRADA WALLET0208 APLICADA LOCAL Y APROBADA (2026-10-12)
+
+Owner aprobó mock0207 y pidió aplicarlo. Implementada entrada sin sesión en /wallet, inscripción sin/con sesión/ya miembro/no disponible y confirmación/install en enroll/ready. Club cotidiano+paletaA, NunitoSans local con OFL, marcaC real, logo/nombre reales o inicial. URLsprograma/local y ordenGoogle/Apple, POST201/409/401/errores/red, manifest y notificaciones conservados. CSS module aislado; wallet interna/API/servidor/paquetes/kit sin cambios. Reserva0208 `3b3af23` en dev; implementación SIN commit/merge/push/deploy. Owner dice «está perfecto» visualmente; no puede probarlocal.
+
+Checks específicos Node24: typecheck, ESLint y formato consumer/e2e0; unit14/14; Chromium11/11 con datos/HTTP simulados y1/1 posterior para limpiar error al appinstalled. Capturas seis estados390/1440 y overflow320/360/390/430/1440; Nextreal3200 /wallet200, fontNunito y sin erroresJS. Revisor independiente fuente/fondo/composición/truthpass, fixdocumental resuelto, verdictpassship. PRODUCT/DESIGN/sidecar actualizados a páginas reales deentrada y excepciones proveedores. Evidencia `docs/qa/0208/README.md` y capturas.
+
+Verify UNA corrida, ROJO: tipos/lint/guard/build0; formato JSONs deImpeccable generados; unit2529pass+1fail y NeonCI3375pass+1fail (mismo test merchantwelcomeUI por dosstringscopy anteriores); e2egeneral no inició porque otroNextdev del mismoconsumer sigue en3200. Actualizadas dosaserciones mecánicas dewelcomeUI según§6;7/7posteriorpasó y no se quitó protección de premio. Formato artefactos normalizado; hookcache puede regenerarse otra vez, no esUI. Logs `/private/tmp/0208-verify.log` y `/private/tmp/0208-format-final.log`. No se repitió verifyglobal; no afirmar verdecompleto. Neon solo vía tools/neon-test.sh con URLsCI; no producción. Next-env generados se restauran y servidoresowner sepreservan.
+
+Confirmación final: next-env generados restaurados; `pnpm format:check` posterior0 y diffcheck0. No se repitió la suite global; los resultadosROJO de la tabla original se conservan como ejecutados.
+
+Pendiente antes depublicar: cerrar e2egeneral en ambiente sin colisiónNext, guardarimplementación, paseamain ypush solo solicitado porowner. No cambios visuales necesarios. Spec0208 registra UI implementada con e2egeneralpendiente; no marcado cierrecompleto. Mock58407 y server3200 preservados. Skills/config/assets paralelos no mezclados.
+
+## HISTÓRICO — MOCKS WALLET, CLUB COTIDIANO + PALETA A (2026-10-12)
+
+Owner pidió rediseño, eligió concepto2 Club cotidiano y paletaA (verdeprofundo/coral/blanco), luego mocksHTML/CSS para ajustar copy y espacios. Spec0207 reservada en dev con commit `cf1247e`; implementación está local SIN commit, sin merge/push/deploy. Prototipo autónomo `docs/qa/0207/mocks/`; servidor Python puerto58407, http://127.0.0.1:58407/. No toca rutas reales, OAuth, API, servidor, paquetes, kit ni producción.
+
+Cuatro pantallas: login puro, inscripción sin sesión, inscripción con sesión y confirmación/instalación iPhone/Android. Comparar y vistaindividual; controles nombre/comercio/ancho/titular/margen/separación y textos editables. Acciones solo simuladas, datos ficticios; ajustes no persisten al recargar. Referencia visual y PRODUCT documentadas; DESIGN y sidecar se documentan con alcance de prototipo, no reemplazan aún la app.
+
+Node24, Chromium salida0: cuatro estados a320/360/390/430, nueve capturas finales (incluye comparación1440), sin overflow/erroresJS/solicitudesAPI. Controles y navegación comprobados; evidencia `docs/qa/0207/captures/checks.json`, README y capturas. Fuente NunitoSans autohospedada con OFL; contrastes principales≥4.5, iconoverde/coral4.40. Revisor independiente pidió fuente distinta del sistema; corregido y verdictpass ship para ese hallazgo, acciones/saltos preservados. Hook darkglow corregido, scan posterior limpio, sin supresiones. SintaxisJS/diffcheck0. Sin verify global ni suites de app para mock documental.
+
+Stop posterior: icon-tile-stack triado como sello de confirmación intencional del concepto2 elegido por owner. Excepción persistida vía hooks ignore-value únicamente para esta regla en `docs/qa/0207/mocks/index.html`, config `.impeccable/config.json` del repo. Sin cambios visuales ni nuevas capturas necesarias; README actualizado.
+
+Owner revisa y ajusta en navegador. App real sigue igual. Otros untracked de skills/config/assets preservados. Main no se cambia.
+
+## HISTÓRICO — IMPRESIÓN Y AJUSTES POS APROBADOS, MERGE LOCAL A MAIN (2026-10-11)
 
 Owner probó los ajustes y autorizó commit + merge de todos los cambios, sin tests
 adicionales. Commit L0 `b6a04c7e52c672d23ede5e45f950e4a8cb2bb9ee`: pie de creación/orden abierta al fondo en escritorio,

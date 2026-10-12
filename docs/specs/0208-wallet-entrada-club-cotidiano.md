@@ -41,18 +41,19 @@ Confirmación: Ya eres parte + negocio, sello coral, explicación e instruccione
 | `enroll/[programId]/ready/page.tsx`, `enroll-confirmation.tsx`, `enroll-confirmation.module.css` | Confirmación/layout |
 | `apps/consumer/public/fonts/**` | Copiar fuente/OFL del mock aprobado |
 | `tests/e2e/wallet-entry.spec.ts`, `support/wallet-entry*` | Cobertura con UI real, dependencias simuladas |
+| `apps/merchant/src/app/backoffice/marketing/welcome-ui.test.ts` | Ajuste mecánico de dos aserciones de copy del componente consumer compartido; §6 rotura cruzada |
 | `docs/qa/0208/**`, `apps/consumer/{DESIGN,PRODUCT}.md`, `.impeccable/**` | Evidencia/autoridad actualizada |
 
 **Disjunta:** sí respecto merchant y trabajo API. Actualiza únicamente pantallasconsumer y documentación.
 
 ## Definition of Done
 
-- [ ] Typecheck, ESLint y formato de consumer/e2e afectados en verde, Node24.
-- [ ] Unit existentes de proveedores/login y contrato de manifest/instalación pasan; sin base de producción.
-- [ ] E2E con rutas simuladas: proveedores/conservaciónURLs, envío explícito, busy,201/409/401/error/red, cambio de cuenta, ya miembro, no disponible y ready iOS/Android/standalone.
-- [ ] Capturas390/1440 y overflow320/360/430; login real Next local revisado; review independiente cerrada.
-- [ ] `pnpm verify` una vez al final, tabla real registrada. Fallos ajenos declarados sin manipular guardias.
-- [ ] `git diff --check` verde; ninguna API/servidor/paquete/kit cambiado.
+- [x] Typecheck, ESLint y formato de consumer/e2e afectados en verde, Node24.
+- [x] Unit existentes14/14, sin base de producción; bienvenida merchant mecánica7/7 posterior.
+- [x] E2E11/11 con rutas simuladas;1/1 posterior cubre limpieza del error al instalar.
+- [x] Capturas390/1440, overflow320/360/390/430/1440 y loginNext real200, sin erroresJS; review independiente cerrada.
+- [x] `pnpm verify` una ejecución; tabla real y motivosROJO registrados en `docs/qa/0208/README.md`. No se afirma verifyverde: gate general pendiente antes de publicación.
+- [x] `git diff --check` verde; ninguna API/servidor/paquete/kit cambiado.
 
 ## Mutaciones — presupuesto: 0
 
@@ -68,4 +69,4 @@ Un implementador, revisión independiente Impeccable con capturas y contrato. Ow
 
 ## Abierto
 
-Sin decisiones abiertas: mocks aprobados, diseño/alcance confirmados por owner.
+Sin decisiones de producto abiertas: mocks y diseño real aprobados. UI implementada local; e2e general pendiente, sin publicación: colisiona con Nextdev3200. Formato general posterior0; el único test unit/Neon fallido por copy fue corregido y7/7 específico pasó. La implementación permanece sin commit; no hay merge/push/deploy.

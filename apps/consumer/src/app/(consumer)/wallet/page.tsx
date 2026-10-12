@@ -15,6 +15,8 @@ import { getEnrollLanding } from "@mi-pasaporte/domain/server/consumer/enrollmen
 import { markAccountOpened } from "@mi-pasaporte/domain/server/wallet/reminder-store";
 import { AuthErrorNotice, ProviderButtons } from "../provider-buttons";
 import { WalletShell } from "./wallet-shell";
+import { EntryBrand } from "../entry-brand";
+import styles from "../consumer-entry.module.css";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -44,13 +46,6 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-const page: React.CSSProperties = {
-  maxWidth: 420,
-  margin: "0 auto",
-  padding: "32px 20px",
-  fontFamily: "system-ui, sans-serif",
-};
-
 export default async function WalletPage({
   searchParams,
 }: {
@@ -66,21 +61,27 @@ export default async function WalletPage({
     // Spec 0119 / ADR 0111 §8: entrar sin programa — los mismos dos botones, login puro.
     const error = (await searchParams)?.error;
     return (
-      <main style={{ ...page, textAlign: "center" }}>
-        <p style={{ color: "#888", fontSize: 13, letterSpacing: 0.4 }}>
-          CheckPass Club
-        </p>
-        <h1 style={{ fontSize: 22, marginTop: 4 }}>
-          Tu tarjeta no está abierta
-        </h1>
-        <p style={{ color: "#555", marginTop: 12 }}>
-          Entrá con la misma cuenta con la que te sumaste para volver a ver tus
-          programas, beneficios y tu pase.
-        </p>
-        {(Array.isArray(error) ? error[0] : error) === "auth" && (
-          <AuthErrorNotice />
-        )}
-        <ProviderButtons isIos={isIos} />
+      <main className={styles.page}>
+        <div className={styles.content}>
+          <EntryBrand large />
+          <div className={`${styles.intro} ${styles.accessIntro}`}>
+            <h1>
+              Qué bueno
+              <br />
+              verte de nuevo
+            </h1>
+            <p>
+              Inicia sesión en tu wallet para acceder a tu pase y beneficios.
+            </p>
+          </div>
+          {(Array.isArray(error) ? error[0] : error) === "auth" && (
+            <AuthErrorNotice />
+          )}
+          <ProviderButtons isIos={isIos} />
+          <p className={styles.supportNote}>
+            Usa la misma cuenta con la que te uniste a tus programas.
+          </p>
+        </div>
       </main>
     );
   }

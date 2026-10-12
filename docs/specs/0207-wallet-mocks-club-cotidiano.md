@@ -1,7 +1,7 @@
 ---
 spec: 0207
 fecha: 2026-10-11
-estado: cerrada
+estado: implementada
 resumen: Mocks HTML/CSS de acceso, inscripción y confirmación mobile first; Club cotidiano con paleta A.
 disjunta: si
 archivos: docs/qa/0207/**, apps/consumer/PRODUCT.md, apps/consumer/DESIGN.md, apps/consumer/.impeccable/**
@@ -40,11 +40,11 @@ Controles de revisión externos: pantalla, comparación, plataforma, ancho, nomb
 
 ## Definition of Done
 
-- [ ] Cuatro pantallas cargan sin errores JS ni solicitudes a API.
-- [ ] Inspección y capturas a 390px/1440px; sin overflow a 320/360/430px.
-- [ ] Funcionan navegación simulada, edición, controles y plataforma.
-- [ ] Revisión independiente con capturas y correcciones materiales cerradas.
-- [ ] `git diff --check` verde; documentación distingue mock de implementación real.
+- [x] Cuatro pantallas cargan sin errores JS ni solicitudes a API; Chromium salida0, `docs/qa/0207/captures/checks.json`.
+- [x] Inspección y capturas a390px/1440px; sin overflow a320/360/390/430px.
+- [x] Funcionan navegación simulada, edición, controles y plataforma; checks.json registra cobertura.
+- [x] Revisión independiente con nueve capturas; fix tipográfico aplicado y verdict pass ship, `docs/qa/0207/README.md`.
+- [x] `git diff --check` y sintaxisJS verde; documentación distingue mock de implementación real.
 
 ## Mutaciones — presupuesto: 0
 

@@ -1,3 +1,5 @@
+import styles from "./consumer-entry.module.css";
+
 /**
  * Spec 0119 / ADR 0111 §1: «Continuar con Apple» / «Continuar con Google», los dos visibles en
  * todo dispositivo; el del sistema primero (Apple en iOS). Son enlaces al `start` del proveedor:
@@ -23,24 +25,15 @@ export function ProviderButtons({
   const providers = [PROVIDERS.apple, PROVIDERS.google];
   if (!isIos) providers.reverse();
   return (
-    <div style={{ display: "grid", gap: 12, marginTop: 24 }}>
+    <div className={styles.providers}>
       {providers.map((provider) => (
         <a
           key={provider.id}
           href={`/api/public/auth/${provider.id}/start${search}`}
           data-provider={provider.id}
+          className={styles.provider}
           style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 10,
-            height: 48,
-            boxSizing: "border-box",
-            padding: "0 16px",
-            borderRadius: 10,
-            fontSize: 16,
-            fontWeight: 500,
-            textDecoration: "none",
+            height: 52,
             ...provider.style,
           }}
         >
@@ -110,19 +103,8 @@ const PROVIDERS = {
 /** El aviso de `?error=auth`: el ingreso con el proveedor no se completo. */
 export function AuthErrorNotice() {
   return (
-    <p
-      role="alert"
-      style={{
-        marginTop: 16,
-        padding: "10px 12px",
-        background: "#fdecea",
-        border: "1px solid #f5c6cb",
-        borderRadius: 10,
-        color: "#a1352c",
-        fontSize: 14,
-      }}
-    >
-      No pudimos completar el ingreso. Probá de nuevo.
+    <p role="alert" className={styles.error}>
+      No pudimos completar el ingreso. Inténtalo de nuevo.
     </p>
   );
 }

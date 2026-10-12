@@ -1,8 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { readableTextColor } from "@mi-pasaporte/domain/lib/brand-color";
+import type { WelcomeOffer as Offer } from "@mi-pasaporte/domain/server/consumer/enroll-landing";
 import { ProviderButtons } from "../../provider-buttons";
+import { EnrollmentIntro } from "../../entry-brand";
+import { EntryIcon } from "../../entry-icons";
+import { WelcomeOffer } from "./welcome-offer";
+import styles from "../../consumer-entry.module.css";
 
 /**
  * Spec 0119 / ADR 0111 §7 — EL ALTA DE UN TOQUE con sesion viva: «Sumarme como <nombre>» hace
@@ -13,13 +17,15 @@ export function OneTapEnroll({
   programId,
   loc,
   firstName,
-  primaryColor,
+  businessName,
+  welcomeOffer,
   isIos,
 }: {
   programId: string;
   loc: string | null;
   firstName: string;
-  primaryColor: string;
+  businessName: string;
+  welcomeOffer: Offer | null;
   isIos: boolean;
 }) {
   const [submitting, setSubmitting] = useState(false);
@@ -58,61 +64,64 @@ export function OneTapEnroll({
       const data = (await res.json().catch(() => ({}))) as { error?: string };
       setToast(data.error ?? "No pudimos completar el registro.");
     } catch {
-      setToast("Hubo un problema de conexión. Intentá de nuevo.");
+      setToast("Hubo un problema de conexión. Inténtalo de nuevo.");
     } finally {
       setSubmitting(false);
     }
   }
 
-  if (notMe)
-    return <ProviderButtons programId={programId} loc={loc} isIos={isIos} />;
-
   return (
-    <div style={{ marginTop: 24 }}>
-      <button
-        type="button"
-        onClick={join}
-        disabled={submitting}
-        style={{
-          width: "100%",
-          padding: "13px 14px",
-          fontSize: 16,
-          fontWeight: 600,
-          borderRadius: 10,
-          border: "none",
-          background: primaryColor,
-          color: readableTextColor(primaryColor),
-          opacity: submitting ? 0.6 : 1,
-          cursor: submitting ? "default" : "pointer",
-        }}
-      >
-        {submitting ? "Sumándote…" : name ? `Sumarme como ${name}` : "Sumarme"}
-      </button>
-      <button
-        type="button"
-        onClick={() => setNotMe(true)}
-        style={{
-          display: "block",
-          margin: "14px auto 0",
-          background: "none",
-          border: "none",
-          color: "#555",
-          fontSize: 14,
-          textDecoration: "underline",
-          cursor: "pointer",
-        }}
-      >
-        No soy yo
-      </button>
-      {toast ? (
-        <p
-          role="alert"
-          style={{ marginTop: 12, color: "#a1352c", fontSize: 14 }}
-        >
-          {toast}
-        </p>
-      ) : null}
-    </div>
+    <section>
+      <EnrollmentIntro
+        businessName={businessName}
+        firstName={firstName}
+        signed={!notMe}
+      />
+      {welcomeOffer && <WelcomeOffer offer={welcomeOffer} />}
+      {notMe ? (
+        <>
+          <ProviderButtons programId={programId} loc={loc} isIos={isIos} />
+          <p className={styles.supportNote}>
+            Al continuar, te unes al programa de este comercio con tu cuenta de
+            CheckPass.
+          </p>
+        </>
+      ) : (
+        <div className={styles.joinActions}>
+          <div className={styles.account}>
+            <span className={styles.avatar}>
+              <EntryIcon name="person" />
+            </span>
+            <div>
+              <p>Has iniciado sesión como</p>
+              <strong>{name || "Tu cuenta"}</strong>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={join}
+            disabled={submitting}
+            className={styles.primary}
+            aria-busy={submitting}
+          >
+            {submitting ? "Uniéndote…" : "Unirme al programa"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setNotMe(true)}
+            className={styles.textAction}
+            disabled={submitting}
+          >
+            No soy yo
+          </button>
+          {toast ? (
+            <p role="alert" className={styles.error}>
+              {toast}
+            </p>
+          ) : null}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -126,60 +135,57 @@ export function MemberNotMe({
   loc,
   businessName,
   firstName,
-  primaryColor,
   isIos,
 }: {
   programId: string;
   loc: string | null;
   businessName: string;
   firstName: string;
-  primaryColor: string;
   isIos: boolean;
 }) {
   const [notMe, setNotMe] = useState(false);
   const name = firstName.trim();
   if (notMe)
-    return <ProviderButtons programId={programId} loc={loc} isIos={isIos} />;
+    return (
+      <>
+        <EnrollmentIntro businessName={businessName} />
+        <ProviderButtons programId={programId} loc={loc} isIos={isIos} />
+        <p className={styles.supportNote}>
+          Al continuar, te unes al programa de este comercio con tu cuenta de
+          CheckPass.
+        </p>
+      </>
+    );
   return (
     <section>
-      <h2 style={{ fontSize: 20, marginTop: 20 }}>
-        Ya sos parte de {businessName}
-      </h2>
-      {name ? (
-        <p style={{ color: "#555", marginTop: 6 }}>Entraste como {name}.</p>
-      ) : null}
-      <a
-        href="/wallet"
-        style={{
-          display: "block",
-          marginTop: 20,
-          padding: "13px 14px",
-          borderRadius: 10,
-          textAlign: "center",
-          textDecoration: "none",
-          fontWeight: 600,
-          background: primaryColor,
-          color: readableTextColor(primaryColor),
-        }}
-      >
-        Ver mi tarjeta
-      </a>
-      <button
-        type="button"
-        onClick={() => setNotMe(true)}
-        style={{
-          display: "block",
-          margin: "14px auto 0",
-          background: "none",
-          border: "none",
-          color: "#555",
-          fontSize: 14,
-          textDecoration: "underline",
-          cursor: "pointer",
-        }}
-      >
-        No soy yo
-      </button>
+      <div className={styles.intro}>
+        <h1>Ya eres parte de {businessName}</h1>
+        <p>
+          Tu programa ya está en tu wallet. Abre tu pase para ver tus
+          beneficios.
+        </p>
+      </div>
+      <div className={styles.joinActions}>
+        <div className={styles.account}>
+          <span className={styles.avatar}>
+            <EntryIcon name="person" />
+          </span>
+          <div>
+            <p>Has iniciado sesión como</p>
+            <strong>{name || "Tu cuenta"}</strong>
+          </div>
+        </div>
+        <a href="/wallet" className={styles.primary}>
+          Ver mi pase
+        </a>
+        <button
+          type="button"
+          onClick={() => setNotMe(true)}
+          className={styles.textAction}
+        >
+          No soy yo
+        </button>
+      </div>
     </section>
   );
 }

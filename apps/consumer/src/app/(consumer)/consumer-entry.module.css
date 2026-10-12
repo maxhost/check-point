@@ -1,0 +1,440 @@
+@font-face {
+  font-family: "Nunito Sans";
+  src: url("/fonts/nunito-sans.ttf") format("truetype");
+  font-weight: 200 900;
+  font-style: normal;
+  font-display: swap;
+}
+.page {
+  --entry-ink: #17382f;
+  --entry-coral: #ed7456;
+  --entry-paper: #ffffff;
+  --entry-surface: #f5f8f6;
+  --entry-muted: #52685f;
+  --entry-line: #dce6e1;
+  min-height: 100dvh;
+  padding: 28px 0 max(28px, env(safe-area-inset-bottom));
+  background: var(--entry-paper);
+  color: var(--entry-ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  overflow-wrap: anywhere;
+}
+.page ::selection {
+  background: #f9d7c2;
+  color: var(--entry-ink);
+}
+.page :is(button, a):focus-visible {
+  outline: 3px solid var(--entry-ink);
+  outline-offset: 4px;
+}
+.page svg {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+.page button,
+.page a {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.page button:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+.content {
+  max-width: 390px;
+  padding: 0 24px;
+  margin: 0 auto;
+  min-height: min(770px, calc(100dvh - 56px));
+  display: flex;
+  flex-direction: column;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 750;
+  letter-spacing: -0.035em;
+}
+.brandLarge {
+  font-size: 27px;
+  margin-top: 36px;
+}
+.brandLarge svg {
+  width: 42px;
+  height: 42px;
+}
+.brandFooter {
+  margin: auto auto 0;
+  padding-top: 36px;
+  font-size: 18px;
+}
+.brandFooter svg {
+  width: 25px;
+  height: 25px;
+}
+.intro {
+  margin-top: 32px;
+}
+.intro h1,
+.confirmationHero h1 {
+  font-family: "Nunito Sans", sans-serif;
+  font-size: 38px;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.12;
+  margin: 0;
+  text-wrap: balance;
+}
+.intro p {
+  color: var(--entry-muted);
+  font-size: 17px;
+  line-height: 1.5;
+  margin: 18px 0 0;
+}
+.accessIntro {
+  margin-top: 62px;
+}
+.providers {
+  margin-top: 32px;
+  display: grid;
+  gap: 12px;
+}
+.provider {
+  width: 100%;
+  min-height: 52px;
+  box-sizing: border-box;
+  padding: 12px 16px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-decoration: none;
+}
+.provider:hover {
+  filter: brightness(0.96);
+}
+.supportNote {
+  margin: 20px 4px 0;
+  color: var(--entry-muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.merchantIdentity {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  margin-top: 6px;
+  text-align: center;
+}
+.merchantSymbol {
+  display: grid;
+  place-items: center;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--entry-ink);
+  color: white;
+  outline: 2px solid var(--entry-coral);
+  outline-offset: 4px;
+  font-size: 36px;
+  font-weight: 700;
+}
+.withLogo {
+  background: white;
+  padding: 10px;
+}
+.merchantSymbol img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.merchantIdentity strong {
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.joinActions {
+  margin-top: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.account {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  background: var(--entry-surface);
+  border-radius: 16px;
+}
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  color: var(--entry-ink);
+  background: #e1ebe5;
+  border-radius: 50%;
+}
+.avatar svg {
+  width: 20px;
+  height: 20px;
+}
+.account p {
+  margin: 0 0 4px;
+  color: var(--entry-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.account strong {
+  font-size: 16px;
+}
+.primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  border: 1px solid var(--entry-ink);
+  border-radius: 16px;
+  padding: 13px 16px;
+  background: var(--entry-ink);
+  color: white;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 1.4;
+  text-decoration: none;
+  text-align: center;
+}
+.primary:hover {
+  background: #285345;
+}
+.textAction {
+  align-self: center;
+  width: auto;
+  min-height: 44px;
+  color: var(--entry-ink);
+  border: 0;
+  background: transparent;
+  padding: 10px 16px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 400;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.error {
+  margin: 16px 0 0;
+  padding: 14px;
+  color: #8a302a;
+  background: #fff2ef;
+  border: 1px solid #edb8ae;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.welcomeOffer {
+  margin-top: 24px;
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--entry-surface);
+}
+.welcomeOffer h2 {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.3;
+}
+.welcomeOffer p {
+  margin: 8px 0 0;
+  color: var(--entry-muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.confirmationHero {
+  text-align: center;
+  padding-top: 2px;
+}
+.membershipSeal {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 22px;
+  background: var(--entry-coral);
+  color: var(--entry-ink);
+  border-radius: 22px;
+  transform: rotate(-8deg);
+}
+.membershipSeal svg {
+  width: 34px;
+  height: 34px;
+  transform: rotate(8deg);
+}
+.confirmationHero h1 {
+  font-size: 34px;
+}
+.confirmationHero > strong {
+  display: block;
+  margin-top: 12px;
+  font-size: 22px;
+}
+.confirmationGreeting {
+  margin: 10px 0 0;
+  color: var(--entry-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.installSection {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--entry-line);
+}
+.installHeading {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+.installHeading .appIcon {
+  width: 48px;
+  height: 48px;
+}
+.installHeading h2 {
+  font-family: "Nunito Sans", sans-serif;
+  font-size: 23px;
+  font-weight: 800;
+  margin: 0;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+.installSection > p {
+  color: var(--entry-muted);
+  font-size: 15px;
+  line-height: 1.55;
+  margin: 16px 0 0;
+}
+.installSteps {
+  list-style: none;
+  padding: 0;
+  margin: 22px 0 0;
+  background: var(--entry-surface);
+  border-radius: 16px;
+  overflow: hidden;
+}
+.installSteps li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 14px;
+  min-height: 73px;
+}
+.installSteps li + li {
+  border-top: 1px solid var(--entry-line);
+}
+.stepNumber {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  background: #e1ebe5;
+  border-radius: 50%;
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.installSteps p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  flex: 1;
+}
+.installSteps svg {
+  width: 22px;
+  height: 22px;
+}
+.installSection > .installNote {
+  font-size: 12px;
+  margin-top: 14px;
+}
+.installArea {
+  margin-top: 22px;
+}
+.installed,
+.instructions {
+  padding: 16px;
+  background: var(--entry-surface);
+  border-radius: 16px;
+  color: var(--entry-ink);
+  font-size: 14px;
+  line-height: 1.55;
+}
+.installed {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.instructions {
+  margin: 16px 0 0;
+}
+.passLink {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  width: 100%;
+  padding: 12px 5px;
+  margin: 16px 0 0;
+  color: var(--entry-ink);
+  background: transparent;
+  border: 0;
+  font-size: 15px;
+  font-weight: 650;
+  text-decoration: none;
+}
+.passLink:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.passLink svg {
+  width: 20px;
+  height: 20px;
+}
+.unavailable .brandLarge {
+  margin-top: 36px;
+}
+@media (max-width: 360px) {
+  .intro h1 {
+    font-size: 34px;
+  }
+  .confirmationHero h1 {
+    font-size: 30px;
+  }
+  .provider {
+    font-size: 15px;
+    gap: 9px;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .membershipSeal {
+    animation: settle 500ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes settle {
+    from {
+      transform: rotate(-20deg) scale(0.9);
+    }
+    to {
+      transform: rotate(-8deg) scale(1);
+    }
+  }
+}

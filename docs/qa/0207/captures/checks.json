@@ -1,0 +1,13 @@
+{
+  "failures": [],
+  "errors": [],
+  "apiRequests": [],
+  "checkedWidths": [
+    320,
+    360,
+    390,
+    430
+  ],
+  "controls": "identity, ranges, edit text, reset, join, providers, platform, install, pass",
+  "captures": "/Users/maxi/Documents/claude-workspace/check-point/docs/qa/0207/captures"
+}

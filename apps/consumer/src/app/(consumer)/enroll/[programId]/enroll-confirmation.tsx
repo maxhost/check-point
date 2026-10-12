@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import type { WelcomeOffer } from "@mi-pasaporte/domain/server/consumer/enroll-landing";
-import styles from "./enroll-confirmation.module.css";
+import styles from "../../consumer-entry.module.css";
+import { CheckPassIcon, EntryIcon } from "../../entry-icons";
+import { WelcomeOffer as WelcomeOfferCard } from "./welcome-offer";
 
 type InstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -33,6 +35,8 @@ export function EnrollConfirmation({
     null,
   );
   const [showManual, setShowManual] = useState(false);
+  const [installing, setInstalling] = useState(false);
+  const [installError, setInstallError] = useState<string | null>(null);
 
   useEffect(() => {
     const ua = navigator.userAgent;
@@ -51,6 +55,8 @@ export function EnrollConfirmation({
     const onInstalled = () => {
       setInstalled(true);
       setInstallPrompt(null);
+      setInstallError(null);
+      setShowManual(false);
     };
     window.addEventListener("beforeinstallprompt", onPrompt);
     window.addEventListener("appinstalled", onInstalled);
@@ -61,123 +67,144 @@ export function EnrollConfirmation({
   }, []);
 
   async function install() {
+    if (installing) return;
     if (!installPrompt) {
       setShowManual(true);
       return;
     }
     const prompt = installPrompt;
     setInstallPrompt(null);
-    await prompt.prompt();
-    const choice = await prompt.userChoice;
-    if (choice.outcome !== "accepted") setShowManual(true);
+    setInstalling(true);
+    setInstallError(null);
+    try {
+      await prompt.prompt();
+      const choice = await prompt.userChoice;
+      if (choice.outcome !== "accepted") setShowManual(true);
+    } catch {
+      setInstallError(
+        "No pudimos abrir la instalación. Puedes añadir CheckPass desde el menú de Chrome.",
+      );
+      setShowManual(true);
+    } finally {
+      setInstalling(false);
+    }
   }
 
   return (
-    <section className={styles.confirmation}>
-      <div className={styles.hero}>
-        <div className={styles.appIcon} aria-hidden="true">
-          C
-        </div>
-        <span className={styles.step}>
-          PASO 1 DE 2 · TU REGISTRO ESTÁ LISTO
+    <section
+      aria-label={
+        firstName.trim()
+          ? `Registro confirmado para ${firstName.trim()}`
+          : "Registro confirmado"
+      }
+    >
+      <div className={styles.confirmationHero}>
+        <span className={styles.membershipSeal}>
+          <EntryIcon name="check" />
         </span>
-        <h1>{firstName.trim() ? `¡Listo, ${firstName.trim()}!` : "¡Listo!"}</h1>
-        <p>
-          Ya sos parte del programa de <strong>{businessName}</strong>. Poné
-          CheckPass en tu inicio para encontrar tus beneficios siempre a mano.
-        </p>
+        <h1>¡Ya eres parte!</h1>
+        <strong>{businessName}</strong>
       </div>
-
-      <div
-        className={styles.benefits}
-        aria-label="Beneficios de tener CheckPass en el inicio"
+      {welcomeOffer && <WelcomeOfferCard offer={welcomeOffer} />}
+      <section
+        className={styles.installSection}
+        aria-labelledby="install-title"
       >
-        <div>
-          <span aria-hidden="true">⌁</span>
-          <p>Todos tus programas en un lugar</p>
+        <div className={styles.installHeading}>
+          <CheckPassIcon className={styles.appIcon} />
+          <h2 id="install-title">
+            Ten tus beneficios
+            <br />a mano
+          </h2>
         </div>
-        <div>
-          <span aria-hidden="true">✦</span>
-          <p>Cupones y ofertas para vos</p>
+        <p>
+          Añade CheckPass a tu pantalla de inicio para encontrar tu pase y todos
+          tus programas.
+        </p>
+        <div className={styles.installArea}>
+          {installed ? (
+            <p className={styles.installed} role="status">
+              <EntryIcon name="check" />
+              CheckPass ya está en tu inicio. Ábrelo desde su icono para
+              continuar.
+            </p>
+          ) : platform === "android" ? (
+            <>
+              <button
+                className={styles.primary}
+                type="button"
+                onClick={install}
+                disabled={installing}
+                aria-busy={installing}
+              >
+                {installing
+                  ? "Abriendo instalación…"
+                  : installPrompt
+                    ? "Añadir CheckPass a mi inicio"
+                    : "Cómo añadir CheckPass a mi inicio"}
+                <EntryIcon name="add" />
+              </button>
+              {showManual && (
+                <p className={styles.instructions}>
+                  En Chrome, abre el menú y elige <strong>Instalar app</strong>{" "}
+                  o <strong>Añadir a pantalla de inicio</strong>. Si ya está
+                  instalada, ábrela desde el icono de CheckPass.
+                </p>
+              )}
+            </>
+          ) : platform === "ios" ? (
+            <>
+              <ol className={styles.installSteps}>
+                <li>
+                  <span className={styles.stepNumber}>1</span>
+                  <p>
+                    En Safari, toca <strong>Compartir</strong>.
+                  </p>
+                  <EntryIcon name="share" />
+                </li>
+                <li>
+                  <span className={styles.stepNumber}>2</span>
+                  <p>
+                    Elige <strong>Añadir a pantalla de inicio</strong>.
+                  </p>
+                  <EntryIcon name="add" />
+                </li>
+                <li>
+                  <span className={styles.stepNumber}>3</span>
+                  <p>
+                    Toca <strong>Añadir</strong> y abre CheckPass desde su
+                    icono.
+                  </p>
+                  <EntryIcon name="check" />
+                </li>
+              </ol>
+            </>
+          ) : platform === null ? (
+            <p role="status">Preparando tu instalación…</p>
+          ) : (
+            <a className={styles.primary} href="/wallet">
+              Abrir CheckPass <EntryIcon name="arrow" />
+            </a>
+          )}
         </div>
-        <div>
-          <span aria-hidden="true">↗</span>
-          <p>Acceso rápido desde tu inicio</p>
-        </div>
-      </div>
-
-      {welcomeOffer && (
-        <div className={styles.reward}>
-          <span className={styles.rewardIcon} aria-hidden="true">
-            ✦
-          </span>
-          <div>
-            <strong>Te espera un beneficio de bienvenida</strong>
-            <small>
-              Abrí CheckPass desde tu inicio y activá las notificaciones para
-              descubrirlo, sujeto a disponibilidad.
-            </small>
-          </div>
-        </div>
-      )}
-
-      <div className={styles.installArea}>
-        {installed ? (
-          <p className={styles.installed}>
-            CheckPass ya está en tu inicio ✓ Abrilo desde su ícono para
-            continuar.
+        {installError && (
+          <p role="alert" className={styles.error}>
+            {installError}
           </p>
-        ) : platform === "android" ? (
-          <>
-            <button
-              className={styles.installButton}
-              type="button"
-              onClick={install}
-            >
-              {installPrompt
-                ? "Añadir CheckPass a mi inicio"
-                : "Cómo añadir CheckPass a mi inicio"}
-              <span aria-hidden="true">↗</span>
-            </button>
-            {showManual && (
-              <p className={styles.instructions}>
-                En Chrome, abrí el menú <strong>⋮</strong> y elegí{" "}
-                <strong>Instalar app</strong>. Si ya está instalado, abrilo
-                desde el ícono de CheckPass.
-              </p>
-            )}
-          </>
-        ) : platform === "ios" ? (
-          <div className={styles.iosSteps}>
-            <strong>Añadí CheckPass a tu inicio</strong>
-            <ol>
-              <li>
-                En Safari, tocá <strong>Compartir</strong>.
-              </li>
-              <li>
-                Elegí <strong>Añadir a pantalla de inicio</strong>.
-              </li>
-              <li>
-                Tocá <strong>Añadir</strong> y abrí CheckPass desde su ícono.
-              </li>
-            </ol>
-            <p>Si abriste el QR en otra app, abrí esta página en Safari.</p>
-          </div>
-        ) : platform === null ? (
-          <p className={styles.loading}>Preparando tu instalación…</p>
-        ) : (
-          <a className={styles.installButton} href="/wallet">
-            Abrir CheckPass <span aria-hidden="true">↗</span>
-          </a>
         )}
-        <p className={styles.nextStep}>
-          Después, dentro de CheckPass, activás los avisos para recibir tus
+        {!installed && platform === "ios" && (
+          <p className={styles.installNote}>
+            Si abriste el QR en otra app, abre esta página en Safari.
+          </p>
+        )}
+        <p className={styles.installNote}>
+          Después, dentro de CheckPass, activa los avisos para recibir tus
           beneficios.
         </p>
-      </div>
-      <a className={styles.skipLink} href="/wallet">
-        Ver mi pase ahora
-      </a>
+        <a className={styles.passLink} href="/wallet">
+          Ver mi pase ahora <EntryIcon name="arrow" />
+        </a>
+      </section>
     </section>
   );
 }

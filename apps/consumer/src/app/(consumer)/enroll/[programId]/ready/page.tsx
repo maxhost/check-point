@@ -8,6 +8,7 @@ import {
 } from "@mi-pasaporte/domain/server/consumer/core";
 import { resolveSession } from "@mi-pasaporte/domain/server/consumer/session";
 import { EnrollConfirmation } from "../enroll-confirmation";
+import styles from "../../../consumer-entry.module.css";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -38,19 +39,14 @@ export default async function EnrollReadyPage({
   if (!landing) redirect("/wallet");
 
   return (
-    <main
-      style={{
-        maxWidth: 420,
-        margin: "0 auto",
-        padding: "32px 20px",
-        fontFamily: "system-ui, sans-serif",
-      }}
-    >
-      <EnrollConfirmation
-        firstName={account.firstName}
-        businessName={landing.businessName}
-        welcomeOffer={landing.welcomeOffer}
-      />
+    <main className={styles.page}>
+      <div className={styles.content}>
+        <EnrollConfirmation
+          firstName={account.firstName}
+          businessName={landing.businessName}
+          welcomeOffer={landing.welcomeOffer}
+        />
+      </div>
     </main>
   );
 }
