@@ -100,8 +100,8 @@ U1–U3 se hicieron en `dev` con la spec 0196 (`8611689`). U4–U6: la API de la
 | U2 | Retirar el plan Free/Gratis del panel | 0189 §D10 | UI 0196 implementada local, E2E específicos verdes; QA owner pendiente |
 | U3 | Comercio bloqueado y días de prueba del contrato de sesión | 0189 §D10 | UI 0196 implementada local, E2E específicos verdes; QA owner pendiente |
 | U4 | **Vencimiento en el panel del programa**: interruptor + selector 3/6/9/12 meses contra `PUT /api/loyalty-program/expiry`; al activar, «empieza a contar hoy para todos tus clientes». Lee `program.balanceExpiryMonths` | spec **0195** §D6 | en `dev` (merge de 0195) |
-| U5 | **Vencimiento en la inscripcion**: con `balanceExpiryMonths` del landing, «Tus puntos vencen si pasan 6 meses sin compras ni canjes» junto a los terminos | spec **0195** §D6 | en `dev` (merge de 0195) |
-| U6 | **Vencimiento en la PWA**: con `balanceExpiresOn`, «Vencen el 12 abr 2027» bajo el saldo (los avisos ya salen en Actividad) | spec **0195** §D6 | en `dev` (merge de 0195) |
+| U5 | **Vencimiento en la inscripcion**: con `balanceExpiryMonths` del landing, «Tus puntos vencen si pasan 6 meses sin compras ni canjes» junto a los terminos | spec **0195** §D6 | **descartada por el owner 2026-10-11** («no tenia que mostrar esto al cliente ni en su app, nada de incluirlo en la landing de alta»): solo va U4 |
+| U6 | **Vencimiento en la PWA**: con `balanceExpiresOn`, «Vencen el 12 abr 2027» bajo el saldo (los avisos ya salen en Actividad) | spec **0195** §D6 | **descartada por el owner 2026-10-11** («no tenia que mostrar esto al cliente ni en su app, nada de incluirlo en la landing de alta»): solo va U4 |
 
 ## Pendientes del owner (no son codigo)
 
