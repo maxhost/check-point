@@ -1,7 +1,7 @@
 ---
 spec: 0202
 fecha: 2026-10-11
-estado: API + UI implementadas; QA del owner pendiente
+estado: implementada; en PROD `3fe2ad6` (2026-10-11); QA del owner en iPhone pendiente
 resumen: El owner entra al panel con un codigo de 6 digitos por email (vence en 10 min, 5 intentos por codigo, 10 fallidos por dia por email) en vez de link magico, para poder entrar desde la PWA instalada en iPhone. Solo el login; alta y verificacion siguen con link.
 disjunta: si
 archivos: apps/merchant/src/server/auth.ts, apps/merchant/src/server/email/login-code-email.ts, apps/merchant/src/server/merchant-login.ts, apps/merchant/src/app/api/merchant/auth/login/route.ts, apps/merchant/src/app/api/merchant/auth/login/verify/route.ts, apps/merchant/src/app/api/merchant/auth/magic-link/route.ts, tests de esas rutas; UI (GPT): onboarding/_components/account-step.tsx y onboarding/_lib/onboarding-api.ts

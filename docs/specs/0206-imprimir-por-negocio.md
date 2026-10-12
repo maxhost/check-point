@@ -1,7 +1,7 @@
 ---
 spec: 0206
 fecha: 2026-10-11
-estado: API + UI implementadas; aprobadas por owner, merge local a main
+estado: implementada; en PROD `3fe2ad6` (2026-10-11), migracion 0072 aplicada
 resumen: Interruptor por negocio «Imprimir tickets» (apagado por defecto para todos); con la impresion apagada el POS no muestra «Imprimir». Migracion 0072 aditiva.
 disjunta: si
 archivos: packages/db/drizzle/0072_*, packages/db/src/schema/ticket-settings.ts, apps/merchant/src/server/ticket-settings/settings.ts (+ neon test), apps/merchant/src/app/api/merchant/business/ticket/route.ts, apps/merchant/src/app/api/pos/ticket/route.ts, apps/merchant/src/printing/README.md

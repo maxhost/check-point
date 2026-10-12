@@ -417,26 +417,26 @@ técnica, Definition of Done y plan de pruebas antes de que su estado pase a `ce
 
 | 0194 | 2026-10-10 | Noindex en pantallas merchant y consumer; admin coordinado con Claude. | cerrada | si | `specs/0194-noindex-apps-privadas.md` |
 | 0196 | 2026-10-10 | UI de cobro, prueba y bloqueo: U1–U3 del contrato 0189. | implementada local; 18/18 E2E específicos, QA owner y gate E2E general pendientes | no | `specs/0196-ui-cobro-prueba-y-bloqueo.md` |
-| 0197 | 2026-10-10 | Home explicativa para consumidores y landing comercial en /negocios. | implementada y aprobada localmente; 9/9 E2E, publicación pendiente | no | `specs/0197-home-consumidores-y-landing-negocios.md` |
+| 0197 | 2026-10-10 | Home explicativa para consumidores y landing comercial en /negocios. | implementada y aprobada; **en PROD `3fe2ad6`** (2026-10-11) | no | `specs/0197-home-consumidores-y-landing-negocios.md` |
 
-| 0198 | 2026-10-10 | Landing /negocios: nuevos clientes y motivos para volver, hero integrado aprobado. | cerrada; implementación local autorizada | no | `specs/0198-negocios-nuevos-clientes-y-regreso.md` |
+| 0198 | 2026-10-10 | Landing /negocios: nuevos clientes y motivos para volver, hero integrado aprobado. | implementada; **en PROD `3fe2ad6`** (2026-10-11), cuerpo de /negocios luego reemplazado por 0199/0200 | no | `specs/0198-negocios-nuevos-clientes-y-regreso.md` |
 
-| 0199 | 2026-10-11 | Rediseño completo de /negocios: El barrio conectado, sin etiquetas de ejemplo. | implementada local; 9/9 E2E, QA visual y cierre workflow pendientes | no | `specs/0199-negocios-barrio-conectado.md` |
+| 0199 | 2026-10-11 | Rediseño completo de /negocios: El barrio conectado, sin etiquetas de ejemplo. | reemplazada por 0200 (Funcional, aprobada por el owner); en PROD `3fe2ad6` solo lo que 0200 conservo | no | `specs/0199-negocios-barrio-conectado.md` |
 
-| 0200 | 2026-10-11 | Filosofía Funcional aprobada en /negocios y guía de diseño de la web pública. | implementada local; build y 9/9 E2E, diseño aprobado, publicación pendiente | no | `specs/0200-negocios-filosofia-funcional.md` |
+| 0200 | 2026-10-11 | Filosofía Funcional aprobada en /negocios y guía de diseño de la web pública. | implementada, diseño aprobado; **en PROD `3fe2ad6`** (2026-10-11) | no | `specs/0200-negocios-filosofia-funcional.md` |
 
-| 0201 | 2026-10-11 | Home Funcional debajo del hero aprobado, conservado sin cambios. | implementada local; hero idéntico6/6, build y9/9 E2E, publicación pendiente | no | `specs/0201-home-filosofia-funcional.md` |
+| 0201 | 2026-10-11 | Home Funcional debajo del hero aprobado, conservado sin cambios. | implementada, hero idéntico 6/6; **en PROD `3fe2ad6`** (2026-10-11) | no | `specs/0201-home-filosofia-funcional.md` |
 
-| 0202 | 2026-10-11 | **Login del owner con codigo** (L2, API + servidor; implementa ADR 0137; pantalla de GPT con §D4). **Que es:** `POST /api/merchant/auth/login` manda un codigo y `POST /api/merchant/auth/login/verify` lo canjea por la sesion, con el mismo corte de negocio cerrado que el link. **Por que importa:** entrar desde la PWA instalada en iPhone. | **API + UI implementadas; QA del owner pendiente** | si | `specs/0202-login-del-owner-con-codigo.md` |
+| 0202 | 2026-10-11 | **Login del owner con codigo** (L2, API + servidor; implementa ADR 0137; pantalla de GPT con §D4). **Que es:** `POST /api/merchant/auth/login` manda un codigo y `POST /api/merchant/auth/login/verify` lo canjea por la sesion, con el mismo corte de negocio cerrado que el link. **Por que importa:** entrar desde la PWA instalada en iPhone. | **API + UI implementadas; en PROD `3fe2ad6`** (2026-10-11); QA del owner en iPhone pendiente | si | `specs/0202-login-del-owner-con-codigo.md` |
 
-| 0203 | 2026-10-11 | Marketing Funcional: estructura, demostraciones y copy para comerciantes. | implementada local; build y13/13 E2E, QA owner pendiente | no | `specs/0203-marketing-funcional-y-copy.md` |
+| 0203 | 2026-10-11 | Marketing Funcional: estructura, demostraciones y copy para comerciantes. | implementada; **en PROD `3fe2ad6`** (2026-10-11); QA owner pendiente | no | `specs/0203-marketing-funcional-y-copy.md` |
 
-| 0204 | 2026-10-11 | Fidelización Funcional con mensajes de recompensas, previsión e historial. | implementada local; build y17/17 E2E, QA owner pendiente | no | `specs/0204-fidelizacion-funcional-y-copy.md` |
+| 0204 | 2026-10-11 | Fidelización Funcional con mensajes de recompensas, previsión e historial. | implementada; **en PROD `3fe2ad6`** (2026-10-11); QA owner pendiente | no | `specs/0204-fidelizacion-funcional-y-copy.md` |
 
-| 0205 | 2026-10-11 | Entrada del comercio con login por defecto; registro explícito mediante signup=1 y CTA públicos actualizados. | implementada; pestañas L0 aprobadas `7797b24`, merge local a main, publicación pendiente | no | `specs/0205-entrada-merchant-login-por-defecto.md` |
+| 0205 | 2026-10-11 | Entrada del comercio con login por defecto; registro explícito mediante signup=1 y CTA públicos actualizados. | implementada; pestañas aprobadas `7797b24`; **en PROD `3fe2ad6`** (2026-10-11) | no | `specs/0205-entrada-merchant-login-por-defecto.md` |
 
 | 0207 | 2026-10-11 | Mocks HTML/CSS de wallet: Club cotidiano, paleta A, cuatro estados mobile first. | prototipo aprobado por owner; base de implementación0208 | si | `specs/0207-wallet-mocks-club-cotidiano.md` |
 
-| 0208 | 2026-10-12 | Entrada real de wallet con Club cotidiano y paleta A: login, inscripción y confirmación. | cerrada; implementación local en curso | si | `specs/0208-wallet-entrada-club-cotidiano.md` |
+| 0208 | 2026-10-12 | Entrada real de wallet con Club cotidiano y paleta A: login, inscripción y confirmación. | UI implementada local y aprobada;11/11 E2E+14/14 unit; gates generales pendientes, sin publicación | si | `specs/0208-wallet-entrada-club-cotidiano.md` |
 
-| 0206 | 2026-10-11 | **Imprimir tickets: si o no, por negocio** (L2, API + migracion 0072; pantallas de GPT). **Que es:** `printingEnabled` en el ajuste del ticket, APAGADO por defecto para todos (owner); con `false` el POS oculta «Imprimir». **Por que importa:** un comercio sin impresora no ve un boton que no sirve. | **API + UI implementadas; aprobadas por owner y merge local a main** (`da9c924`, ajuste POS `b6a04c7`; e2e UI 121/121 previos); publicación y migración 0072 a PROD pendientes | no | `specs/0206-imprimir-por-negocio.md` |
+| 0206 | 2026-10-11 | **Imprimir tickets: si o no, por negocio** (L2, API + migracion 0072; pantallas de GPT). **Que es:** `printingEnabled` en el ajuste del ticket, APAGADO por defecto para todos (owner); con `false` el POS oculta «Imprimir». **Por que importa:** un comercio sin impresora no ve un boton que no sirve. | **API + UI implementadas; aprobadas por owner y merge local a main** (`da9c924`, ajuste POS `b6a04c7`; e2e UI 121/121 previos); **en PROD `3fe2ad6`** (2026-10-11), migración 0072 aplicada antes del deploy (snapshot `snap-late-water-ax6pc362`) | no | `specs/0206-imprimir-por-negocio.md` |

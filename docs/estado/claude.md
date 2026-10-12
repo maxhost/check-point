@@ -24,6 +24,10 @@ con codigo corto → 400 `invalid_code`. Incluye 0202 (login por codigo, API + U
 **En `dev`, sin pushear:** `f354673` blindaje de e2e (URLs de entrada en `tests/e2e/support/merchant-entry-urls.ts`; la
 landing compara contra `onboardingUrl` de site-config y precalienta Next — en frio el primer `goto /negocios` pasaba 30 s).
 Medido en frio: 37 passed. Va en el proximo push (owner decide).
+Despues entraron a `dev` (2026-10-12): `075f6f0` nota libre en la orden del POS (OTRA sesion de Claude; **migracion 0073**
+`core.pos_order.note` + check 1..1000, aditiva, **NO aplicada en PROD**: aplicarla ANTES del proximo push, como la 0072;
+el commit dice L1 pero una migracion a PROD tiene piso L2) y las reservas de GPT 0207/0208 (wallet Club cotidiano, con
+cambios suyos sin commitear en `apps/consumer`). INDEX y specs 0197–0206 marcados «en PROD `3fe2ad6`».
 
 **QUE SIGUE:** QA del owner en iPhone (instalar el panel como app → login por codigo con sugerencia del teclado → POS;
 Ajustes → «Imprimir tickets»; vencimiento en el wizard). Hallazgo a decidir: el alta con email existente sigue mandando LINK.
