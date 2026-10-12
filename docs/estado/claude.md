@@ -11,30 +11,26 @@
 
 
 
-## ⇥ ESTADO (2026-10-11) — CERRADO POR EL OWNER, EN PROD: 0189 + 0190 + 0195 + 0196 + landing/SEO (`main` = `origin/main` = `4c40a6a`)
+## ⇥ ESTADO (2026-10-11) — LOGIN POR CODIGO (0202) LISTO EN `dev`; `main` local = `dev`; PUSH UNICO CUANDO GPT CIERRE
 
-**En PROD:** `4c40a6a`, deploy de merchant/customer/public `success` (status de GitHub del commit), `/api/health` 200 en
-`business.` y `my.`, `/programa-de-fidelizacion` 200. **Migraciones 0069/0070/0071 aplicadas** (2026-10-11, snapshot
-previo `snap-noisy-shadow-axj3i7b3`): 72 en `drizzle.__drizzle_migrations`, los 3 comercios en `trial` hasta 2027-01-09,
-`platform_auth` con 5 tablas, `tools/local-db/compare.sh` = «local == PROD» (huellas commiteadas en `4c40a6a`).
-Push hecho desde un worktree limpio en `4c40a6a` (verify completo verde con Neon); worktree borrado.
+**En PROD:** `origin/main` = `4c40a6a` (0189, 0190, 0195 API, 0196, landing/SEO 0191–0194; cerrado por el owner).
 
-**En `dev`:** GPT siguio despues de `4c40a6a` (0198/0199 landing, `890a37e`) con archivos `.impeccable/` sin commitear.
+**En `dev` y en `main` local (sin pushear; owner 2026-10-11: «un solo push» cuando GPT complete todo):**
+- `adb723c` panel instalable como PWA que abre en `/backoffice/pos` (PARQUEADO #86; QA en telefono pendiente).
+- ADR 0137 + spec 0202 (login del owner con codigo de 6 digitos, 10 min, 5 intentos, tope 10 equivocados/24 h;
+  owner acepto el bloqueo de 24 h). API `2e2e0dc` (Neon 7/7, 106 suites / 1000 tests, mutaciones M1/M3/M4 rojas, M2
+  sobrevivio y se borro el codigo redundante). UI de GPT `c59ef50` + `4b7eab4`: revisada por Claude contra §D4;
+  medido por Claude: `tsc` 0, eslint 0, unit 29/29, e2e `merchant-login-code` + `onboarding-google-places` 10/10.
+- `50911ae` tooling: `worktree-new.sh` enlaza las variables de cada app; gotcha de `list_deployments` vacio.
+- GPT: landing publica 0197–0201, marketing 0203, fidelizacion 0204 (QA del owner de 0203/0204 pendiente).
+- **`pnpm verify` NO corrido** (owner: no correr la suite hasta el push unico).
 
-**Panel `admin.checkpass.club` en PROD** (proyecto Vercel creado por el owner): `/api/health` ok, `/` → `/login`,
-noindex. **Owner 2026-10-11: «todo funcionando, damos esto por cerrado e implementado»** (0189, 0190, 0195, 0196).
+**Hallazgo a decidir (owner):** el alta con un email que YA tiene cuenta (etapa «Ya tienes cuenta» de
+`onboarding-wizard.tsx`) sigue mandando un LINK (`api/onboarding/signup` → `signInMagicLink`): desde la PWA de iPhone
+abre Safari y no deja sesion en la app. Opciones: dejarlo (alta = link, ADR 0137) o mandar codigo tambien ahi.
 
-**QUE SIGUE:**
-1. Tooling hecho (`5d5bb03`): el panel en `pnpm dev:local` (:3002, opcional) y `huellas.sql` con `platform_auth`
-   (local == PROD, 19 categorias; roles del cliente sin acceso a `platform_auth` en PROD). Ramas/worktrees de Claude
-   mergeados borrados (spec-0189, spec-0195, fix-notices-mock, ui-sistema, onboarding-google). **Quedan:** `spec-0190`
-   (su worktree tiene el UNICO `apps/platform/.env.local`: el owner lo mueve al repo, despues se borra), y `motor`
-   (spec 0163 «guardia de UI», version vieja de `tools/ui-guard.ts`; el numero 0163 en `main` es otra spec) y
-   `sin-gate-email` (fix 0155 H4: clave de Google rechazada → 503; NO esta en `main`): sin mergear, decide el owner.
-2. GPT: U4–U6 (vencimiento, 0195 §D6). Skill `impeccable` instalada sin commitear (lint/formato ya la ignoran, `6b10697`):
-   pregunta abierta al owner de quien la commitea.
-3. Siguiente funcionalidad: reporte de retorno. Inventario en `docs/analisis-producto-2026-10-10.md` §Inventario.
-   Pregunta abierta al owner: registrar cada escaneo como evento.
+**QUE SIGUE:** GPT completa lo suyo (U4–U6 vencimiento, 0195 §D6, en PARQUEADO); despues `main` ff a `dev`, `pnpm
+verify` desde un worktree limpio, push con OK del owner, deploy READY y QA del owner en iPhone (login + PWA).
+Analitica parqueada (PARQUEADO #91). Ramas `spec-0190`, `motor`, `sin-gate-email`: decision del owner pendiente.
 
-**Decisiones del owner, no volver a preguntar:** ADR 0134, 0135, 0136 (2026-10-10). Precio de la landing (Impulso
-$45 y «local adicional $12», distinto de Stripe $49): «dejalo asi» (2026-10-10).
+**Decisiones del owner, no volver a preguntar:** ADR 0134–0137; precio de la landing «dejalo asi» (2026-10-10).

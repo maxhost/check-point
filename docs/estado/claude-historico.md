@@ -6,6 +6,73 @@
 
 
 
+## ESTADO HISTORICO (2026-10-11) — PROD AL DIA (`4c40a6a`); SIGUE EL REPORTE DE RETORNO (ANALITICA)
+
+**En PROD (cerrado por el owner 2026-10-11: «todo funcionando»):** `main` = `origin/main` = `4c40a6a` con 0189 (planes
+pagos, prueba 90 dias), 0190 (panel `admin.checkpass.club`, proyecto Vercel propio creado por el owner), 0195
+(vencimiento del saldo), 0196 (UI de cobro de GPT) y landing/SEO 0191–0194. Migraciones 0069–0071 aplicadas
+(snapshot previo `snap-noisy-shadow-axj3i7b3`). Deploys `success` (status de GitHub del commit).
+
+**En `dev` (sin pushear):** docs de estado + `5d5bb03` (panel en `pnpm dev:local` :3002 si existe su archivo de
+variables; `check-env.ts` lo chequea, 5 tests nuevos, 4 rojos con el chequeo apagado; `huellas.sql` mira
+`platform_auth`: local == PROD, 19 categorias; roles del cliente sin acceso a `platform_auth` en PROD) + este handoff
+(`tools/worktree-new.sh` enlaza los archivos de variables de apps/paquetes, probado con un worktree descartable).
+GPT sigue en `dev` con 0198/0199 (landing negocios), cambios suyos sin commitear.
+Gate al cerrar: `pnpm run typecheck` 6/6, `lint` 0, `test` 2520 passed / 1081 skipped.
+
+**Ramas que quedan (de Claude):**
+- `spec-0190`: su worktree tiene el UNICO archivo de variables del panel (`apps/platform/`). Owner lo mueve al repo
+  (`mv ../check-point-wt/spec-0190/apps/platform/<archivo> apps/platform/`); despues se borra la rama y el worktree.
+- `motor` (spec «guardia de UI» con numero 0163 viejo, `tools/ui-guard.ts` superado por el de `main`) y
+  `sin-gate-email` (fix 0155 H4: clave de Google rechazada → 503 en vez de `place_not_found`, con test; NO esta en
+  `main`): decision del owner pendiente (borrar / mergear).
+
+**QUE SIGUE — reporte de retorno / analitica (owner 2026-10-11: «podemos ir trabajando en la feature de analitica»):**
+- Insumo: `docs/analisis-producto-2026-10-10.md` (por que, ADR 0021, §Inventario de datos medido).
+- Hechos clave medidos: PROD tiene 0 clientes / 0 ventas (no hay volumen que explorar); la cadena de Venta cruzada
+  es verificable (`cross_decision.coupon_id` → `coupon_redemption.coupon_id` → `order_id`/`discount_amount` → ordenes
+  posteriores); la «visita» verificable es la `order` (los escaneos NO se guardan como evento, solo `last_scan_at`);
+  el unico grupo de control es el `holdout` de `campaign_push`.
+- **Decisiones abiertas del owner, ANTES de la spec:** (1) registrar cada escaneo como evento; (2) redaccion de la
+  atribucion («llegaron con un cupon de la red» vs «la red te trajo»; ADR 0021 prohibe causalidad); (3) para quien
+  (dueño / encargado) y cada cuanto (pantalla y/o push mensual; email descartado); (4) mostrarle a A los clientes
+  que mando a otros; (5) plan (propuesta Claude: base $20).
+- Nivel: L2 (funcionalidad nueva) salvo que el owner diga otra cosa. Zonas: Claude API + servidor; pantalla GPT.
+
+**Otros pendientes:** GPT U4–U6 (vencimiento, 0195 §D6); skill `impeccable` sin commitear (quien la commitea, owner);
+PARQUEADO #69 (Hobby 100 deploys/dia; ahora 4 proyectos por push).
+
+**Decisiones del owner, no volver a preguntar:** ADR 0134, 0135, 0136 (2026-10-10). Precio de la landing (Impulso
+$45 y «local adicional $12», distinto de Stripe $49): «dejalo asi» (2026-10-10).
+
+## ESTADO HISTORICO (2026-10-11) — CERRADO POR EL OWNER, EN PROD: 0189 + 0190 + 0195 + 0196 + landing/SEO (`main` = `origin/main` = `4c40a6a`)
+
+**En PROD:** `4c40a6a`, deploy de merchant/customer/public `success` (status de GitHub del commit), `/api/health` 200 en
+`business.` y `my.`, `/programa-de-fidelizacion` 200. **Migraciones 0069/0070/0071 aplicadas** (2026-10-11, snapshot
+previo `snap-noisy-shadow-axj3i7b3`): 72 en `drizzle.__drizzle_migrations`, los 3 comercios en `trial` hasta 2027-01-09,
+`platform_auth` con 5 tablas, `tools/local-db/compare.sh` = «local == PROD» (huellas commiteadas en `4c40a6a`).
+Push hecho desde un worktree limpio en `4c40a6a` (verify completo verde con Neon); worktree borrado.
+
+**En `dev`:** GPT siguio despues de `4c40a6a` (0198/0199 landing, `890a37e`) con archivos `.impeccable/` sin commitear.
+
+**Panel `admin.checkpass.club` en PROD** (proyecto Vercel creado por el owner): `/api/health` ok, `/` → `/login`,
+noindex. **Owner 2026-10-11: «todo funcionando, damos esto por cerrado e implementado»** (0189, 0190, 0195, 0196).
+
+**QUE SIGUE:**
+1. Tooling hecho (`5d5bb03`): el panel en `pnpm dev:local` (:3002, opcional) y `huellas.sql` con `platform_auth`
+   (local == PROD, 19 categorias; roles del cliente sin acceso a `platform_auth` en PROD). Ramas/worktrees de Claude
+   mergeados borrados (spec-0189, spec-0195, fix-notices-mock, ui-sistema, onboarding-google). **Quedan:** `spec-0190`
+   (su worktree tiene el UNICO `apps/platform/.env.local`: el owner lo mueve al repo, despues se borra), y `motor`
+   (spec 0163 «guardia de UI», version vieja de `tools/ui-guard.ts`; el numero 0163 en `main` es otra spec) y
+   `sin-gate-email` (fix 0155 H4: clave de Google rechazada → 503; NO esta en `main`): sin mergear, decide el owner.
+2. GPT: U4–U6 (vencimiento, 0195 §D6). Skill `impeccable` instalada sin commitear (lint/formato ya la ignoran, `6b10697`):
+   pregunta abierta al owner de quien la commitea.
+3. Siguiente funcionalidad: reporte de retorno. Inventario en `docs/analisis-producto-2026-10-10.md` §Inventario.
+   Pregunta abierta al owner: registrar cada escaneo como evento.
+
+**Decisiones del owner, no volver a preguntar:** ADR 0134, 0135, 0136 (2026-10-10). Precio de la landing (Impulso
+$45 y «local adicional $12», distinto de Stripe $49): «dejalo asi» (2026-10-10).
+
 ## ESTADO HISTORICO (2026-10-10) — 0190, 0195 Y 0196 MERGEADAS EN `dev` (`6fdb336`); SALIDA A LIVE EN CURSO; PROD sin cambios
 
 **En PROD:** sin cambios, `main` = `origin/main` = `9405c93` (CI de `main` ROJO por `/private/tmp` en e2e, ya
