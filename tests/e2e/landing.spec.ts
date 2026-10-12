@@ -382,6 +382,8 @@ for (const width of [390, 1440]) {
       for (const scene of await page
         .locator(".barrio-map img, .barrio-reward img, .barrio-attention img")
         .all()) {
+        // Next Image carga bajo demanda: activa cada imagen antes de medir su ancho natural.
+        await scene.scrollIntoViewIfNeeded();
         // `next dev` optimiza cada imagen en su primer pedido: con el cache frio tarda mas que
         // los 5 s por defecto (rojo intermitente en el pre-push, 2026-10-11).
         await expect

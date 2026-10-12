@@ -42,6 +42,7 @@ Confirmación: Ya eres parte + negocio, sello coral, explicación e instruccione
 | `apps/consumer/public/fonts/**` | Copiar fuente/OFL del mock aprobado |
 | `tests/e2e/wallet-entry.spec.ts`, `support/wallet-entry*` | Cobertura con UI real, dependencias simuladas |
 | `apps/merchant/src/app/backoffice/marketing/welcome-ui.test.ts` | Ajuste mecánico de dos aserciones de copy del componente consumer compartido; §6 rotura cruzada |
+| `tests/e2e/landing.spec.ts` | Corrección de preparación del gate general: activar imágenes lazy antes de medir naturalWidth; sin cambiar landing ni aflojar aserciones |
 | `docs/qa/0208/**`, `apps/consumer/{DESIGN,PRODUCT}.md`, `.impeccable/**` | Evidencia/autoridad actualizada |
 
 **Disjunta:** sí respecto merchant y trabajo API. Actualiza únicamente pantallasconsumer y documentación.
