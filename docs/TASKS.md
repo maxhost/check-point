@@ -4,6 +4,13 @@
 [Claude → `estado/claude.md`](estado/claude.md) · [GPT → `estado/gpt.md`](estado/gpt.md). Cada uno escribe solo
 el suyo. Lo que sigue en este archivo es **historico** (bloques ESTADO viejos y bitacoras de mutaciones).
 
+## Codigo sin consumidor hoy, conservado a proposito (owner 2026-10-11)
+
+- **Vencimiento del saldo visible al cliente (spec 0195 §D5):** `balanceExpiryMonths` de `enroll-landing.ts` y
+  `balanceExpiresOn` de `listConsumerPrograms` (`consumer/programs.ts`) no los lee ninguna pantalla: el owner descarto
+  U5/U6 (PARQUEADO) pero los conserva, «no sabemos si mañana se podra consumir para mostrar el balance que expira».
+  Si se decide mostrarlo, ya esta la lectura; si se descarta del todo, se borran con sus tests.
+
 ## Bitacora de mutaciones — spec 0202, Claude (L2, 2026-10-11)
 
 Arbol: `dev` con la 0202 sin commitear; restauracion desde copia limpia en el scratchpad + `diff` vacio. Neon: rama
