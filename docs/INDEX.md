@@ -435,6 +435,8 @@ técnica, Definition of Done y plan de pruebas antes de que su estado pase a `ce
 
 | 0205 | 2026-10-11 | Entrada del comercio con login por defecto; registro explícito mediante signup=1 y CTA públicos actualizados. | implementada; pestañas L0 aprobadas `7797b24`, merge local a main, publicación pendiente | no | `specs/0205-entrada-merchant-login-por-defecto.md` |
 
-| 0207 | 2026-10-11 | Mocks HTML/CSS de wallet: Club cotidiano, paleta A, cuatro estados mobile first. | cerrada; prototipo local en preparación | si | `specs/0207-wallet-mocks-club-cotidiano.md` |
+| 0207 | 2026-10-11 | Mocks HTML/CSS de wallet: Club cotidiano, paleta A, cuatro estados mobile first. | prototipo aprobado por owner; base de implementación0208 | si | `specs/0207-wallet-mocks-club-cotidiano.md` |
+
+| 0208 | 2026-10-12 | Entrada real de wallet con Club cotidiano y paleta A: login, inscripción y confirmación. | cerrada; implementación local en curso | si | `specs/0208-wallet-entrada-club-cotidiano.md` |
 
 | 0206 | 2026-10-11 | **Imprimir tickets: si o no, por negocio** (L2, API + migracion 0072; pantallas de GPT). **Que es:** `printingEnabled` en el ajuste del ticket, APAGADO por defecto para todos (owner); con `false` el POS oculta «Imprimir». **Por que importa:** un comercio sin impresora no ve un boton que no sirve. | **API + UI implementadas; aprobadas por owner y merge local a main** (`da9c924`, ajuste POS `b6a04c7`; e2e UI 121/121 previos); publicación y migración 0072 a PROD pendientes | no | `specs/0206-imprimir-por-negocio.md` |
