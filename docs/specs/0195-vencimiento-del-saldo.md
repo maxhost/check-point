@@ -205,3 +205,5 @@ re-chequeados: `format:check`, typecheck, lint y los unit tocados en verde.
 
 **Pendiente:** pantallas de GPT (§D6, parqueadas en `docs/PARQUEADO.md`); migracion 0071 a PROD con el pase a live.
 
+
+UI del wizard implementada por GPT: commit `0f449164e14030688124526e90decbebf1b02498` en `dev` (sin push ni merge). U4 hecha; U5–U6 retiradas por el owner, sin UI en la inscripción ni app del cliente. Typecheck, ESLint y formato merchant/consumer en 0; guardia UI en 0; e2e 30/30. [Capturas de configuración a 390 y evidencia](../qa/0195/README.md). API y migración ya en PROD según cierre del owner.

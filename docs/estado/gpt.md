@@ -3,7 +3,38 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — 0202 LOGIN DEL OWNER CON CÓDIGO, UI COMMITEADA EN DEV (2026-10-11)
+## ESTADO — 0195 VENCIMIENTO SOLO EN WIZARD, COMMITEADO EN DEV (2026-10-11)
+
+Commit UI `0f449164e14030688124526e90decbebf1b02498`. Alcance final del owner: solo configurar en el paso
+«Unidades» (puntos) / «Sello y objetivo» (sellos), tanto creación como edición.
+Sin información de vencimiento en la vista del programa, inscripción, wallet ni
+app del cliente. U5–U6 retiradas, no se presentan como implementadas. API de
+Claude y migración ya en PROD según el owner. Sin push ni merge; habrá un solo
+push del owner con todo. No se tocaron API, servidor, packages, kit ni tooling.
+
+Regla apagada por defecto; selector 3/6/9/12 con 6 al activar. Activar/acortar
+confirma «Empieza a contar hoy para todos tus clientes». Alargar/apagar directo.
+Edición guarda por ruta propia al cambiar; creación retiene borrador y ejecuta
+PUT /expiry después de activar el programa. Fallo parcial muestra error y vuelve
+al paso para reintentar solo la regla, sin duplicar creación. State_changed relee
+el programa, conserva borrador del editor y muestra mensaje del servidor.
+Permisos y errores 401/403 mantienen el manejo existente; el GET actual requiere
+loyalty. Ningún cambio al tour ni a la ruta/formulario del programa.
+
+Node 24.20.0, salida 0: typecheck merchant y consumer, ESLint ambos paquetes +
+e2e, Prettier ambos paquetes + docs, guardia UI y diffcheck. CI main verde
+4c40a6a consultado. E2E Chromium 30/30: diez nuevos (incluyen cuatro capturas) y
+veinte regresiones de estados/validación/CSS. Rutas simuladas con page.route;
+sin pruebas contra producción. [Capturas 390 y evidencia](../qa/0195/README.md).
+Reporte local `/private/tmp/0195-report/index.html`. Claro por defecto;
+oscuro inspeccionado forzando data-theme, con el aspecto existente del kit.
+
+PARQUEADO: U1–U3 en PROD, cerradas por el owner; U4 hecha con SHA; U5–U6 retiradas.
+Spec 0195 registra alcance actualizado y SHA al pie. Pendiente revisión local
+del owner. Login por código 0202 ya está en dev (`c59ef50`, cierre `4b7eab4`),
+con QA en PWA iPhone todavía pendiente. Main no incorpora estas dos UIs nuevas.
+
+## HISTÓRICO — 0202 LOGIN DEL OWNER CON CÓDIGO, UI COMMITEADA EN DEV (2026-10-11)
 
 Commit UI `c59ef5047103365277af02550ee7e23b8bbfea82`. Pedido del owner: solo pantalla; sin push ni merge.
 API de Claude `2e2e0dc` ya disponible. No se tocaron `src/app/api/`, `src/server/`,
