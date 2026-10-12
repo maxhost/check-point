@@ -437,7 +437,7 @@ export function PosEditor({
   );
   return (
     <div
-      className={`grid min-w-0 gap-4 ${order ? (surface === "products" ? (dirty ? "pb-24" : "pb-4") : "pb-44") : surface === "products" ? "pb-24" : "pb-36"} md:pb-0 print:hidden`}
+      className={`grid min-w-0 gap-4 ${order ? (surface === "products" ? (dirty ? "pb-24" : "pb-4") : "pb-44") : surface === "products" ? "pb-24" : "pb-36"} md:flex md:flex-1 md:flex-col md:pb-0 print:hidden`}
     >
       <div className="flex items-center justify-between gap-3">
         {!order && surface !== "table" && (
@@ -763,7 +763,7 @@ export function PosEditor({
         className={
           order && surface === "products" && !dirty
             ? "hidden"
-            : "counter-detailed-footer grid gap-2 bg-surface md:static md:w-full md:translate-x-0"
+            : "counter-detailed-footer grid gap-2 bg-surface md:sticky md:bottom-0 md:left-auto md:mt-auto md:w-full md:translate-x-0"
         }
       >
         {order && surface === "products" ? (

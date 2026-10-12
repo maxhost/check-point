@@ -373,9 +373,11 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
   const workspace = openDetail || view === "edit";
   return (
     <main
-      className={`merchant-shell w-full px-6 pt-6 md:px-12 md:pt-12 print:p-0 ${workspace ? "counter-shell counter-flow" : ""}`}
+      className={`merchant-shell w-full px-6 pt-6 md:px-12 md:pt-12 print:p-0 ${workspace ? "counter-shell counter-flow md:flex md:flex-col" : ""}`}
     >
-      <div className="backoffice-home grid w-full min-w-0 gap-6 print:m-0 print:p-0">
+      <div
+        className={`backoffice-home grid w-full min-w-0 gap-6 print:m-0 print:p-0 ${workspace ? "md:flex md:flex-1 md:flex-col" : ""}`}
+      >
         {!workspace && (
           <div className="grid gap-2 print:hidden">
             <div className="flex items-center justify-between gap-3">

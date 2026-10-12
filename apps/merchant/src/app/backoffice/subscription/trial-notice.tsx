@@ -26,7 +26,14 @@ export function TrialNotice() {
       .catch(() => {});
     return () => controller.abort();
   }, []);
-  if (days === null || pathname === "/backoffice/subscription") return null;
+  const isPos =
+    pathname === "/backoffice/pos" || pathname.startsWith("/backoffice/pos/");
+  if (
+    days === null ||
+    pathname === "/backoffice/subscription" ||
+    (isPos && days > 7)
+  )
+    return null;
   return (
     <Alert
       title={`Prueba de CheckPass: ${days === 1 ? "queda 1 día" : `quedan ${days} días`}`}
