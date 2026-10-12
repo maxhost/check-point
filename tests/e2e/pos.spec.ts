@@ -104,7 +104,9 @@ async function setup(page: Page, enabled = true) {
     route.fulfill({ json: { tables: [] } }),
   );
   await page.route("**/api/pos/ticket", (route) =>
-    route.fulfill({ json: { showBusinessName: true, showTable: true } }),
+    route.fulfill({
+      json: { printingEnabled: true, showBusinessName: true, showTable: true },
+    }),
   );
   await page.route("**/api/counter/**", (route) => {
     counterCalls.push(route.request().url());

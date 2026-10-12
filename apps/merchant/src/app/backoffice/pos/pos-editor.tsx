@@ -835,23 +835,25 @@ export function PosEditor({
               >
                 <QrCode aria-hidden="true" className="size-6" />
               </Button>
-              <Button
-                variant="quiet"
-                aria-label="Imprimir"
-                className="close-module size-12 shrink-0 rounded-full! bg-primary-soft! p-0!"
-                isDisabled={
-                  busy ||
-                  dirty ||
-                  conflict ||
-                  !lines.length ||
-                  !printing.ready ||
-                  printing.busy
-                }
-                isLoading={printing.busy}
-                onPress={printing.print}
-              >
-                <Printer aria-hidden="true" className="size-6" />
-              </Button>
+              {printing.enabled && (
+                <Button
+                  variant="quiet"
+                  aria-label="Imprimir"
+                  className="close-module size-12 shrink-0 rounded-full! bg-primary-soft! p-0!"
+                  isDisabled={
+                    busy ||
+                    dirty ||
+                    conflict ||
+                    !lines.length ||
+                    !printing.ready ||
+                    printing.busy
+                  }
+                  isLoading={printing.busy}
+                  onPress={printing.print}
+                >
+                  <Printer aria-hidden="true" className="size-6" />
+                </Button>
+              )}
             </div>
           </>
         ) : surface === "table" ? (

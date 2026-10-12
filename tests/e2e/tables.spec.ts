@@ -78,7 +78,9 @@ async function setup(page: Page, posEnabled = true) {
     }),
   );
   await page.route("**/api/pos/ticket", (route) =>
-    route.fulfill({ json: { showBusinessName: true, showTable: true } }),
+    route.fulfill({
+      json: { printingEnabled: true, showBusinessName: true, showTable: true },
+    }),
   );
   await page.route("**/api/pos/catalog**", (route) =>
     route.fulfill({

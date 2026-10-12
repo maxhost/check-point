@@ -10,8 +10,8 @@ import {
   printTicket,
   type PrintResult,
   type TicketDoc,
-  type TicketSettings,
 } from "../../../printing/index";
+import type { TicketSettings } from "../settings/ticket-settings-types";
 import { PosError, posRequest, type PosOrder } from "./pos-types";
 
 type Failure = Extract<PrintResult, { ok: false }>;
@@ -54,7 +54,8 @@ export function usePosPrinting({
     void posRequest<TicketSettings>("/api/pos/ticket")
       .then((settings) => {
         if (
-          typeof settings.showBusinessName !== "boolean" ||
+          typeof settings?.printingEnabled !== "boolean" ||
+          typeof settings?.showBusinessName !== "boolean" ||
           typeof settings.showTable !== "boolean"
         )
           throw new Error("No pudimos leer la configuración del ticket.");
@@ -135,7 +136,7 @@ export function usePosPrinting({
   async function print() {
     if (
       !context ||
-      !settings ||
+      !settings?.printingEnabled ||
       !order ||
       order.status !== "open" ||
       locked.current
@@ -173,6 +174,7 @@ export function usePosPrinting({
   return {
     ...state,
     ready: !!settings,
+    enabled: settings?.printingEnabled === true,
     settingsError,
     retrySettings: () => setSettingsAttempt((current) => current + 1),
     print,

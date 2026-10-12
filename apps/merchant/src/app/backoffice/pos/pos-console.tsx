@@ -645,13 +645,15 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
                   <PosResult order={order} />
                   <PosTicket order={order} />
                   <div className="flex flex-wrap gap-3 print:hidden">
-                    <Button
-                      variant="secondary"
-                      isDisabled={busy || refreshing}
-                      onPress={() => window.print()}
-                    >
-                      Imprimir
-                    </Button>
+                    {printing.enabled && (
+                      <Button
+                        variant="secondary"
+                        isDisabled={busy || refreshing}
+                        onPress={() => window.print()}
+                      >
+                        Imprimir
+                      </Button>
+                    )}
                     {view === "detail" && (
                       <Button
                         variant="quiet"

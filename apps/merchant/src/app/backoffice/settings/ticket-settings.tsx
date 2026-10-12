@@ -2,12 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Alert, Button, Card, Heading, Switch, Text } from "../../../ui";
-import type { TicketSettings as Settings } from "../../../printing/index";
+import type { TicketSettings as Settings } from "./ticket-settings-types";
 import { ConfirmationToast } from "../../components/confirmation-toast";
 import { posRequest } from "../pos/pos-types";
 
 function validate(settings: Settings) {
   if (
+    typeof settings?.printingEnabled !== "boolean" ||
     typeof settings?.showBusinessName !== "boolean" ||
     typeof settings?.showTable !== "boolean"
   )
@@ -16,7 +17,6 @@ function validate(settings: Settings) {
 }
 
 export function TicketSettings() {
-  const [expanded, setExpanded] = useState(false);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -61,7 +61,9 @@ export function TicketSettings() {
     try {
       const saved = validate(
         await posRequest<Settings>("/api/merchant/business/ticket", "PUT", {
-          ...settings,
+          printingEnabled: settings.printingEnabled,
+          showBusinessName: settings.showBusinessName,
+          showTable: settings.showTable,
           [key]: value,
         }),
       );
@@ -85,56 +87,53 @@ export function TicketSettings() {
   return (
     <Card className="grid gap-4">
       <Heading level={2}>Imprimir tickets</Heading>
-      <Text>
-        La impresión siempre está disponible. Abre las opciones para elegir qué
-        muestra el ticket.
-      </Text>
-      <Switch isSelected={expanded} onChange={setExpanded} isDisabled={busy}>
+      <Text>Activa la impresión para mostrar el botón Imprimir en el POS.</Text>
+      <Switch
+        isSelected={settings?.printingEnabled ?? false}
+        onChange={(value) => void save("printingEnabled", value)}
+        isDisabled={busy || !settings}
+      >
         Imprimir tickets
       </Switch>
-      {expanded && (
+      {error && <Alert kind="error" title={error} />}
+      {!settings &&
+        (error ? (
+          <div>
+            <Button
+              variant="secondary"
+              onPress={() => setAttempt((current) => current + 1)}
+            >
+              Reintentar opciones del ticket
+            </Button>
+          </div>
+        ) : (
+          <Text>Cargando opciones del ticket…</Text>
+        ))}
+      {settings?.printingEnabled && (
         <div className="grid gap-4 border-t border-border pt-4">
-          {error && <Alert kind="error" title={error} />}
-          {!settings ? (
-            error ? (
-              <div>
-                <Button
-                  variant="secondary"
-                  onPress={() => setAttempt((current) => current + 1)}
-                >
-                  Reintentar opciones del ticket
-                </Button>
-              </div>
-            ) : (
-              <Text>Cargando opciones del ticket…</Text>
-            )
-          ) : (
-            <>
-              <Switch
-                isSelected={settings.showBusinessName}
-                isDisabled={busy}
-                onChange={(value) => void save("showBusinessName", value)}
-              >
-                Mostrar nombre del comercio
-              </Switch>
-              <Switch
-                isSelected={settings.showTable}
-                isDisabled={busy}
-                onChange={(value) => void save("showTable", value)}
-              >
-                Mostrar mesa
-              </Switch>
-              <Text variant="small">
-                Los cambios se guardan automáticamente. El ticket siempre
-                incluye productos, total, fecha y hora.
-              </Text>
-              {busy && (
-                <div role="status">
-                  <Text>Guardando opciones…</Text>
-                </div>
-              )}
-            </>
-          )}
+          <Switch
+            isSelected={settings.showBusinessName}
+            isDisabled={busy}
+            onChange={(value) => void save("showBusinessName", value)}
+          >
+            Mostrar nombre del comercio
+          </Switch>
+          <Switch
+            isSelected={settings.showTable}
+            isDisabled={busy}
+            onChange={(value) => void save("showTable", value)}
+          >
+            Mostrar mesa
+          </Switch>
+          <Text variant="small">
+            Los cambios se guardan automáticamente. El ticket siempre incluye
+            productos, total, fecha y hora.
+          </Text>
+        </div>
+      )}
+      {busy && (
+        <div role="status">
+          <Text>Guardando opciones…</Text>
         </div>
       )}
       <ConfirmationToast message={notice} onDismiss={() => setNotice(null)} />

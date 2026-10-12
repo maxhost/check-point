@@ -28,11 +28,15 @@ const name = (page: Page) =>
 const table = (page: Page) =>
   page.getByRole("switch", { name: "Mostrar mesa", exact: true });
 
-test("abrir/cerrar no escribe; cambios persisten al recargar y ambas opciones pueden apagarse", async ({
+test("0206 prender/apagar guarda tres campos, oculta bloques y conserva sus valores", async ({
   page,
 }, testInfo) => {
   await setup(page);
-  let saved = { showBusinessName: true, showTable: true };
+  let saved = {
+    printingEnabled: false,
+    showBusinessName: true,
+    showTable: true,
+  };
   const bodies: unknown[] = [];
   await page.route("**/api/merchant/business/ticket", (route) => {
     if (route.request().method() === "PUT") {
@@ -44,6 +48,7 @@ test("abrir/cerrar no escribe; cambios persisten al recargar y ambas opciones pu
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`${harness.url}?mode=settings`);
   await expect(name(page)).toHaveCount(0);
+  await expect(expand(page)).toBeEnabled();
   await expand(page).locator("xpath=ancestor::label").click();
   await expect(expand(page)).toBeChecked();
   await expect(name(page)).toBeChecked();
@@ -52,7 +57,13 @@ test("abrir/cerrar no escribe; cambios persisten al recargar y ambas opciones pu
     path: testInfo.outputPath("0186-configuracion-mobile.png"),
   });
   await expand(page).locator("xpath=ancestor::label").click();
-  expect(bodies).toEqual([]);
+  await expect(expand(page)).not.toBeChecked();
+  await expect(name(page)).toHaveCount(0);
+  await expect(table(page)).toHaveCount(0);
+  expect(bodies).toEqual([
+    { printingEnabled: true, showBusinessName: true, showTable: true },
+    { printingEnabled: false, showBusinessName: true, showTable: true },
+  ]);
   await expand(page).locator("xpath=ancestor::label").click();
   await name(page).locator("xpath=ancestor::label").click();
   await expect(name(page)).not.toBeChecked();
@@ -62,17 +73,23 @@ test("abrir/cerrar no escribe; cambios persisten al recargar y ambas opciones pu
   await table(page).locator("xpath=ancestor::label").click();
   await expect(table(page)).not.toBeChecked();
   expect(bodies).toEqual([
-    { showBusinessName: false, showTable: true },
-    { showBusinessName: false, showTable: false },
+    { printingEnabled: true, showBusinessName: true, showTable: true },
+    { printingEnabled: false, showBusinessName: true, showTable: true },
+    { printingEnabled: true, showBusinessName: true, showTable: true },
+    { printingEnabled: true, showBusinessName: false, showTable: true },
+    { printingEnabled: true, showBusinessName: false, showTable: false },
   ]);
   await expand(page).locator("xpath=ancestor::label").click();
+  await expect(expand(page)).not.toBeChecked();
+  await expect(name(page)).toHaveCount(0);
+  await expect(table(page)).toHaveCount(0);
+  await expect(expand(page)).toBeEnabled();
   await expand(page).locator("xpath=ancestor::label").click();
   await expect(name(page)).not.toBeChecked();
   await page.reload();
-  await expand(page).locator("xpath=ancestor::label").click();
   await expect(name(page)).not.toBeChecked();
   await expect(table(page)).not.toBeChecked();
-  expect(bodies).toHaveLength(2);
+  expect(bodies).toHaveLength(7);
   await expect(expand(page)).toBeChecked();
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.waitForTimeout(300); // Capture the settled toggle, not its animation.
@@ -91,7 +108,11 @@ test("fallo conserva ajustes; guardado bloquea dobles cambios y solo éxito avis
   await page.route("**/api/merchant/business/ticket", async (route) => {
     if (route.request().method() === "GET")
       return route.fulfill({
-        json: { showBusinessName: true, showTable: true },
+        json: {
+          printingEnabled: true,
+          showBusinessName: true,
+          showTable: true,
+        },
       });
     writes += 1;
     if (fail)
@@ -105,7 +126,6 @@ test("fallo conserva ajustes; guardado bloquea dobles cambios y solo éxito avis
     return route.fulfill({ json: route.request().postDataJSON() });
   });
   await page.goto(`${harness.url}?mode=settings`);
-  await expand(page).locator("xpath=ancestor::label").click();
   await expect(name(page)).toBeChecked();
   await name(page).locator("xpath=ancestor::label").click();
   await expect(page.getByRole("alert")).toContainText(
@@ -141,10 +161,15 @@ test("lectura fallida reintenta sin defaults; no owner no consulta ticket", asyn
           status: 503,
           json: { error: "No pudimos leer el ajuste del ticket." },
         })
-      : route.fulfill({ json: { showBusinessName: false, showTable: true } });
+      : route.fulfill({
+          json: {
+            printingEnabled: true,
+            showBusinessName: false,
+            showTable: true,
+          },
+        });
   });
   await page.goto(`${harness.url}?mode=settings`);
-  await expand(page).locator("xpath=ancestor::label").click();
   await expect(page.getByRole("alert")).toContainText(
     "No pudimos leer el ajuste del ticket.",
   );

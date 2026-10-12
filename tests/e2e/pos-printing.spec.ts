@@ -185,7 +185,7 @@ const readQA = (page: Page) =>
   });
 async function setup(
   page: Page,
-  settings = { showBusinessName: true, showTable: true },
+  settings = { printingEnabled: true, showBusinessName: true, showTable: true },
 ) {
   const reads: string[] = [],
     writes: string[] = [];
@@ -386,7 +386,11 @@ for (const showBusinessName of [false, true])
     test(`0185 unsupported dibuja TicketDoc ${showBusinessName}/${showTable} antes de window.print`, async ({
       page,
     }) => {
-      const calls = await setup(page, { showBusinessName, showTable });
+      const calls = await setup(page, {
+        printingEnabled: true,
+        showBusinessName,
+        showTable,
+      });
       await fakePrinter(page, "unsupported");
       await open(page);
       await page.getByRole("button", { name: "Imprimir", exact: true }).click();
@@ -442,13 +446,17 @@ test("0185 ajuste pendiente bloquea imprimir; error reintenta sin defaults", asy
       });
     }
     return route.fulfill({
-      json: { showBusinessName: false, showTable: false },
+      json: {
+        printingEnabled: true,
+        showBusinessName: false,
+        showTable: false,
+      },
     });
   });
   await page.goto(harness.url);
   await page.getByRole("button", { name: "Abrir Mesa 4", exact: true }).click();
   const print = page.getByRole("button", { name: "Imprimir", exact: true });
-  await expect(print).toBeDisabled();
+  await expect(print).toHaveCount(0);
   await expect.poll(() => typeof release).toBe("function");
   release();
   await expect(
@@ -457,7 +465,7 @@ test("0185 ajuste pendiente bloquea imprimir; error reintenta sin defaults", asy
       exact: true,
     }),
   ).toBeVisible();
-  await expect(print).toBeDisabled();
+  await expect(print).toHaveCount(0);
   await page
     .getByRole("button", {
       name: "Reintentar configuración del ticket",
@@ -540,7 +548,9 @@ test("0185 ajuste tardío no revive POS después de revocar la sesión", async (
     await new Promise<void>((resolve) => {
       release = resolve;
     });
-    await route.fulfill({ json: { showBusinessName: true, showTable: true } });
+    await route.fulfill({
+      json: { printingEnabled: true, showBusinessName: true, showTable: true },
+    });
   });
   await page.route("**/api/pos/resolve", (route) =>
     route.fulfill({
@@ -572,3 +582,59 @@ test("0185 ajuste tardío no revive POS después de revocar la sesión", async (
   ).toHaveCount(0);
   expect((await readQA(page)).printCount).toBe(0);
 });
+
+for (const printingEnabled of [false, true]) {
+  test(`0206 printingEnabled=${printingEnabled} controla orden abierta y detalle`, async ({
+    page,
+  }) => {
+    await setup(page, {
+      printingEnabled,
+      showBusinessName: true,
+      showTable: true,
+    });
+    const closed = {
+      ...order,
+      id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2",
+      tableLabel: "Mesa cerrada",
+      status: "closed",
+      closedAt: "2026-10-01T13:00:00Z",
+      closedBy: "Ana",
+    };
+    await page.route("**/api/pos/orders", (route) =>
+      route.fulfill({
+        json: {
+          open: [{ ...order, itemCount: 2, saleTotal: null }],
+          closedToday: [{ ...closed, itemCount: 2, saleTotal: "20.00" }],
+        },
+      }),
+    );
+    await page.route(
+      "**/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2",
+      (route) => route.fulfill({ json: closed }),
+    );
+    await page.goto(harness.url);
+    await page
+      .getByRole("button", { name: "Abrir Mesa 4", exact: true })
+      .click();
+    const print = page.getByRole("button", { name: "Imprimir", exact: true });
+    if (printingEnabled) await expect(print).toBeEnabled();
+    else await expect(print).toHaveCount(0);
+    await page
+      .getByRole("button", {
+        name: "Volver al listado de órdenes",
+        exact: true,
+      })
+      .click();
+    await page
+      .getByRole("button", { name: "Abrir Mesa cerrada", exact: true })
+      .click();
+    await expect(
+      page.getByRole("heading", {
+        name: "Mesa cerrada · Venta cerrada",
+        exact: true,
+      }),
+    ).toBeVisible();
+    if (printingEnabled) await expect(print).toBeEnabled();
+    else await expect(print).toHaveCount(0);
+  });
+}
