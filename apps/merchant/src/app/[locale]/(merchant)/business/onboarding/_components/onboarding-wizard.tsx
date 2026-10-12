@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Alert, Button, TextField } from "../../../../../../ui";
-import { AccountStep, MagicLinkState } from "./account-step";
+import { AccountStep, LoginCodeState } from "./account-step";
 import { BusinessStep } from "./business-step";
 import { InlineApiError, StepHeader } from "./wizard-shared";
 import type {
@@ -28,7 +28,7 @@ type Stage =
   | "complete"
   | "existing"
   | "login"
-  | "magic-link";
+  | "login-code";
 
 export function OnboardingWizard() {
   const [stage, setStage] = useState<Stage>("loading");
@@ -41,6 +41,7 @@ export function OnboardingWizard() {
   );
   const [business, setBusiness] = useState<BusinessSummary | null>(null);
   const [email, setEmail] = useState("");
+  const [loginEmail, setLoginEmail] = useState("");
   const [verificationSent, setVerificationSent] = useState(true);
   const [sending, setSending] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -276,11 +277,17 @@ export function OnboardingWizard() {
       {stage === "login" && (
         <AccountStep
           onBack={() => setStage("business")}
-          onMagicLink={() => setStage("magic-link")}
+          onCodeSent={(value) => {
+            setLoginEmail(value);
+            setStage("login-code");
+          }}
         />
       )}
-      {stage === "magic-link" && (
-        <MagicLinkState onUseAnotherEmail={() => setStage("login")} />
+      {stage === "login-code" && (
+        <LoginCodeState
+          email={loginEmail}
+          onUseAnotherEmail={() => setStage("login")}
+        />
       )}
     </WizardShell>
   );

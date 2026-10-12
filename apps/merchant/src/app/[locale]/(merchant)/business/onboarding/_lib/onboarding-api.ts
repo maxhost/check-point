@@ -96,6 +96,16 @@ export function requestMerchantLogin(email: string) {
   });
 }
 
+export function verifyMerchantLoginCode(email: string, code: string) {
+  return jsonRequest<{ destination: string }>(
+    "/api/merchant/auth/login/verify",
+    {
+      method: "POST",
+      body: JSON.stringify({ email, code }),
+    },
+  );
+}
+
 export function requestVerificationEmail() {
   return jsonRequest<{ sent: boolean; verified: boolean }>(
     "/api/merchant/auth/verify-email",

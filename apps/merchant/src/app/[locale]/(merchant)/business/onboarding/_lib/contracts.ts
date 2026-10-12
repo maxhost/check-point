@@ -43,4 +43,9 @@ export type WizardApiCode =
   | "place_not_found"
   | "places_unavailable"
   | "signup_unavailable"
-  | "rate_limited";
+  | "rate_limited"
+  | "invalid_code"
+  | "code_incorrect"
+  | "code_expired"
+  | "too_many_failures"
+  | "auth_unavailable";

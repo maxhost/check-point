@@ -1,18 +1,20 @@
 "use client";
 
-import { CheckCircle } from "iconoir-react";
 import { useState } from "react";
-import { Form } from "react-aria-components";
-import { Button, TextField } from "../../../../../../ui";
-import { requestMerchantLogin, WizardApiError } from "../_lib/onboarding-api";
+import { Button, Form, Heading, Text, TextField } from "../../../../../../ui";
+import {
+  requestMerchantLogin,
+  verifyMerchantLoginCode,
+  WizardApiError,
+} from "../_lib/onboarding-api";
 import { InlineApiError } from "./wizard-shared";
 
 export function AccountStep({
   onBack,
-  onMagicLink,
+  onCodeSent,
 }: {
   onBack: () => void;
-  onMagicLink: () => void;
+  onCodeSent: (email: string) => void;
 }) {
   const [email, setEmail] = useState("");
   const [error, setError] = useState<WizardApiError | null>(null);
@@ -20,16 +22,21 @@ export function AccountStep({
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (busy) return;
     setBusy(true);
     setError(null);
     try {
-      await requestMerchantLogin(email.trim().toLowerCase());
-      onMagicLink();
+      const normalized = email.trim().toLowerCase();
+      await requestMerchantLogin(normalized);
+      onCodeSent(normalized);
     } catch (caught) {
       setError(
         caught instanceof WizardApiError
           ? caught
-          : new WizardApiError("No pudimos enviar el enlace.", 503),
+          : new WizardApiError(
+              "No pudimos enviar el código. Probá de nuevo.",
+              503,
+            ),
       );
     } finally {
       setBusy(false);
@@ -38,13 +45,13 @@ export function AccountStep({
 
   return (
     <>
-      <h1 id="wizard-heading" tabIndex={-1} className="mb-3 text-2xl font-bold">
+      <Heading level={1} id="wizard-heading" tabIndex={-1} className="mb-3">
         Entra a tu cuenta
-      </h1>
-      <p className="mb-8 text-content-muted">
-        Te enviaremos un enlace seguro para entrar.
-      </p>
-      <Form onSubmit={submit} className="grid gap-5">
+      </Heading>
+      <Text variant="muted" className="mb-8">
+        Te enviaremos un código para entrar.
+      </Text>
+      <Form onSubmit={submit}>
         <InlineApiError error={error} />
         <TextField
           label="Tu email"
@@ -52,40 +59,145 @@ export function AccountStep({
           value={email}
           onChange={setEmail}
           autoComplete="email"
+          inputMode="email"
           isRequired
+          isDisabled={busy}
         />
         <Button type="submit" fullWidth isLoading={busy}>
-          Enviarme enlace de acceso
+          Enviarme código
         </Button>
       </Form>
-      <button
-        type="button"
-        className="mt-5 font-bold text-primary underline"
-        onClick={onBack}
+      <Button
+        variant="quiet"
+        className="mt-5"
+        onPress={onBack}
+        isDisabled={busy}
       >
         Crear un negocio
-      </button>
+      </Button>
     </>
   );
 }
 
-export function MagicLinkState({
+export function LoginCodeState({
+  email,
   onUseAnotherEmail,
 }: {
+  email: string;
   onUseAnotherEmail: () => void;
 }) {
+  const [code, setCode] = useState("");
+  const [error, setError] = useState<WizardApiError | null>(null);
+  const [busy, setBusy] = useState<"verify" | "resend" | null>(null);
+  const [resent, setResent] = useState(false);
+  const blocked = error?.code === "too_many_failures";
+  const valid = /^\d{6}$/.test(code);
+
+  async function verify(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (busy || blocked || !valid) return;
+    setBusy("verify");
+    setError(null);
+    setResent(false);
+    try {
+      const { destination } = await verifyMerchantLoginCode(email, code);
+      window.location.assign(destination);
+    } catch (caught) {
+      setError(
+        caught instanceof WizardApiError
+          ? caught
+          : new WizardApiError(
+              "No pudimos verificar el código. Probá de nuevo.",
+              503,
+            ),
+      );
+      setBusy(null);
+    }
+  }
+
+  async function resend() {
+    if (busy || blocked) return;
+    setBusy("resend");
+    setError(null);
+    setResent(false);
+    try {
+      await requestMerchantLogin(email);
+      setCode("");
+      setResent(true);
+    } catch (caught) {
+      setError(
+        caught instanceof WizardApiError
+          ? caught
+          : new WizardApiError(
+              "No pudimos enviar el código. Probá de nuevo.",
+              503,
+            ),
+      );
+    } finally {
+      setBusy(null);
+    }
+  }
+
   return (
-    <section className="rounded-lg bg-surface p-6 shadow-sm sm:p-8">
-      <CheckCircle className="size-10 text-success" aria-hidden="true" />
-      <h1 id="wizard-heading" tabIndex={-1} className="mt-5 text-2xl font-bold">
-        Revisa tu correo
-      </h1>
-      <p className="mt-2 leading-6 text-content-muted">
-        Te enviamos un enlace para entrar. Revisa también la carpeta de spam.
-      </p>
-      <Button variant="quiet" onPress={onUseAnotherEmail} className="mt-5">
-        Usar otro email
-      </Button>
-    </section>
+    <>
+      <Heading
+        level={1}
+        id="wizard-heading"
+        tabIndex={-1}
+        className="mb-3 break-words"
+      >
+        Te mandamos un código a {email}
+      </Heading>
+      <Text variant="muted" className="mb-8">
+        Revisá también la carpeta de spam. El código vence en 10 minutos.
+      </Text>
+      <Form onSubmit={verify}>
+        <InlineApiError error={error} />
+        {resent && (
+          <p role="status" className="text-success">
+            Te mandamos un código nuevo
+          </p>
+        )}
+        <TextField
+          label="Código de 6 números"
+          name="code"
+          value={code}
+          onChange={setCode}
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          maxLength={6}
+          pattern="\d{6}"
+          isRequired
+          isDisabled={Boolean(busy) || blocked}
+        />
+        <Button
+          type="submit"
+          fullWidth
+          isDisabled={!valid || Boolean(busy) || blocked}
+          isLoading={busy === "verify"}
+        >
+          Entrar
+        </Button>
+      </Form>
+      <div className="mt-5 grid gap-3">
+        {!blocked && (
+          <Button
+            variant="quiet"
+            onPress={() => void resend()}
+            isDisabled={Boolean(busy)}
+            isLoading={busy === "resend"}
+          >
+            Reenviar código
+          </Button>
+        )}
+        <Button
+          variant="quiet"
+          onPress={onUseAnotherEmail}
+          isDisabled={Boolean(busy)}
+        >
+          Usar otro email
+        </Button>
+      </div>
+    </>
   );
 }
