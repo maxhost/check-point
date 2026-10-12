@@ -1,7 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Alert, Button, TextField } from "../../../../../../ui";
+import {
+  Alert,
+  Button,
+  Tab,
+  TabList,
+  TabPanel,
+  Tabs,
+  TextField,
+} from "../../../../../../ui";
 import { AccountStep, LoginCodeState } from "./account-step";
 import { BusinessStep } from "./business-step";
 import { InlineApiError, StepHeader } from "./wizard-shared";
@@ -43,6 +51,7 @@ export function OnboardingWizard({
   );
   const [business, setBusiness] = useState<BusinessSummary | null>(null);
   const [email, setEmail] = useState("");
+  const [loginBusy, setLoginBusy] = useState(false);
   const [loginEmail, setLoginEmail] = useState("");
   const [verificationSent, setVerificationSent] = useState(true);
   const [sending, setSending] = useState(false);
@@ -78,6 +87,17 @@ export function OnboardingWizard({
   useEffect(() => {
     if (stage !== "loading") document.getElementById("wizard-heading")?.focus();
   }, [stage]);
+
+  function switchEntry(mode: "login" | "signup") {
+    if (loginBusy) return;
+    const url = new URL(window.location.href);
+    if (mode === "signup") url.searchParams.set("signup", "1");
+    else url.searchParams.delete("signup");
+    window.history.replaceState(window.history.state, "", url);
+    setError(null);
+    setEmailError(null);
+    setStage(mode === "signup" ? "business" : "login");
+  }
 
   async function submitEmail(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -161,24 +181,45 @@ export function OnboardingWizard({
 
   return (
     <WizardShell>
-      {stage === "business" && prefill && (
-        <BusinessStep
-          key={businessKey}
-          prefill={prefill}
-          apiError={error}
-          initialSelection={placeSelection}
-          initialBusiness={businessInput}
-          onLogin={() => {
-            setError(null);
-            setStage("login");
-          }}
-          onComplete={(value, selection) => {
-            setBusinessInput(value);
-            setPlaceSelection(selection);
-            setError(null);
-            setStage("email");
-          }}
-        />
+      {(stage === "login" || stage === "business") && (
+        <Tabs
+          selectedKey={stage === "login" ? "login" : "signup"}
+          disabledKeys={loginBusy ? ["signup"] : []}
+          onSelectionChange={(key) =>
+            switchEntry(key === "signup" ? "signup" : "login")
+          }
+        >
+          <TabList aria-label="Acceso al negocio">
+            <Tab id="login">Iniciar sesión</Tab>
+            <Tab id="signup">Crear un negocio</Tab>
+          </TabList>
+          <TabPanel id="login">
+            <AccountStep
+              onBusyChange={setLoginBusy}
+              onCodeSent={(value) => {
+                setLoginEmail(value);
+                setStage("login-code");
+              }}
+            />
+          </TabPanel>
+          <TabPanel id="signup">
+            {prefill && (
+              <BusinessStep
+                key={businessKey}
+                prefill={prefill}
+                apiError={error}
+                initialSelection={placeSelection}
+                initialBusiness={businessInput}
+                onComplete={(value, selection) => {
+                  setBusinessInput(value);
+                  setPlaceSelection(selection);
+                  setError(null);
+                  setStage("email");
+                }}
+              />
+            )}
+          </TabPanel>
+        </Tabs>
       )}
       {stage === "email" && businessInput && (
         <>
@@ -275,15 +316,6 @@ export function OnboardingWizard({
             Crear otro negocio
           </Button>
         </section>
-      )}
-      {stage === "login" && (
-        <AccountStep
-          onBack={() => setStage("business")}
-          onCodeSent={(value) => {
-            setLoginEmail(value);
-            setStage("login-code");
-          }}
-        />
       )}
       {stage === "login-code" && (
         <LoginCodeState

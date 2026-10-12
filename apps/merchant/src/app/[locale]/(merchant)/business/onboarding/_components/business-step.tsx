@@ -17,14 +17,12 @@ export function BusinessStep({
   initialSelection,
   initialBusiness,
   onComplete,
-  onLogin,
 }: {
   prefill: OnboardingPrefill;
   apiError: WizardApiError | null;
   initialSelection?: PlaceSelection | null;
   initialBusiness?: SignupBusiness | null;
   onComplete: (business: SignupBusiness, selection: PlaceSelection) => void;
-  onLogin: () => void;
 }) {
   const [selection, setSelection] = useState<PlaceSelection | null>(
     initialSelection ?? null,
@@ -146,16 +144,6 @@ export function BusinessStep({
           Continuar
         </Button>
       </form>
-      <p className="mt-8 text-center text-sm text-content-muted">
-        ¿Ya tienes cuenta?{" "}
-        <button
-          type="button"
-          className="font-bold text-primary underline"
-          onClick={onLogin}
-        >
-          Iniciar sesión
-        </button>
-      </p>
     </>
   );
 }

@@ -40,18 +40,18 @@ for (const path of ["/?signup=1", "/es/business/onboarding?signup=1"]) {
       page.getByRole("heading", { name: /tu negocio/i }),
     ).toBeVisible();
     await expect(
-      page.getByRole("button", { name: "Iniciar sesión" }),
+      page.getByRole("tab", { name: "Iniciar sesión" }),
     ).toBeVisible();
     await expect(page).toHaveTitle("Crea tu negocio · CheckPass Club");
   });
 }
 test("login permite crear un negocio y volver al login", async ({ page }) => {
   await page.goto(merchantURL);
-  await page.getByRole("button", { name: "Crear un negocio" }).click();
+  await page.getByRole("tab", { name: "Crear un negocio" }).click();
   await expect(
     page.getByRole("heading", { name: /tu negocio/i }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Iniciar sesión" }).click();
+  await page.getByRole("tab", { name: "Iniciar sesión" }).click();
   await expect(
     page.getByRole("heading", { name: "Entra a tu cuenta" }),
   ).toBeVisible();

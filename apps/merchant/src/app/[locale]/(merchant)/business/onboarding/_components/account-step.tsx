@@ -10,10 +10,10 @@ import {
 import { InlineApiError } from "./wizard-shared";
 
 export function AccountStep({
-  onBack,
+  onBusyChange,
   onCodeSent,
 }: {
-  onBack: () => void;
+  onBusyChange: (busy: boolean) => void;
   onCodeSent: (email: string) => void;
 }) {
   const [email, setEmail] = useState("");
@@ -24,6 +24,7 @@ export function AccountStep({
     event.preventDefault();
     if (busy) return;
     setBusy(true);
+    onBusyChange(true);
     setError(null);
     try {
       const normalized = email.trim().toLowerCase();
@@ -40,6 +41,7 @@ export function AccountStep({
       );
     } finally {
       setBusy(false);
+      onBusyChange(false);
     }
   }
 
@@ -67,14 +69,6 @@ export function AccountStep({
           Enviarme código
         </Button>
       </Form>
-      <Button
-        variant="quiet"
-        className="mt-5"
-        onPress={onBack}
-        isDisabled={busy}
-      >
-        Crear un negocio
-      </Button>
     </>
   );
 }
