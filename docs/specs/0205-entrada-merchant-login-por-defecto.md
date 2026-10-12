@@ -78,3 +78,17 @@ onboarding-flow). URL público de alta comprobado con default y con override
 `MERCHANT_ONBOARDING_URL` que conserva campaign=qa. Sesión y rebotes mantienen
 su manejo; no se cambió autenticación ni se ejecutó integración contra la base.
 Revisión del owner y pase conjunto a live pendientes.
+
+## Ajuste L0 aprobado y merge local (2026-10-11)
+
+Owner aprobó en local las pestañas «Iniciar sesión» / «Crear un negocio» y pidió
+commit + merge de todo a main. Commit UI `7797b242f19fd9afdc11361fef7542d117ab8a07`.
+Reemplazan los accesos inferiores; alternar actualiza signup=1 (registro) o lo
+quita (login), preservando el resto de la URL. Alta deshabilitada mientras se
+solicita el código. Componentes Tabs del kit, sin CSS ni cambios de autenticación.
+Typecheck, ESLint y guardia UI en 0; formato y diffcheck en 0. Selector del e2e
+existente actualizado a tab; sin ejecutar suites para este ajuste L0.
+Main local actualizado a ese commit por fast-forward desde a480692. El owner
+indicó expresamente no correr suite completa: pnpm verify no llegó a iniciarse.
+Los 18 e2e y 4 unit de la entrada original son evidencia anterior al ajuste de
+pestañas, no se presentan como reejecutados. Sin push ni deploy.

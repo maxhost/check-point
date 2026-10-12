@@ -3,7 +3,34 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — 0205 LOGIN POR DEFECTO EN MERCHANT, COMMITEADO EN DEV (2026-10-11)
+## ESTADO — PESTAÑAS DE ACCESO APROBADAS Y MERGE LOCAL A MAIN (2026-10-11)
+
+Owner aprobó las pestañas en local («funciona perfecto») y autorizó commit +
+merge de todo a main. Commit UI `7797b242f19fd9afdc11361fef7542d117ab8a07`.
+Main ya incorporaba los trabajos anteriores (a480692, incluido dev:link de
+Claude); fast-forward local a480692 → 7797b24 realizado y SHA confirmado.
+Sin push ni deploy. Checkout habitual sigue dev; servidores 3200/3201 preservados.
+
+Tabs del kit arriba del formulario: Iniciar sesión / Crear un negocio, opción
+activa marcada y accesos inferiores retirados. Alternar actualiza la URL con
+signup=1 para registro y sin signup para login; conserva otras queries/hash y el
+estado interno de Next. Crear negocio se deshabilita mientras se pide el código.
+No se tocaron API, servidor, paquetes, kit, estilos, tooling ni sesión.
+
+Node24: typecheck, ESLint merchant y guardia UI en 0; formato de cuatro archivos y
+diffcheck en 0. Owner revisó funcionamiento en local. Sin tests nuevos ni suites
+para este L0. Al preparar el merge se creó checkout temporal y se instalaron
+319 dependencias offline; plan de verify leído, pero la ejecución NO llegó a
+iniciarse. Owner indicó expresamente no ejecutar suite completa para este merge.
+Los e2e18/18 y unit4/4 de 0205 previos al ajuste permanecen como evidencia previa,
+no como una nueva corrida. No se omitió ningún hook de push: no hubo push.
+
+Spec0205 e INDEX actualizados con aprobación y merge. Los archivos sin seguimiento
+de Impeccable/configuración/assets se conservaron y no entraron en commits.
+Estado documental se integra con un segundo fast-forward a main al cerrar.
+Próximo paso: publicación solo cuando el owner la pida; no reiniciar servidores.
+
+## HISTÓRICO — 0205 LOGIN POR DEFECTO EN MERCHANT, COMMITEADO EN DEV (2026-10-11)
 
 Commit UI `0af3d6a38a1d538fb631b91dfda32935c725998c`, reserva local `b8201e3`. Sin push ni merge.
 Owner pidió que business.checkpass.club abra login; registro solo por enlace
