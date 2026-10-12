@@ -3,7 +3,30 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — 0204 FIDELIZACIÓN FUNCIONAL Y COPY LOCAL (2026-10-11)
+## ESTADO — DISEÑO PÚBLICO COMMITEADO Y MERGE LOCAL A MAIN (2026-10-11)
+
+Owner autorizó «hacemos commit de todo esto, merge con main». Commits de home, negocios, marketing y fidelización ya estaban en dev; ajuste final de formato cd7a03b. Merge fast-forward local main4c40a6a→cd7a03b confirmado. Este registro se integra con otro avance documental. Sin push ni deploy; main local queda adelantado de origin/main. Checkout habitual sigue dev, sin reiniciar servidores.
+
+Se incorporaron todos los commits ya guardados de dev, incluidos los de Claude (PWA merchant, tooling local y login owner por código0202). No se commitearon pendientes ajenos ni instalación/borradores locales de Impeccable. Cuatro archivos de Claude guardados temporalmente y restaurados sin pérdida: skill gotchas, sus dos estados y worktree-new.sh. Merge realizado en checkout temporal de main para preservar carpeta/servidores de dev.
+
+Verificación completa Node24, salida0: PUBLIC_LANDING_TEST_URL=http://localhost:3003 pnpm verify. Evidencia /private/tmp/checkpass-merge-verify-final.log. Primera corrida roja por referencias de diseño sin formato y choque de segundo Next público con3003; corregido formato, guardadas3 referencias tracked y segunda corrida usando servidor existente. No se omitieron gates ni se usó no-verify.
+
+| Gate | Resultado | Segundos |
+| --- | --- | --- |
+| typecheck | ok | 1.6 |
+| lint | ok | 8.1 |
+| ui-guard | ok | 0.7 |
+| format:check | ok | 11.4 |
+| test | ok | 43.0 |
+| build | ok | 19.8 |
+| test:e2e | ok | 81.7 |
+| neon full | ok | 437.5 |
+
+Unit2530 aprobadas; navegador326 aprobadas y21 skipped; suite con integración3373 aprobadas y282 skipped,419 archivos aprobados. No se presenta skipped como aprobado. Neon mediante tools/neon-test.sh, base aislada CI; no se usó DATABASE_URL de producción para tests.
+
+Home hero aprobado intacto; /negocios Funcional y planes aprobados; marketing0203 y fidelización0204 aplicados. Owner acepta trabajo para merge local. Guía/PRODUCT/sidecar vigentes; POS mantiene diseño previo. Preview3003 permanece abierto y corresponde al mismo código confirmado en main. Siguiente paso: revisión local o tarea nueva; publicación solo con autorización explícita.
+
+## HISTÓRICO — 0204 FIDELIZACIÓN FUNCIONAL Y COPY LOCAL (2026-10-11)
 
 Commit4469753, reservae5055c2. Owner pidió auditoría de /programa-de-fidelizacion para lograr lo mismo que marketing: estructura, visual y copy Funcional. Aplicada localmente, QA owner pendiente; sin autorización para publicar.
 
