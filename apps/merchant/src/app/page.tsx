@@ -19,7 +19,7 @@ function hasBounceCode(e: string | string[] | undefined): boolean {
  * 1. Con `?e=` NUNCA redirige: es un rebote del guard (`auth-guards.ts`), que puede llegar
  *    con la sesión viva (`closed`, integrante de `suspended`). Mandarlo a `/backoffice`
  *    cerraría el ciclo `/` ↔ `/backoffice`.
- * 2. Sin cookie o sesión inválida → el alta.
+ * 2. Sin cookie o sesión inválida → login; `?signup=1` abre el alta.
  * 3. Sesión válida → el panel (decisión del owner, 2026-10-06). No consulta membresía ni
  *    negocio: eso lo decide el guard, y todo rebote suyo a `/` sin `?e=` sale sin sesión.
  */
@@ -28,18 +28,23 @@ export default async function MerchantEntryPage({
 }: {
   searchParams: Promise<EntrySearchParams>;
 }) {
-  const reason = (await searchParams).e;
+  const query = await searchParams;
+  const reason = query.e;
   if (hasBounceCode(reason)) return <EntryCover reason={reason} />;
 
+  const entryDestination =
+    query.signup === "1"
+      ? "/es/business/onboarding?signup=1"
+      : "/es/business/onboarding";
   const requestHeaders = await headers();
   // Solo la cookie de sesión de Better Auth puede autenticar esta página. Otras
   // cookies del navegador no requieren inicializar Auth ni consultar la base de datos.
-  if (!getSessionCookie(requestHeaders)) redirect("/es/business/onboarding");
+  if (!getSessionCookie(requestHeaders)) redirect(entryDestination);
 
   const session = await getMerchantAuth().api.getSession({
     headers: requestHeaders,
   });
-  if (!session) redirect("/es/business/onboarding");
+  if (!session) redirect(entryDestination);
 
   redirect("/backoffice");
 }

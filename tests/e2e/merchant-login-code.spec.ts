@@ -16,7 +16,6 @@ test.beforeEach(async ({ page }) => {
     await route.fulfill({ json: { accepted: true } });
   });
   await page.goto(`${merchantURL}/es/business/onboarding`);
-  await page.getByRole("button", { name: "Iniciar sesión" }).click();
 });
 
 async function requestCode(page: import("@playwright/test").Page) {

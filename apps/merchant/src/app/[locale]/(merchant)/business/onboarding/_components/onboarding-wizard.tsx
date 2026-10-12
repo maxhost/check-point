@@ -30,7 +30,9 @@ type Stage =
   | "login"
   | "login-code";
 
-export function OnboardingWizard() {
+export function OnboardingWizard({
+  startWithSignup = false,
+}: { startWithSignup?: boolean } = {}) {
   const [stage, setStage] = useState<Stage>("loading");
   const [prefill, setPrefill] = useState<OnboardingPrefill | null>(null);
   const [businessInput, setBusinessInput] = useState<SignupBusiness | null>(
@@ -59,7 +61,7 @@ export function OnboardingWizard() {
         return;
       }
       setPrefill(await getOnboardingPrefill());
-      setStage("business");
+      setStage(startWithSignup ? "business" : "login");
     } catch (caught) {
       setError(
         caught instanceof WizardApiError
@@ -68,7 +70,7 @@ export function OnboardingWizard() {
       );
       setStage("restore-error");
     }
-  }, []);
+  }, [startWithSignup]);
 
   useEffect(() => {
     void restore();
