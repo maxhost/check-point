@@ -41,7 +41,8 @@ export async function onboardingPlacesFixture(page: Page) {
       },
     }),
   );
-  await page.goto(`${merchantURL}/es/business/onboarding`);
+  // Spec 0205: el onboarding abre en login; el alta va con `?signup=1`.
+  await page.goto(`${merchantURL}/es/business/onboarding?signup=1`);
   await expect(
     page.getByRole("heading", { name: "Encuentra tu negocio" }),
   ).toBeVisible();
