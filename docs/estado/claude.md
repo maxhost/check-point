@@ -23,13 +23,17 @@
   medido por Claude: `tsc` 0, eslint 0, unit 29/29, e2e `merchant-login-code` + `onboarding-google-places` 10/10.
 - `50911ae` tooling: `worktree-new.sh` enlaza las variables de cada app; gotcha de `list_deployments` vacio.
 - GPT: landing publica 0197–0201, marketing 0203, fidelizacion 0204 (QA del owner de 0203/0204 pendiente).
+- `1106798` spec 0206 (imprimir si/no por negocio, APAGADO por defecto para todos, owner): migracion 0072 aditiva
+  (`core.ticket_settings.printing_enabled`), `printingEnabled` en `GET/PUT /api/merchant/business/ticket` y `GET
+  /api/pos/ticket`; el `PUT` lo exige → **la pantalla de Ajustes actual da 422 hasta la UI de GPT** (no pushear sin
+  ella). Neon 9/9, M1/M2 rojas. Tambien `a480692` (`pnpm dev:link` muestra el codigo) y PARQUEADO #92 (papel 58/80).
 - **`pnpm verify` NO corrido** (owner: no correr la suite hasta el push unico).
 
 **Hallazgo a decidir (owner):** el alta con un email que YA tiene cuenta (etapa «Ya tienes cuenta» de
 `onboarding-wizard.tsx`) sigue mandando un LINK (`api/onboarding/signup` → `signInMagicLink`): desde la PWA de iPhone
 abre Safari y no deja sesion en la app. Opciones: dejarlo (alta = link, ADR 0137) o mandar codigo tambien ahi.
 
-**QUE SIGUE:** GPT completa lo suyo (U4–U6 vencimiento, 0195 §D6, en PARQUEADO); despues `main` ff a `dev`, `pnpm
+**QUE SIGUE:** GPT: UI de la 0206 (Ajustes + ocultar «Imprimir» en el POS); U4 hecha, U5/U6 descartadas por el owner; despues `main` ff a `dev`, `pnpm
 verify` desde un worktree limpio, push con OK del owner, deploy READY y QA del owner en iPhone (login + PWA).
 Analitica parqueada (PARQUEADO #91). Ramas `spec-0190`, `motor`, `sin-gate-email`: decision del owner pendiente.
 
