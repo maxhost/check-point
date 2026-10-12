@@ -11,30 +11,23 @@
 
 
 
-## ⇥ ESTADO (2026-10-11) — LOGIN POR CODIGO (0202) LISTO EN `dev`; `main` local = `dev`; PUSH UNICO CUANDO GPT CIERRE
+## ⇥ ESTADO (2026-10-11) — EN PROD `3fe2ad6`: LOGIN POR CODIGO, PWA DEL POS, IMPRIMIR POR NEGOCIO, VENCIMIENTO
 
-**En PROD:** `origin/main` = `4c40a6a` (0189, 0190, 0195 API, 0196, landing/SEO 0191–0194; cerrado por el owner).
+**En PROD:** `origin/main` = `3fe2ad6` (push con OK del owner; pre-push `verify: ok` en worktree limpio: e2e ok, neon 419
+archivos / 3375 tests). Deploys de merchant/customer/public/admin `success` (status de GitHub del commit). Smoke: `/api/health`
+200 en `business.` y `my.`, `/negocios` 200, `manifest.webmanifest` 200 (CheckPass POS), `POST /api/merchant/auth/login/verify`
+con codigo corto → 400 `invalid_code`. Incluye 0202 (login por codigo, API + UI), PWA del POS (`adb723c`), 0195 U4
+(vencimiento en el wizard), 0205 (entrada en login), 0206 (imprimir si/no, apagado por defecto), landing 0197–0204.
+**Migracion 0072 aplicada en PROD** (antes del push; snapshot previo `snap-late-water-ax6pc362`): 73 en
+`drizzle.__drizzle_migrations`, hash del ultimo = sha256 del `.sql`, columna `NOT NULL DEFAULT false`; 3 negocios / 3 usuarios.
 
-**En `dev` y en `main` local (sin pushear; owner 2026-10-11: «un solo push» cuando GPT complete todo):**
-- `adb723c` panel instalable como PWA que abre en `/backoffice/pos` (PARQUEADO #86; QA en telefono pendiente).
-- ADR 0137 + spec 0202 (login del owner con codigo de 6 digitos, 10 min, 5 intentos, tope 10 equivocados/24 h;
-  owner acepto el bloqueo de 24 h). API `2e2e0dc` (Neon 7/7, 106 suites / 1000 tests, mutaciones M1/M3/M4 rojas, M2
-  sobrevivio y se borro el codigo redundante). UI de GPT `c59ef50` + `4b7eab4`: revisada por Claude contra §D4;
-  medido por Claude: `tsc` 0, eslint 0, unit 29/29, e2e `merchant-login-code` + `onboarding-google-places` 10/10.
-- `50911ae` tooling: `worktree-new.sh` enlaza las variables de cada app; gotcha de `list_deployments` vacio.
-- GPT: landing publica 0197–0201, marketing 0203, fidelizacion 0204 (QA del owner de 0203/0204 pendiente).
-- `1106798` spec 0206 (imprimir si/no por negocio, APAGADO por defecto para todos, owner): migracion 0072 aditiva
-  (`core.ticket_settings.printing_enabled`), `printingEnabled` en `GET/PUT /api/merchant/business/ticket` y `GET
-  /api/pos/ticket`; el `PUT` lo exige → **la pantalla de Ajustes actual da 422 hasta la UI de GPT** (no pushear sin
-  ella). Neon 9/9, M1/M2 rojas. Tambien `a480692` (`pnpm dev:link` muestra el codigo) y PARQUEADO #92 (papel 58/80).
-- **`pnpm verify` NO corrido** (owner: no correr la suite hasta el push unico).
+**En `dev`, sin pushear:** `f354673` blindaje de e2e (URLs de entrada en `tests/e2e/support/merchant-entry-urls.ts`; la
+landing compara contra `onboardingUrl` de site-config y precalienta Next — en frio el primer `goto /negocios` pasaba 30 s).
+Medido en frio: 37 passed. Va en el proximo push (owner decide).
 
-**Hallazgo a decidir (owner):** el alta con un email que YA tiene cuenta (etapa «Ya tienes cuenta» de
-`onboarding-wizard.tsx`) sigue mandando un LINK (`api/onboarding/signup` → `signInMagicLink`): desde la PWA de iPhone
-abre Safari y no deja sesion en la app. Opciones: dejarlo (alta = link, ADR 0137) o mandar codigo tambien ahi.
+**QUE SIGUE:** QA del owner en iPhone (instalar el panel como app → login por codigo con sugerencia del teclado → POS;
+Ajustes → «Imprimir tickets»; vencimiento en el wizard). Hallazgo a decidir: el alta con email existente sigue mandando LINK.
+Parqueados: #91 analitica, #92 papel 58/80. Ramas `spec-0190`, `motor`, `sin-gate-email`: decision del owner pendiente.
 
-**QUE SIGUE:** GPT: UI de la 0206 (Ajustes + ocultar «Imprimir» en el POS); U4 hecha, U5/U6 descartadas por el owner; despues `main` ff a `dev`, `pnpm
-verify` desde un worktree limpio, push con OK del owner, deploy READY y QA del owner en iPhone (login + PWA).
-Analitica parqueada (PARQUEADO #91). Ramas `spec-0190`, `motor`, `sin-gate-email`: decision del owner pendiente.
-
-**Decisiones del owner, no volver a preguntar:** ADR 0134–0137; precio de la landing «dejalo asi» (2026-10-10).
+**Decisiones del owner, no volver a preguntar:** ADR 0134–0137; 0206 (apagada para todos, ocultar boton); U5/U6 descartadas
+(lecturas para el cliente conservadas, TASKS); POS quita el cupon solo de la venta (0183); precio de la landing «dejalo asi».
