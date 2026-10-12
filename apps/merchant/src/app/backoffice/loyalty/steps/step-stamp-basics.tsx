@@ -1,3 +1,4 @@
+import { BalanceExpiryFields } from "../balance-expiry-fields";
 import { NumberDraftField } from "../number-draft-field";
 import { TextField } from "../../../../ui";
 import type { LoyaltyVm } from "../use-loyalty-program";
@@ -27,6 +28,7 @@ export function StepStampBasics({
         description="Elige entre 2 y 50 sellos."
         errorMessage={errors.target}
       />
+      <BalanceExpiryFields vm={vm} />
     </>
   );
 }

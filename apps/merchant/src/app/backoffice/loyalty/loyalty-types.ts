@@ -1,3 +1,4 @@
+export type BalanceExpiryMonths = 3 | 6 | 9 | 12 | null;
 export type Kind = "points" | "stamps";
 export type Template = { id: string; title: string; templateMarkdown: string };
 export type ProgramAccrual = {
@@ -16,6 +17,8 @@ export type ProgramReward = {
 };
 export type Program = {
   id: string;
+  balanceExpiryMonths: BalanceExpiryMonths;
+  balanceExpirySince?: string | null;
   kind: Kind;
   configuration: Record<string, unknown>;
   status: "active" | "closing" | "inactive";

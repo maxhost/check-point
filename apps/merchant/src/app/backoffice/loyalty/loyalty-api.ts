@@ -1,16 +1,20 @@
+import type { BalanceExpiryMonths } from "./loyalty-types";
+
 export class LoyaltyApiError extends Error {
   constructor(
     public status: number,
     public code?: string,
     public suspensionReason?: string,
     public uncertain = false,
+    serverMessage?: string,
   ) {
     super(
-      code
-        ? (messages[code] ?? "No pudimos completar esta operación.")
-        : uncertain
-          ? "No pudimos confirmar el resultado. Consulta el programa antes de volver a guardar."
-          : "No pudimos completar esta operación.",
+      serverMessage ??
+        (code
+          ? (messages[code] ?? "No pudimos completar esta operación.")
+          : uncertain
+            ? "No pudimos confirmar el resultado. Consulta el programa antes de volver a guardar."
+            : "No pudimos completar esta operación."),
     );
   }
 }
@@ -32,6 +36,7 @@ export async function loyaltyRequest<T>(
   url: string,
   method = "GET",
   body?: unknown,
+  useServerMessage = false,
 ): Promise<T> {
   let response: Response;
   try {
@@ -58,6 +63,10 @@ export async function loyaltyRequest<T>(
       typeof error.suspensionReason === "string"
         ? error.suspensionReason
         : undefined,
+      false,
+      useServerMessage && typeof error.error === "string"
+        ? error.error
+        : undefined,
     );
   }
   if (!data || typeof data !== "object")
@@ -73,3 +82,18 @@ export const asLoyaltyError = (error: unknown) =>
   error instanceof LoyaltyApiError
     ? error
     : new LoyaltyApiError(0, undefined, undefined, true);
+
+export async function saveBalanceExpiry(months: BalanceExpiryMonths) {
+  const result = await loyaltyRequest<{
+    balanceExpiryMonths: BalanceExpiryMonths;
+    balanceExpirySince: string | null;
+  }>("/api/loyalty-program/expiry", "PUT", { months }, true);
+  if (
+    (result.balanceExpiryMonths !== null &&
+      ![3, 6, 9, 12].includes(result.balanceExpiryMonths)) ||
+    (result.balanceExpirySince !== null &&
+      typeof result.balanceExpirySince !== "string")
+  )
+    throw new LoyaltyApiError(200, undefined, undefined, true);
+  return result;
+}

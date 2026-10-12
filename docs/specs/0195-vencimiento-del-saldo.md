@@ -103,6 +103,19 @@ Devuelve `{ notices, expired }` para el log del cron.
 
 ### D6 — Contrato para GPT (pantallas)
 
+**Alcance actualizado por el owner (2026-10-11):** solo el paso de configuracion
+«Unidades» / «Sello y objetivo» del wizard al crear o editar un programa.
+No se muestra el vencimiento en la vista del programa, inscripcion ni app del
+cliente (`my.checkpass.club`): U5 y U6 quedan retiradas. En creacion, la opcion es
+un borrador apagado por defecto y el `PUT /expiry` se ejecuta despues de activar
+el programa; al editar, se guarda por separado al cambiarla. Activar o acortar
+requiere confirmacion («Empieza a contar hoy para todos tus clientes»); alargar o
+apagar se guarda directo. Si falla el guardado de la regla tras crear, se muestra
+el error y se permite reintentar solo la regla, sin crear otra vez el programa.
+El contrato HTTP de D3 y los campos de lectura de D5 permanecen iguales.
+
+Contrato original (las superficies de cliente quedan fuera por la decision anterior):
+
 - **Programa (panel):** interruptor «Los puntos/sellos vencen» + selector 3/6/9/12 meses contra el `PUT` de §D3; al
   activarlo, aclarar «empieza a contar hoy para todos tus clientes».
 - **Inscripcion:** con `balanceExpiryMonths`, una linea junto a los terminos: «Tus puntos vencen si pasan 6 meses sin

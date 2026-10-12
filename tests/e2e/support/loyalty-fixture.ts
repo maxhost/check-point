@@ -11,6 +11,7 @@ export const business = {
 };
 export const storedProgram = {
   id: "program-1",
+  balanceExpiryMonths: null,
   kind: "stamps",
   configuration: { unitName: "Visita", unitPlural: "Visitas", target: 8 },
   status: "active",

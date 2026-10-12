@@ -43,6 +43,11 @@ export function ProgramEditor({ vm }: { vm: LoyaltyVm }) {
     }
   }, [vm.editorIntent]);
   useEffect(() => {
+    if (vm.expiryRetry !== undefined) {
+      setIndex(steps.indexOf(vm.kind === "points" ? "units" : "basics"));
+    }
+  }, [vm.expiryRetry, vm.program?.id]);
+  useEffect(() => {
     title.current?.focus();
   }, [clamped]);
   function move(next: number) {

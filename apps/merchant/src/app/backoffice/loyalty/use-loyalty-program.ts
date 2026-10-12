@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { loyaltyRequest, asLoyaltyError, LoyaltyApiError } from "./loyalty-api";
+import {
+  loyaltyRequest,
+  asLoyaltyError,
+  LoyaltyApiError,
+  saveBalanceExpiry,
+} from "./loyalty-api";
 import { isContext, areTemplates } from "./loyalty-response";
 import { programPayload } from "./program-payload";
 import type { LoyaltyWriteOutcome } from "./loyalty-tour-state";
@@ -7,7 +12,13 @@ import { firstInvalidStep } from "./program-form-state";
 import { useStampUpload } from "./use-stamp-upload";
 import { type BrandDefaults, useCardDesign } from "./use-card-design";
 import { useRewards } from "./use-rewards";
-import type { Business, Context, Kind, Template } from "./loyalty-types";
+import type {
+  BalanceExpiryMonths,
+  Business,
+  Context,
+  Kind,
+  Template,
+} from "./loyalty-types";
 
 export type {
   Business,
@@ -47,6 +58,10 @@ export function useLoyaltyProgram({
   const [stampPlural, setStampPlural] = useState<unknown>(undefined);
   const [context, setContext] = useState<Context | null>(null);
   const [templates, setTemplates] = useState<Template[]>([]);
+  const [expiryDraft, setExpiryDraft] = useState<BalanceExpiryMonths>(null);
+  const [expiryRetry, setExpiryRetry] = useState<
+    BalanceExpiryMonths | undefined
+  >(undefined);
   const [kind, setKind] = useState<Kind>("points");
   const [singular, setSingular] = useState("Punto");
   const [plural, setPlural] = useState("Puntos");
@@ -74,6 +89,7 @@ export function useLoyaltyProgram({
   const isClosing = program?.status === "closing";
 
   function populate(next: Context) {
+    setExpiryDraft(next.program?.balanceExpiryMonths ?? null);
     stamp.reset();
     const brand = brandDefaultsOf(next.business);
     if (!next.program) {
@@ -184,8 +200,25 @@ export function useLoyaltyProgram({
           : result.ok !== true
       )
         throw new LoyaltyApiError(200, undefined, undefined, true);
-      setNotice(success);
+      let expiryFailure: LoyaltyApiError | null = null;
+      if (method === "PUT" && !program && expiryDraft !== null) {
+        try {
+          await saveBalanceExpiry(expiryDraft);
+        } catch (reason) {
+          expiryFailure = asLoyaltyError(reason);
+          setExpiryRetry(expiryDraft);
+        }
+      }
+      setNotice(
+        expiryFailure
+          ? "Programa activado. Falta guardar el vencimiento."
+          : success,
+      );
       const refreshed = await load(false, true);
+      if (expiryFailure) {
+        setOperationError(expiryFailure);
+        setEditing(true);
+      }
       setWriteOutcome({
         attemptId,
         operation,
@@ -205,6 +238,54 @@ export function useLoyaltyProgram({
       setSaving(false);
     }
   }
+  async function changeExpiry(months: BalanceExpiryMonths) {
+    if (
+      writing.current ||
+      refreshFailed ||
+      loading ||
+      operationError?.status === 401 ||
+      operationError?.status === 403 ||
+      loadError?.status === 401 ||
+      loadError?.status === 403
+    )
+      return;
+    if (!program) {
+      setExpiryDraft(months);
+      return;
+    }
+    if (program.status !== "active") return;
+    writing.current = true;
+    setSaving(true);
+    setOperationError(null);
+    try {
+      const result = await saveBalanceExpiry(months);
+      setContext((current) =>
+        current?.program?.id === program.id
+          ? {
+              ...current,
+              program: { ...current.program, ...result },
+            }
+          : current,
+      );
+      setExpiryDraft(result.balanceExpiryMonths);
+      setExpiryRetry(undefined);
+      setNotice("Vencimiento actualizado.");
+    } catch (reason) {
+      const failure = asLoyaltyError(reason);
+      if (
+        failure.code === "state_changed" ||
+        failure.code === "no_active_program" ||
+        failure.uncertain
+      ) {
+        await load(true);
+      }
+      setOperationError(failure);
+    } finally {
+      writing.current = false;
+      setSaving(false);
+    }
+  }
+
   async function save() {
     if (
       writing.current ||
@@ -261,6 +342,9 @@ export function useLoyaltyProgram({
   function vm() {
     return {
       context,
+      expiryDraft,
+      expiryRetry,
+      changeExpiry,
       writeOutcome,
       editorIntent,
       consumeEditorIntent: () => setEditorIntent(0),

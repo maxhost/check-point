@@ -1,3 +1,4 @@
+import { BalanceExpiryFields } from "../balance-expiry-fields";
 import { TextField } from "../../../../ui";
 import type { LoyaltyVm } from "../use-loyalty-program";
 export function StepUnits({
@@ -25,6 +26,7 @@ export function StepUnits({
         description="El nombre de varias unidades que verá el cliente."
         errorMessage={errors.plural}
       />
+      <BalanceExpiryFields vm={vm} />
     </>
   );
 }
