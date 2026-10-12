@@ -3,28 +3,35 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — DISEÑO PÚBLICO COMMITEADO Y MERGE LOCAL A MAIN (2026-10-11)
+## ESTADO — 0202 LOGIN DEL OWNER CON CÓDIGO, UI COMMITEADA EN DEV (2026-10-11)
 
-Owner autorizó «hacemos commit de todo esto, merge con main». Commits de home, negocios, marketing y fidelización ya estaban en dev; ajuste final de formato cd7a03b. Merge fast-forward local main4c40a6a→cd7a03b confirmado. Este registro se integra con otro avance documental. Sin push ni deploy; main local queda adelantado de origin/main. Checkout habitual sigue dev, sin reiniciar servidores.
+Commit UI `c59ef5047103365277af02550ee7e23b8bbfea82`. Pedido del owner: solo pantalla; sin push ni merge.
+API de Claude `2e2e0dc` ya disponible. No se tocaron `src/app/api/`, `src/server/`,
+el kit ni tooling; pendientes ajenos preservados.
 
-Se incorporaron todos los commits ya guardados de dev, incluidos los de Claude (PWA merchant, tooling local y login owner por código0202). No se commitearon pendientes ajenos ni instalación/borradores locales de Impeccable. Cuatro archivos de Claude guardados temporalmente y restaurados sin pérdida: skill gotchas, sus dos estados y worktree-new.sh. Merge realizado en checkout temporal de main para preservar carpeta/servidores de dev.
+Login por email → código de seis números, `inputMode="numeric"`,
+`autoComplete="one-time-code"`, `maxLength=6` y patrón de seis dígitos.
+`MagicLinkState` y etapa `magic-link` reemplazadas por `LoginCodeState`/`login-code`.
+Verify con navegación completa a destination; errores del servidor; reenvío al
+mismo email con confirmación y campo limpio; bloqueo diario sin reintento ni
+reenvío; usar otro email vuelve atrás. Alta y verificación conservan sus enlaces.
+Contrato de errores UI ampliado en `_lib/contracts.ts`.
 
-Verificación completa Node24, salida0: PUBLIC_LANDING_TEST_URL=http://localhost:3003 pnpm verify. Evidencia /private/tmp/checkpass-merge-verify-final.log. Primera corrida roja por referencias de diseño sin formato y choque de segundo Next público con3003; corregido formato, guardadas3 referencias tracked y segunda corrida usando servidor existente. No se omitieron gates ni se usó no-verify.
+Verificación real, Node 24.20.0: typecheck merchant, ESLint paquete merchant + e2e,
+Prettier paquete merchant + archivos nuevos, guardia UI y diffcheck en 0.
+E2E Chromium 10/10: siete de login (incluyen dos de capturas) y tres regresiones
+de alta. [Evidencia y cuatro capturas 390 claro/oscuro](../qa/0202/README.md).
+Prueba de navegador con API real, base Docker local y cuenta sembrada:
+pedido 200, código en asunto de `email_console`, verify 200, navegación a
+`/backoffice` y sesión persistida (`authenticated: true`). Sin correo real ni
+base de producción. Merchant local queda en http://localhost:3101 para revisión;
+log `/private/tmp/0202-merchant-server.log` y reporte `/private/tmp/0202-report/index.html`.
 
-| Gate | Resultado | Segundos |
-| --- | --- | --- |
-| typecheck | ok | 1.6 |
-| lint | ok | 8.1 |
-| ui-guard | ok | 0.7 |
-| format:check | ok | 11.4 |
-| test | ok | 43.0 |
-| build | ok | 19.8 |
-| test:e2e | ok | 81.7 |
-| neon full | ok | 437.5 |
-
-Unit2530 aprobadas; navegador326 aprobadas y21 skipped; suite con integración3373 aprobadas y282 skipped,419 archivos aprobados. No se presenta skipped como aprobado. Neon mediante tools/neon-test.sh, base aislada CI; no se usó DATABASE_URL de producción para tests.
-
-Home hero aprobado intacto; /negocios Funcional y planes aprobados; marketing0203 y fidelización0204 aplicados. Owner acepta trabajo para merge local. Guía/PRODUCT/sidecar vigentes; POS mantiene diseño previo. Preview3003 permanece abierto y corresponde al mismo código confirmado en main. Siguiente paso: revisión local o tarea nueva; publicación solo con autorización explícita.
+INDEX 0202: «API + UI implementadas; QA del owner pendiente».
+Pendiente: owner prueba PWA instalada en iPhone y sugerencia real del código de
+Mail. El oscuro se inspeccionó con `data-theme="dark"`; layout conserva claro
+por defecto. Main local tenía el merge previo documentado en `035fd66`; esta UI
+nueva está solo en dev. No hubo push, merge ni deploy.
 
 ## HISTÓRICO — 0204 FIDELIZACIÓN FUNCIONAL Y COPY LOCAL (2026-10-11)
 

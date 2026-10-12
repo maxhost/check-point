@@ -1,7 +1,7 @@
 ---
 spec: 0202
 fecha: 2026-10-11
-estado: implementada (API); UI de GPT y QA del owner pendientes
+estado: API + UI implementadas; QA del owner pendiente
 resumen: El owner entra al panel con un codigo de 6 digitos por email (vence en 10 min, 5 intentos por codigo, 10 fallidos por dia por email) en vez de link magico, para poder entrar desde la PWA instalada en iPhone. Solo el login; alta y verificacion siguen con link.
 disjunta: si
 archivos: apps/merchant/src/server/auth.ts, apps/merchant/src/server/email/login-code-email.ts, apps/merchant/src/server/merchant-login.ts, apps/merchant/src/app/api/merchant/auth/login/route.ts, apps/merchant/src/app/api/merchant/auth/login/verify/route.ts, apps/merchant/src/app/api/merchant/auth/magic-link/route.ts, tests de esas rutas; UI (GPT): onboarding/_components/account-step.tsx y onboarding/_lib/onboarding-api.ts
@@ -142,7 +142,7 @@ el mensaje y deja reenviar; `too_many_failures` muestra el mensaje y no deja ree
     da `429 too_many_failures`; con esas filas movidas a `expires_at` en el pasado, el codigo correcto entra.
 - [ ] Las suites del link siguen verdes: `tools/neon-test.sh src/server/magic-link.neon.integration.test.ts` y
       `src/server/magic-link-business-closed.neon.integration.test.ts`.
-- [ ] `pnpm --filter ./apps/merchant exec tsc --noEmit -p .` y eslint de los archivos tocados, exit 0, Node 24.
+- [x] `pnpm --filter ./apps/merchant exec tsc --noEmit -p .` y eslint de los archivos tocados, exit 0, Node 24.
 - [ ] `rg -n MUTATION apps tools` → vacio.
 - [ ] QA del owner con la UI de GPT: entrar desde la PWA instalada en iPhone con el codigo.
 
@@ -174,3 +174,5 @@ L2: lo implementa Claude en la sesion, sin subagentes. La UI va a GPT con la §D
 ## Abierto
 
 Nada.
+
+UI implementada por GPT: commit `c59ef5047103365277af02550ee7e23b8bbfea82` en `dev` (sin push ni merge). Typecheck, ESLint, formato y guardia UI en 0; e2e 10/10; código real y sesión comprobados en Docker local. [Capturas 390 claro/oscuro y evidencia](../qa/0202/README.md). QA del owner en PWA iPhone pendiente.
