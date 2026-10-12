@@ -1,4 +1,8 @@
 import { expect, test } from "@playwright/test";
+import {
+  merchantLoginURL,
+  merchantSignupURL,
+} from "./support/merchant-entry-urls";
 import { merchantURL } from "./support/ports";
 
 test.beforeEach(async ({ page }) => {
@@ -20,7 +24,7 @@ for (const path of [
 ]) {
   test(`entrada ${path} abre login sin sesión`, async ({ page }) => {
     await page.goto(`${merchantURL}${path}`);
-    await expect(page).toHaveURL(`${merchantURL}/es/business/onboarding`);
+    await expect(page).toHaveURL(merchantLoginURL);
     await expect(
       page.getByRole("heading", { name: "Entra a tu cuenta" }),
     ).toBeVisible();
@@ -33,9 +37,7 @@ for (const path of [
 for (const path of ["/?signup=1", "/es/business/onboarding?signup=1"]) {
   test(`entrada ${path} abre registro explícito`, async ({ page }) => {
     await page.goto(`${merchantURL}${path}`);
-    await expect(page).toHaveURL(
-      `${merchantURL}/es/business/onboarding?signup=1`,
-    );
+    await expect(page).toHaveURL(merchantSignupURL);
     await expect(
       page.getByRole("heading", { name: /tu negocio/i }),
     ).toBeVisible();

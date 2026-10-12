@@ -3,6 +3,8 @@ import { spawn, type ChildProcess } from "node:child_process";
 import { createServer } from "node:net";
 import { createRequire } from "node:module";
 import path from "node:path";
+// Spec 0205: el destino del alta sale de la MISMA config que arma los enlaces de la landing.
+import { onboardingUrl } from "../../apps/public/src/app/site-config";
 
 // Una sola instancia de Next para las cuatro revisiones; CI la levanta sin DB.
 // Para QA contra el dev abierto: PUBLIC_LANDING_TEST_URL=http://localhost:3003.
@@ -11,7 +13,7 @@ let landingURL: string;
 let server: ChildProcess | undefined;
 
 test.beforeAll(async () => {
-  test.setTimeout(120_000);
+  test.setTimeout(240_000);
   if (process.env.PUBLIC_LANDING_TEST_URL) {
     landingURL = process.env.PUBLIC_LANDING_TEST_URL;
     return;
@@ -73,7 +75,41 @@ test.beforeAll(async () => {
       { timeout: 100_000, message: "Public landing server must start" },
     )
     .toBe(200);
+  await warmUp(landingURL);
 });
+
+/**
+ * `next dev` compila cada pagina y optimiza cada imagen en su PRIMER pedido. En un arbol frio
+ * (worktree nuevo, pre-push) la primera visita a `/negocios` paso los 30 s del test esperando
+ * `load` (rojo en el pre-push, 2026-10-11). Se paga aca, dentro del `beforeAll` (240 s), y no
+ * dentro del primer test que la toque.
+ */
+async function warmUp(base: string) {
+  for (const route of [
+    "/",
+    "/negocios",
+    "/marketing-para-comercios",
+    "/programa-de-fidelizacion",
+    "/explorar",
+  ]) {
+    const html = await (
+      await fetch(base + route, { signal: AbortSignal.timeout(60_000) })
+    ).text();
+    // Todo `/_next/image?...` del HTML: `src` y cada entrada del `srcset`.
+    const images = new Set(
+      [...html.matchAll(/\/_next\/image\?[^"\s,]+/g)].map((match) =>
+        match[0].replaceAll("&amp;", "&"),
+      ),
+    );
+    await Promise.all(
+      [...images].map((image) =>
+        fetch(base + image, { signal: AbortSignal.timeout(60_000) }).catch(
+          () => undefined,
+        ),
+      ),
+    );
+  }
+}
 
 test.afterAll(async () => {
   if (!server || server.exitCode != null) return;
@@ -212,7 +248,7 @@ for (const width of [390, 1440]) {
         page
           .locator(".business-hero")
           .getByRole("link", { name: "Pruébalo gratis 3 meses" }),
-      ).toHaveAttribute("href", /\/es\/business\/onboarding\?signup=1$/);
+      ).toHaveAttribute("href", onboardingUrl);
       await expect(page.locator("body")).not.toContainText(/ejemplo/i);
       await expect(page.locator(".barrio-shop")).toHaveCount(4);
       await expect(
@@ -301,10 +337,7 @@ for (const width of [390, 1440]) {
       for (const link of await page
         .getByRole("link", { name: /Pruébalo gratis 3 meses/ })
         .all()) {
-        await expect(link).toHaveAttribute(
-          "href",
-          /\/es\/business\/onboarding\?signup=1$/,
-        );
+        await expect(link).toHaveAttribute("href", onboardingUrl);
       }
       await expect(page.locator(".business-assurance")).toContainText(
         "Todo incluido durante la prueba.",
@@ -349,9 +382,13 @@ for (const width of [390, 1440]) {
       for (const scene of await page
         .locator(".barrio-map img, .barrio-reward img, .barrio-attention img")
         .all()) {
+        // `next dev` optimiza cada imagen en su primer pedido: con el cache frio tarda mas que
+        // los 5 s por defecto (rojo intermitente en el pre-push, 2026-10-11).
         await expect
-          .poll(() =>
-            scene.evaluate((img) => (img as HTMLImageElement).naturalWidth),
+          .poll(
+            () =>
+              scene.evaluate((img) => (img as HTMLImageElement).naturalWidth),
+            { timeout: 20_000 },
           )
           .toBeGreaterThan(0);
       }
@@ -484,10 +521,7 @@ for (const width of [390, 1440]) {
       for (const link of await page
         .getByRole("link", { name: /^Pruébalo gratis/ })
         .all()) {
-        await expect(link).toHaveAttribute(
-          "href",
-          /^https?:\/\/.+\/onboarding\?signup=1$/,
-        );
+        await expect(link).toHaveAttribute("href", onboardingUrl);
       }
       await expect
         .poll(() =>
@@ -577,10 +611,7 @@ for (const width of [390, 1440]) {
       for (const link of await page
         .getByRole("link", { name: /^Pruébalo gratis/ })
         .all()) {
-        await expect(link).toHaveAttribute(
-          "href",
-          /^https?:\/\/.+\/onboarding\?signup=1$/,
-        );
+        await expect(link).toHaveAttribute("href", onboardingUrl);
       }
       await expect(
         page.getByRole("link", { name: "Consulta los planes", exact: true }),

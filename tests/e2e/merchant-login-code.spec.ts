@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { merchantURL } from "./support/ports";
+import { merchantLoginURL } from "./support/merchant-entry-urls";
 
 const email = "owner@example.com";
 
@@ -15,7 +15,7 @@ test.beforeEach(async ({ page }) => {
     expect(route.request().postDataJSON()).toEqual({ email });
     await route.fulfill({ json: { accepted: true } });
   });
-  await page.goto(`${merchantURL}/es/business/onboarding`);
+  await page.goto(merchantLoginURL);
 });
 
 async function requestCode(page: import("@playwright/test").Page) {

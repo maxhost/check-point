@@ -1,5 +1,6 @@
 import { expect, type Page } from "@playwright/test";
 
+import { merchantSignupURL } from "./merchant-entry-urls";
 import { merchantURL } from "./ports";
 
 export { merchantURL };
@@ -41,8 +42,7 @@ export async function onboardingPlacesFixture(page: Page) {
       },
     }),
   );
-  // Spec 0205: el onboarding abre en login; el alta va con `?signup=1`.
-  await page.goto(`${merchantURL}/es/business/onboarding?signup=1`);
+  await page.goto(merchantSignupURL);
   await expect(
     page.getByRole("heading", { name: "Encuentra tu negocio" }),
   ).toBeVisible();

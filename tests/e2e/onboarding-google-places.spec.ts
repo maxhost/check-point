@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { startCatalogHarness } from "./support/catalog-harness-server";
-import { merchantURL } from "./support/ports";
+import { merchantSignupURL } from "./support/merchant-entry-urls";
 
 test("alta en tres pasos comparte la sesión de Places y crea el negocio una vez", async ({
   page,
@@ -64,7 +64,7 @@ test("alta en tres pasos comparte la sesión de Places y crea el negocio una vez
     });
   });
 
-  await page.goto(`${merchantURL}/es/business/onboarding?signup=1`);
+  await page.goto(merchantSignupURL);
   await expect(
     page.getByRole("heading", { name: "Encuentra tu negocio" }),
   ).toBeVisible();
@@ -217,7 +217,7 @@ test("elegir una sugerencia no dispara otra busqueda", async ({ page }) => {
       },
     });
   });
-  await page.goto(`${merchantURL}/es/business/onboarding?signup=1`);
+  await page.goto(merchantSignupURL);
   await page
     .getByRole("combobox", { name: "Busca tu negocio o dirección" })
     .fill("cafe platano");
