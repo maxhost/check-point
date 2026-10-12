@@ -50,8 +50,8 @@ responden. Ctrl+C apaga apps y tunel (la base queda). Logs en `.dev-local/`. Des
 Trabajar **siempre** por `https://dev-business.checkpass.club` y `https://dev-my.checkpass.club`, tambien en la
 compu: los links de login, los pases y los QR se arman con esas direcciones, y las cookies son de ese host.
 
-- Login del comercio: `https://dev-business.checkpass.club/es/business/onboarding`. El link magico (email local,
-  `EMAIL_PROVIDER=console`) se ve con `pnpm dev:link`.
+- Login del comercio: `https://dev-business.checkpass.club/es/business/onboarding`. El codigo de login (spec 0202) y el
+  link del alta (email local, `EMAIL_PROVIDER=console`) se ven con `pnpm dev:link`.
 - `node tools/local-db/check-env.ts` tiene que dar exit 0: revisa, entre otras cosas, que ningun origen de los
   `.env.local` apunte a PROD y que los del tunel esten puestos (§4).
 

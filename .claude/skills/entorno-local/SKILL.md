@@ -10,7 +10,7 @@ ADR 0126 (base local), ADR 0127 (tunel). Todo pasa por dos comandos del repo; es
 | Comando | Que hace |
 |---|---|
 | `pnpm dev:local` | Docker → `db:local:up` (migraciones + seed, idempotente) → `check-env.ts` → puertos libres → consumer :3200 y merchant :3201 → espera `/api/health` → tunel → smoke por el tunel. Logs en `.dev-local/`. Ctrl+C apaga apps y tunel; la base queda. |
-| `pnpm dev:link` | El ultimo link de login del comercio (email local, `EMAIL_PROVIDER=console`), sacado de `.dev-local/merchant.log`. |
+| `pnpm dev:link` | El ultimo CODIGO de login del comercio (spec 0202) y el ultimo link del alta / verificacion (email local, `EMAIL_PROVIDER=console`), sacados de `.dev-local/merchant.log`. |
 
 Antes de cualquier comando: `export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"; nvm use` (Node 24).
 
@@ -35,8 +35,9 @@ Reportar en una tabla, con la salida medida (no supuesta):
 
 ## `link`
 
-`pnpm dev:link`. Si no hay link: el owner tiene que pedir el acceso en
-`https://dev-business.checkpass.club/es/business/onboarding` primero. El link vence a los 15 minutos y se usa una vez.
+`pnpm dev:link`. Si no hay codigo ni link: el owner tiene que pedir el acceso en
+`https://dev-business.checkpass.club/es/business/onboarding` primero. El codigo vence a los 10 minutos (5 intentos); el
+link del alta, a los 15. Los dos se usan una vez. Solo hay codigo si el email YA tiene cuenta en la base local.
 Es un dato de la base LOCAL: se le puede mostrar al owner.
 
 ## `parar`
