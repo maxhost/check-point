@@ -65,3 +65,9 @@ Ninguna decisión de producto abierta para estas dos cards.
 ## Verificación real L1
 
 Node 24: typecheck merchant, ESLint archivos, formato, guardia --base HEAD y diffcheck salida 0. Chromium: 3/3 en 2.3 segundos, HTTP simulado; capturas 390/1280 vistas, sin overflow. Primer intento bloqueado por listen EPERM del sandbox; repetición autorizada verde. No verify global ni revisor, por L1. Backend y base local no verificados por estas pruebas. Capturas en `/private/tmp/checkpass-0211-results/`.
+
+## Ajuste L1 — panel compacto
+
+Owner pidió conservar información y reducir espacio al sumar módulos. POS, Stock y Recetas se agrupan en un panel con filas separadas por línea; descripción izquierda y estado/acción derecha en escritorio, controles bajo el texto en móvil. Impresión conserva su bloque. Contratos y controles intactos.
+
+Owner pide reemplazar botones por Switch del kit, como impresión. Nombre accesible POS/Stock/Recetas, estado real conservado hasta confirmación HTTP, Guardando… y controles deshabilitados durante PUT; dependencias intactas.

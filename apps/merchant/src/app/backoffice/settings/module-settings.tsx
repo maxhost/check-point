@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Alert, Button, Card, Heading, Text } from "../../../ui";
+import { Alert, Button, Heading, Switch, Text } from "../../../ui";
 import { PosError, posRequest } from "../pos/pos-types";
 
 type Module = {
@@ -151,32 +151,38 @@ export function ModuleSettings() {
               ? "Desactiva Recetas antes de desactivar Stock."
               : null;
         return (
-          <Card key={card.id} className="grid gap-4">
-            <Heading level={2}>{card.name}</Heading>
-            <Text>{card.description}</Text>
-            <Text variant="label">
-              {loading
-                ? "Cargando configuración…"
-                : !module
-                  ? "Estado no disponible"
-                  : module.enabled
-                    ? "Activado"
-                    : "Desactivado"}
-            </Text>
-            {dependency && <Text>{dependency}</Text>}
-            <div>
-              <Button
-                variant={module?.enabled ? "secondary" : "primary"}
-                isLoading={busy === card.id}
+          <div
+            key={card.id}
+            className="flex flex-col gap-3 border-t border-border pt-5 md:flex-row md:items-start md:gap-6"
+          >
+            <div className="min-w-0 flex-1 space-y-2">
+              <Heading level={2}>{card.name}</Heading>
+              <Text>{card.description}</Text>
+              {dependency && <Text>{dependency}</Text>}
+            </div>
+            <div className="flex shrink-0 items-center justify-end gap-3">
+              <Text variant="label">
+                {loading
+                  ? "Cargando configuración…"
+                  : !module
+                    ? "Estado no disponible"
+                    : busy === card.id
+                      ? "Guardando…"
+                      : module.enabled
+                        ? "Activado"
+                        : "Desactivado"}
+              </Text>
+              <Switch
+                aria-label={card.name}
+                aria-busy={busy === card.id || undefined}
+                isSelected={module?.enabled ?? false}
                 isDisabled={loading || !module || busy !== null || !!dependency}
-                onPress={() => {
+                onChange={() => {
                   if (module) void toggle(module);
                 }}
-              >
-                {module?.enabled ? "Desactivar" : "Activar"} {card.name}
-              </Button>
+              />
             </div>
-          </Card>
+          </div>
         );
       })}
     </>

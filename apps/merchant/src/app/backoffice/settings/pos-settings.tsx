@@ -7,6 +7,7 @@ import {
   Dialog,
   Heading,
   PageHeader,
+  Switch,
   Text,
 } from "../../../ui";
 import { useRouter } from "next/navigation";
@@ -80,31 +81,33 @@ export function PosSettings() {
             Solo la persona propietaria puede cambiar los módulos.
           </Alert>
         ) : (
-          <Card className="grid gap-4">
-            <Heading level={2}>POS · Órdenes de mesa</Heading>
-            <Text>
-              Abre una orden por mesa, agrega productos y cobra cuando el
-              cliente pague. Puedes escanear su pase para aplicar el cupón y
-              acreditar la compra.
-            </Text>
-            <Text variant="label">{enabled ? "Activado" : "Desactivado"}</Text>
-            <div>
-              <Button
-                variant={enabled ? "secondary" : "primary"}
-                isLoading={busy}
-                onPress={() => void toggle()}
-              >
-                {enabled ? "Desactivar POS" : "Activar POS"}
-              </Button>
+          <Card className="grid gap-5">
+            <div className="flex flex-col gap-3 md:flex-row md:items-start md:gap-6">
+              <div className="min-w-0 flex-1 space-y-2">
+                <Heading level={2}>POS · Órdenes de mesa</Heading>
+                <Text>
+                  Abre una orden por mesa, agrega productos y cobra cuando el
+                  cliente pague. Puedes escanear su pase para aplicar el cupón y
+                  acreditar la compra.
+                </Text>
+              </div>
+              <div className="flex shrink-0 items-center justify-end gap-3">
+                <Text variant="label">
+                  {busy ? "Guardando…" : enabled ? "Activado" : "Desactivado"}
+                </Text>
+                <Switch
+                  aria-label="POS"
+                  aria-busy={busy || undefined}
+                  isSelected={enabled}
+                  isDisabled={busy}
+                  onChange={() => void toggle()}
+                />
+              </div>
             </div>
+            <ModuleSettings />
           </Card>
         )}
-        {session?.membership?.role === "owner" && (
-          <>
-            <ModuleSettings />
-            <TicketSettings />
-          </>
-        )}
+        {session?.membership?.role === "owner" && <TicketSettings />}
         <Dialog
           isOpen={openCount !== null}
           onOpenChange={(open) => {

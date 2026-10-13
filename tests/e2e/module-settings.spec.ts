@@ -73,20 +73,22 @@ test("cards, activación persistida y dependencias en móvil y escritorio", asyn
     page.getByRole("heading", { name: "Recetas", exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Activar Recetas", exact: true }),
+    page.getByRole("switch", { name: "Recetas", exact: true }),
   ).toBeDisabled();
   await page
-    .getByRole("button", { name: "Activar Stock", exact: true })
+    .getByRole("switch", { name: "Stock", exact: true })
+    .locator("xpath=ancestor::label")
     .click();
   await page
-    .getByRole("button", { name: "Activar Recetas", exact: true })
+    .getByRole("switch", { name: "Recetas", exact: true })
+    .locator("xpath=ancestor::label")
     .click();
   await expect(
-    page.getByRole("button", { name: "Desactivar Stock", exact: true }),
+    page.getByRole("switch", { name: "Stock", exact: true }),
   ).toBeDisabled();
   await page.reload();
   await expect(
-    page.getByRole("button", { name: "Desactivar Recetas", exact: true }),
+    page.getByRole("switch", { name: "Recetas", exact: true }),
   ).toBeEnabled();
   for (const width of [390, 1280]) {
     await page.setViewportSize({ width, height: 1000 });
@@ -101,10 +103,12 @@ test("cards, activación persistida y dependencias en móvil y escritorio", asyn
     });
   }
   await page
-    .getByRole("button", { name: "Desactivar Recetas", exact: true })
+    .getByRole("switch", { name: "Recetas", exact: true })
+    .locator("xpath=ancestor::label")
     .click();
   await page
-    .getByRole("button", { name: "Desactivar Stock", exact: true })
+    .getByRole("switch", { name: "Stock", exact: true })
+    .locator("xpath=ancestor::label")
     .click();
   expect(writes).toEqual([
     { id: "stock", enabled: true },
@@ -135,17 +139,18 @@ test("fallo de carga permite reintentar; fallo de escritura conserva estado", as
   );
   await page.goto(`${harness.url}?mode=settings`);
   await expect(
-    page.getByRole("button", { name: "Activar Stock", exact: true }),
+    page.getByRole("switch", { name: "Stock", exact: true }),
   ).toBeDisabled();
   await page.getByRole("button", { name: "Reintentar módulos" }).click();
   await page
-    .getByRole("button", { name: "Activar Stock", exact: true })
+    .getByRole("switch", { name: "Stock", exact: true })
+    .locator("xpath=ancestor::label")
     .click();
   await expect(page.getByRole("alert")).toContainText(
     "No pudimos guardar Stock.",
   );
   await expect(
-    page.getByRole("button", { name: "Activar Stock", exact: true }),
+    page.getByRole("switch", { name: "Stock", exact: true }),
   ).toBeEnabled();
 });
 
@@ -161,7 +166,7 @@ test("staff no consulta módulos ni muestra controles", async ({ page }) => {
     page.getByText("Solo la persona propietaria puede cambiar los módulos."),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Activar Stock", exact: true }),
+    page.getByRole("switch", { name: "Stock", exact: true }),
   ).toHaveCount(0);
   expect(reads).toBe(0);
 });

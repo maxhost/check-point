@@ -554,9 +554,13 @@ test("activación y desactivación bloqueada por órdenes abiertas", async ({
         });
   });
   await page.goto(`${harness.url}?mode=settings`);
-  await page.getByRole("button", { name: "Activar POS", exact: true }).click();
   await page
-    .getByRole("button", { name: "Desactivar POS", exact: true })
+    .getByRole("switch", { name: "POS", exact: true })
+    .locator("xpath=ancestor::label")
+    .click();
+  await page
+    .getByRole("switch", { name: "POS", exact: true })
+    .locator("xpath=ancestor::label")
     .click();
   await expect(
     page.getByRole("alertdialog", { name: "No puedes desactivar el POS" }),
