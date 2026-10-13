@@ -7,5 +7,13 @@ export default defineConfig({
   dbCredentials: {
     url: process.env.DATABASE_URL_UNPOOLED ?? "postgresql://placeholder",
   },
-  schemaFilter: ["merchant_auth", "core", "consumer", "platform_auth"],
+  schemaFilter: [
+    "merchant_auth",
+    "core",
+    "consumer",
+    "platform_auth",
+    // Spec 0210 / ADR 0138: un esquema Postgres por modulo.
+    "stock",
+    "recipes",
+  ],
 });

@@ -130,6 +130,9 @@ la columna → 422 `invalid_number`.
 ### API — contrato HTTP (lo consume GPT)
 
 Errores: `{ error: string (español), code: string }`. Validacion → 422 con `code` especifico.
+Un cuerpo que no es un objeto JSON → 422 `invalid_body` en todas las rutas; un numero que no es decimal (string no numerica,
+exponente, otro tipo, mas digitos enteros de los que entran en la columna) → 422 `invalid_number`. *(Precisado al
+implementar.)*
 
 **Modulos**
 
@@ -140,6 +143,11 @@ Errores: `{ error: string (español), code: string }`. Validacion → 422 con `c
   - 409 `module_requires` + `missing: string[]` (encender con requerido apagado).
   - 409 `module_required_by` + `dependents: string[]` (apagar con dependiente encendido).
   - 422 `invalid_body`.
+  - **Ruteo (medido al implementar con `next dev`):** Next resuelve `app/api/modules/recipes/route.ts` (el `GET /` de
+    Recetas) antes que `[moduleId]`, asi que `PUT /api/modules/recipes` daba 405. El contrato no cambia: la ruta base de
+    un modulo re-expone el mismo handler (`modules/toggle-route.ts`) y `toggle-route.test.ts` lo exige para todo modulo
+    del registro con ruta base.
+  - `GET /api/modules` usa `requireApiPermission(request, "catalog")`: no existe un guard de API «cualquier miembro».
 
 **Stock** (base `/api/modules/stock`)
 
@@ -161,7 +169,12 @@ solo por ajustes historicos; con capa A no baja de lo contado).
   Inserta `quantity = counted − onHand actual` leyendo `onHand` con lock de la fila del insumo (`FOR UPDATE`) para que
   dos ajustes simultaneos no calculen el delta sobre el mismo saldo. Archivado → 409 `item_archived`.
 - `GET /items/:itemId/movements?limit=50` (max 200) → `200 { movements: [{ id, kind, quantity, totalCost,
-  countedQuantity, note, occurredAt, createdAt }] }` del mas reciente al mas viejo.
+  countedQuantity, note, occurredAt, createdAt }] }` del mas reciente al mas viejo. Un `limit` que no es entero
+  positivo vuelve a 50; mayor que 200 se recorta a 200.
+- *Precisado al implementar:* `GET /items` con `status` fuera de `active|archived|all` → 422 `invalid_status`; `PATCH`
+  con `status` invalido → 422 `invalid_status` y sin `name` ni `status` → 422 `invalid_body`; `note` de mas de 200 o no
+  string → 422 `invalid_note` (vacia = null); `countedQuantity < 0` → 422 `invalid_quantity`; una compra cuyo costo por
+  unidad no entra en `numeric(14,6)` → 422 `invalid_cost`; un `itemId` que no es uuid → 404 `item_not_found`.
 
 **Recetas** (base `/api/modules/recipes`)
 

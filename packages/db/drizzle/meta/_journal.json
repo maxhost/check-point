@@ -519,6 +519,13 @@
       "when": 1791839197172,
       "tag": "0073_nota_de_orden_pos",
       "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1791860651224,
+      "tag": "0074_modulos_stock_recetas",
+      "breakpoints": true
     }
   ]
 }
