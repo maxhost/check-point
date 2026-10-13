@@ -26,10 +26,10 @@ fixture(
     await page.goto(`${entry.url}/?surface=access&error=auth`);
     await expect(
       page.getByText(
-        "Inicia sesión en tu wallet para acceder a tu pase y beneficios.",
+        "Iniciar sesión en la wallet para acceder al pase y los beneficios.",
       ),
     ).toBeVisible();
-    await expect(page.getByRole("alert")).toContainText("Inténtalo de nuevo");
+    await expect(page.getByRole("alert")).toContainText("Intentar de nuevo");
     await expect(page.locator('[data-provider="google"]')).toHaveAttribute(
       "href",
       "/api/public/auth/google/start",
@@ -181,7 +181,7 @@ fixture(
     await page
       .getByRole("button", { name: "Cómo añadir CheckPass a mi inicio" })
       .click();
-    await expect(page.getByText(/En Chrome, abre el menú/)).toBeVisible();
+    await expect(page.getByText(/En Chrome, abrir el menú/)).toBeVisible();
     await page.evaluate(() => {
       const event = new Event("beforeinstallprompt");
       Object.assign(event, {
@@ -196,7 +196,7 @@ fixture(
         exact: true,
       })
       .click();
-    await expect(page.getByText(/En Chrome, abre el menú/)).toBeVisible();
+    await expect(page.getByText(/En Chrome, abrir el menú/)).toBeVisible();
     await page.evaluate(() => {
       const event = new Event("beforeinstallprompt");
       Object.assign(event, {
@@ -218,7 +218,7 @@ fixture(
     );
     await page.evaluate(() => window.dispatchEvent(new Event("appinstalled")));
     await expect(page.getByRole("status")).toContainText(
-      "ya está en tu inicio",
+      "ya está en la pantalla de inicio",
     );
     await expect(page.getByRole("alert")).toHaveCount(0);
     await expect(page.getByRole("button")).toHaveCount(0);
@@ -241,7 +241,7 @@ fixture(
     });
     await page.reload();
     await expect(page.getByRole("status")).toContainText(
-      "ya está en tu inicio",
+      "ya está en la pantalla de inicio",
     );
     await expect(page.getByRole("list")).toHaveCount(0);
     await context.close();

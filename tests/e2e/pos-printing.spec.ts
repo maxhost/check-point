@@ -235,12 +235,27 @@ async function setup(
   );
   return { reads, writes };
 }
+// Desde `b49bdcb` imprimir una orden ABIERTA vive en el menu «Acciones de la orden» («Imprimir
+// pedido»); el detalle de una orden CERRADA conserva su boton «Imprimir».
+const actionsDialog = (page: Page) =>
+  page.getByRole("dialog", { name: "Acciones de la orden", exact: true });
+async function printAction(page: Page) {
+  if (!(await actionsDialog(page).isVisible()))
+    await page.getByRole("button", { name: /^Acciones de la orden/ }).click();
+  return actionsDialog(page).getByRole("button", {
+    name: "Imprimir pedido",
+    exact: true,
+  });
+}
+async function closeActions(page: Page) {
+  await page.keyboard.press("Escape");
+  await expect(actionsDialog(page)).toHaveCount(0);
+}
 async function open(page: Page) {
   await page.goto(harness.url);
   await page.getByRole("button", { name: "Abrir Mesa 4", exact: true }).click();
-  await expect(
-    page.getByRole("button", { name: "Imprimir", exact: true }),
-  ).toBeEnabled();
+  await expect(await printAction(page)).toBeEnabled();
+  await closeActions(page);
 }
 
 test("0185 precarga ajuste; BLE desde gesto, doble toque bloqueado y segunda impresión sin lista", async ({
@@ -253,18 +268,20 @@ test("0185 precarga ajuste; BLE desde gesto, doble toque bloqueado y segunda imp
     .poll(() => calls.reads.filter((url) => url === "/api/pos/ticket").length)
     .toBe(1);
   await page.getByRole("button", { name: "Abrir Mesa 4", exact: true }).click();
-  const print = page.getByRole("button", { name: "Imprimir", exact: true });
-  await expect(print).toBeEnabled();
+  await expect(await printAction(page)).toBeEnabled();
+  await closeActions(page);
   await expect
     .poll(() => calls.reads.filter((url) => url === "/api/pos/tables").length)
     .toBe(1);
   const before = [...calls.reads];
-  await print.click();
+  await (await printAction(page)).click();
   await expect.poll(async () => (await readQA(page)).writes).toBe(1);
-  await expect(print).toBeDisabled();
-  await print.evaluate((element) => {
+  const busy = await printAction(page);
+  await expect(busy).toBeDisabled();
+  await busy.evaluate((element) => {
     (element as HTMLButtonElement).click();
   });
+  await closeActions(page);
   expect((await readQA(page)).requests).toHaveLength(1);
   expect((await readQA(page)).active).toEqual([true]);
   expect((await readQA(page)).requests[0]).toMatchObject({
@@ -276,9 +293,9 @@ test("0185 precarga ajuste; BLE desde gesto, doble toque bloqueado y segunda imp
   await expect(
     page.getByText("Ticket impreso", { exact: true }),
   ).toBeInViewport();
-  await expect(print).toBeEnabled();
-  await print.click();
-  await expect(print).toBeEnabled();
+  await (await printAction(page)).click();
+  await expect(await printAction(page)).toBeEnabled();
+  await closeActions(page);
   expect((await readQA(page)).requests).toHaveLength(1);
   expect(calls.reads).toEqual(before);
   expect(calls.writes).toEqual([]);
@@ -291,7 +308,7 @@ for (const mode of ["ble", "serial"] as const) {
     const calls = await setup(page);
     await fakePrinter(page, mode);
     await open(page);
-    await page.getByRole("button", { name: "Imprimir", exact: true }).click();
+    await (await printAction(page)).click();
     const dialog = page.getByRole("dialog", {
       name: "Imprimir ticket",
       exact: true,
@@ -325,7 +342,7 @@ test("0185 impresora no encontrada muestra mensaje y Elegir otra olvida filtro a
   await setup(page);
   await fakePrinter(page, "ble", true, "not_found");
   await open(page);
-  await page.getByRole("button", { name: "Imprimir", exact: true }).click();
+  await (await printAction(page)).click();
   const dialog = page.getByRole("dialog", {
     name: "Imprimir ticket",
     exact: true,
@@ -356,7 +373,7 @@ for (const failure of ["cancelled", "write_failed"]) {
     await setup(page);
     await fakePrinter(page, "ble", true, failure);
     await open(page);
-    await page.getByRole("button", { name: "Imprimir", exact: true }).click();
+    await (await printAction(page)).click();
     const dialog = page.getByRole("dialog", {
       name: "Imprimir ticket",
       exact: true,
@@ -393,7 +410,7 @@ for (const showBusinessName of [false, true])
       });
       await fakePrinter(page, "unsupported");
       await open(page);
-      await page.getByRole("button", { name: "Imprimir", exact: true }).click();
+      await (await printAction(page)).click();
       await expect.poll(async () => (await readQA(page)).printCount).toBe(1);
       const result = await readQA(page);
       expect(result.oldTicket).toBe(false);
@@ -415,7 +432,7 @@ for (const showBusinessName of [false, true])
       });
       await expect(ticket).toBeVisible();
       await expect(
-        page.getByRole("button", { name: "Imprimir", exact: true }),
+        page.getByRole("button", { name: /^Acciones de la orden/ }),
       ).toBeHidden();
       await expect(ticket.locator("svg, img, canvas")).toHaveCount(0);
       if (!showBusinessName && !showTable)
@@ -455,8 +472,8 @@ test("0185 ajuste pendiente bloquea imprimir; error reintenta sin defaults", asy
   });
   await page.goto(harness.url);
   await page.getByRole("button", { name: "Abrir Mesa 4", exact: true }).click();
-  const print = page.getByRole("button", { name: "Imprimir", exact: true });
-  await expect(print).toHaveCount(0);
+  await expect(await printAction(page)).toHaveCount(0);
+  await closeActions(page);
   await expect.poll(() => typeof release).toBe("function");
   release();
   await expect(
@@ -465,14 +482,15 @@ test("0185 ajuste pendiente bloquea imprimir; error reintenta sin defaults", asy
       exact: true,
     }),
   ).toBeVisible();
-  await expect(print).toHaveCount(0);
+  await expect(await printAction(page)).toHaveCount(0);
+  await closeActions(page);
   await page
     .getByRole("button", {
       name: "Reintentar configuración del ticket",
       exact: true,
     })
     .click();
-  await expect(print).toBeEnabled();
+  await expect(await printAction(page)).toBeEnabled();
   expect(attempts).toBe(2);
 });
 
@@ -492,7 +510,7 @@ test("0185 autorización del ajuste revocada deja POS no disponible", async ({
     page.getByRole("heading", { name: "POS no disponible", exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Imprimir", exact: true }),
+    page.getByRole("button", { name: /^Acciones de la orden/ }),
   ).toHaveCount(0);
 });
 
@@ -502,7 +520,7 @@ test("0185 resultado de impresión tardío no aparece tras salir de la orden", a
   await setup(page);
   await fakePrinter(page, "ble", true, null, true);
   await open(page);
-  await page.getByRole("button", { name: "Imprimir", exact: true }).click();
+  await (await printAction(page)).click();
   await expect.poll(async () => (await readQA(page)).writes).toBe(1);
   await page
     .getByRole("button", { name: "Volver al listado de órdenes", exact: true })
@@ -531,9 +549,7 @@ test("0185 imprimir queda bloqueado para cambios sin guardar", async ({
   await page
     .getByRole("button", { name: "Añadir unidad de Café a 10.00", exact: true })
     .click();
-  await expect(
-    page.getByRole("button", { name: "Imprimir", exact: true }),
-  ).toBeDisabled();
+  await expect(await printAction(page)).toBeDisabled();
   expect((await readQA(page)).requests).toEqual([]);
   expect(calls.writes).toEqual([]);
 });
@@ -560,7 +576,10 @@ test("0185 ajuste tardío no revive POS después de revocar la sesión", async (
   );
   await page.goto(harness.url);
   await page.getByRole("button", { name: "Abrir Mesa 4", exact: true }).click();
-  await page.getByRole("button", { name: "QR", exact: true }).click();
+  await page.getByRole("button", { name: /^Acciones de la orden/ }).click();
+  await actionsDialog(page)
+    .getByRole("button", { name: "Escanear QR", exact: true })
+    .click();
   await page.evaluate(() => {
     (window as unknown as { posCameraToken: string | null }).posCameraToken =
       "expired-session";
@@ -572,7 +591,7 @@ test("0185 ajuste tardío no revive POS después de revocar la sesión", async (
   release();
   await response;
   await expect(
-    page.getByRole("button", { name: "Imprimir", exact: true }),
+    page.getByRole("button", { name: /^Acciones de la orden/ }),
   ).toHaveCount(0);
   await expect(
     page.getByRole("button", {
@@ -616,9 +635,11 @@ for (const printingEnabled of [false, true]) {
     await page
       .getByRole("button", { name: "Abrir Mesa 4", exact: true })
       .click();
+    const openPrint = await printAction(page);
+    if (printingEnabled) await expect(openPrint).toBeEnabled();
+    else await expect(openPrint).toHaveCount(0);
+    await closeActions(page);
     const print = page.getByRole("button", { name: "Imprimir", exact: true });
-    if (printingEnabled) await expect(print).toBeEnabled();
-    else await expect(print).toHaveCount(0);
     await page
       .getByRole("button", {
         name: "Volver al listado de órdenes",

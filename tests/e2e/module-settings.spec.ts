@@ -122,9 +122,11 @@ test("fallo de carga permite reintentar; fallo de escritura conserva estado", as
   page,
 }) => {
   await setup(page);
-  let reads = 0;
+  // Falla hasta que el test la apaga: el menu del panel TAMBIEN lee `/api/modules` (d1a213b), asi
+  // que «solo la primera lectura falla» dependia de quien pedia primero.
+  let failing = true;
   await page.route("**/api/modules", (route) =>
-    ++reads === 1
+    failing
       ? route.fulfill({
           status: 503,
           json: { error: "No pudimos cargar los módulos." },
@@ -141,6 +143,7 @@ test("fallo de carga permite reintentar; fallo de escritura conserva estado", as
   await expect(
     page.getByRole("switch", { name: "Stock", exact: true }),
   ).toBeDisabled();
+  failing = false;
   await page.getByRole("button", { name: "Reintentar módulos" }).click();
   await page
     .getByRole("switch", { name: "Stock", exact: true })
@@ -161,7 +164,7 @@ test("staff no consulta módulos ni muestra controles", async ({ page }) => {
     reads++;
     return route.fulfill({ json: { modules: modules() } });
   });
-  await page.goto(`${harness.url}?mode=settings`);
+  await page.goto(`${harness.url}?mode=settings&role=staff`);
   await expect(
     page.getByText("Solo la persona propietaria puede cambiar los módulos."),
   ).toBeVisible();

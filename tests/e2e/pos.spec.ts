@@ -159,9 +159,24 @@ async function open(page: Page) {
   await page.goto(harness.url);
   await page.getByRole("button", { name: "Abrir Mesa 4" }).click();
 }
+// Desde `b49bdcb` las acciones de una orden GUARDADA (nota, escanear QR, imprimir, anular) viven en
+// el menu «Acciones de la orden»; una orden NUEVA conserva su boton de nota.
+const actionsDialog = (page: Page) =>
+  page.getByRole("dialog", { name: "Acciones de la orden", exact: true });
+async function orderAction(page: Page, name: string | RegExp) {
+  if (!(await actionsDialog(page).isVisible()))
+    await page.getByRole("button", { name: /^Acciones de la orden/ }).click();
+  return actionsDialog(page).getByRole("button", {
+    name,
+    exact: typeof name === "string",
+  });
+}
+async function closeActions(page: Page) {
+  await page.keyboard.press("Escape");
+  await expect(actionsDialog(page)).toHaveCount(0);
+}
 async function annul(page: Page) {
-  await page.getByRole("button", { name: "Más acciones", exact: true }).click();
-  await page.getByRole("button", { name: "Anular", exact: true }).click();
+  await (await orderAction(page, "Anular")).click();
 }
 async function fillTable(page: Page, name: string) {
   await page.getByRole("textbox", { name: "Nombre de mesa" }).fill(name);
@@ -178,7 +193,7 @@ async function scan(page: Page) {
     (window as unknown as { posCameraToken: string | null }).posCameraToken =
       null;
   });
-  await page.getByRole("button", { name: "QR", exact: true }).click();
+  await (await orderAction(page, "Escanear QR")).click();
   await page.evaluate(() => {
     (window as unknown as { posCameraToken: string | null }).posCameraToken =
       "qa-token";
@@ -305,7 +320,7 @@ test("crear en pasos con precio de catálogo; editar conserva snapshot y lineId;
       },
     ],
   });
-  await page.getByRole("button", { name: "Más acciones", exact: true }).click();
+  await page.getByRole("button", { name: /^Acciones de la orden/ }).click();
   const actions = page.getByRole("dialog", {
     name: "Acciones de la orden",
     exact: true,
@@ -2406,7 +2421,7 @@ test("0183 escáner cámara: lectura duplicada resuelve una vez y detiene tracks
       return data.starts > 0 && data.starts === data.stops;
     })
     .toBe(true);
-  await page.getByRole("button", { name: "QR", exact: true }).click();
+  await (await orderAction(page, "Escanear QR")).click();
   await expect(
     page.getByRole("dialog", { name: "Escanear pase" }),
   ).toBeVisible();
@@ -2425,7 +2440,7 @@ test("0183 escáner cámara: lectura duplicada resuelve una vez y detiene tracks
     })
     .toBe(true);
   await expect(
-    page.getByRole("button", { name: "QR", exact: true }),
+    page.getByRole("button", { name: /^Acciones de la orden/ }),
   ).toBeFocused();
   expect(resolves).toBe(1);
 });
@@ -2463,7 +2478,7 @@ test("0183 resolve tarde cancelado de A no pinta B ni reemplaza cliente nuevo", 
     (route) => route.fulfill({ json: other }),
   );
   await open(page);
-  await page.getByRole("button", { name: "QR", exact: true }).click();
+  await (await orderAction(page, "Escanear QR")).click();
   await page.evaluate(() => {
     (window as unknown as { posCameraToken: string | null }).posCameraToken =
       "old-token";
@@ -2573,9 +2588,8 @@ test("0183 guardar misma orden conserva cliente y recalcula; dirty bloquea QR y 
     .getByRole("button", { name: "Agregar un Café", exact: true })
     .click();
   await page.getByRole("radio", { name: /^Pedido/ }).click();
-  await expect(
-    page.getByRole("button", { name: "QR", exact: true }),
-  ).toBeDisabled();
+  await expect(await orderAction(page, "Escanear QR")).toBeDisabled();
+  await closeActions(page);
   await expect(
     page.getByRole("button", { name: "Cobrar", exact: true }),
   ).toHaveCount(0);
@@ -2976,7 +2990,7 @@ test("0183 scanner error conserva cliente; cancelar resolución evita respuestas
       json: { code: "invalid_qr", error: "El pase no es válido." },
     }),
   );
-  await page.getByRole("button", { name: "QR", exact: true }).click();
+  await (await orderAction(page, "Escanear QR")).click();
   await page.evaluate(() => {
     (window as unknown as { posCameraToken: string | null }).posCameraToken =
       "bad-token";
@@ -2997,7 +3011,7 @@ test("0183 scanner error conserva cliente; cancelar resolución evita respuestas
       json: { code: "unauthorized", error: "Sesión revocada" },
     }),
   );
-  await page.getByRole("button", { name: "QR", exact: true }).click();
+  await (await orderAction(page, "Escanear QR")).click();
   await page.evaluate(() => {
     (window as unknown as { posCameraToken: string | null }).posCameraToken =
       "revoked-token";
@@ -3143,7 +3157,7 @@ test("0183 identificación muestra C animada y toast solo al encontrar cliente",
   });
   await page.setViewportSize({ width: 390, height: 844 });
   await open(page);
-  await page.getByRole("button", { name: "QR", exact: true }).click();
+  await (await orderAction(page, "Escanear QR")).click();
   await page.evaluate(() => {
     (window as unknown as { posCameraToken: string | null }).posCameraToken =
       "qa-token";
@@ -3190,7 +3204,7 @@ test("0183 identificación muestra C animada y toast solo al encontrar cliente",
     path: "/tmp/0183-cliente-identificado-toast.png",
     animations: "disabled",
   });
-  await page.getByRole("button", { name: "QR", exact: true }).click();
+  await (await orderAction(page, "Escanear QR")).click();
   await expect(
     page.getByText("Cliente identificado", { exact: true }),
   ).toHaveCount(0);
@@ -3208,7 +3222,7 @@ test("0183 cancelar loading de identificación ignora éxito tardío sin toast",
     await route.fulfill({ json: resolved });
   });
   await open(page);
-  await page.getByRole("button", { name: "QR", exact: true }).click();
+  await (await orderAction(page, "Escanear QR")).click();
   await page.evaluate(() => {
     (window as unknown as { posCameraToken: string | null }).posCameraToken =
       "qa-token";
@@ -3627,6 +3641,7 @@ for (const width of [390, 1280]) {
       .getByRole("button", { name: "Agregar Especial", exact: true })
       .click();
     const noteButton = page.getByRole("button", { name: /^Nota de la orden/ });
+    // Orden NUEVA: boton de nota propio; ya guardada, la nota va por «Acciones de la orden».
     const dialog = page.getByRole("dialog", {
       name: "Nota de la orden",
       exact: true,
@@ -3677,22 +3692,21 @@ for (const width of [390, 1280]) {
     expect(writes[0].note).toBe(
       "Ana Pérez\nCédula: 1234567890\nana@example.com",
     );
-    await noteButton.click();
+    // `5f67add`: en una orden guardada «Aplicar nota» hace el PUT en el momento (version vigente,
+    // items y contexto guardados); ya no espera a «Guardar cambios».
+    await (await orderAction(page, /^(Añadir|Editar) nota$/)).click();
     await field.fill("Nota pendiente");
     await dialog.getByRole("button", { name: "Aplicar nota" }).click();
+    await expect(dialog).toBeHidden();
+    await expect.poll(() => writes.length).toBe(2);
+    expect(writes[1]).toMatchObject({ version: 1, note: "Nota pendiente" });
     await editContext(page);
     await fillTable(page, "Mesa 5");
-    expect(writes[1]).not.toHaveProperty("note");
-    await noteButton.click();
+    await expect.poll(() => writes.length).toBe(3);
+    expect(writes[2]).not.toHaveProperty("note");
+    await (await orderAction(page, /^(Añadir|Editar) nota$/)).click();
     await expect(field).toHaveValue("Nota pendiente");
     await page.keyboard.press("Escape");
-    await page
-      .getByRole("button", { name: "Guardar cambios", exact: true })
-      .click();
-    await expect(
-      page.getByRole("button", { name: "Cobrar", exact: true }),
-    ).toBeVisible();
-    expect(writes[2]).toMatchObject({ version: 2, note: "Nota pendiente" });
     await page.getByRole("radio", { name: "Editar", exact: true }).click();
     await page
       .getByRole("button", { name: "Agregar un Café", exact: true })
@@ -3704,12 +3718,10 @@ for (const width of [390, 1280]) {
       page.getByRole("button", { name: "Cobrar", exact: true }),
     ).toBeVisible();
     expect(writes[3]).not.toHaveProperty("note");
-    await noteButton.click();
+    await (await orderAction(page, /^(Añadir|Editar) nota$/)).click();
     await field.fill("   \n   ");
     await dialog.getByRole("button", { name: "Aplicar nota" }).click();
-    await page
-      .getByRole("button", { name: "Guardar cambios", exact: true })
-      .click();
+    await expect.poll(() => writes.length).toBe(5);
     await expect(
       page.getByRole("button", { name: "Cobrar", exact: true }),
     ).toBeVisible();
@@ -3739,24 +3751,30 @@ test("0209 conflicto de nota conserva borrador y permite revisar la nota vigente
       : route.fulfill({ json: baseOrder }),
   );
   await open(page);
-  await page.getByRole("button", { name: /^Nota de la orden/ }).click();
+  await (await orderAction(page, /^(Añadir|Editar) nota$/)).click();
   await page
     .getByRole("textbox", { name: "Nota", exact: true })
     .fill("Mi nota");
+  // `5f67add`: el PUT sale al aplicar. Ante 409 se carga la version vigente, el aviso lo dice y el
+  // modal se reabre con el BORRADOR intacto; cancelar deja ver la nota vigente del otro operador.
   await page.getByRole("button", { name: "Aplicar nota" }).click();
-  await page
-    .getByRole("button", { name: "Guardar cambios", exact: true })
-    .click();
+  const noteDialog = page.getByRole("dialog", {
+    name: "Nota de la orden",
+    exact: true,
+  });
   await expect(
-    page.getByRole("button", { name: /^Nota de la orden/ }),
-  ).toBeDisabled();
-  await page.getByRole("button", { name: "Revisar versión actual" }).click();
-  await expect(page.getByText("Nota: Mi nota", { exact: true })).toBeVisible();
-  await expect(
-    page.getByText("Nota: Nota de otro operador", { exact: true }),
+    noteDialog.getByRole("heading", {
+      name: "Otra persona modificó esta orden. Cargamos la versión actual; revísala antes de continuar.",
+    }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Usar versión actual" }).click();
-  await page.getByRole("button", { name: /^Nota de la orden/ }).click();
+  await expect(
+    noteDialog.getByRole("textbox", { name: "Nota", exact: true }),
+  ).toHaveValue("Mi nota");
+  await noteDialog
+    .getByRole("button", { name: "Cancelar", exact: true })
+    .click();
+  await expect(noteDialog).toBeHidden();
+  await (await orderAction(page, /^(Añadir|Editar) nota$/)).click();
   await expect(
     page.getByRole("textbox", { name: "Nota", exact: true }),
   ).toHaveValue("Nota de otro operador");
