@@ -1,7 +1,7 @@
 ---
 spec: 0216
 fecha: 2026-10-13
-estado: cerrada
+estado: implementada
 resumen: Fase 1 del plan de modulos. Stock y Recetas pasan a cumplir el contrato completo (ADR 0139) y quedan como implementacion de referencia. Parte Claude (esta spec): manifiestos completos, tres registros, despachador de API, despachador de pantallas, permisos de modulo (`stock`, `recipes`, CHECK solo de forma, migracion 0078 con asignacion a quien tiene `catalog`), `GET /api/modules` para cualquier integrante con navegacion y permisos, helper de menu, test de frontera ampliado. Parte GPT (encargo aparte): pantallas a `modules/<id>/ui/`, menu y Ajustes desde los manifiestos. Revisor adversarial al final de las dos partes.
 disjunta: no
 archivos: apps/merchant/src/modules/**, apps/merchant/src/app/api/modules/**, apps/merchant/src/app/backoffice/[module]/**, apps/merchant/src/server/api-permission.ts, apps/merchant/src/server/staff-permissions.ts, apps/merchant/src/server/session-view.ts, apps/merchant/src/server/api-member.ts, packages/db/src/permissions-catalog.ts, packages/db/src/schema/membership.ts, packages/db/drizzle/0078_*
@@ -162,3 +162,13 @@ adversarial sobre las dos partes. No se marca `implementada` sin el PASS.
   caza `tsc`; falla cerrado para un integrante); el barrido de literales es un proxy (no ve un id armado, `case
   "stock":`, comentarios); hasta que GPT mude las pantallas, `/backoffice/stock` lo sirve la pagina fija, que exige
   `catalog`.
+
+## Revision adversarial (2026-10-13): PASS
+
+Sobre 0216 + 0217 juntas. Agregar un modulo de prueba (`zzprueba`: carpeta + una linea por registro) no toco ningun
+archivo del core (tsc 0, frontera verde; solo cambian tests de lista exacta dentro de `modules/`). Sin `stock` no hay
+pantalla (E3 mordio), no se otorga un permiso de modulo apagado (E4 mordio), aislamiento y migracion 0078 verdes.
+**H1 (cerrado):** un archivo del core de modulos podia re-exportar codigo de un modulo (E2 sobrevivia) → regla 1b,
+que muerde ante E2 (medido por el orquestador). **H2 (pendiente, zona GPT):** el menu resuelve iconos con un mapa
+cerrado (`backoffice-navigation.tsx` `moduleIcons`, `?? Package`): un modulo con icono nuevo cae en silencio en
+Package, y `Calendar` es andamiaje. **H3 (cerrado):** comentarios vencidos de las listas pendientes reescritos.

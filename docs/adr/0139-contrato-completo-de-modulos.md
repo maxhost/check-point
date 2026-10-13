@@ -91,6 +91,9 @@ Agregar un modulo = crear su carpeta + **una linea en cada registro**. Ningun ot
 ### 7. La frontera se vigila con tests (cada uno con su mutacion vista en rojo)
 
 1. Ningun archivo fuera de `modules/` importa `modules/<id>/…` (solo los tres registros y `modules/guard`).
+1b. Del «core de modulos» (`modules/*.ts`), solo los tres registros importan de la carpeta de un modulo
+   (agregada 2026-10-13 por la revision adversarial de la Fase 1: un archivo permitido re-exportando
+   codigo de `stock/` era un camino del core al modulo que ninguna regla veia).
 2. Ningun archivo del core —servidor NI pantalla— contiene el id de un modulo como ruta o literal de modulo
    (`"/backoffice/stock"`, `"stock"` como id de modulo): se barre con la lista de ids del registro.
 3. Ningun archivo de `packages/db/src/schema/` fuera de `schema/modules/` importa de `schema/modules/`.

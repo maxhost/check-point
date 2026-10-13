@@ -20,10 +20,9 @@ import { MODULES } from "./registry";
  * en un comentario. El trabajo lo hacen los cuatro patrones; el piso de archivos y el control de
  * abajo prueban que el barrido mira.
  *
- * PENDIENTE DE GPT (encargo de la Fase 1, spec 0216 «No entra»): el menu, Ajustes y las pantallas
- * de Stock y Recetas todavia nombran los modulos. `PENDING_GPT` es la cuenta EXACTA de hoy por
- * archivo, no una excepcion abierta: un literal nuevo (en esos archivos o en otro) da rojo, y cuando
- * GPT los saque el test da rojo hasta bajar la cuenta. La meta es `{}`.
+ * `PENDING_GPT` quedo vacia en la Fase 1 (spec 0217: menu, Ajustes y pantallas ya no nombran
+ * modulos). Se conserva como cuenta EXACTA por archivo: si una migracion futura necesita convivir un
+ * tiempo con literales viejos, se anotan aca y el test obliga a bajarlos a `{}`.
  */
 const PENDING_GPT: Readonly<Record<string, number>> = {};
 

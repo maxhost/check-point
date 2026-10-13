@@ -37,6 +37,10 @@ import { validPermissions } from "./permissions";
  *    ruta resuelve un permiso del catalogo valido, ninguna declara el `PUT` de la base (es el
  *    toggle) y toda entrada de menu tiene pantalla.
  *
+ * 1b. Del core de modulos, solo los tres registros (la puerta) importan de la carpeta de un modulo:
+ *    sin esta regla, un archivo permitido (p. ej. `navigation.ts`) podia re-exportar codigo de
+ *    `stock/` y el core lo importaba en verde (revisor adversarial de la Fase 1, evasion E2).
+ *
  * Barrido estatico de imports: un especificador armado en una variable no lo ve.
  */
 
@@ -54,10 +58,10 @@ const CORE_OF_MODULES = [
 ].map((name) => join(MODULES_DIR, name));
 
 /**
- * REGLA 5 — PENDIENTE DE GPT (encargo de la Fase 1, spec 0216 «No entra»): las pantallas de Stock y
- * Recetas todavia viven en `app/backoffice/{stock,recipes}/` y GPT las muda a `modules/<id>/ui/`.
- * Es una lista EXACTA, no una excepcion abierta: un directorio nuevo que choque da rojo, y el dia
- * que GPT borre estos el test tambien da rojo hasta vaciar la lista.
+ * REGLA 5 — lista de directorios del core que todavia chocan con un id de modulo. Vacia desde la
+ * Fase 1 (spec 0217: las pantallas de Stock y Recetas se mudaron a `modules/<id>/ui/`). Se deja
+ * como lista EXACTA: si una migracion futura necesita convivir un tiempo con un directorio viejo,
+ * se agrega aca y el test obliga a vaciarla.
  */
 const PENDING_GPT_DIRS: string[] = [];
 
@@ -83,6 +87,22 @@ describe("frontera core → modulos (ADR 0138 §1, ADR 0139 §7)", () => {
     const offenders = coreMerchantFiles().flatMap((file) =>
       importsInto(file, MODULES_DIR)
         .filter((target) => !CORE_OF_MODULES.includes(target))
+        .map((target) => `${relative(SRC, file)} → ${relative(SRC, target)}`),
+    );
+    expect(offenders).toEqual([]);
+  });
+
+  it("REGLA 1b: del core de modulos, solo los tres registros importan de la carpeta de un modulo", () => {
+    const registries = [
+      "registry.ts",
+      "server-registry.ts",
+      "ui-registry.ts",
+    ].map((name) => join(MODULES_DIR, name));
+    const offenders = CORE_OF_MODULES.filter(
+      (f) => !registries.includes(f),
+    ).flatMap((file) =>
+      importsInto(file, MODULES_DIR)
+        .filter((target) => relative(MODULES_DIR, target).includes("/"))
         .map((target) => `${relative(SRC, file)} → ${relative(SRC, target)}`),
     );
     expect(offenders).toEqual([]);
