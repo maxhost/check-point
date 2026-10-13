@@ -59,3 +59,7 @@ Commit `b49bdcb` reemplaza los accesos anteriores. Botón circular48px MoreVert 
 ## L0: distintivo superpuesto retirado
 
 `327a4bb` elimina únicamente Notes superpuesto al menú circular de orden creada. Borde/aria y wizard conservados. Sin tests por owner; formato/diffcheck0.
+
+## L0: orden del menú
+
+`b5a092c`: Nota (Añadir/Editar), Escanear QR, Imprimir pedido y Anular. Solo reordenado; bloqueos intactos. Formato/diffcheck0, sin tests.
