@@ -455,25 +455,32 @@ export function PosEditor({
       }}
     />
   );
-  const noteButton = (
+  const actionsButton = (
     <Button
       variant="quiet"
-      aria-label={note ? "Nota de la orden: nota añadida" : "Nota de la orden"}
+      aria-label={
+        note ? "Acciones de la orden: nota añadida" : "Acciones de la orden"
+      }
       aria-haspopup="dialog"
-      aria-expanded={noteOpen}
-      className={`close-module size-12 shrink-0 rounded-full! p-0! ${note ? "bg-primary! text-on-primary!" : "bg-primary-soft!"}`}
-      isDisabled={busy || conflict}
-      onPress={() => {
-        setNoteText(note);
-        setNoteOpen(true);
-      }}
+      aria-expanded={actionsOpen}
+      className={`close-module relative size-12 shrink-0 rounded-full! bg-primary-soft! p-0! ${note ? "border-2! border-primary!" : ""}`}
+      isDisabled={busy}
+      onPress={() => setActionsOpen(true)}
     >
-      <Notes aria-hidden="true" className="size-6" />
+      <MoreVert aria-hidden="true" className="size-6" />
+      {note && (
+        <span
+          aria-hidden="true"
+          className="absolute right-0 top-0 grid size-5 place-items-center rounded-full bg-primary text-on-primary"
+        >
+          <Notes className="size-3" />
+        </span>
+      )}
     </Button>
   );
   return (
     <div
-      className={`grid min-w-0 gap-4 ${order ? (surface === "products" ? (dirty ? "pb-24" : "pb-4") : "pb-44") : surface === "products" ? "pb-24" : "pb-36"} md:flex md:flex-1 md:flex-col md:pb-0 print:hidden`}
+      className={`grid min-w-0 gap-4 ${order ? (surface === "products" ? "pb-24" : "pb-44") : surface === "products" ? "pb-24" : "pb-36"} md:flex md:flex-1 md:flex-col md:pb-0 print:hidden`}
     >
       <div className="flex items-center justify-between gap-3">
         {!order && surface !== "table" && (
@@ -491,21 +498,9 @@ export function PosEditor({
             <NavArrowLeft aria-hidden="true" className="size-6" />
           </Button>
         )}
-        {order ? (
-          <Button
-            variant="quiet"
-            aria-label="Más acciones"
-            aria-haspopup="dialog"
-            aria-expanded={actionsOpen}
-            className="close-module size-11 shrink-0 rounded-full! bg-primary-soft! p-0!"
-            isDisabled={busy}
-            onPress={() => setActionsOpen(true)}
-          >
-            <MoreVert aria-hidden="true" className="size-6" />
-          </Button>
-        ) : surface === "table" ? (
+        {(order || surface === "table") && (
           <div aria-hidden="true" className="size-11 shrink-0" />
-        ) : null}
+        )}
         <div className="grid min-w-0 flex-1 gap-1">
           {!order && (
             <>
@@ -606,24 +601,21 @@ export function PosEditor({
           ref={tabsRef}
           className={
             surface === "order"
-              ? `flex items-center gap-3 sticky top-0 z-20 py-2 transition-colors duration-200 motion-reduce:transition-none ${tabsStuck ? "bg-canvas" : "bg-transparent"}`
-              : "flex items-center gap-3"
+              ? `sticky top-0 z-20 py-2 transition-colors duration-200 motion-reduce:transition-none ${tabsStuck ? "bg-canvas" : "bg-transparent"}`
+              : undefined
           }
         >
-          <div className="min-w-0 flex-1">
-            <SegmentedControl
-              aria-label="Vista del pedido"
-              fullWidth
-              selectedKey={surface}
-              onSelectionChange={(key) => changeSurface(key as typeof surface)}
-              isDisabled={busy}
-              options={[
-                { id: "products", label: "Editar" },
-                { id: "order", label: `Pedido (${count})` },
-              ]}
-            />
-          </div>
-          {noteButton}
+          <SegmentedControl
+            aria-label="Vista del pedido"
+            fullWidth
+            selectedKey={surface}
+            onSelectionChange={(key) => changeSurface(key as typeof surface)}
+            isDisabled={busy}
+            options={[
+              { id: "products", label: "Editar" },
+              { id: "order", label: `Pedido (${count})` },
+            ]}
+          />
         </div>
       )}
       <div
@@ -798,26 +790,21 @@ export function PosEditor({
           onRemove={order ? undefined : removeLine}
         />
       </div>
-      <div
-        className={
-          order && surface === "products" && !dirty
-            ? "hidden"
-            : "counter-detailed-footer grid gap-2 bg-surface md:sticky md:bottom-0 md:left-auto md:mt-auto md:w-full md:translate-x-0"
-        }
-      >
+      <div className="counter-detailed-footer grid gap-2 bg-surface md:sticky md:bottom-0 md:left-auto md:mt-auto md:w-full md:translate-x-0">
         {order && surface === "products" ? (
-          dirty && (
-            <>
-              {invalid && <Text variant="small">{invalid}</Text>}
-              <div className="flex items-center gap-3">
-                <Button
-                  className="h-12 min-w-0 flex-1"
-                  isLoading={busy}
-                  isDisabled={!!invalid || conflict}
-                  onPress={() => void save()}
-                >
-                  Guardar cambios
-                </Button>
+          <>
+            {invalid && <Text variant="small">{invalid}</Text>}
+            <div className="flex items-center gap-3">
+              <Button
+                className="h-12 min-w-0 flex-1"
+                isLoading={busy}
+                isDisabled={!dirty || !!invalid || conflict}
+                onPress={() => void save()}
+              >
+                Guardar cambios
+              </Button>
+              {actionsButton}
+              {dirty && (
                 <Button
                   variant="danger"
                   aria-label="Descartar cambios"
@@ -827,9 +814,9 @@ export function PosEditor({
                 >
                   <Xmark aria-hidden="true" className="size-6" />
                 </Button>
-              </div>
-            </>
-          )
+              )}
+            </div>
+          </>
         ) : order ? (
           <>
             {dirty && !conflict && (
@@ -865,34 +852,7 @@ export function PosEditor({
                   Cobrar
                 </Button>
               )}
-              <Button
-                variant="quiet"
-                aria-label="QR"
-                onPress={onScan}
-                className="close-module size-12 shrink-0 rounded-full! bg-primary-soft! p-0!"
-                isDisabled={busy || dirty || conflict || !lines.length}
-              >
-                <QrCode aria-hidden="true" className="size-6" />
-              </Button>
-              {printing.enabled && (
-                <Button
-                  variant="quiet"
-                  aria-label="Imprimir"
-                  className="close-module size-12 shrink-0 rounded-full! bg-primary-soft! p-0!"
-                  isDisabled={
-                    busy ||
-                    dirty ||
-                    conflict ||
-                    !lines.length ||
-                    !printing.ready ||
-                    printing.busy
-                  }
-                  isLoading={printing.busy}
-                  onPress={printing.print}
-                >
-                  <Printer aria-hidden="true" className="size-6" />
-                </Button>
-              )}
+              {actionsButton}
             </div>
           </>
         ) : surface === "table" ? (
@@ -916,7 +876,7 @@ export function PosEditor({
             >
               Revisar pedido
             </Button>
-            {noteButton}
+            {actionsButton}
           </div>
         ) : (
           <>
@@ -930,7 +890,7 @@ export function PosEditor({
               >
                 Guardar pedido
               </Button>
-              {noteButton}
+              {actionsButton}
             </div>
           </>
         )}
@@ -1164,19 +1124,73 @@ export function PosEditor({
         }
       >
         <div className="grid gap-3">
-          {dirty && (
-            <Text variant="muted">Guarda los cambios antes de anular.</Text>
+          {order && (
+            <Button
+              variant="secondary"
+              isDisabled={busy || dirty || conflict || !lines.length}
+              onPress={() => {
+                setActionsOpen(false);
+                onScan();
+              }}
+            >
+              <QrCode aria-hidden="true" className="size-5" />
+              Escanear QR
+            </Button>
           )}
           <Button
-            variant="danger"
-            isDisabled={busy || dirty || conflict}
+            variant="secondary"
+            isDisabled={busy || conflict}
             onPress={() => {
               setActionsOpen(false);
-              onVoid();
+              setNoteText(note);
+              setNoteOpen(true);
             }}
           >
-            Anular
+            <Notes aria-hidden="true" className="size-5" />
+            {note ? "Editar nota" : "Añadir nota"}
           </Button>
+          {order && printing.enabled && (
+            <Button
+              variant="secondary"
+              isDisabled={
+                busy ||
+                dirty ||
+                conflict ||
+                !lines.length ||
+                !printing.ready ||
+                printing.busy
+              }
+              isLoading={printing.busy}
+              onPress={() => {
+                setActionsOpen(false);
+                printing.print();
+              }}
+            >
+              <Printer aria-hidden="true" className="size-5" />
+              Imprimir pedido
+            </Button>
+          )}
+          {order && dirty && (
+            <Text variant="muted">
+              Guarda los cambios antes de escanear, imprimir o anular.
+            </Text>
+          )}
+          {order && (
+            <div className="mt-2 border-t border-border pt-4">
+              <Button
+                variant="danger"
+                fullWidth
+                isDisabled={busy || dirty || conflict}
+                onPress={() => {
+                  setActionsOpen(false);
+                  onVoid();
+                }}
+              >
+                <Trash aria-hidden="true" className="size-5" />
+                Anular
+              </Button>
+            </div>
+          )}
         </div>
       </Dialog>
       <Dialog
