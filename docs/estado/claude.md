@@ -43,6 +43,12 @@ completa (436 archivos, 3478 tests); el unico rojo fue `landing.spec.ts` (1 de 3
 - Encargo a GPT: `docs/encargo-gpt-2026-10-12-modulos-stock-recetas.md` (Ajustes + Stock como log + Recetas como
   gestion; SIN costo/margen: van a Analitica, owner). GPT ya commiteo 0211 (cards en Ajustes) y sigue.
 
+**2026-10-13 tarde:** migracion **0078 APLICADA EN PROD** (snapshot `snap-soft-sound-ax72gkfp`; 79 migraciones, hash = sha256 del
+`.sql`, CHECK de forma activo, 4 membresias = 4 owners sin permisos, sin cambios). Compatible con el codigo de PROD (`4208714`).
+`main` local = `792d7ed` (Fase 1 de modulos con PASS adversarial + regla 1b, ingreso del equipo 0218, iconos de GPT). **Push
+BLOQUEADO por `landing.spec.ts` en frio** (1/371 e2e, «la imagen del hero debe terminar de cargar»; todo lo demas verde, Neon
+completa incluida). Owner: **esperar el arreglo de GPT**, sin `--no-verify`.
+
 **PLAN APROBADO (owner 2026-10-13):** `docs/plan-modulos-plugin-2026-10-13.md` — patron de plugins completo (Fase 0 ADR 0139,
 Fase 1 Stock/Recetas como referencia, Fase 2 POS+Mesas), con revision adversarial por fase. Decisiones: tablas del POS a
 esquema `pos`, permisos declarados por modulo, rutas bajo `/api/modules`, pantallas las mueve GPT con encargo.
