@@ -80,65 +80,104 @@ export class OpenAiStockDraftProvider implements StockDraftProvider {
         (item) => `- id=${item.id} | ${item.name} | unidad base ${item.unit}`,
       )
       .join("\n");
-    const response = await fetch(`${this.baseUrl}/responses`, {
+    const { parsed, usage } = await openAiStructured(this.config(), {
+      system: PROMPT,
+      user: `INSUMOS EXISTENTES:\n${inventory || "(ninguno)"}\n\nTEXTO DEL DUEÑO:\n${input.text}`,
+      schemaName: "stock_entry_draft",
+      schema: SCHEMA,
+    });
+    if (!Array.isArray(parsed.lines)) throw new Error("openai_output_invalid");
+    return {
+      lines: parsed.lines,
+      unparsed: Array.isArray(parsed.unparsed) ? parsed.unparsed : [],
+      usage,
+    };
+  }
+
+  private config(): OpenAiConfig {
+    return {
+      model: this.model,
+      apiKey: this.apiKey,
+      reasoningEffort: this.reasoningEffort,
+      baseUrl: this.baseUrl,
+    };
+  }
+}
+
+export type OpenAiConfig = {
+  model: string;
+  apiKey: string;
+  reasoningEffort: string | null;
+  baseUrl?: string;
+};
+
+/**
+ * La llamada ESTRUCTURADA compartida por los dictados (Stock 0212, Recetas 0214): Responses API
+ * sincrona, `store: false`, sin tools, `json_schema` estricto. Devuelve el objeto parseado SIN
+ * validar (lo valida cada modulo) y el uso de tokens. Nunca loguea la clave ni el texto.
+ */
+export async function openAiStructured(
+  config: OpenAiConfig,
+  request: { system: string; user: string; schemaName: string; schema: object },
+): Promise<{
+  parsed: Record<string, unknown>;
+  usage: { inputTokens: number | null; outputTokens: number | null };
+}> {
+  const response = await fetch(
+    `${config.baseUrl ?? "https://api.openai.com/v1"}/responses`,
+    {
       method: "POST",
       headers: {
-        authorization: `Bearer ${this.apiKey}`,
+        authorization: `Bearer ${config.apiKey}`,
         "content-type": "application/json",
       },
       body: JSON.stringify({
-        model: this.model,
+        model: config.model,
         store: false,
-        ...(this.reasoningEffort
-          ? { reasoning: { effort: this.reasoningEffort } }
+        ...(config.reasoningEffort
+          ? { reasoning: { effort: config.reasoningEffort } }
           : {}),
         tools: [],
         input: [
-          { role: "system", content: PROMPT },
-          {
-            role: "user",
-            content: `INSUMOS EXISTENTES:\n${inventory || "(ninguno)"}\n\nTEXTO DEL DUEÑO:\n${input.text}`,
-          },
+          { role: "system", content: request.system },
+          { role: "user", content: request.user },
         ],
         text: {
           format: {
             type: "json_schema",
-            name: "stock_entry_draft",
+            name: request.schemaName,
             strict: true,
-            schema: SCHEMA,
+            schema: request.schema,
           },
         },
       }),
-    });
-    if (!response.ok) {
-      const payload = (await response.json().catch(() => null)) as {
-        error?: { code?: unknown; param?: unknown };
-      } | null;
-      console.warn("stock_draft_openai_failed", {
-        status: response.status,
-        code: payload?.error?.code,
-        param: payload?.error?.param,
-      });
-      throw new Error(`openai_http_${response.status}`);
-    }
-    const body = (await response.json()) as Record<string, unknown>;
-    const parsed = JSON.parse(outputText(body) ?? "null") as {
-      lines?: unknown;
-      unparsed?: unknown;
+    },
+  );
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as {
+      error?: { code?: unknown; param?: unknown };
     } | null;
-    if (!parsed || !Array.isArray(parsed.lines)) {
-      throw new Error("openai_output_invalid");
-    }
-    const usage = body.usage as Record<string, unknown> | undefined;
-    return {
-      lines: parsed.lines,
-      unparsed: Array.isArray(parsed.unparsed) ? parsed.unparsed : [],
-      usage: {
-        inputTokens: intOrNull(usage?.input_tokens),
-        outputTokens: intOrNull(usage?.output_tokens),
-      },
-    };
+    console.warn("module_draft_openai_failed", {
+      schema: request.schemaName,
+      status: response.status,
+      code: payload?.error?.code,
+      param: payload?.error?.param,
+    });
+    throw new Error(`openai_http_${response.status}`);
   }
+  const body = (await response.json()) as Record<string, unknown>;
+  const parsed = JSON.parse(outputText(body) ?? "null") as unknown;
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("openai_output_invalid");
+  }
+  const usage = body.usage as Record<string, unknown> | undefined;
+  return {
+    parsed: parsed as Record<string, unknown>,
+    usage: {
+      inputTokens: intOrNull(usage?.input_tokens),
+      outputTokens: intOrNull(usage?.output_tokens),
+    },
+  };
 }
 
 function intOrNull(value: unknown): number | null {

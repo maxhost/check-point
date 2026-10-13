@@ -68,6 +68,17 @@ de inputs».
   usar `lineCount`) y editar la receta de un producto: elegir insumos y poner cantidades (`GET` / `PUT
   /api/modules/recipes/:productId` `{ lines: [{ itemId, quantity }] }`).
 
+### C2. Dictado de recetas (owner 2026-10-12: igual que Stock — input multilinea, microfono, LLM, revisar y guardar)
+
+- En la receta de un producto: input multilinea + **«Analizar»** → `POST /api/modules/recipes/:productId/draft`
+  `{ text }` → `{ draft: { yield, lines: [{ itemId | null, name, isNew, quantity | null, unit: g|ml|unit,
+  sourceText }], unparsed } }`. Spec `docs/specs/0214-borrador-de-receta-desde-texto.md`.
+- Las cantidades ya vienen **por UNA unidad del producto** y en unidad base. Si `yield > 1` («salen 40 medialunas»),
+  mostrar que se dividio por 40. `quantity: null` («a gusto») = el dueño la completa antes de guardar.
+- **Guardar**: `PUT /api/modules/recipes/:productId` con `lines: [{ itemId, quantity, unit }]` o
+  `[{ newItem: { name }, quantity, unit }]` para los `isNew`. Crea los insumos que falten en el mismo paso.
+- Errores: `503 draft_unavailable` (mostrar y dejar armar a mano), `409 item_name_taken`, `422 unit_mismatch`.
+
 ## 3. Propuestas de Claude (no las pidio el owner; decidilas con el)
 
 - «Stock» y «Recetas» como entradas del menu del backoffice que salen de

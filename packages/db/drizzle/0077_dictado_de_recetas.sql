@@ -1,0 +1,2 @@
+ALTER TABLE "stock"."draft_request" ADD COLUMN "kind" text DEFAULT 'stock_entry' NOT NULL;--> statement-breakpoint
+ALTER TABLE "stock"."draft_request" ADD CONSTRAINT "stock_draft_request_kind_check" CHECK ("stock"."draft_request"."kind" in ('stock_entry', 'recipe'));

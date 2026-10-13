@@ -1,4 +1,4 @@
-import { OpenAiStockDraftProvider } from "./draft-openai";
+import { type OpenAiConfig, OpenAiStockDraftProvider } from "./draft-openai";
 
 /**
  * Spec 0212 — EL PROVEEDOR del borrador de entrada. El navegador no elige proveedor ni modelo: sale
@@ -45,24 +45,39 @@ export class FakeStockDraftProvider implements StockDraftProvider {
   }
 }
 
-/** `STOCK_DRAFT_PROVIDER` (o el del catalogo, o `fake`); `STOCK_DRAFT_MODEL`, `STOCK_DRAFT_REASONING_EFFORT`. `openai` sin clave TIRA: sin fallback
- * silencioso al falso, que le mostraria al dueño un analisis vacio con cara de real. */
-export function stockDraftProviderFromEnv(
+/** La configuracion de IA de los dictados (Stock 0212, Recetas 0214), por entorno:
+ * `STOCK_DRAFT_PROVIDER` (o el del catalogo, o `fake`), `STOCK_DRAFT_MODEL`, `STOCK_DRAFT_REASONING_EFFORT`.
+ * `openai` sin clave TIRA: sin fallback silencioso al falso, que le mostraria al dueño un analisis
+ * vacio con cara de real. */
+export function aiDraftConfigFromEnv(
   env: NodeJS.ProcessEnv = process.env,
-): StockDraftProvider {
+): { id: "fake" } | ({ id: "openai" } & OpenAiConfig) {
   const id =
     env.STOCK_DRAFT_PROVIDER ?? env.CATALOG_EXTRACTION_PROVIDER ?? "fake";
-  if (id === "fake") return new FakeStockDraftProvider();
+  if (id === "fake") return { id: "fake" };
   if (id === "openai") {
     const apiKey = env.OPENAI_API_KEY ?? "";
     if (!apiKey) throw new DraftProviderUnavailableError("missing_api_key");
     // Default `gpt-6-luna` (banco del 2026-10-12, 6 frases: mismos aciertos que `gpt-5-mini`, 3,0 s
     // contra 7,0 s y ~12 veces mas barato por analisis). `minimal` no lo acepta (400).
-    return new OpenAiStockDraftProvider(
-      env.STOCK_DRAFT_MODEL ?? "gpt-6-luna",
+    return {
+      id: "openai",
+      model: env.STOCK_DRAFT_MODEL ?? "gpt-6-luna",
       apiKey,
-      env.STOCK_DRAFT_REASONING_EFFORT || null,
-    );
+      reasoningEffort: env.STOCK_DRAFT_REASONING_EFFORT || null,
+    };
   }
   throw new DraftProviderUnavailableError("unknown_provider");
+}
+
+export function stockDraftProviderFromEnv(
+  env: NodeJS.ProcessEnv = process.env,
+): StockDraftProvider {
+  const config = aiDraftConfigFromEnv(env);
+  if (config.id === "fake") return new FakeStockDraftProvider();
+  return new OpenAiStockDraftProvider(
+    config.model,
+    config.apiKey,
+    config.reasoningEffort,
+  );
 }

@@ -1,7 +1,7 @@
 ---
 spec: 0214
 fecha: 2026-10-12
-estado: cerrada
+estado: implementada
 resumen: Dictado de recetas como el de Stock. `POST /api/modules/recipes/:productId/draft` convierte el texto dictado en un borrador de receta POR UNIDAD del producto (ingredientes emparejados con los insumos de Stock o nuevos, cantidad en unidad base, «a gusto» sin cantidad, tandas divididas). El `PUT` de la receta acepta `newItem` y `unit` para guardar el borrador en un paso. Uso registrado con `kind`. Migracion 0077.
 disjunta: si
 archivos: packages/db/src/schema/modules/stock.ts, packages/db/drizzle/0077_*, apps/merchant/src/modules/stock/draft*.ts, apps/merchant/src/modules/recipes/**, apps/merchant/src/app/api/modules/recipes/[productId]/draft/**
@@ -104,3 +104,13 @@ Clase de error: **el servidor deja pasar algo inventado**, **fuga entre comercio
    insumos; aislamiento.
 3. Sonda real contra `gpt-6-luna` con 3-4 frases de receta (QA, no test del repo).
 4. typecheck + lint.
+
+## Medido (2026-10-12)
+
+- Unitarios 5 (`recipes/draft.test.ts`) + Neon 5 (`recipes-draft.neon.integration.test.ts`) verdes; los existentes de
+  Recetas (15 Neon, `parse.test.ts`) siguen verdes sin tocarlos. M7 (no dividir por `yield`) mordio en unitarios y Neon,
+  revertida con el mismo shasum.
+- Sonda real `gpt-6-luna` (scratchpad, no es test del repo): napolitana (ignora «la horneo 8 minutos», oregano sin
+  cantidad), medialunas (`yield` 40), cafe con leche (cucharadita → 5 g). 2,4-4,7 s; 770-792 tokens de entrada,
+  150-337 de salida.
+- `recipes.ts` se partio: lectura en `read.ts` (re-exportada), guardado en `recipes.ts`.

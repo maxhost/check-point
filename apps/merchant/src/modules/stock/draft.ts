@@ -132,16 +132,12 @@ export async function buildDraft(
     );
   }
   const db = getDb();
-  const record = (
-    values: Partial<typeof stockDraftRequests.$inferInsert> & {
-      provider: string;
-      status: "ok" | "failed";
-    },
-  ) =>
-    db.insert(stockDraftRequests).values({
+  const record = (values: DraftUsage) =>
+    recordDraftUsage({
       businessId,
-      createdByUserId: userId,
+      userId,
       inputChars: input.length,
+      kind: "stock_entry",
       ...values,
     });
 
@@ -190,6 +186,40 @@ export async function buildDraft(
     outputTokens: raw.usage.outputTokens,
   });
   return { draft };
+}
+
+type DraftUsage = {
+  provider: string;
+  model?: string | null;
+  status: "ok" | "failed";
+  lineCount?: number;
+  inputTokens?: number | null;
+  outputTokens?: number | null;
+};
+
+/** Una fila de USO de un dictado (spec 0212; `kind` de la 0214). Sin el texto: solo su largo. */
+export async function recordDraftUsage(
+  values: DraftUsage & {
+    businessId: string;
+    userId: string;
+    inputChars: number;
+    kind: "stock_entry" | "recipe";
+  },
+): Promise<void> {
+  await getDb()
+    .insert(stockDraftRequests)
+    .values({
+      businessId: values.businessId,
+      createdByUserId: values.userId,
+      inputChars: values.inputChars,
+      kind: values.kind,
+      provider: values.provider,
+      model: values.model ?? null,
+      status: values.status,
+      lineCount: values.lineCount ?? 0,
+      inputTokens: values.inputTokens ?? null,
+      outputTokens: values.outputTokens ?? null,
+    });
 }
 
 /** Pedidos de borrador del negocio desde `since` (para el tope futuro y el portal de admin). */

@@ -126,6 +126,8 @@ export const stockDraftRequests = stockSchema.table(
       .notNull()
       .references(() => businesses.id, { onDelete: "cascade" }),
     createdByUserId: text("created_by_user_id"),
+    /** Que dictado: una entrada de Stock (spec 0212) o una receta (spec 0214). */
+    kind: text("kind").notNull().default("stock_entry"),
     provider: text("provider").notNull(),
     model: text("model"),
     status: text("status").notNull(),
@@ -138,6 +140,10 @@ export const stockDraftRequests = stockSchema.table(
       .defaultNow(),
   },
   (table) => [
+    check(
+      "stock_draft_request_kind_check",
+      sql`${table.kind} in ('stock_entry', 'recipe')`,
+    ),
     check(
       "stock_draft_request_status_check",
       sql`${table.status} in ('ok', 'failed')`,

@@ -540,6 +540,13 @@
       "when": 1791864363342,
       "tag": "0076_uso_borrador_stock",
       "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "7",
+      "when": 1791866990067,
+      "tag": "0077_dictado_de_recetas",
+      "breakpoints": true
     }
   ]
 }

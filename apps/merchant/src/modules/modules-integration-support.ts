@@ -31,6 +31,7 @@ import {
   GET as READ_RECIPE,
   PUT as SAVE_RECIPE,
 } from "../app/api/modules/recipes/[productId]/route";
+import { POST as RECIPE_DRAFT } from "../app/api/modules/recipes/[productId]/draft/route";
 
 /**
  * Spec 0210 — EL MUNDO DE LOS MODULOS para las suites `modules-*.neon.integration`: un negocio con
@@ -179,6 +180,16 @@ export const api = {
   recipe: (cookie: string, productId: string) =>
     READ_RECIPE(
       conCookie(`/api/modules/recipes/${productId}`, "GET", cookie),
+      p({ productId }),
+    ),
+  recipeDraft: (cookie: string, productId: string, body: unknown) =>
+    RECIPE_DRAFT(
+      conCookie(
+        `/api/modules/recipes/${productId}/draft`,
+        "POST",
+        cookie,
+        body,
+      ),
       p({ productId }),
     ),
   saveRecipe: (cookie: string, productId: string, body: unknown) =>
