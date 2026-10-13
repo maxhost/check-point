@@ -40,6 +40,10 @@ de PROD (`3fe2ad6`) no las lee. Tambien en la base local (78 migraciones, y en `
 - Encargo a GPT: `docs/encargo-gpt-2026-10-12-modulos-stock-recetas.md` (Ajustes + Stock como log + Recetas como
   gestion; SIN costo/margen: van a Analitica, owner). GPT ya commiteo 0211 (cards en Ajustes) y sigue.
 
+**PLAN APROBADO (owner 2026-10-13):** `docs/plan-modulos-plugin-2026-10-13.md` — patron de plugins completo (Fase 0 ADR 0139,
+Fase 1 Stock/Recetas como referencia, Fase 2 POS+Mesas), con revision adversarial por fase. Decisiones: tablas del POS a
+esquema `pos`, permisos declarados por modulo, rutas bajo `/api/modules`, pantallas las mueve GPT con encargo.
+
 **QUE SIGUE:**
 1. GPT cierra pantallas → probar en local → OK del owner para 0074+0075 a PROD (snapshot previo, MCP) → `main` ←
    `merge --ff-only dev`, probar `main`, push con OK. El comercio real lo prueba despues.
