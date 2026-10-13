@@ -170,7 +170,7 @@ const SURFACES: Surface[] = [
       "business.suspensionReason",
       "business.currencyCode",
       "business.timezone",
-      "business.enabledModules", // spec 0220: ids del registro; posEnabled, transitorio
+      "business.enabledModules", // spec 0220: ids del registro (+ el booleano transitorio)
       "business.posEnabled",
       "membership.role",
       "membership.status",
