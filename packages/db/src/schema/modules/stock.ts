@@ -57,7 +57,9 @@ export const stockItems = stockSchema.table(
   ],
 );
 
-/** Un movimiento: compra (suma) o ajuste por conteo (delta). El stock estimado es su suma. */
+/** Un movimiento: compra (suma) o ajuste por conteo (delta). El stock estimado es su suma.
+ * `total_cost` de una compra es opcional (spec 0210 §Entradas: «llegaron 5 kg» sin precio suma stock y
+ * no toca el costo). `entry_id` agrupa las lineas de una misma entrada (una frase del audio). */
 export const stockMovements = stockSchema.table(
   "movement",
   {
@@ -72,6 +74,7 @@ export const stockMovements = stockSchema.table(
     quantity: numeric("quantity", { precision: 14, scale: 3 }).notNull(),
     totalCost: numeric("total_cost", { precision: 12, scale: 2 }),
     countedQuantity: numeric("counted_quantity", { precision: 14, scale: 3 }),
+    entryId: uuid("entry_id"),
     note: text("note"),
     occurredAt: timestamp("occurred_at", { withTimezone: true })
       .notNull()
@@ -88,7 +91,7 @@ export const stockMovements = stockSchema.table(
     ),
     check(
       "stock_movement_purchase_check",
-      sql`${table.kind} <> 'purchase' or (${table.quantity} > 0 and ${table.totalCost} is not null and ${table.totalCost} >= 0 and ${table.countedQuantity} is null)`,
+      sql`${table.kind} <> 'purchase' or (${table.quantity} > 0 and (${table.totalCost} is null or ${table.totalCost} >= 0) and ${table.countedQuantity} is null)`,
     ),
     check(
       "stock_movement_adjustment_check",
@@ -100,6 +103,10 @@ export const stockMovements = stockSchema.table(
     ),
     index("stock_movement_item_occurred_idx").on(
       table.itemId,
+      table.occurredAt,
+    ),
+    index("stock_movement_business_occurred_idx").on(
+      table.businessId,
       table.occurredAt,
     ),
   ],

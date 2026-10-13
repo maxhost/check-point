@@ -176,6 +176,29 @@ solo por ajustes historicos; con capa A no baja de lo contado).
   string → 422 `invalid_note` (vacia = null); `countedQuantity < 0` → 422 `invalid_quantity`; una compra cuyo costo por
   unidad no entra en `numeric(14,6)` → 422 `invalid_cost`; un `itemId` que no es uuid → 404 `item_not_found`.
 
+**Stock — Entradas y registro general** *(agregado 2026-10-12 noche, owner: «el dueño pueda decir por voz "Hoy compre
+1kg de harina por 25 dolares, un carton de huevos que trae treinta por 4 y dos kilos de tomate por 7"… se guarden por
+separados y se muestren por separado»; migracion `0075`, aditiva)*
+
+- **Compra sin precio:** en `POST /items/:itemId/purchases` `totalCost` pasa a ser OPCIONAL (ausente o null). Sin
+  precio suma stock y no toca `last_unit_cost`. El costo vigente es el de la compra **con precio** mas reciente por
+  `occurred_at`: una compra sin precio ni actualiza ni bloquea.
+- `MovementDTO` suma `entryId: string | null` (agrupa las lineas de una entrada; null en compras y ajustes sueltos).
+- `POST /entries` `{ occurredAt?, note?, lines: [{ itemId? | newItem?: { name }, quantity, unit, totalCost? }] }` →
+  `201 { entryId, movements: LogMovement[], items: Item[] }`. Una linea = UN movimiento `purchase` de su insumo, todas
+  con el mismo `entryId`, `occurredAt` y `note`. Es el camino de escritura del audio con IA (borrador → confirmacion)
+  y de la carga a mano.
+  - `unit` de la linea: `g | kg | ml | l | unit`; se convierte a la unidad base (kg → g × 1000, l → ml × 1000). Un
+    insumo existente con otra unidad base → 422 `unit_mismatch` (+ `line`). Un `newItem` se crea con la unidad base
+    de su linea; el mismo nombre repetido en la entrada (sin mayusculas) crea UN insumo.
+  - Todo o nada: cualquier error cancela la entrada entera. 1..30 lineas (`invalid_body` / `too_many_lines`); cada
+    linea trae `itemId` o `newItem`, no los dos (`invalid_line` + `line`); `invalid_unit`, `invalid_quantity`,
+    `invalid_cost`, `invalid_name` (+ `line` los de linea); insumo ajeno o inexistente → 404 `item_not_found`;
+    archivado → 409 `item_archived`; `newItem` con nombre de un activo → 409 `item_name_taken`.
+  - Los insumos existentes se bloquean `FOR UPDATE` en orden de id (sin deadlock entre dos entradas).
+- `GET /movements?limit=50` (max 200) → `200 { movements: LogMovement[] }`: el registro de TODOS los insumos del
+  negocio, del mas reciente al mas viejo. `LogMovement = MovementDTO & { itemId, itemName, unit }`.
+
 **Recetas** (base `/api/modules/recipes`)
 
 Forma `RecipeSummary`: `{ productId, productName, unitPrice: string|null, cost: string(2)|null,

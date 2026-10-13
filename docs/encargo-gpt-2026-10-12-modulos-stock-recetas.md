@@ -42,9 +42,14 @@ de inputs».
 
 - Insumos: crear (`POST /api/modules/stock/items` `{ name, unit }`, unidad `g` | `ml` | `unit`), renombrar,
   archivar / reactivar (`PATCH …/items/:id`).
-- Un **registro de entradas** por insumo: cargar compra (`POST …/items/:id/purchases` `{ quantity, totalCost }`) y
-  cargar conteo (`POST …/items/:id/adjustments` `{ countedQuantity }`); el historial sale de
-  `GET …/items/:id/movements`.
+- **Registro general (el log):** `GET /api/modules/stock/movements` trae TODOS los insumos del mas reciente al mas
+  viejo, con fecha, `itemName`, `unit`, tipo (compra / conteo), cantidad y precio (o null). Es la pantalla principal.
+- **«Añadir»** (compra, una o varias cosas juntas): `POST /api/modules/stock/entries` con `lines`, cada una con un
+  insumo existente (`itemId`) o uno nuevo (`newItem: { name }`), cantidad, unidad (`g | kg | ml | l | unit`, la API
+  convierte) y precio OPCIONAL. Cada linea queda como un registro separado en el log. Es el mismo endpoint que va a
+  usar el audio mas adelante: no hace falta pensar el audio ahora.
+- **«Ajustar stock»** (conteo): `POST /api/modules/stock/items/:id/adjustments` `{ countedQuantity }`.
+- El historial de un solo insumo sigue en `GET …/items/:id/movements` si hace falta.
 
 ### C. Recetas (visible con el modulo `recipes` encendido)
 
@@ -56,7 +61,6 @@ de inputs».
 
 - «Stock» y «Recetas» como entradas del menu del backoffice que salen de
   `GET /api/modules` (`enabled`), sin nombrar modulos en la navegacion (ADR 0138).
-- Mostrar `kg`/`l` en pantalla convirtiendo a `g`/`ml` al mandar (la API guarda la unidad base).
 - Marcar como «Sugerido» los modulos con `suggested: true`.
 - Crear un insumo desde el buscador del editor de recetas, sin salir de la receta.
 - Un renglon con el costo resultante dentro del editor de recetas (dato para decidir la cantidad, no analitica). **El

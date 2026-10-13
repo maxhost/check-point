@@ -1,0 +1,4 @@
+ALTER TABLE "stock"."movement" DROP CONSTRAINT "stock_movement_purchase_check";--> statement-breakpoint
+ALTER TABLE "stock"."movement" ADD COLUMN "entry_id" uuid;--> statement-breakpoint
+CREATE INDEX "stock_movement_business_occurred_idx" ON "stock"."movement" USING btree ("business_id","occurred_at");--> statement-breakpoint
+ALTER TABLE "stock"."movement" ADD CONSTRAINT "stock_movement_purchase_check" CHECK ("stock"."movement"."kind" <> 'purchase' or ("stock"."movement"."quantity" > 0 and ("stock"."movement"."total_cost" is null or "stock"."movement"."total_cost" >= 0) and "stock"."movement"."counted_quantity" is null));

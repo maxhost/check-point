@@ -526,6 +526,13 @@
       "when": 1791860651224,
       "tag": "0074_modulos_stock_recetas",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1791863132342,
+      "tag": "0075_compra_sin_precio_y_entradas",
+      "breakpoints": true
     }
   ]
 }

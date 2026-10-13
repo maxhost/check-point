@@ -20,6 +20,8 @@ import { PATCH as UPDATE_ITEM } from "../app/api/modules/stock/items/[itemId]/ro
 import { POST as PURCHASE } from "../app/api/modules/stock/items/[itemId]/purchases/route";
 import { POST as ADJUST } from "../app/api/modules/stock/items/[itemId]/adjustments/route";
 import { GET as MOVEMENTS } from "../app/api/modules/stock/items/[itemId]/movements/route";
+import { POST as ENTRY } from "../app/api/modules/stock/entries/route";
+import { GET as LOG } from "../app/api/modules/stock/movements/route";
 import {
   GET as LIST_RECIPES,
   PUT as SET_RECIPES_MODULE,
@@ -158,6 +160,16 @@ export const api = {
         cookie,
       ),
       p({ itemId }),
+    ),
+  entry: (cookie: string, body: unknown) =>
+    ENTRY(conCookie("/api/modules/stock/entries", "POST", cookie, body)),
+  log: (cookie: string, limit?: number) =>
+    LOG(
+      conCookie(
+        `/api/modules/stock/movements${limit === undefined ? "" : `?limit=${limit}`}`,
+        "GET",
+        cookie,
+      ),
     ),
   recipes: (cookie: string) =>
     LIST_RECIPES(conCookie("/api/modules/recipes", "GET", cookie)),

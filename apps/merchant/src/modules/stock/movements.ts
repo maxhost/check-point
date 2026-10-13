@@ -1,11 +1,12 @@
-import { and, desc, eq, max } from "drizzle-orm";
-import { getDb, withDbTransaction } from "@mi-pasaporte/db";
+import { and, desc, eq, isNotNull, max } from "drizzle-orm";
+import { type DbTransaction, getDb, withDbTransaction } from "@mi-pasaporte/db";
 import { stockItems, stockMovements } from "@mi-pasaporte/db/schema";
 import { isUuid } from "@mi-pasaporte/domain/server/counter/core";
 import { formatDecimal, fromDb, parseDecimal } from "../decimal";
 import { ModuleError } from "../errors";
 import {
   type ItemDTO,
+  type ItemRow,
   itemColumns,
   itemNotFound,
   lockItem,
@@ -17,7 +18,8 @@ import {
   QUANTITY,
   TOTAL_COST,
   UNIT_COST_SCALE,
-  unitCostOf,
+  parsePurchaseCost,
+  parsePurchaseQuantity,
 } from "./numbers";
 
 /**
@@ -32,6 +34,8 @@ export type MovementDTO = {
   quantity: string;
   totalCost: string | null;
   countedQuantity: string | null;
+  /** Agrupa las lineas de una misma entrada (`POST /entries`); null en compras y ajustes sueltos. */
+  entryId: string | null;
   note: string | null;
   occurredAt: string;
   createdAt: string;
@@ -42,23 +46,25 @@ const MAX_NOTE = 200;
 export const DEFAULT_MOVEMENTS_LIMIT = 50;
 export const MAX_MOVEMENTS_LIMIT = 200;
 
-const movementColumns = {
+export const movementColumns = {
   id: stockMovements.id,
   kind: stockMovements.kind,
   quantity: stockMovements.quantity,
   totalCost: stockMovements.totalCost,
   countedQuantity: stockMovements.countedQuantity,
+  entryId: stockMovements.entryId,
   note: stockMovements.note,
   occurredAt: stockMovements.occurredAt,
   createdAt: stockMovements.createdAt,
 };
 
-function toMovementDTO(row: {
+export function toMovementDTO(row: {
   id: string;
   kind: string;
   quantity: string;
   totalCost: string | null;
   countedQuantity: string | null;
+  entryId: string | null;
   note: string | null;
   occurredAt: Date;
   createdAt: Date;
@@ -71,6 +77,7 @@ function toMovementDTO(row: {
     quantity: formatDecimal(fromDb(row.quantity, 3), 3),
     totalCost: fmt(row.totalCost, 2),
     countedQuantity: fmt(row.countedQuantity, 3),
+    entryId: row.entryId,
     note: row.note,
     occurredAt: row.occurredAt.toISOString(),
     createdAt: row.createdAt.toISOString(),
@@ -100,7 +107,7 @@ export function parseOccurredAt(raw: unknown, now: Date): Date {
   return new Date(time);
 }
 
-function archived(): ModuleError {
+export function archived(): ModuleError {
   return new ModuleError(
     409,
     "item_archived",
@@ -108,82 +115,97 @@ function archived(): ModuleError {
   );
 }
 
-/** `POST /api/modules/stock/items/:itemId/purchases` — `{ quantity, totalCost, occurredAt?, note? }`. */
+/**
+ * Inserta UNA compra de un insumo YA BLOQUEADO por quien llama, y recalcula `last_unit_cost`. La
+ * usan la compra suelta y cada linea de una entrada (`entries.ts`): un solo camino de escritura.
+ *
+ * El costo vigente es el de la compra CON PRECIO mas reciente por `occurred_at`: una compra cargada
+ * con fecha vieja no lo pisa, y una compra sin precio no cuenta (ni actualiza ni bloquea). Se lee
+ * bajo el lock del insumo, antes de insertar la nueva.
+ */
+export async function applyPurchase(
+  tx: DbTransaction,
+  args: {
+    businessId: string;
+    userId: string;
+    item: ItemRow;
+    quantity: bigint;
+    cost: { totalCost: bigint; unitCost: bigint } | null;
+    occurredAt: Date;
+    note: string | null;
+    entryId: string | null;
+  },
+): Promise<{ movement: MovementDTO; item: ItemRow }> {
+  const { item, cost } = args;
+  if (item.status === "archived") throw archived();
+  const [latest] = cost
+    ? await tx
+        .select({ at: max(stockMovements.occurredAt) })
+        .from(stockMovements)
+        .where(
+          and(
+            eq(stockMovements.itemId, item.id),
+            eq(stockMovements.kind, "purchase"),
+            isNotNull(stockMovements.totalCost),
+          ),
+        )
+    : [];
+  const [movement] = await tx
+    .insert(stockMovements)
+    .values({
+      businessId: args.businessId,
+      itemId: item.id,
+      kind: "purchase",
+      quantity: formatDecimal(args.quantity, QUANTITY.scale),
+      totalCost: cost ? formatDecimal(cost.totalCost, TOTAL_COST.scale) : null,
+      entryId: args.entryId,
+      note: args.note,
+      occurredAt: args.occurredAt,
+      createdByUserId: args.userId,
+    })
+    .returning(movementColumns);
+  let row = item;
+  const latestAt = latest?.at ? new Date(latest.at) : null;
+  if (
+    cost &&
+    (latestAt === null || args.occurredAt.getTime() >= latestAt.getTime())
+  ) {
+    [row] = await tx
+      .update(stockItems)
+      .set({
+        lastUnitCost: formatDecimal(cost.unitCost, UNIT_COST_SCALE),
+        updatedAt: new Date(),
+      })
+      .where(eq(stockItems.id, item.id))
+      .returning(itemColumns);
+  }
+  return { movement: toMovementDTO(movement), item: row };
+}
+
+/** `POST /api/modules/stock/items/:itemId/purchases` — `{ quantity, totalCost?, occurredAt?, note? }`. */
 export async function recordPurchase(
   businessId: string,
   userId: string,
   rawItemId: unknown,
   body: Record<string, unknown>,
 ): Promise<{ movement: MovementDTO; item: ItemDTO }> {
-  const quantity = parseDecimal(body.quantity, QUANTITY);
-  if (quantity <= 0n) {
-    throw new ModuleError(
-      422,
-      "invalid_quantity",
-      "La cantidad tiene que ser mayor que cero.",
-    );
-  }
-  const totalCost = parseDecimal(body.totalCost, TOTAL_COST);
-  if (totalCost < 0n) {
-    throw new ModuleError(
-      422,
-      "invalid_cost",
-      "El costo no puede ser negativo.",
-    );
-  }
-  const unitCost = unitCostOf(totalCost, quantity);
-  if (unitCost === null) {
-    throw new ModuleError(
-      422,
-      "invalid_cost",
-      "El costo por unidad es demasiado alto.",
-    );
-  }
+  const quantity = parsePurchaseQuantity(body.quantity);
+  const cost = parsePurchaseCost(body.totalCost, quantity);
   const occurredAt = parseOccurredAt(body.occurredAt, new Date());
   const note = parseNote(body.note);
   return withDbTransaction(async (tx) => {
-    const item = await lockItem(tx, businessId, rawItemId);
-    if (item.status === "archived") throw archived();
-    // El costo vigente es el de la compra MAS RECIENTE por `occurred_at`: una compra cargada con
-    // fecha vieja no lo pisa. Se lee bajo el lock del insumo, antes de insertar la nueva.
-    const [latest] = await tx
-      .select({ at: max(stockMovements.occurredAt) })
-      .from(stockMovements)
-      .where(
-        and(
-          eq(stockMovements.itemId, item.id),
-          eq(stockMovements.kind, "purchase"),
-        ),
-      );
-    const [movement] = await tx
-      .insert(stockMovements)
-      .values({
-        businessId,
-        itemId: item.id,
-        kind: "purchase",
-        quantity: formatDecimal(quantity, QUANTITY.scale),
-        totalCost: formatDecimal(totalCost, TOTAL_COST.scale),
-        note,
-        occurredAt,
-        createdByUserId: userId,
-      })
-      .returning(movementColumns);
-    let row = item;
-    const latestAt = latest?.at ? new Date(latest.at) : null;
-    if (latestAt === null || occurredAt.getTime() >= latestAt.getTime()) {
-      [row] = await tx
-        .update(stockItems)
-        .set({
-          lastUnitCost: formatDecimal(unitCost, UNIT_COST_SCALE),
-          updatedAt: new Date(),
-        })
-        .where(eq(stockItems.id, item.id))
-        .returning(itemColumns);
-    }
-    return {
-      movement: toMovementDTO(movement),
-      item: toItemDTO(row, await onHandOf(tx, item.id)),
-    };
+    const locked = await lockItem(tx, businessId, rawItemId);
+    const { movement, item } = await applyPurchase(tx, {
+      businessId,
+      userId,
+      item: locked,
+      quantity,
+      cost,
+      occurredAt,
+      note,
+      entryId: null,
+    });
+    return { movement, item: toItemDTO(item, await onHandOf(tx, item.id)) };
   });
 }
 

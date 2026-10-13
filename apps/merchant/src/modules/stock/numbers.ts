@@ -1,4 +1,5 @@
-import { type DecimalSpec, roundDiv } from "../decimal";
+import { type DecimalSpec, parseDecimal, roundDiv } from "../decimal";
+import { ModuleError } from "../errors";
 
 /** Spec 0210 — las escalas de las columnas de `stock` (y de `recipes.line.quantity`). */
 export const QUANTITY: DecimalSpec = {
@@ -29,4 +30,43 @@ export function unitCostOf(totalCost: bigint, quantity: bigint): bigint | null {
   if (quantity <= 0n) throw new RangeError("quantity tiene que ser > 0");
   const cost = roundDiv(totalCost * 10n ** 7n, quantity);
   return cost < UNIT_COST_LIMIT ? cost : null;
+}
+
+/** `quantity > 0` (escala 3) o 422 `invalid_quantity`. */
+export function parsePurchaseQuantity(raw: unknown): bigint {
+  const quantity = parseDecimal(raw, QUANTITY);
+  if (quantity <= 0n) {
+    throw new ModuleError(
+      422,
+      "invalid_quantity",
+      "La cantidad tiene que ser mayor que cero.",
+    );
+  }
+  return quantity;
+}
+
+/** `totalCost` OPCIONAL (ausente o null = compra sin precio); si viene, `≥ 0` y con costo por unidad
+ * que entre en `numeric(14,6)`. Devuelve el total y el costo por unidad base, o null. */
+export function parsePurchaseCost(
+  raw: unknown,
+  quantity: bigint,
+): { totalCost: bigint; unitCost: bigint } | null {
+  if (raw === undefined || raw === null) return null;
+  const totalCost = parseDecimal(raw, TOTAL_COST);
+  if (totalCost < 0n) {
+    throw new ModuleError(
+      422,
+      "invalid_cost",
+      "El costo no puede ser negativo.",
+    );
+  }
+  const unitCost = unitCostOf(totalCost, quantity);
+  if (unitCost === null) {
+    throw new ModuleError(
+      422,
+      "invalid_cost",
+      "El costo por unidad es demasiado alto.",
+    );
+  }
+  return { totalCost, unitCost };
 }
