@@ -67,3 +67,7 @@ Implementador GPT, revisor independiente posterior. Sin merge/push. QA del owner
 ## Abierto
 
 Sin decisiones de producto abiertas. Implementación del rechazo de servidor pertenece a Claude; no bloquea construir/verificar esta UI y queda declarada como límite de autorización real.
+
+## Extracción del marco con sus estilos existentes
+
+Las capturas mostraron que exportar WizardShell solo no carga onboarding.css: ese import vive en la página del dueño. Se extrae esa página sin cambiar su contenido a _components/merchant-entry.tsx (con su import CSS ya existente), que reexporta WizardShell; la ruta del dueño reexporta default/generateMetadata y la del equipo importa el shell desde esa entrada. Esto comparte el marco realmente estilizado, sin nueva hoja ni import CSS adicional. El rename conserva la deuda original al verificar la guardia. Archivos adicionales: onboarding/page.tsx y onboarding/_components/merchant-entry.tsx. Se repiten e2e del equipo y regresión del ingreso del dueño.
