@@ -11,29 +11,44 @@
 
 
 
-## ⇥ ESTADO (2026-10-11) — EN PROD `3fe2ad6`: LOGIN POR CODIGO, PWA DEL POS, IMPRIMIR POR NEGOCIO, VENCIMIENTO
+## ⇥ ESTADO (2026-10-12) — NOTA DE ORDEN POS (API + 0073 EN PROD) Y COPY NEUTRO DE `my.`; NADA PUSHEADO DESDE `3fe2ad6`
 
-**En PROD:** `origin/main` = `3fe2ad6` (push con OK del owner; pre-push `verify: ok` en worktree limpio: e2e ok, neon 419
-archivos / 3375 tests). Deploys de merchant/customer/public/admin `success` (status de GitHub del commit). Smoke: `/api/health`
-200 en `business.` y `my.`, `/negocios` 200, `manifest.webmanifest` 200 (CheckPass POS), `POST /api/merchant/auth/login/verify`
-con codigo corto → 400 `invalid_code`. Incluye 0202 (login por codigo, API + UI), PWA del POS (`adb723c`), 0195 U4
-(vencimiento en el wizard), 0205 (entrada en login), 0206 (imprimir si/no, apagado por defecto), landing 0197–0204.
-**Migracion 0072 aplicada en PROD** (antes del push; snapshot previo `snap-late-water-ax6pc362`): 73 en
-`drizzle.__drizzle_migrations`, hash del ultimo = sha256 del `.sql`, columna `NOT NULL DEFAULT false`; 3 negocios / 3 usuarios.
+**En PROD:** codigo `origin/main` = `3fe2ad6` (sin cambios). **Base:** migracion **0073** (`core.pos_order.note`, nullable +
+check 1..1000) **aplicada en PROD** el 2026-10-12 por MCP (snapshot previo `snap-round-math-ax7g0rmi`; leido por SQL: 74 en
+`drizzle.__drizzle_migrations`, hash = sha256 del `.sql`, 7 ordenes / 0 con nota) y en la base local (74). Aditiva: el codigo
+de PROD no la lee; el codigo nuevo SI (`readPosOrder` selecciona `note`), asi que ya puede ir el push.
 
-**En `dev`, sin pushear:** `f354673` blindaje de e2e (URLs de entrada en `tests/e2e/support/merchant-entry-urls.ts`; la
-landing compara contra `onboardingUrl` de site-config y precalienta Next — en frio el primer `goto /negocios` pasaba 30 s).
-Medido en frio: 37 passed. Va en el proximo push (owner decide).
-Despues entraron a `dev` (2026-10-12): `075f6f0` nota libre en la orden del POS (OTRA sesion de Claude; **migracion 0073**
-`core.pos_order.note` + check 1..1000, aditiva; **L1 por decision explicita del owner** (2026-10-12, excepcion al piso
-L2). **0073 APLICADA en PROD el 2026-10-12** (antes del push; snapshot previo `snap-round-math-ax7g0rmi`): 74 en
-`drizzle.__drizzle_migrations`, hash = sha256 del `.sql`, columna nullable + check, 7 ordenes / 0 con nota; y en la
-base local (74). Contrato para la UI en spec 0169 §«Nota de la orden»; pantalla de GPT) y las reservas de GPT 0207/0208 (wallet Club cotidiano, con
-cambios suyos sin commitear en `apps/consumer`). INDEX y specs 0197–0206 marcados «en PROD `3fe2ad6`».
+**Hecho esta sesion (en `dev`):**
+- `075f6f0` nota libre en la orden del POS (L1 por decision explicita del owner, excepcion al piso L2): `note` en crear/editar
+  (ausente conserva, null/espacios borra, >1000 → 422, cerrada/anulada → 409) y en `PosOrder.note`. `pos-orders` Neon 8/8
+  (`tools/neon-test.sh`). Contrato en spec 0169 §«Nota de la orden». PARQUEADO #93 (cifrar la nota) y #94 (puntos por persona
+  al dividir la cuenta; el owner eligio division SOLO de pantalla, de GPT). La UI de la nota la esta haciendo GPT (0209).
+- `5c9d465` textos de `my.checkpass.club` en registro **neutro e impersonal** (owner: sin tu, vos ni usted): ~90 textos en 18
+  pantallas + 6 mensajes de API; regla nueva `apps/consumer/COPY.md` (PRODUCT.md ya no dice «tutea»). Verificado: consumer
+  104/104, `welcome-ui` 7/7, typecheck + lint verdes, `pnpm run test` 256 archivos verdes. **Sin correr:** `wallet-entry.spec.ts`
+  (e2e actualizado, 4 titulos): no arranca con el `next dev` del owner en :3200; lo corre el pre-push.
+- `ee692fd` estado con la 0073 en PROD; `main` local quedo en `ee692fd` (ff). Despues GPT siguio en `dev` (0209, UI de nota).
+- `d980b93` investigacion **POS sin conexion** (solo docs, sin codigo): decisiones del owner en
+  `docs/investigacion-pos-sin-conexion-2026-10-12.md`, **parqueada** como PARQUEADO #95 (owner: «guardalo y dejalo parqueado»).
+  Sin confirmar: lectura del limite de 48 h (pasado el plazo se deja de vender offline hasta sincronizar).
 
-**QUE SIGUE:** QA del owner en iPhone (instalar el panel como app → login por codigo con sugerencia del teclado → POS;
-Ajustes → «Imprimir tickets»; vencimiento en el wizard). Hallazgo a decidir: el alta con email existente sigue mandando LINK.
-Parqueados: #91 analitica, #92 papel 58/80. Ramas `spec-0190`, `motor`, `sin-gate-email`: decision del owner pendiente.
+**QUE SIGUE:**
+1. Cuando GPT cierre la 0209: `main` ← `merge --ff-only dev`, probar `main` en local y push **con OK del owner** (pre-push
+   corre `pnpm verify`, incluido `wallet-entry`). La 0073 ya esta en PROD: no hay orden que cuidar.
+2. **A decidir por el owner:** pasar a neutro tambien el pase de Wallet y sus push (`packages/domain/src/server/wallet/push-text.ts`,
+   `reminder.ts`: «Revisa tus beneficios», «Te quedan…», «Tienes un cupon nuevo»).
+3. **A decidir por el owner:** ajuste de `.claude/hooks/verify.sh` propuesto (no aplicado): guardar la huella del ultimo ROJO y,
+   si el arbol no cambio, avisar sin bloquear. Motivo: esta sesion el Stop hook bloqueo ~15 turnos seguidos por un rojo del
+   trabajo sin commitear de GPT (texto de `welcome-offer.tsx`), sin que Claude hubiera tocado codigo.
+4. Lo de antes sigue: QA del owner en iPhone (login por codigo, PWA del POS, «Imprimir tickets», vencimiento en el wizard);
+   hallazgo: el alta con email existente sigue mandando LINK; ramas `spec-0190`, `motor`, `sin-gate-email` sin decidir.
 
-**Decisiones del owner, no volver a preguntar:** ADR 0134–0137; 0206 (apagada para todos, ocultar boton); U5/U6 descartadas
-(lecturas para el cliente conservadas, TASKS); POS quita el cupon solo de la venta (0183); precio de la landing «dejalo asi».
+**Decisiones del owner, no volver a preguntar:** nota por ORDEN (no por producto), editable hasta cerrar, datos personales en
+texto plano «como una libreta»; dividir la cuenta = solo pantalla, un pase elegido por el grupo; copy del cliente neutro
+impersonal (`apps/consumer/COPY.md`); ADR 0134–0137; 0206 apagada para todos; U5/U6 descartadas; POS quita el cupon solo de la
+venta (0183); precio de la landing «dejalo asi».
+
+| Descartado | Por que |
+|---|---|
+| Division de cuenta guardada en base con puntos por persona | Owner: no sabe si alguien lo quiere; parqueado #94 |
+| Hook que mire solo archivos tocados por la sesion | En auto mode Claude edita por Bash; no queda registro confiable |
