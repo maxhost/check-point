@@ -15,7 +15,7 @@ El encargo `docs/encargo-gpt-2026-10-13-modulos-fase1.md` mide los literales y d
 
 ## Alcance
 
-Entra: traslado de pantallas, menú y Ajustes genéricos, permisos de módulo en Equipo, e2e y corrección portable de capturas POS. No entra: API, servidor, kit, migraciones, fase 2 POS, publicación.
+Entra: traslado de pantallas, menú y Ajustes genéricos, permisos de módulo en Equipo, e2e y corrección portable de capturas POS y del presupuesto de carga de imágenes de landing. No entra: API, servidor, kit, migraciones, fase 2 POS, publicación.
 
 ## Diseño
 
@@ -58,3 +58,7 @@ GPT implementa; Claude revisa ambas partes según encargo. Sin merge/push. Evide
 ## Abierto
 
 Ninguna decisión de producto. QA final del owner y PASS Claude posteriores a implementación.
+
+## Extensión mecánica de CI medida en verify
+
+La corrida aislada encontró un fallo en landing.spec.ts:296: naturalWidth del hero desktop seguía en cero al vencer el poll predeterminado de 5 segundos. Se conserva naturalWidth > 0 y el presupuesto total de 120 segundos; el poll de la imagen usa 30 segundos para la optimización en dev bajo carga. No cambia producto ni umbrales de diseño. Se repite el gate e2e afectado sin repetir tipos/unitarios/build/Neon ya verdes sobre el mismo producto.
