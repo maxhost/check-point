@@ -31,7 +31,7 @@ Equipo carga los módulos sin bloquear el listado ante fallo; ofrece reintento y
 |---|---|
 | app/backoffice/{stock,recipes}/** | mover pantallas y tests; borrar páginas fijas |
 | modules/{stock,recipes}/ui/**; modules/ui-registry.ts | destino e imports |
-| app/backoffice/backoffice-navigation.tsx; settings/module-{navigation,settings}.tsx/ts | menú/activación genéricos |
+| app/backoffice/backoffice-navigation.tsx; app/backoffice/module-icon.tsx; settings/module-{navigation,settings}.tsx/ts | menú/activación e iconos genéricos |
 | app/backoffice/staff/{staff-contract,permission-picker,staff-views,staff-console}.tsx/ts; hook UI módulos | permisos desde DTO |
 | modules/modules-boundary*.test.ts | vaciar listas exactas según encargo |
 | tests/e2e/{module-settings,modules-ui,staff-modules,pos,ticket-settings}.spec.ts; support/** | fixtures completos, nuevas regresiones, capturas portables |
@@ -45,7 +45,8 @@ No disjunta con 0216 por ui-registry y tests de frontera: servidor ya entregado,
 - [x] Typecheck, lint, formato y node tools/ui-guard.ts --base origin/main sin nuevos hallazgos.
 - [x] e2e POS nota 390/1280, Ajustes/dependencias, permisos de Equipo, Stock/Recetas desde ubicaciones nuevas verdes.
 - [x] pnpm verify ejecutado una vez al final; tabla real y límites documentados.
-- [ ] Revisión adversarial de Claude sobre ambas partes antes de marcar implementada.
+- [x] Revisión adversarial conjunta de Claude: PASS documentado en 0216 (9204c30).
+- [ ] Confirmación de H2 corregido en 3e33436 después de ese PASS.
 
 ## Plan de pruebas y verificación
 
@@ -65,8 +66,10 @@ La corrida aislada encontró un fallo en landing.spec.ts:296: naturalWidth del h
 
 ## Evidencia de implementación
 
-UI `6f2272f` y ajustes e2e `b2482c4`/`8e837c8`, solo dev. [Handoff con tabla real de verify y repetición verde del gate e2e](../handoff-0217-modulos-fase1-2026-10-13.md). La spec sigue cerrada hasta el PASS adversarial de Claude.
+UI `6f2272f` y ajustes e2e `b2482c4`/`8e837c8`, solo dev. [Handoff con tabla real de verify y repetición verde del gate e2e](../handoff-0217-modulos-fase1-2026-10-13.md). El PASS conjunto de Claude está documentado en 0216; la spec sigue cerrada hasta confirmar su H2, corregido en 3e33436.
 
 ## Hallazgo H2 de la revisión adversarial de Claude
 
 PASS conjunto documentado en la spec 0216 y commit 9204c30. H2: el mapa cerrado de iconos obliga a editar el core para otro icono de iconoir. Se sustituye por resolución genérica del nombre contra los exports de la biblioteca, cargados en diferido y con componentes cacheados por nombre. Package queda como placeholder mientras carga; un nombre inválido tiene diagnóstico y fallback seguro. E2e usa Planet en el módulo sintético (sin import ni registro específico en el core) y verifica sus formas SVG, en móvil/escritorio. No cambia navegación, permisos ni contratos.
+
+H2 implementado en `3e33436`: frontera13/13, e2e18/18, tipos/lint/guardia38 sin aumentos y build Merchant exit0. Confirmación del revisor pendiente.

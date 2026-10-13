@@ -1,13 +1,13 @@
 # Handoff — Spec 0217
 
-Estado: implementado en dev; PASS adversarial de Claude pendiente. Spec permanece cerrada.
+Estado: implementado en dev. Claude documentó el PASS conjunto en la spec 0216 (9204c30). H2 corregido en 3e33436 y verificado; pendiente su confirmación. Spec permanece cerrada hasta esa confirmación.
 
-Commits: spec `f656cb6`; UI `6f2272f`; capturas POS `b2482c4`; extensión medida de CI `6fe87da`; espera de imagen landing `8e837c8`. Sin merge ni push.
+Commits: spec `f656cb6`; UI `6f2272f`; capturas POS `b2482c4`; extensión medida de CI `6fe87da`; espera de imagen landing `8e837c8`; iconos genéricos H2 `3e33436`. Sin merge ni push.
 
 ## Archivos tocados
 
 - Stock/Recetas y su test de cantidades trasladados de app/backoffice a modules/<id>/ui; páginas estáticas borradas; ui-registry actualizado. Solo imports cambian; URLs y payloads se conservan.
-- backoffice-navigation usa moduleNavigation con rol/permisos y un mapa de iconos; cualquier integrante lee módulos. Mantiene protección frente a GET anterior a evento confirmado.
+- backoffice-navigation usa moduleNavigation con rol/permisos y resolución genérica de iconos de iconoir en un chunk diferido (componentes cacheados por nombre); cualquier integrante lee módulos. Mantiene protección frente a GET anterior a evento confirmado.
 - settings/module-navigation, module-request, module-settings y use-business-modules: DTO completo, nombres/descripciones/sugeridos/dependencias de API, errores 409 missing/dependents, lectura/reintento y confirmación antes de publicar. POS sigue en su configuración existente.
 - Equipo: staff-contract, permission-picker, staff-views y staff-console. Labels/descriptions de manifiestos en selector y listado. Apagados quedan deshabilitados; selección previa no se elimina al editar otros permisos. Administrador y propios conservan protecciones; fallo GET ofrece reintento y bloquea nuevos permisos de módulo; 422 tiene copy accionable y conserva borrador.
 - Dos listas pendientes de los tests de frontera vaciadas conforme al encargo. Sin ampliar excepciones.
@@ -50,8 +50,15 @@ Logs: /private/tmp/checkpass-0217-verify.log (tabla original), /private/tmp/chec
 - [x] Tipos, lint, formato, guardia, unitarios y builds ejecutados y verdes.
 - [x] E2e de módulos/Ajustes/Equipo y POS verdes; gate global CI repetido verde.
 - [x] Verify único con tabla transcrita y fallo inicial corregido; Neon CI completo verde.
-- [ ] Revisión adversarial de Claude sobre servidor 0216 + UI 0217; QA del owner antes de publicar.
+- [x] PASS adversarial de Claude sobre servidor 0216 + UI 0217 documentado en la spec 0216 y 9204c30.
+- [ ] Confirmación de H2 corregido después del PASS; QA del owner antes de publicar.
 
 ## Hallazgos y límites
 
-La implementación está lista para revisión; esto no es un PASS independiente. El revisor debe partir de docs/specs/0217-pantallas-modulos-fase1.md y los diffs b2482c4/6f2272f/8e837c8, repetir la frontera vacía y revisar menú, dependencias y permisos junto al servidor 0216. No se afirma verify verde en una sola invocación ni verificación de los cambios sin commit de Claude 0218. Sin despliegue ni escritura de producción.
+La revisión conjunta de Claude ya emitió PASS; H1 y H3 quedaron cerrados por Claude. El hallazgo H2 de UI quedó implementado y verificado después de ese PASS, en 3e33436. El revisor debe confirmar ese diff junto a la spec 0217; no se sustituye su confirmación por este auto-reporte. No se afirma verify verde en una sola invocación ni verificación de los cambios sin commit de Claude 0218. Sin despliegue ni escritura de producción.
+
+## H2 — verificación posterior al PASS
+
+El revisor encontró que el mapa cerrado de iconos exigía otro cambio al core para cada nombre nuevo. `app/backoffice/module-icon.tsx` resuelve cualquier export de iconoir validando que sea un icono, lo carga en diferido y cachea la identidad del componente por nombre; Package es placeholder de carga y fallback con diagnóstico para nombres inválidos. Se quitaron Book/Calendar y el registro manual del menú. El módulo sintético declara Planet, ausente del core, y el e2e verifica su círculo SVG r=8 (Package no lo tiene) en ambos anchos.
+
+13/13 tests de frontera actuales (incluida regla 1b de Claude); typecheck del árbol compartido con 0218 ya commiteada, ESLint, guardia38 archivos sin aumentos, diffcheck0. E2e de módulos/Ajustes/Equipo:18/18 en11.3s. Build Turbopack Merchant en copia aislada:exit0; primer intento falló por estrechamiento de tipo del export, corregido con frontera unknown antes de comprobar el símbolo de React y repetido verde. No se repitió Neon ni la suite global después de este ajuste de iconos. Logs h2-types/h2-boundary/h2-e2e/h2-build-final bajo /private/tmp/checkpass-0217-*.log.
