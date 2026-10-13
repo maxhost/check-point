@@ -606,21 +606,24 @@ export function PosEditor({
           ref={tabsRef}
           className={
             surface === "order"
-              ? `sticky top-0 z-20 py-2 transition-colors duration-200 motion-reduce:transition-none ${tabsStuck ? "bg-canvas" : "bg-transparent"}`
-              : undefined
+              ? `flex items-center gap-3 sticky top-0 z-20 py-2 transition-colors duration-200 motion-reduce:transition-none ${tabsStuck ? "bg-canvas" : "bg-transparent"}`
+              : "flex items-center gap-3"
           }
         >
-          <SegmentedControl
-            aria-label="Vista del pedido"
-            fullWidth
-            selectedKey={surface}
-            onSelectionChange={(key) => changeSurface(key as typeof surface)}
-            isDisabled={busy}
-            options={[
-              { id: "products", label: "Editar" },
-              { id: "order", label: `Pedido (${count})` },
-            ]}
-          />
+          <div className="min-w-0 flex-1">
+            <SegmentedControl
+              aria-label="Vista del pedido"
+              fullWidth
+              selectedKey={surface}
+              onSelectionChange={(key) => changeSurface(key as typeof surface)}
+              isDisabled={busy}
+              options={[
+                { id: "products", label: "Editar" },
+                { id: "order", label: `Pedido (${count})` },
+              ]}
+            />
+          </div>
+          {noteButton}
         </div>
       )}
       <div
@@ -815,7 +818,6 @@ export function PosEditor({
                 >
                   Guardar cambios
                 </Button>
-                {noteButton}
                 <Button
                   variant="danger"
                   aria-label="Descartar cambios"
@@ -872,7 +874,6 @@ export function PosEditor({
               >
                 <QrCode aria-hidden="true" className="size-6" />
               </Button>
-              {noteButton}
               {printing.enabled && (
                 <Button
                   variant="quiet"
