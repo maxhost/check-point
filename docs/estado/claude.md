@@ -25,8 +25,10 @@ con codigo corto → 400 `invalid_code`. Incluye 0202 (login por codigo, API + U
 landing compara contra `onboardingUrl` de site-config y precalienta Next — en frio el primer `goto /negocios` pasaba 30 s).
 Medido en frio: 37 passed. Va en el proximo push (owner decide).
 Despues entraron a `dev` (2026-10-12): `075f6f0` nota libre en la orden del POS (OTRA sesion de Claude; **migracion 0073**
-`core.pos_order.note` + check 1..1000, aditiva, **NO aplicada en PROD**: aplicarla ANTES del proximo push, como la 0072;
-el commit dice L1 pero una migracion a PROD tiene piso L2) y las reservas de GPT 0207/0208 (wallet Club cotidiano, con
+`core.pos_order.note` + check 1..1000, aditiva; **L1 por decision explicita del owner** (2026-10-12, excepcion al piso
+L2). **0073 APLICADA en PROD el 2026-10-12** (antes del push; snapshot previo `snap-round-math-ax7g0rmi`): 74 en
+`drizzle.__drizzle_migrations`, hash = sha256 del `.sql`, columna nullable + check, 7 ordenes / 0 con nota; y en la
+base local (74). Contrato para la UI en spec 0169 §«Nota de la orden»; pantalla de GPT) y las reservas de GPT 0207/0208 (wallet Club cotidiano, con
 cambios suyos sin commitear en `apps/consumer`). INDEX y specs 0197–0206 marcados «en PROD `3fe2ad6`».
 
 **QUE SIGUE:** QA del owner en iPhone (instalar el panel como app → login por codigo con sugerencia del teclado → POS;
