@@ -3,10 +3,13 @@
 import { useEffect, useState } from "react";
 import { EditPencil, Package, Plus, Xmark } from "iconoir-react";
 import { Alert, Button, Dialog, Text } from "../../../ui";
-import { ModuleHeader } from "../../components/ui";
+import { ModuleHeader } from "../../../app/components/ui";
 import { StockInputModal } from "./stock-input-modal";
 import { StockLogSkeleton } from "./stock-skeleton";
-import { posRequest, type PosSession } from "../pos/pos-types";
+import {
+  posRequest,
+  type PosSession,
+} from "../../../app/backoffice/pos/pos-types";
 import { formatAmount, type StockMovement } from "./stock-types";
 
 export function StockLog() {

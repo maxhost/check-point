@@ -3,6 +3,7 @@
 import Link from "next/link";
 import {
   Book,
+  Calendar,
   CreditCard,
   Dashboard,
   Gift,
@@ -26,9 +27,17 @@ import { POS_NEW_ORDER_EVENT } from "./pos/pos-navigation";
 import { openOnboardingChecklist } from "./onboarding/onboarding-checklist-visibility";
 import {
   MODULES_CHANGED_EVENT,
-  moduleLinkVisible,
   type BusinessModule,
 } from "./settings/module-navigation";
+
+import { readModules } from "./settings/module-request";
+import { moduleNavigation } from "../../modules/navigation";
+
+const moduleIcons: Record<string, typeof HomeSimple> = {
+  Package,
+  Book,
+  Calendar,
+};
 
 type MenuName = "business" | "loyalty" | "more";
 
@@ -69,23 +78,6 @@ const businessLinks = [
     label: "Catálogo",
     icon: Package,
     segment: "catalog",
-    permission: "catalog",
-    delegado: true,
-  },
-  // Visibilidad resuelta con GET /api/modules y guardados confirmados en Ajustes.
-  {
-    href: "/backoffice/stock",
-    label: "Stock",
-    icon: Package,
-    segment: "stock",
-    permission: "catalog",
-    delegado: true,
-  },
-  {
-    href: "/backoffice/recipes",
-    label: "Recetas",
-    icon: Book,
-    segment: "recipes",
     permission: "catalog",
     delegado: true,
   },
@@ -244,9 +236,7 @@ export function BackofficeNavigation({
   const segment = useSelectedLayoutSegment();
   const [posEnabled, setPosEnabled] = useState(initialPosEnabled);
   const [modules, setModules] = useState<BusinessModule[]>([]);
-  const canReadModules = isOwner || permissions.includes("catalog");
   useEffect(() => {
-    if (!canReadModules) return;
     let active = true;
     let changed = false;
     const onModulesChanged = (event: Event) => {
@@ -254,15 +244,10 @@ export function BackofficeNavigation({
       setModules((event as CustomEvent<BusinessModule[]>).detail);
     };
     window.addEventListener(MODULES_CHANGED_EVENT, onModulesChanged);
-    void fetch("/api/modules", { cache: "no-store" })
-      .then(async (response) => {
-        if (!response.ok) throw new Error("No pudimos leer los módulos.");
-        return response.json() as Promise<{ modules: BusinessModule[] }>;
-      })
+    void readModules()
       .then((data) => {
         // Un GET iniciado antes de guardar no puede pisar el nuevo estado.
-        if (active && !changed && Array.isArray(data.modules))
-          setModules(data.modules);
+        if (active && !changed) setModules(data);
       })
       .catch(() => {
         if (active && !changed) setModules([]);
@@ -271,7 +256,7 @@ export function BackofficeNavigation({
       active = false;
       window.removeEventListener(MODULES_CHANGED_EVENT, onModulesChanged);
     };
-  }, [canReadModules]);
+  }, []);
   useEffect(() => {
     let active = true;
     const refresh = () => {
@@ -291,16 +276,22 @@ export function BackofficeNavigation({
       window.removeEventListener("pos-module-changed", refresh);
     };
   }, []);
-  const visibleBusinessLinks = businessLinks.filter((item) =>
-    moduleLinkVisible(item.segment, modules),
+  const moduleLinks = moduleNavigation(modules, { isOwner, permissions }).map(
+    (entry) => ({
+      ...entry,
+      segment: entry.moduleId,
+      icon: moduleIcons[entry.icon] ?? Package,
+    }),
   );
+  const visibleBusinessLinks = [...businessLinks, ...moduleLinks];
   const links =
     posEnabled && permissions.includes("pos")
       ? [...visibleBusinessLinks, posLink]
       : visibleBusinessLinks;
-  const visibleDelegatedLinks = delegatedLinks(permissions).filter((item) =>
-    moduleLinkVisible(item.segment, modules),
-  );
+  const visibleDelegatedLinks = [
+    ...delegatedLinks(permissions),
+    ...moduleLinks,
+  ];
   const delegados =
     posEnabled && permissions.includes("pos")
       ? [...visibleDelegatedLinks, posLink]

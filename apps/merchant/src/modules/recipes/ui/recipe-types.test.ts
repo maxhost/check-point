@@ -5,8 +5,8 @@ import {
   type RecipeDraft,
   type RecipeLine,
 } from "./recipe-types";
-import type { StockItem } from "../stock/stock-types";
-import { editableAmount, formatAmount } from "../stock/stock-types";
+import type { StockItem } from "../../stock/ui/stock-types";
+import { editableAmount, formatAmount } from "../../stock/ui/stock-types";
 
 const items: StockItem[] = [
   { id: "flour", name: "Harina", unit: "g", status: "active" },

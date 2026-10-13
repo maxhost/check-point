@@ -1,3 +1,5 @@
+import type { BusinessModule } from "../settings/module-navigation";
+import { permissionLabel } from "./staff-contract";
 import { PermissionPicker } from "./permission-picker";
 import type { StaffMember } from "./staff-contract";
 import { Skeleton, SkeletonScreen } from "../../components/ui";
@@ -59,6 +61,8 @@ export function CreateStaffPanel({
   permissions,
   isOwner,
   posEnabled,
+  modules,
+  modulesUnavailable,
   busy,
   onName,
   onPermissions,
@@ -70,6 +74,8 @@ export function CreateStaffPanel({
   permissions: string[];
   isOwner: boolean;
   posEnabled?: boolean;
+  modules?: BusinessModule[];
+  modulesUnavailable?: boolean;
   busy: boolean;
   onName: (value: string) => void;
   onPermissions: (value: string[]) => void;
@@ -100,6 +106,8 @@ export function CreateStaffPanel({
         value={permissions}
         onChange={onPermissions}
         isOwner={isOwner}
+        modules={modules}
+        modulesUnavailable={modulesUnavailable}
         posEnabled={posEnabled}
         disabled={busy}
       />
@@ -116,10 +124,12 @@ export function CreateStaffPanel({
 }
 
 export function StaffList({
+  modules = [],
   members,
   loading,
   onEdit,
 }: {
+  modules?: BusinessModule[];
   members: StaffMember[];
   loading: boolean;
   onEdit: (member: StaffMember) => void;
@@ -156,7 +166,7 @@ export function StaffList({
             <code>{member.identifier}</code>
             <p>
               {member.permissions
-                .map((id) => (id === "staff" ? "Administrador" : id))
+                .map((id) => permissionLabel(id, modules))
                 .join(" · ")}
             </p>
           </div>
@@ -178,6 +188,8 @@ export function StaffEditor({
   busy,
   isOwner,
   posEnabled,
+  modules,
+  modulesUnavailable,
   ownId,
   onDraft,
   onClose,
@@ -188,6 +200,8 @@ export function StaffEditor({
   busy: boolean;
   isOwner: boolean;
   posEnabled?: boolean;
+  modules?: BusinessModule[];
+  modulesUnavailable?: boolean;
   ownId?: string;
   onDraft: (draft: StaffDraft) => void;
   onClose: () => void;
@@ -234,6 +248,8 @@ export function StaffEditor({
           value={draft.permissions}
           onChange={(permissions) => onDraft({ ...draft, permissions })}
           isOwner={isOwner}
+          modules={modules}
+          modulesUnavailable={modulesUnavailable}
           posEnabled={posEnabled}
           disabled={busy || own || protectedAdministrator}
         />

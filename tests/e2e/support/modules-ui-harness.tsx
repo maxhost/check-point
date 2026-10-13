@@ -1,0 +1,31 @@
+import { createRoot } from "react-dom/client";
+import { StockLog } from "../../../apps/merchant/src/modules/stock/ui/stock-log";
+import { RecipesConsole } from "../../../apps/merchant/src/modules/recipes/ui/recipes-console";
+import { StaffConsole } from "../../../apps/merchant/src/app/backoffice/staff/staff-console";
+import { BackofficeNavigation } from "../../../apps/merchant/src/app/backoffice/backoffice-navigation";
+import { PosSettings } from "../../../apps/merchant/src/app/backoffice/settings/pos-settings";
+
+const params = new URLSearchParams(location.search);
+const surface = params.get("surface");
+const isOwner = params.get("role") !== "staff";
+const permissions = (params.get("permissions") ?? "").split(",");
+createRoot(document.getElementById("root")!).render(
+  <div className="backoffice-layout">
+    <BackofficeNavigation
+      businessName="Comercio de prueba"
+      isOwner={isOwner}
+      permissions={permissions}
+    />
+    <div className="backoffice-content">
+      {surface === "stock" ? (
+        <StockLog />
+      ) : surface === "recipes" ? (
+        <RecipesConsole />
+      ) : surface === "staff" ? (
+        <StaffConsole />
+      ) : surface === "settings" ? (
+        <PosSettings />
+      ) : null}
+    </div>
+  </div>,
+);

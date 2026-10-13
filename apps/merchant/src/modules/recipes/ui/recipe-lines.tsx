@@ -7,7 +7,7 @@ import {
   units,
   type EntryUnit,
   type StockItem,
-} from "../stock/stock-types";
+} from "../../stock/ui/stock-types";
 import { blankIngredient, type RecipeLine } from "./recipe-types";
 
 export function RecipeLines({

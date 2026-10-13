@@ -4,7 +4,7 @@ import {
   baseUnit,
   type EntryUnit,
   type StockItem,
-} from "../stock/stock-types";
+} from "../../stock/ui/stock-types";
 
 export type RecipeSummary = {
   productId: string;

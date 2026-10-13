@@ -1,4 +1,4 @@
-import { Skeleton, SkeletonScreen } from "../../components/ui";
+import { Skeleton, SkeletonScreen } from "../../../app/components/ui";
 import { Text } from "../../../ui";
 
 export function StockLogSkeleton() {

@@ -25,16 +25,7 @@ import { MODULES } from "./registry";
  * archivo, no una excepcion abierta: un literal nuevo (en esos archivos o en otro) da rojo, y cuando
  * GPT los saque el test da rojo hasta bajar la cuenta. La meta es `{}`.
  */
-const PENDING_GPT: Readonly<Record<string, number>> = {
-  "app/backoffice/backoffice-navigation.tsx": 4,
-  "app/backoffice/recipes/recipe-modal.tsx": 1,
-  "app/backoffice/recipes/recipe-types.ts": 1,
-  "app/backoffice/recipes/recipes-console.tsx": 1,
-  "app/backoffice/settings/module-navigation.ts": 2,
-  "app/backoffice/settings/module-settings.tsx": 6,
-  "app/backoffice/stock/stock-input-modal.tsx": 4,
-  "app/backoffice/stock/stock-log.tsx": 1,
-};
+const PENDING_GPT: Readonly<Record<string, number>> = {};
 
 const IDS = MODULES.map((m) => m.id);
 

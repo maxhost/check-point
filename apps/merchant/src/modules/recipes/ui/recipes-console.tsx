@@ -8,8 +8,8 @@ import {
   Skeleton,
   SkeletonScreen,
   Toast,
-} from "../../components/ui";
-import { posRequest } from "../pos/pos-types";
+} from "../../../app/components/ui";
+import { posRequest } from "../../../app/backoffice/pos/pos-types";
 import { RecipeModal } from "./recipe-modal";
 import { recipeError, type RecipeSummary } from "./recipe-types";
 

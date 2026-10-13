@@ -14,8 +14,8 @@ import {
   TextAreaField,
   TextField,
 } from "../../../ui";
-import { StaffFormModal } from "../staff/staff-form-modal";
-import { posRequest } from "../pos/pos-types";
+import { StaffFormModal } from "../../../app/backoffice/staff/staff-form-modal";
+import { posRequest } from "../../../app/backoffice/pos/pos-types";
 import {
   baseUnit,
   blankLine,

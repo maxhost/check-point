@@ -12,14 +12,14 @@ import {
   TextAreaField,
   TextField,
 } from "../../../ui";
-import { Skeleton, SkeletonScreen } from "../../components/ui";
-import { StaffFormModal } from "../staff/staff-form-modal";
-import { posRequest } from "../pos/pos-types";
+import { Skeleton, SkeletonScreen } from "../../../app/components/ui";
+import { StaffFormModal } from "../../../app/backoffice/staff/staff-form-modal";
+import { posRequest } from "../../../app/backoffice/pos/pos-types";
 import {
   editableAmount,
   formatAmount,
   type StockItem,
-} from "../stock/stock-types";
+} from "../../stock/ui/stock-types";
 import { RecipeLines } from "./recipe-lines";
 import {
   blankIngredient,

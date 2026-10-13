@@ -55,8 +55,7 @@ Object.defineProperty(window, "BarcodeDetector", {
 });
 const params = new URLSearchParams(window.location.search);
 const mode = params.get("mode");
-// El menu tiene que ver el MISMO rol que la sesion simulada del test: desde `d1a213b` consulta
-// `/api/modules` para el owner, y un owner fijo hacia que el menu consultara en el test del staff.
+// El menú usa el mismo rol y permisos que la sesión simulada.
 const settingsOwner = mode === "settings" && params.get("role") !== "staff";
 createRoot(document.getElementById("root")!).render(
   <div className="backoffice-layout print:block">

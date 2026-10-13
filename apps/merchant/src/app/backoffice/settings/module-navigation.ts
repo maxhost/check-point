@@ -1,12 +1,7 @@
 /** Contrato 0210: estado público de los módulos del negocio de la sesión. */
-export type BusinessModule = {
-  id: string;
-  name: string;
-  description: string;
-  requires: string[];
-  enabled: boolean;
-  suggested: boolean;
-};
+import type { ModuleDTO } from "../../../modules/activation";
+
+export type BusinessModule = ModuleDTO;
 
 export const MODULES_CHANGED_EVENT = "business-modules-changed";
 
@@ -17,9 +12,7 @@ export function publishModules(modules: BusinessModule[]) {
   );
 }
 
-export function moduleLinkVisible(segment: string, modules: BusinessModule[]) {
-  if (segment !== "stock" && segment !== "recipes") return true;
-  return modules.some(
-    (module) => module.id === segment && module.enabled === true,
-  );
+/** Solo se usa con entradas aportadas por módulos. */
+export function moduleLinkVisible(moduleId: string, modules: BusinessModule[]) {
+  return modules.some((module) => module.id === moduleId && module.enabled);
 }

@@ -1,3 +1,4 @@
+import type { BusinessModule } from "../settings/module-navigation";
 import type { PermissionScope } from "@mi-pasaporte/db/permissions-catalog";
 
 /**
@@ -71,7 +72,50 @@ export const PERMISSIONS: readonly {
   detail: string;
 }[] = PERMISSION_ORDER.map((id) => ({ id, ...PERMISSION_COPY[id] }));
 
-export type Permission = PermissionScope;
+export type Permission = string;
+
+export type PermissionOption = {
+  id: string;
+  label: string;
+  detail: string;
+  enabled: boolean;
+  modulePermission: boolean;
+};
+
+/** Copy core + declaraciones del servidor; Administrador conserva su lugar al final. */
+export function permissionOptions(
+  modules: readonly BusinessModule[],
+): PermissionOption[] {
+  const core = PERMISSIONS.map((permission) => ({
+    ...permission,
+    enabled: true,
+    modulePermission: false,
+  }));
+  const extra = modules.flatMap((module) =>
+    module.permissions.map((permission) => ({
+      id: permission.id,
+      label: permission.label,
+      detail: permission.description,
+      enabled: module.enabled,
+      modulePermission: true,
+    })),
+  );
+  return [
+    ...core.filter((permission) => permission.id !== "staff"),
+    ...extra,
+    ...core.filter((permission) => permission.id === "staff"),
+  ];
+}
+
+export function permissionLabel(
+  id: string,
+  modules: readonly BusinessModule[],
+) {
+  return (
+    permissionOptions(modules).find((permission) => permission.id === id)
+      ?.label ?? id
+  );
+}
 
 export type StaffMember = {
   userId: string;
@@ -96,6 +140,8 @@ const ERROR_COPY: Record<string, string> = {
     "Elige al menos un permiso. Si no debe tener acceso, desactiva al integrante.",
   unknown_permission:
     "Hay un permiso que ya no es válido. Recarga la pantalla e intenta otra vez.",
+  module_disabled_permission:
+    "Ese módulo está desactivado. Pide a la persona propietaria que lo active y vuelve a intentar.",
   permission_not_grantable:
     "Solo la persona propietaria puede otorgar o quitar el acceso de Administrador.",
   self_permission_edit:

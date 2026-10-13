@@ -3,26 +3,17 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Alert, Button, Heading, Switch, Text } from "../../../ui";
-import { PosError, posRequest } from "../pos/pos-types";
+import {
+  ModuleRequestError,
+  moduleRequest,
+  readModules,
+  moduleDependency,
+  moduleNames,
+} from "./module-request";
 import {
   publishModules,
   type BusinessModule as Module,
 } from "./module-navigation";
-
-const cards = [
-  {
-    id: "stock",
-    name: "Stock",
-    description:
-      "Registra tus insumos, compras y ajustes para consultar el stock estimado y el último costo de compra.",
-  },
-  {
-    id: "recipes",
-    name: "Recetas",
-    description:
-      "Define los insumos y cantidades de cada producto para calcular su costo y margen con los últimos costos de compra.",
-  },
-];
 
 export function ModuleSettings() {
   const router = useRouter();
@@ -43,20 +34,11 @@ export function ModuleSettings() {
 
   useEffect(() => {
     let active = true;
-    void posRequest<{ modules: Module[] }>("/api/modules")
+    void readModules()
       .then((data) => {
-        if (
-          cards.some(
-            (card) =>
-              !data.modules?.some(
-                (m) => m.id === card.id && typeof m.enabled === "boolean",
-              ),
-          )
-        )
-          throw new Error("No pudimos leer los módulos. Intenta otra vez.");
         if (active) {
-          setModules(data.modules);
-          publishModules(data.modules);
+          setModules(data);
+          publishModules(data);
         }
       })
       .catch((cause) => {
@@ -88,9 +70,8 @@ export function ModuleSettings() {
     setBusy(module.id);
     setError(null);
     try {
-      const result = await posRequest<{ module: Module }>(
-        `/api/modules/${module.id}`,
-        "PUT",
+      const result = await moduleRequest<{ module: Module }>(
+        `/api/modules/${encodeURIComponent(module.id)}`,
         { enabled: !module.enabled },
       );
       if (
@@ -109,7 +90,7 @@ export function ModuleSettings() {
     } catch (cause) {
       if (!mounted.current) return;
       if (
-        cause instanceof PosError &&
+        cause instanceof ModuleRequestError &&
         (cause.code === "module_requires" ||
           cause.code === "module_required_by")
       ) {
@@ -118,8 +99,8 @@ export function ModuleSettings() {
         setAttempt((value) => value + 1);
         setError(
           cause.code === "module_requires"
-            ? "Activa Stock para usar Recetas."
-            : "Desactiva Recetas antes de desactivar Stock.",
+            ? `Activa ${moduleNames(cause.missing, modules ?? []) || "los módulos requeridos"} para usar ${module.name}.`
+            : `Desactiva ${moduleNames(cause.dependents, modules ?? []) || "los módulos dependientes"} antes de desactivar ${module.name}.`,
         );
       } else
         setError(
@@ -133,9 +114,6 @@ export function ModuleSettings() {
     }
   }
 
-  const stock = modules?.find((module) => module.id === "stock");
-  const recipes = modules?.find((module) => module.id === "recipes");
-
   return (
     <>
       {error && (
@@ -147,22 +125,20 @@ export function ModuleSettings() {
           )}
         </Alert>
       )}
-      {cards.map((card) => {
-        const module = modules?.find((item) => item.id === card.id);
-        const dependency =
-          card.id === "recipes" && !module?.enabled && stock && !stock.enabled
-            ? "Activa Stock para usar Recetas."
-            : card.id === "stock" && module?.enabled && recipes?.enabled
-              ? "Desactiva Recetas antes de desactivar Stock."
-              : null;
+      {loading && <Text>Cargando configuración…</Text>}
+      {modules?.map((module) => {
+        const dependency = moduleDependency(module, modules);
         return (
           <div
-            key={card.id}
+            key={module.id}
             className="flex flex-col gap-3 border-t border-border pt-5 md:flex-row md:items-start md:gap-6"
           >
             <div className="min-w-0 flex-1 space-y-2">
-              <Heading level={2}>{card.name}</Heading>
-              <Text>{card.description}</Text>
+              <Heading level={2}>{module.name}</Heading>
+              <Text>{module.description}</Text>
+              {module.suggested && (
+                <Text variant="label">Sugerido para tu negocio</Text>
+              )}
               {dependency && <Text>{dependency}</Text>}
             </div>
             <div className="flex shrink-0 items-center justify-end gap-3">
@@ -171,15 +147,15 @@ export function ModuleSettings() {
                   ? "Cargando configuración…"
                   : !module
                     ? "Estado no disponible"
-                    : busy === card.id
+                    : busy === module.id
                       ? "Guardando…"
                       : module.enabled
                         ? "Activado"
                         : "Desactivado"}
               </Text>
               <Switch
-                aria-label={card.name}
-                aria-busy={busy === card.id || undefined}
+                aria-label={module.name}
+                aria-busy={busy === module.id || undefined}
                 isSelected={module?.enabled ?? false}
                 isDisabled={loading || !module || busy !== null || !!dependency}
                 onChange={() => {

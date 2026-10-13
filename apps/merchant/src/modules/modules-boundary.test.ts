@@ -59,7 +59,7 @@ const CORE_OF_MODULES = [
  * Es una lista EXACTA, no una excepcion abierta: un directorio nuevo que choque da rojo, y el dia
  * que GPT borre estos el test tambien da rojo hasta vaciar la lista.
  */
-const PENDING_GPT_DIRS = ["app/backoffice/recipes", "app/backoffice/stock"];
+const PENDING_GPT_DIRS: string[] = [];
 
 const IMPORT_FROM_SCHEMA =
   /import\s+(?:type\s+)?\{([^}]*)\}\s*from\s*["']@mi-pasaporte\/db\/schema["']/g;

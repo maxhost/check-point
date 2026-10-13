@@ -1,4 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
+import {
+  businessModules as modules,
+  extraModule,
+} from "./support/modules-fixture";
 import { startCatalogHarness } from "./support/catalog-harness-server";
 
 let harness: Awaited<ReturnType<typeof startCatalogHarness>>;
@@ -21,27 +25,6 @@ async function setup(page: Page, role = "owner") {
       json: { printingEnabled: false, showBusinessName: true, showTable: true },
     }),
   );
-}
-
-function modules(stock = false, recipes = false) {
-  return [
-    {
-      id: "stock",
-      name: "Stock",
-      description: "",
-      requires: [],
-      enabled: stock,
-      suggested: false,
-    },
-    {
-      id: "recipes",
-      name: "Recetas",
-      description: "",
-      requires: ["stock"],
-      enabled: recipes,
-      suggested: false,
-    },
-  ];
 }
 
 test("cards, activación persistida y dependencias en móvil y escritorio", async ({
@@ -142,7 +125,10 @@ test("fallo de carga permite reintentar; fallo de escritura conserva estado", as
   await page.goto(`${harness.url}?mode=settings`);
   await expect(
     page.getByRole("switch", { name: "Stock", exact: true }),
-  ).toBeDisabled();
+  ).toHaveCount(0);
+  await expect(page.getByRole("alert")).toContainText(
+    "No pudimos cargar los módulos.",
+  );
   failing = false;
   await page.getByRole("button", { name: "Reintentar módulos" }).click();
   await page
@@ -157,7 +143,9 @@ test("fallo de carga permite reintentar; fallo de escritura conserva estado", as
   ).toBeEnabled();
 });
 
-test("staff no consulta módulos ni muestra controles", async ({ page }) => {
+test("staff consulta módulos para el menú, sin controles de activación", async ({
+  page,
+}) => {
   await setup(page, "staff");
   let reads = 0;
   await page.route("**/api/modules", (route) => {
@@ -171,5 +159,98 @@ test("staff no consulta módulos ni muestra controles", async ({ page }) => {
   await expect(
     page.getByRole("switch", { name: "Stock", exact: true }),
   ).toHaveCount(0);
-  expect(reads).toBe(0);
+  await expect.poll(() => reads).toBeGreaterThan(0);
 });
+
+test("un módulo adicional muestra copy, sugerido y dependencias del manifiesto", async ({
+  page,
+}) => {
+  await setup(page);
+  let saved = [...modules(), extraModule()];
+  const writes: unknown[] = [];
+  await page.route("**/api/modules", (route) =>
+    route.fulfill({ json: { modules: saved } }),
+  );
+  await page.route("**/api/modules/*", (route) => {
+    const id = route.request().url().split("/").at(-1);
+    const body = route.request().postDataJSON();
+    writes.push({ id, ...body });
+    saved = saved.map((module) =>
+      module.id === id ? { ...module, ...body } : module,
+    );
+    return route.fulfill({
+      json: { module: saved.find((module) => module.id === id) },
+    });
+  });
+  await page.goto(`${harness.url}?mode=settings`);
+  await expect(
+    page.getByRole("heading", { name: "Turnos de prueba" }),
+  ).toBeVisible();
+  await expect(page.getByText("Organiza reservas de prueba")).toBeVisible();
+  await expect(page.getByText("Sugerido para tu negocio")).toHaveCount(2);
+  await expect(
+    page.getByText("Activa Stock para usar Turnos de prueba."),
+  ).toBeVisible();
+  const extra = page.getByRole("switch", {
+    name: "Turnos de prueba",
+    exact: true,
+  });
+  await expect(extra).toBeDisabled();
+  await page
+    .getByRole("switch", { name: "Stock", exact: true })
+    .locator("xpath=ancestor::label")
+    .click();
+  await expect(extra).toBeEnabled();
+  await extra.locator("xpath=ancestor::label").click();
+  await expect(extra).toBeChecked();
+  await expect(
+    page.getByRole("switch", { name: "Stock", exact: true }),
+  ).toBeDisabled();
+  await expect(
+    page.getByText("Desactiva Turnos de prueba antes de desactivar Stock."),
+  ).toBeVisible();
+  expect(writes).toEqual([
+    { id: "stock", enabled: true },
+    { id: "appointments", enabled: true },
+  ]);
+});
+
+for (const code of ["module_requires", "module_required_by"] as const) {
+  test(`409 ${code} usa los nombres de missing/dependents y recarga`, async ({
+    page,
+  }) => {
+    await setup(page);
+    let saved = [...modules(true), extraModule(code === "module_required_by")];
+    let reads = 0;
+    await page.route("**/api/modules", (route) => {
+      reads++;
+      return route.fulfill({ json: { modules: saved } });
+    });
+    await page.route("**/api/modules/appointments", (route) => {
+      saved = [...modules(false), extraModule(code === "module_required_by")];
+      return route.fulfill({
+        status: 409,
+        json: {
+          code,
+          ...(code === "module_requires"
+            ? { missing: ["stock"] }
+            : { dependents: ["recipes"] }),
+        },
+      });
+    });
+    await page.goto(`${harness.url}?mode=settings`);
+    await page
+      .getByRole("switch", { name: "Turnos de prueba", exact: true })
+      .locator("xpath=ancestor::label")
+      .click();
+    await expect(page.getByRole("alert")).toContainText(
+      code === "module_requires"
+        ? "Activa Stock para usar Turnos de prueba."
+        : "Desactiva Recetas antes de desactivar Turnos de prueba.",
+    );
+    await expect(
+      page.getByRole("switch", { name: "Stock", exact: true }),
+    ).not.toBeChecked();
+    expect(reads).toBeGreaterThanOrEqual(3);
+  });
+}

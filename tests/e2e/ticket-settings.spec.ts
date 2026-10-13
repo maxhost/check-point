@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { businessModules } from "./support/modules-fixture";
 import { startCatalogHarness } from "./support/catalog-harness-server";
 
 let harness: Awaited<ReturnType<typeof startCatalogHarness>>;
@@ -14,10 +15,7 @@ async function setup(page: Page) {
   await page.route("**/api/modules", (route) =>
     route.fulfill({
       json: {
-        modules: [
-          { id: "stock", enabled: false },
-          { id: "recipes", enabled: false },
-        ],
+        modules: businessModules(),
       },
     }),
   );

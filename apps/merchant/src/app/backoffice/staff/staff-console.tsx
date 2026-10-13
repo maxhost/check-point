@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { Alert, Button } from "../../../ui";
+import { useBusinessModules } from "../settings/use-business-modules";
 import { ModuleHeader, Toast } from "../../components/ui";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { CredentialDialog } from "./credential-dialog";
@@ -23,6 +25,8 @@ import {
 import { useStaffData } from "./use-staff-data";
 
 export function StaffConsole() {
+  const moduleState = useBusinessModules();
+  const modulesUnavailable = moduleState.loading || !!moduleState.error;
   const { error, loading, members, session, setError, setMembers } =
     useStaffData();
   const [createOpen, setCreateOpen] = useState(false);
@@ -188,6 +192,13 @@ export function StaffConsole() {
             <button onClick={() => setError(null)}>Cerrar</button>
           </div>
         )}
+        {moduleState.error && (
+          <Alert kind="error" title={moduleState.error}>
+            <Button variant="secondary" onPress={moduleState.reload}>
+              Reintentar permisos de módulos
+            </Button>
+          </Alert>
+        )}
         {loading ? (
           <StaffSkeleton />
         ) : (
@@ -212,6 +223,8 @@ export function StaffConsole() {
               name={createName}
               permissions={createPermissions}
               isOwner={Boolean(isOwner)}
+              modules={moduleState.modules}
+              modulesUnavailable={modulesUnavailable}
               posEnabled={session?.business?.posEnabled === true}
               busy={busy}
               onName={setCreateName}
@@ -220,6 +233,7 @@ export function StaffConsole() {
               onCreate={() => void createMember()}
             />
             <StaffList
+              modules={moduleState.modules}
               members={members}
               loading={loading}
               onEdit={(member) => {
@@ -239,6 +253,8 @@ export function StaffConsole() {
             draft={draft}
             busy={busy}
             isOwner={Boolean(isOwner)}
+            modules={moduleState.modules}
+            modulesUnavailable={modulesUnavailable}
             posEnabled={session?.business?.posEnabled === true}
             ownId={ownId}
             onDraft={setDraft}
