@@ -11,10 +11,10 @@
 
 
 
-## ⇥ ESTADO (2026-10-12, noche) — MODULOS (ADR 0138) + STOCK Y RECETAS (0210) + DICTADO (0212) EN `dev`; 0074-0076 SOLO LOCAL Y CI
+## ⇥ ESTADO (2026-10-12, noche) — MODULOS (ADR 0138) + STOCK Y RECETAS (0210) + DICTADO DE STOCK (0212) Y DE RECETAS (0214) EN `dev`; 0074-0077 SOLO LOCAL Y CI
 
-**En PROD:** codigo `origin/main` = `3fe2ad6` (sin cambios). **Base PROD:** hasta 0073. **0074, 0075 y 0076 NO estan en PROD**
-(aplicadas en la base local, 77 migraciones, y en `ci-integration` por `neon-test.sh`).
+**En PROD:** codigo `origin/main` = `3fe2ad6` (sin cambios). **Base PROD:** hasta 0073. **0074, 0075, 0076 y 0077 NO estan en PROD**
+(aplicadas en la base local, 78 migraciones, y en `ci-integration` por `neon-test.sh`).
 
 **Hecho esta sesion (en `dev`, sin push):**
 - Analisis con el owner: `docs/analisis-recetas-stock-2026-10-12.md` (decisiones textuales; parqueados #96 prevision,
@@ -30,6 +30,11 @@
   `draftsSince` listo para el tope), migracion 0076. Unitarios 5 + Neon 4 verdes; M6 (la IA ve insumos ajenos) mordio y
   revertida. Proveedor: `STOCK_DRAFT_PROVIDER` → `CATALOG_EXTRACTION_PROVIDER` → `fake`. **Local no tiene
   `OPENAI_API_KEY`**: en local el borrador vuelve vacio (fake). Sin probar contra OpenAI real.
+- Dictado: `d18bb39` (muletillas ignoradas, QA del owner), `646dafa` (default `gpt-6-luna`: banco de 6 frases, mismos
+  aciertos que `gpt-5-mini`, 3,0 s vs 7,0 s, ~$0,00018 vs ~$0,0021 por analisis; precios de agregadores).
+- Spec 0214 implementada (`3cc57dd`): `POST /api/modules/recipes/:productId/draft` (receta POR UNIDAD, `yield` divide,
+  «a gusto» sin cantidad) + `PUT` de receta con `newItem`/`unit`; uso con `kind` (migracion 0077). Unitarios 5 + Neon 5
+  verdes, los viejos de Recetas intactos; M7 mordio. Sonda real con 3 recetas OK. `recipes.ts` partido (`read.ts`).
 - Encargo a GPT: `docs/encargo-gpt-2026-10-12-modulos-stock-recetas.md` (Ajustes + Stock como log + Recetas como
   gestion; SIN costo/margen: van a Analitica, owner). GPT ya commiteo 0211 (cards en Ajustes) y sigue.
 
