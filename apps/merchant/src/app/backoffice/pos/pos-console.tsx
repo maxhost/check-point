@@ -276,6 +276,7 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
   }
   async function run(
     action: () => Promise<PosOrder>,
+    optimisticNote?: string | null,
   ): Promise<PosOrder | null> {
     if (locked.current || !cache.context || !payment.canNavigate()) return null;
     locked.current = true;
@@ -283,6 +284,12 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
     setError(null);
     cache.beginWrite(order?.id);
     const epoch = cache.epoch;
+    const previous = selected.current;
+    const optimistic = previous && optimisticNote !== undefined;
+    if (optimistic) {
+      setOrder(cache.accept({ ...previous, note: optimisticNote }));
+      setHistory(cache.peek<PosHistory>(historyKey, true));
+    }
     try {
       const result = await action();
       if (cache.epoch === epoch) {
@@ -292,6 +299,10 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
       return null;
     } catch (cause) {
       if (cache.epoch !== epoch) return null;
+      if (optimistic) {
+        setOrder(cache.accept(previous));
+        setHistory(cache.peek<PosHistory>(historyKey, true));
+      }
       if (
         cause instanceof PosError &&
         ["table_occupied", "unknown_table"].includes(cause.code ?? "")
@@ -621,13 +632,15 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
                 onCheckout={() => void payment.prepare()}
                 printing={printing}
                 onVoid={() => void prepareVoid()}
-                onSave={(body) =>
-                  run(() =>
-                    posRequest<PosOrder>(
-                      order ? orderUrl(order.id) : "/api/pos/orders",
-                      order ? "PUT" : "POST",
-                      body,
-                    ),
+                onSave={(body, optimisticNote) =>
+                  run(
+                    () =>
+                      posRequest<PosOrder>(
+                        order ? orderUrl(order.id) : "/api/pos/orders",
+                        order ? "PUT" : "POST",
+                        body,
+                      ),
+                    optimisticNote,
                   )
                 }
               />

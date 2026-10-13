@@ -88,7 +88,10 @@ export function PosEditor({
   currencyCode: string;
   busy: boolean;
   saveError: string | null;
-  onSave: (body: unknown) => Promise<PosOrder | null>;
+  onSave: (
+    body: unknown,
+    optimisticNote?: string | null,
+  ) => Promise<PosOrder | null>;
   onCancel: () => void;
   onError: (error: unknown) => void;
   onCheckout: () => void;
@@ -166,6 +169,7 @@ export function PosEditor({
   const [addedNoticeId, setAddedNoticeId] = useState(0);
   const [discardOpen, setDiscardOpen] = useState(false);
   const [updatedNotice, setUpdatedNotice] = useState<string | null>(null);
+  const [updatedNoticeId, setUpdatedNoticeId] = useState(0);
   const [removeClientOpen, setRemoveClientOpen] = useState(false);
   const reviewListRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -393,6 +397,19 @@ export function PosEditor({
         );
     }
   }
+  function applyNoteSnapshot(current: PosOrder) {
+    setNote(current.note ?? "");
+    setBaseline(current);
+    setBaselineSignature(
+      signature(
+        current.tableLabel,
+        current.location?.id ?? "",
+        draftItems(current),
+        current.tableId ?? null,
+        current.note ?? "",
+      ),
+    );
+  }
   async function saveNote() {
     if (busy || conflict || noteSaving.current || noteText.trim().length > 1000)
       return;
@@ -401,31 +418,34 @@ export function PosEditor({
       setNoteOpen(false);
       return;
     }
+    const previous = baseline;
+    const nextNote = noteText.trim() || null;
     noteSaving.current = true;
-    setUpdatedNotice(null);
+    applyNoteSnapshot({ ...previous, note: nextNote });
+    setNoteOpen(false);
+    setUpdatedNoticeId((current) => current + 1);
+    setUpdatedNotice(nextNote ? "Nota actualizada" : "Nota eliminada");
     try {
-      const result = await onSave({
-        version: baseline.version,
-        tableLabel: baseline.tableLabel,
-        tableId: baseline.tableId ?? null,
-        ...(baseline.location?.id ? { locationId: baseline.location.id } : {}),
-        items: linePayload(draftItems(baseline)),
-        note: noteText.trim() || null,
-      });
-      if (!result) return;
-      setNote(result.note ?? "");
-      setBaseline(result);
-      setBaselineSignature(
-        signature(
-          result.tableLabel,
-          result.location?.id ?? "",
-          draftItems(result),
-          result.tableId ?? null,
-          result.note ?? "",
-        ),
+      const result = await onSave(
+        {
+          version: previous.version,
+          tableLabel: previous.tableLabel,
+          tableId: previous.tableId ?? null,
+          ...(previous.location?.id
+            ? { locationId: previous.location.id }
+            : {}),
+          items: linePayload(draftItems(previous)),
+          note: nextNote,
+        },
+        nextNote,
       );
-      setNoteOpen(false);
-      setUpdatedNotice(result.note ? "Nota actualizada" : "Nota eliminada");
+      if (!result) {
+        applyNoteSnapshot(previous);
+        setUpdatedNotice(null);
+        setNoteOpen(true);
+        return;
+      }
+      applyNoteSnapshot(result);
     } finally {
       noteSaving.current = false;
     }
@@ -963,6 +983,7 @@ export function PosEditor({
           />
         )}
       <ConfirmationToast
+        key={updatedNoticeId}
         message={updatedNotice}
         onDismiss={() => setUpdatedNotice(null)}
       />
@@ -1068,7 +1089,7 @@ export function PosEditor({
               setAddedNotice(false);
               setDiscardOpen(false);
               changeSurface("order");
-              setUpdatedNotice(false);
+              setUpdatedNotice(null);
             }}
           >
             Descartar cambios
