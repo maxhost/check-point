@@ -115,6 +115,26 @@ describe.skipIf(!modulesIntegrationEnabled)("Modulo Stock (spec 0210)", () => {
     expect(limited).toHaveLength(1);
   }, 120_000);
 
+  it("un ajuste posterior no cuenta como compra: la compra mas nueva entre medio actualiza el costo", async () => {
+    const day = 24 * 60 * 60 * 1000;
+    const item = await newItem(world, "Crema");
+    await buy(world, item.id, {
+      quantity: 1000,
+      totalCost: 2,
+      occurredAt: new Date(Date.now() - 2 * day).toISOString(),
+    });
+    expect(
+      (await api.adjust(world.cookie, item.id, { countedQuantity: 500 }))
+        .status,
+    ).toBe(201);
+    await buy(world, item.id, {
+      quantity: 1000,
+      totalCost: 4,
+      occurredAt: new Date(Date.now() - day).toISOString(),
+    });
+    expect(await lastUnitCost(item.id)).toBe("0.004000");
+  }, 120_000);
+
   it("ajuste: deja onHand = contado (delta sobre el saldo actual)", async () => {
     const item = await newItem(world, "Azucar");
     await buy(world, item.id, { quantity: "1000", totalCost: "1.50" });

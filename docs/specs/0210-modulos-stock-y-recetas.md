@@ -1,7 +1,7 @@
 ---
 spec: 0210
 fecha: 2026-10-12
-estado: cerrada
+estado: implementada
 resumen: Registro de modulos (ADR 0138) + modulo Stock (insumos, compras a mano, ajustes, stock estimado) + modulo Recetas (receta por producto del catalogo → costo y margen). Solo API, servidor y base (migracion 0074); pantallas de GPT.
 disjunta: si
 archivos: packages/db/src/schema/modules/**, packages/db/src/schema/business-module.ts, packages/db/src/schema.ts, packages/db/drizzle.config.ts, packages/db/drizzle/0074_*, apps/merchant/src/modules/**, apps/merchant/src/app/api/modules/**
