@@ -1,7 +1,7 @@
 ---
 spec: 0208
 fecha: 2026-10-12
-estado: cerrada
+estado: implementada
 resumen: Aplicar Club cotidiano y paleta A aprobados en mocks0207 a login, inscripción y confirmación reales.
 disjunta: si
 archivos: apps/consumer/src/app/(consumer)/consumer-entry*, apps/consumer/src/app/(consumer)/entry-*, apps/consumer/src/app/(consumer)/provider-buttons*, apps/consumer/src/app/(consumer)/wallet/page*, apps/consumer/src/app/(consumer)/enroll/**, apps/consumer/public/fonts/**, tests/e2e/wallet-entry*, tests/e2e/support/wallet-entry*, docs/qa/0208/**, apps/consumer/DESIGN.md, apps/consumer/PRODUCT.md, apps/consumer/.impeccable/**
@@ -53,7 +53,7 @@ Confirmación: Ya eres parte + negocio, sello coral, explicación e instruccione
 - [x] Unit existentes14/14, sin base de producción; bienvenida merchant mecánica7/7 posterior.
 - [x] E2E11/11 con rutas simuladas;1/1 posterior cubre limpieza del error al instalar.
 - [x] Capturas390/1440, overflow320/360/390/430/1440 y loginNext real200, sin erroresJS; review independiente cerrada.
-- [x] `pnpm verify` una ejecución; tabla real y motivosROJO registrados en `docs/qa/0208/README.md`. No se afirma verifyverde: gate general pendiente antes de publicación.
+- [x] Verificación inicial y su tabla ROJO conservadas. Para el merge solicitado posteriormente: `CI=true pnpm verify --base main` en checkout aislado terminó `verify: ok`; tabla final en `docs/qa/0208/README.md`.
 - [x] `git diff --check` verde; ninguna API/servidor/paquete/kit cambiado.
 
 ## Mutaciones — presupuesto: 0
@@ -70,4 +70,4 @@ Un implementador, revisión independiente Impeccable con capturas y contrato. Ow
 
 ## Abierto
 
-Sin decisiones de producto abiertas: mocks y diseño real aprobados. UI implementada local; e2e general pendiente, sin publicación: colisiona con Nextdev3200. Formato general posterior0; el único test unit/Neon fallido por copy fue corregido y7/7 específico pasó. La implementación permanece sin commit; no hay merge/push/deploy.
+Sin decisiones abiertas ni gates pendientes del merge. UI `04159ea`, preparación de imágenes lazy del e2e `0ddf72a`. Owner pidió merge; main local recibió ambos por fast-forward y coincide con dev en `0ddf72a` antes del cierre documental. Verify final CI verde en checkout aislado. Sin push/deploy; OAuth e instalación en teléfono físico conservan su QA posterior.

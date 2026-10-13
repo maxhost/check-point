@@ -3,7 +3,17 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — ENTRADA WALLET0208 APLICADA LOCAL Y APROBADA (2026-10-12)
+## ESTADO — WALLET0208 COMMITEADA Y MERGE LOCAL A MAIN (2026-10-12)
+
+Owner aprobó diseño y pidió merge. UI, mocks y evidencia en `04159ea6f99dc86c722afee2b67be12dbe0820f1`; preparación de imágenes lazy del e2e público en `0ddf72ae7702f35d10d3b6fe28ca2d98439bb563`. Main local avanzó por fast-forward `7f2d757` → `0ddf72a`; SHA main/dev confirmado idéntico. El cierre documental se incorpora con un segundo FF. Sin push ni deploy. Checkout habitual permanece dev y sus servidores no se apagaron ni cambiaron.
+
+Verify final verde: `CI=true pnpm verify --base main` en `/private/tmp/checkpass-wallet-0208-merge`, dependencias319 offline y entornos locales copiados sin imprimir valores. Tipos/lint/guardia/formato/unit/build/e2e/Neon relacionados todos0; tabla real en `docs/qa/0208/README.md`, log `/private/tmp/0208-merge-verify-ci.log`. Unit2530pasaron/1091saltados; e2e322pasaron/62saltados (config CI), sin errores/flaky. Neon relacionado merchant7/7 y consumer19/19 vía wrapper protegido, no producción. El fallo anterior de copy ya estaba corregido; se activaron imágenes lazy antes de medirlas, sin cambiar la landing ni sus aserciones. Diagnóstico y prueba específica1/1 confirmados. Intentos anteriores ROJO quedan documentados; no se confunden con el gate final verde.
+
+Entrada /wallet sin sesión, enroll sin/con sesión/ya miembro/no disponible y ready/install con Club cotidiano+paletaA y NunitoSans local. Google/Apple, consentimiento explícito, programId/loc, manifest, ofertas y avisos conservados. Wallet interna/API/servidor/paquetes/kit sin cambios. Revisión visual owner y reviewer independiente aprobadas; OAuth/instalación en teléfono físico no probados por el owner. Spec0208 implementada, INDEX cerrado a merge local.
+
+Pendiente: publicación solo si la solicita el owner. Main ya incluía el trabajo de Claude0073, sin migrar PROD según su estado: coordinar antes de un eventual push, no migrado por GPT. Worktree de verificación queda detached; mock58407 y servidores3200/3201 preservados. Skills/config/assets ajenos sin seguimiento no entraron al commit.
+
+## HISTÓRICO — ENTRADA WALLET0208 APLICADA LOCAL Y APROBADA (2026-10-12)
 
 Owner aprobó mock0207 y pidió aplicarlo. Implementada entrada sin sesión en /wallet, inscripción sin/con sesión/ya miembro/no disponible y confirmación/install en enroll/ready. Club cotidiano+paletaA, NunitoSans local con OFL, marcaC real, logo/nombre reales o inicial. URLsprograma/local y ordenGoogle/Apple, POST201/409/401/errores/red, manifest y notificaciones conservados. CSS module aislado; wallet interna/API/servidor/paquetes/kit sin cambios. Reserva0208 `3b3af23` en dev; implementación SIN commit/merge/push/deploy. Owner dice «está perfecto» visualmente; no puede probarlocal.
 

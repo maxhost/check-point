@@ -17,7 +17,7 @@ Fuente NunitoSans autohospedada con OFL en `apps/consumer/public/fonts`. CSS mod
 - Ajuste mecánico de dos aserciones de copy en `apps/merchant/src/app/backoffice/marketing/welcome-ui.test.ts` según §6 rotura cruzada;7/7 posteriores en verde, sin quitar protección contra revelar el premio.
 - Revisión visual owner aprobada; el owner indicó que no puede probar el recorrido en local. OAuth/instalación en dispositivo físico no comprobados.
 
-## Verify general — única ejecución
+## Verify general — ejecución durante implementación
 
 Log íntegro local `/private/tmp/0208-verify.log`. La tabla ejecutada, sin reinterpretar el estado:
 
@@ -38,6 +38,30 @@ Formato general señaló JSONs generados de Impeccable; fueron normalizados y `p
 
 `pnpm verify` terminóROJO: no se presenta una corrida completa verde. Antes de publicación, cerrar la suitee2e general en un ambiente sin la colisión de Next. Formato y el único test fallido de copy ya se confirmaron verdes por separado. No se repitió la suite global tras corregir los controles puntuales.
 
-## Entrega
+## Cierre de merge solicitado por el owner
+
+UI y evidencia guardadas en `04159ea6f99dc86c722afee2b67be12dbe0820f1`. El owner autorizó merge local a main. Checkout aislado `/private/tmp/checkpass-wallet-0208-merge`, dependencias319 reutilizadas offline y entornos locales copiados sin mostrar valores; servidores del checkout habitual intactos.
+
+La verificación frente a main detectó un fallo de preparación del test de la landing: imágenes lazy medidas sin activar su carga. Se añadió `scrollIntoViewIfNeeded` en `tests/e2e/landing.spec.ts`, sin modificar la landing ni aflojar la aserción, commit `0ddf72ae7702f35d10d3b6fe28ca2d98439bb563`. Diagnóstico de navegador confirmó200 y ancho natural positivo de las tres imágenes; prueba específica posterior1/1 pasó. Los intentos locales anteriores se mantienen en sus logs.
+
+Confirmación final bajo configuración CI existente (un worker y reintentos acotados): `CI=true pnpm verify --base main`, salida0 y **verify: ok**. Log `/private/tmp/0208-merge-verify-ci.log`.
+
+| Gate | Resultado | Segundos |
+|---|---|---|
+| typecheck | ok |2.2|
+| lint | ok |6.9|
+| ui-guard | ok |0.6|
+| format:check | ok |8.0|
+| test | ok |40.3|
+| build | ok |24.7|
+| test:e2e | ok |216.8|
+| neon related merchant | ok |5.8|
+| neon related consumer | ok |3.2|
+
+Unit generales2530pasaron/1091saltados. E2E384planificados,322pasaron/62saltados según la configuración CI; sin anotaciones de errores/flaky. Relacionados vía tools/neon-test.sh: merchant7/7 y consumer19/19, URLsCI protegidas. No se probó la base de producción.
+
+Main local avanzó `7f2d757` → `0ddf72a` por fast-forward desde el checkout aislado; SHA main/dev confirmado idéntico. Cierre documental se incorpora con otro fast-forward. Checkout habitual sigue dev; servidores y archivos locales ajenos preservados. Sin push/deploy. No se repiten suites para este cierre solo documental.
+
+## Entrega inicial (histórico)
 
 Cambios locales sin commit de implementación, merge, push ni deploy. Reserva de spec0208: `3b3af23`. Diseño aprobado; pendiente cierre de gates generales y publicación solicitada aparte. Los next-env.d.ts generados por build se restauran a la versión inicial; los servidores locales del owner permanecen.
