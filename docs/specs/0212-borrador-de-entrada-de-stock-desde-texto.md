@@ -81,7 +81,7 @@ de guard como el resto (401/403/402, 403 `module_disabled`).
 
 `apps/merchant/src/modules/stock/draft-provider.ts`: interfaz `StockDraftProvider { id; model; draft(input) }`.
 Resolucion por entorno, mismo patron que `catalogExtractionProviderFromEnv`: `STOCK_DRAFT_PROVIDER` (si falta, el de
-`CATALOG_EXTRACTION_PROVIDER`; si falta, `fake`), `STOCK_DRAFT_MODEL` (default `gpt-5-mini`), `OPENAI_API_KEY`.
+`CATALOG_EXTRACTION_PROVIDER`; si falta, `fake`), `STOCK_DRAFT_MODEL` (default `gpt-6-luna`), `STOCK_DRAFT_REASONING_EFFORT` (opcional), `OPENAI_API_KEY`.
 `openai` sin clave → `draft_unavailable` (sin fallback silencioso al falso). OpenAI: Responses API **sincrona** (sin
 `background`; un texto corto entra en el tiempo de una funcion), `store: false`, `text.format` `json_schema` strict.
 El falso (`fake`) devuelve un borrador vacio con todo el texto en `unparsed`: nunca inventa lineas.
@@ -127,3 +127,20 @@ invalido) y **fuga entre comercios**. Presupuesto: < 5 min.
    503 `draft_unavailable` y fila `failed`; texto vacio → 422 sin fila; modulo apagado → 403.
 3. Sin llamadas reales a OpenAI en los tests. La prueba con el modelo real es QA del owner con frases reales.
 4. typecheck + lint del paquete.
+
+## Modelo (banco 2026-10-12, owner: «pasemos el dictado a luna y optimicemos y volvamos a medir»)
+
+6 frases (las del owner + litros con coma decimal, bolsas de 25 kg, docena, «no compre nada»), mismas en cada
+configuracion, contra la API real:
+
+| Configuracion | Aciertos | Tiempo prom. | Entrada / salida prom. | Costo por analisis* |
+|---|---|---|---|---|
+| `gpt-5-mini` | 5/6 | 7,0 s | 883 / 944 | ~$0,0021 |
+| `gpt-6-luna` | 5/6 | 3,0 s | 883 / 184 | ~$0,00018 |
+| `gpt-6-luna` effort `low` | 5/6 | 2,9 s | 883 / 156 | ~$0,00017 |
+| `gpt-6-luna` effort `minimal` | — | — | — | 400: no lo acepta |
+
+\*Precios de agregadores (no de la pagina oficial): `gpt-5-mini` $0,25/$2,00 y `gpt-6-luna` $0,10/$0,50 por 1M.
+La unica falla, igual en todos: «una docena de huevos y 250 gramos de jamon cocido por 5,20» deja el precio sin
+asignar (frase ambigua: no dice a que linea va el precio). Default: `gpt-6-luna` sin effort. La sonda vive en el
+scratchpad de la sesion; no es un test del repo (llama a la API paga).

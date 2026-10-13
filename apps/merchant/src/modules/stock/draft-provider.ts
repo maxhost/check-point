@@ -45,7 +45,7 @@ export class FakeStockDraftProvider implements StockDraftProvider {
   }
 }
 
-/** `STOCK_DRAFT_PROVIDER` (o el del catalogo, o `fake`). `openai` sin clave TIRA: sin fallback
+/** `STOCK_DRAFT_PROVIDER` (o el del catalogo, o `fake`); `STOCK_DRAFT_MODEL`, `STOCK_DRAFT_REASONING_EFFORT`. `openai` sin clave TIRA: sin fallback
  * silencioso al falso, que le mostraria al dueño un analisis vacio con cara de real. */
 export function stockDraftProviderFromEnv(
   env: NodeJS.ProcessEnv = process.env,
@@ -56,9 +56,12 @@ export function stockDraftProviderFromEnv(
   if (id === "openai") {
     const apiKey = env.OPENAI_API_KEY ?? "";
     if (!apiKey) throw new DraftProviderUnavailableError("missing_api_key");
+    // Default `gpt-6-luna` (banco del 2026-10-12, 6 frases: mismos aciertos que `gpt-5-mini`, 3,0 s
+    // contra 7,0 s y ~12 veces mas barato por analisis). `minimal` no lo acepta (400).
     return new OpenAiStockDraftProvider(
-      env.STOCK_DRAFT_MODEL ?? "gpt-5-mini",
+      env.STOCK_DRAFT_MODEL ?? "gpt-6-luna",
       apiKey,
+      env.STOCK_DRAFT_REASONING_EFFORT || null,
     );
   }
   throw new DraftProviderUnavailableError("unknown_provider");

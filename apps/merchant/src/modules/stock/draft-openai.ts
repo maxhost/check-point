@@ -69,6 +69,8 @@ export class OpenAiStockDraftProvider implements StockDraftProvider {
   constructor(
     readonly model: string,
     private readonly apiKey: string,
+    /** `reasoning.effort` de la Responses API; null = el default del modelo. */
+    private readonly reasoningEffort: string | null = null,
     private readonly baseUrl = "https://api.openai.com/v1",
   ) {}
 
@@ -87,6 +89,9 @@ export class OpenAiStockDraftProvider implements StockDraftProvider {
       body: JSON.stringify({
         model: this.model,
         store: false,
+        ...(this.reasoningEffort
+          ? { reasoning: { effort: this.reasoningEffort } }
+          : {}),
         tools: [],
         input: [
           { role: "system", content: PROMPT },
@@ -106,7 +111,14 @@ export class OpenAiStockDraftProvider implements StockDraftProvider {
       }),
     });
     if (!response.ok) {
-      console.warn("stock_draft_openai_failed", { status: response.status });
+      const payload = (await response.json().catch(() => null)) as {
+        error?: { code?: unknown; param?: unknown };
+      } | null;
+      console.warn("stock_draft_openai_failed", {
+        status: response.status,
+        code: payload?.error?.code,
+        param: payload?.error?.param,
+      });
       throw new Error(`openai_http_${response.status}`);
     }
     const body = (await response.json()) as Record<string, unknown>;
