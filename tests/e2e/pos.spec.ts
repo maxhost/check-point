@@ -31,6 +31,7 @@ const product = {
 const baseOrder: PosOrder = {
   id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
   tableLabel: "Mesa 4",
+  note: null,
   status: "open",
   version: 1,
   location: { id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1", name: "Centro" },
@@ -270,6 +271,7 @@ test("crear en pasos con precio de catálogo; editar conserva snapshot y lineId;
   await expect(page.getByRole("heading", { name: "Mesa 4" })).toBeVisible();
   expect(createBody).toEqual({
     tableLabel: "Mesa 4",
+    note: null,
     locationId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1",
     items: [{ productId: "custom", quantity: 1 }],
   });
@@ -3575,5 +3577,210 @@ for (const width of [390, 320]) {
       page.getByRole("button", { name: "Cobrar", exact: true }),
     ).toBeEnabled();
     expect(writes).toEqual([]);
+  });
+}
+
+for (const width of [390, 1280]) {
+  test(`0209 nota en pasos 2 y 3, crear, editar, conservar y borrar (${width})`, async ({
+    page,
+  }) => {
+    await setup(page);
+    await page.setViewportSize({ width, height: 844 });
+    let current = { ...baseOrder };
+    const writes: Record<string, unknown>[] = [];
+    await page.route("**/api/pos/orders", (route) => {
+      if (route.request().method() === "POST") {
+        const body = route.request().postDataJSON();
+        writes.push(body);
+        current = { ...current, note: body.note };
+        return route.fulfill({ status: 201, json: current });
+      }
+      return route.fulfill({ json: { open: [], closedToday: [] } });
+    });
+    await page.route(`**/api/pos/orders/${baseOrder.id}`, (route) => {
+      if (route.request().method() === "PUT") {
+        const body = route.request().postDataJSON();
+        writes.push(body);
+        current = {
+          ...current,
+          version: current.version + 1,
+          tableLabel: body.tableLabel,
+          ...(Object.hasOwn(body, "note") ? { note: body.note } : {}),
+        };
+      }
+      return route.fulfill({ json: current });
+    });
+    await page.goto(harness.url);
+    await page
+      .getByRole("button", { name: "Nueva orden", exact: true })
+      .click();
+    await fillTable(page, "Mesa 4");
+    await page
+      .getByRole("button", { name: "Tomar pedido", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "Agregar Especial", exact: true })
+      .click();
+    const noteButton = page.getByRole("button", { name: /^Nota de la orden/ });
+    const dialog = page.getByRole("dialog", {
+      name: "Nota de la orden",
+      exact: true,
+    });
+    const field = dialog.getByRole("textbox", { name: "Nota", exact: true });
+    await noteButton.click();
+    await expect(field).toBeFocused();
+    await field.fill("x".repeat(1001));
+    await expect(
+      dialog.getByRole("button", { name: "Aplicar nota" }),
+    ).toBeDisabled();
+    await expect(
+      dialog.getByText(
+        "La nota admite hasta 1000 caracteres. Acorta el texto para continuar.",
+      ),
+    ).toBeVisible();
+    await field.fill("x".repeat(1000));
+    await expect(
+      dialog.getByRole("button", { name: "Aplicar nota" }),
+    ).toBeEnabled();
+    await field.fill("  Ana Pérez\nCédula: 1234567890\nana@example.com  ");
+    await page.screenshot({
+      path: `/private/tmp/0209-note-${width}.png`,
+      fullPage: true,
+    });
+    await dialog.getByRole("button", { name: "Aplicar nota" }).click();
+    await page
+      .getByRole("button", { name: "Revisar pedido", exact: true })
+      .click();
+    await noteButton.click();
+    await expect(field).toHaveValue(
+      "Ana Pérez\nCédula: 1234567890\nana@example.com",
+    );
+    await field.fill("No guardar");
+    await dialog.getByRole("button", { name: "Cancelar", exact: true }).click();
+    await noteButton.click();
+    await expect(field).toHaveValue(
+      "Ana Pérez\nCédula: 1234567890\nana@example.com",
+    );
+    await page.keyboard.press("Escape");
+    await expect(noteButton).toBeFocused();
+    await page
+      .getByRole("button", { name: "Guardar pedido", exact: true })
+      .click();
+    await expect(
+      page.getByRole("button", { name: "Cobrar", exact: true }),
+    ).toBeVisible();
+    expect(writes[0].note).toBe(
+      "Ana Pérez\nCédula: 1234567890\nana@example.com",
+    );
+    await noteButton.click();
+    await field.fill("Nota pendiente");
+    await dialog.getByRole("button", { name: "Aplicar nota" }).click();
+    await editContext(page);
+    await fillTable(page, "Mesa 5");
+    expect(writes[1]).not.toHaveProperty("note");
+    await noteButton.click();
+    await expect(field).toHaveValue("Nota pendiente");
+    await page.keyboard.press("Escape");
+    await page
+      .getByRole("button", { name: "Guardar cambios", exact: true })
+      .click();
+    await expect(
+      page.getByRole("button", { name: "Cobrar", exact: true }),
+    ).toBeVisible();
+    expect(writes[2]).toMatchObject({ version: 2, note: "Nota pendiente" });
+    await page.getByRole("radio", { name: "Editar", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Agregar un Café", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "Guardar cambios", exact: true })
+      .click();
+    await expect(
+      page.getByRole("button", { name: "Cobrar", exact: true }),
+    ).toBeVisible();
+    expect(writes[3]).not.toHaveProperty("note");
+    await noteButton.click();
+    await field.fill("   \n   ");
+    await dialog.getByRole("button", { name: "Aplicar nota" }).click();
+    await page
+      .getByRole("button", { name: "Guardar cambios", exact: true })
+      .click();
+    await expect(
+      page.getByRole("button", { name: "Cobrar", exact: true }),
+    ).toBeVisible();
+    expect(writes[4]).toMatchObject({ version: 4, note: null });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+  });
+}
+
+test("0209 conflicto de nota conserva borrador y permite revisar la nota vigente", async ({
+  page,
+}) => {
+  await setup(page);
+  await page.route(`**/api/pos/orders/${baseOrder.id}`, (route) =>
+    route.request().method() === "PUT"
+      ? route.fulfill({
+          status: 409,
+          json: {
+            code: "version_conflict",
+            error: "Conflicto",
+            order: { ...baseOrder, version: 2, note: "Nota de otro operador" },
+          },
+        })
+      : route.fulfill({ json: baseOrder }),
+  );
+  await open(page);
+  await page.getByRole("button", { name: /^Nota de la orden/ }).click();
+  await page
+    .getByRole("textbox", { name: "Nota", exact: true })
+    .fill("Mi nota");
+  await page.getByRole("button", { name: "Aplicar nota" }).click();
+  await page
+    .getByRole("button", { name: "Guardar cambios", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: /^Nota de la orden/ }),
+  ).toBeDisabled();
+  await page.getByRole("button", { name: "Revisar versión actual" }).click();
+  await expect(page.getByText("Nota: Mi nota", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("Nota: Nota de otro operador", { exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Usar versión actual" }).click();
+  await page.getByRole("button", { name: /^Nota de la orden/ }).click();
+  await expect(
+    page.getByRole("textbox", { name: "Nota", exact: true }),
+  ).toHaveValue("Nota de otro operador");
+});
+
+for (const status of ["closed", "voided"] as const) {
+  test(`0209 nota de orden ${status} es solo lectura`, async ({ page }) => {
+    await setup(page);
+    await page.route(`**/api/pos/orders/${baseOrder.id}`, (route) =>
+      route.fulfill({
+        json: {
+          ...baseOrder,
+          status,
+          note: "Factura para Ana\nDirección: Quito",
+        },
+      }),
+    );
+    await open(page);
+    await expect(
+      page.getByRole("heading", { name: "Nota de la orden", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Factura para Ana\nDirección: Quito", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /^Nota de la orden/ }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("textbox", { name: "Nota", exact: true }),
+    ).toHaveCount(0);
   });
 }

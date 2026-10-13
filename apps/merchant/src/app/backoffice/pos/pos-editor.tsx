@@ -5,6 +5,7 @@ import {
   EditPencil as Pen,
   MoreVert,
   NavArrowLeft,
+  Notes,
   Printer,
   QrCode,
   Trash,
@@ -18,6 +19,7 @@ import {
   Heading,
   SegmentedControl,
   Text,
+  TextAreaField,
 } from "../../../ui";
 import { catalogKey, DiscardedPosRead, PosCache } from "./pos-cache";
 import { ConfirmationToast } from "../../components/confirmation-toast";
@@ -49,8 +51,15 @@ function signature(
   location: string,
   lines: DraftLine[],
   tableId: string | null,
+  note: string,
 ) {
-  return JSON.stringify([table.trim(), location, linePayload(lines), tableId]);
+  return JSON.stringify([
+    table.trim(),
+    location,
+    linePayload(lines),
+    tableId,
+    note.trim(),
+  ]);
 }
 export function PosEditor({
   order,
@@ -104,12 +113,16 @@ export function PosEditor({
     order ? draftItems(order) : [],
   );
   const [baseline, setBaseline] = useState(order);
+  const [note, setNote] = useState(order?.note ?? "");
+  const [noteOpen, setNoteOpen] = useState(false);
+  const [noteText, setNoteText] = useState("");
   const [baselineSignature, setBaselineSignature] = useState(() =>
     signature(
       order?.tableLabel ?? "",
       initialLocation,
       order ? draftItems(order) : [],
       order?.tableId ?? null,
+      order?.note ?? "",
     ),
   );
   const [surface, setSurface] = useState<"table" | "products" | "order">(
@@ -183,7 +196,7 @@ export function PosEditor({
   const allowExit = useRef(false);
   const scrollPositions = useRef({ table: 0, products: 0, order: 0 });
   const dirty =
-    signature(table, locationId, lines, tableId) !== baselineSignature;
+    signature(table, locationId, lines, tableId, note) !== baselineSignature;
   const conflict = !!order && !!baseline && order.version !== baseline.version;
   const count = lines.reduce((sum, line) => sum + line.quantity, 0);
   const total =
@@ -232,6 +245,7 @@ export function PosEditor({
     setTableId(current.tableId ?? null);
     setLocationId(nextLocation);
     setLines(nextLines);
+    setNote(current.note ?? "");
     setBaseline(current);
     setBaselineSignature(
       signature(
@@ -239,6 +253,7 @@ export function PosEditor({
         nextLocation,
         nextLines,
         current.tableId ?? null,
+        current.note ?? "",
       ),
     );
     setReviewOpen(false);
@@ -359,6 +374,9 @@ export function PosEditor({
       ...(tableId ? { tableId } : order ? { tableId: null } : {}),
       ...(locationId ? { locationId } : {}),
       items: linePayload(lines),
+      ...(!order || note.trim() !== (baseline?.note ?? "")
+        ? { note: note.trim() || null }
+        : {}),
     });
     if (!result) return;
     apply(result);
@@ -375,6 +393,7 @@ export function PosEditor({
     setUpdatedNotice(false);
     const draftLines = lines;
     const draftRemoved = removedLines;
+    const draftNote = note;
     const savedLines = draftItems(baseline);
     const preserveProducts =
       JSON.stringify(linePayload(lines)) !==
@@ -389,6 +408,7 @@ export function PosEditor({
       });
       if (!result) return;
       apply(result);
+      setNote(draftNote);
       if (preserveProducts) {
         setLines(draftLines);
         setRemovedLines(draftRemoved);
@@ -434,6 +454,22 @@ export function PosEditor({
         setTable(name);
       }}
     />
+  );
+  const noteButton = (
+    <Button
+      variant="quiet"
+      aria-label={note ? "Nota de la orden: nota añadida" : "Nota de la orden"}
+      aria-haspopup="dialog"
+      aria-expanded={noteOpen}
+      className={`close-module size-12 shrink-0 rounded-full! p-0! ${note ? "bg-primary! text-on-primary!" : "bg-primary-soft!"}`}
+      isDisabled={busy || conflict}
+      onPress={() => {
+        setNoteText(note);
+        setNoteOpen(true);
+      }}
+    >
+      <Notes aria-hidden="true" className="size-6" />
+    </Button>
   );
   return (
     <div
@@ -779,6 +815,7 @@ export function PosEditor({
                 >
                   Guardar cambios
                 </Button>
+                {noteButton}
                 <Button
                   variant="danger"
                   aria-label="Descartar cambios"
@@ -835,6 +872,7 @@ export function PosEditor({
               >
                 <QrCode aria-hidden="true" className="size-6" />
               </Button>
+              {noteButton}
               {printing.enabled && (
                 <Button
                   variant="quiet"
@@ -869,24 +907,30 @@ export function PosEditor({
             </Button>
           </>
         ) : surface === "products" ? (
-          <Button
-            fullWidth
-            isDisabled={busy}
-            onPress={() => changeSurface("order")}
-          >
-            Revisar pedido
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button
+              className="h-12 min-w-0 flex-1"
+              isDisabled={busy}
+              onPress={() => changeSurface("order")}
+            >
+              Revisar pedido
+            </Button>
+            {noteButton}
+          </div>
         ) : (
           <>
             {invalid && <Text variant="small">{invalid}</Text>}
-            <Button
-              fullWidth
-              isLoading={busy}
-              isDisabled={!!invalid}
-              onPress={() => void save()}
-            >
-              Guardar pedido
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button
+                className="h-12 min-w-0 flex-1"
+                isLoading={busy}
+                isDisabled={!!invalid}
+                onPress={() => void save()}
+              >
+                Guardar pedido
+              </Button>
+              {noteButton}
+            </div>
           </>
         )}
       </div>
@@ -904,6 +948,42 @@ export function PosEditor({
         message={updatedNotice ? "Pedido actualizado" : null}
         onDismiss={() => setUpdatedNotice(false)}
       />
+      <Dialog
+        isOpen={noteOpen}
+        onOpenChange={setNoteOpen}
+        title="Nota de la orden"
+        description="Añade los datos para la factura u otra información del pedido. La nota se guardará cuando guardes el pedido o los cambios."
+      >
+        <div className="grid gap-4">
+          <TextAreaField
+            label="Nota"
+            autoFocus
+            value={noteText}
+            onChange={setNoteText}
+            isDisabled={busy || conflict}
+            description={`${noteText.trim().length} de 1000 caracteres`}
+            errorMessage={
+              noteText.trim().length > 1000
+                ? "La nota admite hasta 1000 caracteres. Acorta el texto para continuar."
+                : undefined
+            }
+          />
+          <div className="flex justify-end gap-3">
+            <Button variant="secondary" onPress={() => setNoteOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              isDisabled={busy || conflict || noteText.trim().length > 1000}
+              onPress={() => {
+                setNote(noteText.trim());
+                setNoteOpen(false);
+              }}
+            >
+              Aplicar nota
+            </Button>
+          </div>
+        </div>
+      </Dialog>
       <Dialog
         isOpen={removeClientOpen}
         onOpenChange={(open) => {
@@ -1107,6 +1187,9 @@ export function PosEditor({
         <div className="grid gap-4">
           <div>
             <Heading level={3}>Tus cambios · {table}</Heading>
+            <Text className="whitespace-pre-wrap wrap-anywhere">
+              Nota: {note || "Sin nota"}
+            </Text>
             {lines.map((line) => (
               <Text key={line.key}>
                 {line.quantity} × {line.name} ·{" "}
@@ -1116,6 +1199,9 @@ export function PosEditor({
           </div>
           <div>
             <Heading level={3}>Versión actual · {order?.tableLabel}</Heading>
+            <Text className="whitespace-pre-wrap wrap-anywhere">
+              Nota: {order?.note || "Sin nota"}
+            </Text>
             {order?.items.map((line) => (
               <Text key={line.lineId}>
                 {line.quantity} × {line.name} ·{" "}

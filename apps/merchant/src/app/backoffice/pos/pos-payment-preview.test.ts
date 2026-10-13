@@ -7,6 +7,7 @@ const order: PosOrder = {
   version: 1,
   status: "open",
   tableLabel: "Mesa",
+  note: null,
   location: null,
   business: { name: "Café", currencyCode: "USD" },
   items: [

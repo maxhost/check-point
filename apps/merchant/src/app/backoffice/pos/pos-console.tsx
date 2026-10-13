@@ -646,6 +646,14 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
                 <Card className="grid gap-5 print:border-0 print:p-0 print:shadow-none">
                   <PosResult order={order} />
                   <PosTicket order={order} />
+                  {order.note && (
+                    <div className="grid gap-2 print:hidden">
+                      <Heading level={3}>Nota de la orden</Heading>
+                      <Text className="whitespace-pre-wrap wrap-anywhere">
+                        {order.note}
+                      </Text>
+                    </div>
+                  )}
                   <div className="flex flex-wrap gap-3 print:hidden">
                     {printing.enabled && (
                       <Button

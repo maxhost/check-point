@@ -26,6 +26,7 @@ export type PosOrder = {
   status: "open" | "closed" | "voided";
   version: number;
   tableLabel: string;
+  note: string | null;
   /** Optional for older cached snapshots; the current API always supplies it. */
   tableId?: string | null;
   location: PosLocation | null;
