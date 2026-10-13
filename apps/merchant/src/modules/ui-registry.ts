@@ -13,6 +13,9 @@ import { RecipesConsole } from "./recipes/ui/recipes-console";
  */
 export type ModuleScreens = {
   screens: Readonly<Record<string, ComponentType>>;
+  /** Spec 0220 / ADR 0141 §3 — el panel que abre el boton del modulo en Locales (si el manifiesto
+   * declara `locationAction`). */
+  locationPanel?: ComponentType<{ location: { id: string; name: string } }>;
 };
 
 export const UI_SCREENS: Readonly<Record<string, ModuleScreens>> = {

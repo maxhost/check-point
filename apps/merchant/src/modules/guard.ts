@@ -5,6 +5,7 @@ import { apiOwnerFailureResponse } from "../server/api-owner";
 import { requireApiPermission } from "../server/api-permission";
 import { ModuleError, moduleErrorResponse } from "./errors";
 import type { NextResponse } from "next/server";
+import type { ModuleRouteContext } from "./route-table";
 
 /**
  * Spec 0210 / 0216 — ADR 0138 §6 y ADR 0139 §4 — EL GUARD DE LAS RUTAS DE UN MODULO.
@@ -40,7 +41,8 @@ export async function requireModule(
 }
 
 export type ModuleAccess =
-  { business: { id: string }; userId: string } | { response: NextResponse };
+  | { business: ModuleRouteContext["business"]; userId: string }
+  | { response: NextResponse };
 
 export async function requireModuleAccess(
   request: Request,
@@ -61,5 +63,6 @@ export async function requireModuleAccess(
       response: moduleErrorResponse(error, "No pudimos leer el módulo."),
     };
   }
-  return { business: { id: auth.business.id }, userId: auth.userId };
+  const { id, currencyCode, status } = auth.business;
+  return { business: { id, currencyCode, status }, userId: auth.userId };
 }

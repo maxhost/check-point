@@ -2,12 +2,15 @@
  * Spec 0216 / ADR 0139 §3 — LA TABLA DE RUTAS DE API DE UN MODULO y como se busca una ruta en ella.
  * Puro: lo usan `modules/<id>/server/routes.ts` (que declaran la tabla), el despachador y los tests.
  */
+import type { DbTransaction } from "@mi-pasaporte/db";
+import type { ModuleError } from "./errors";
 
 export type ModuleMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 export type ModuleRouteContext = {
   request: Request;
-  business: { id: string };
+  /** ADR 0141 §8: lo que ya trae la escalera de acceso; los handlers no lo vuelven a leer. */
+  business: { id: string; currencyCode: string; status: string };
   userId: string;
   /** Los `:param` del patron, ya decodificados por Next. */
   params: Record<string, string>;
@@ -20,9 +23,26 @@ export type ModuleRoute = {
   path: string;
   /** El permiso que exige la ruta. Por defecto, el primero que declara el manifiesto. */
   permission?: string;
+  /** ADR 0141 §7 — SOLO EL OWNER: el despachador aplica `requireApiOwner` en vez del permiso, y
+   * despues el modulo encendido. Excluye `permission` (`modules-boundary.test.ts`). */
+  owner?: true;
   /** El mensaje del 503 si el handler falla con algo que no es un `ModuleError`. */
   failure: string;
   handler: (context: ModuleRouteContext) => Promise<Response>;
+};
+
+/** ADR 0141 §4 — la regla para no apagarse. La llama el toggle del core al APAGAR, dentro de su
+ * transaccion y bajo su lock exclusivo, despues de `module_required_by`. Un error devuelto ES la
+ * respuesta; `null` deja apagar. */
+export type BeforeDisable = (
+  tx: DbTransaction,
+  businessId: string,
+) => Promise<ModuleError | null>;
+
+/** Lo que un modulo aporta a `server-registry.ts`: sus rutas y, si las tiene, sus reglas. */
+export type ModuleServer = {
+  routes: readonly ModuleRoute[];
+  beforeDisable?: BeforeDisable;
 };
 
 export type RouteMatch =
