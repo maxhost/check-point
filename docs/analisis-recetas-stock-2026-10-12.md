@@ -110,3 +110,32 @@ que ninguno baja de L2 (CLAUDE.md §Niveles).
 
 Abierto en esta division: si el 1 va primero o puede esperar (hoy los tres comercios son gastronomia), y si el 4-6
 (la IA) va antes que el 3 por el efecto «asombro» del menu.
+
+## Decision del owner: un modulo es un plugin, no un switch (2026-10-12)
+
+> «no es solo un switch. el modulo debe vivir realmente desacoplado del core, para poder instalarlo o desinstalarlo
+> como un plugin de wordpress… esto me permite trabajar en modulos nuevos o viejos sin afectar la estabilidad del core.»
+
+**Estado medido del POS (2026-10-12):** es un switch, no un plugin. El encendido es una columna del core
+(`core.business.pos_enabled`, `packages/db/src/schema/business.ts:102`) y el core nombra al POS en varios lugares:
+permisos de staff (`apps/merchant/src/server/staff-permissions.ts`, `assertPosGrantable`), la sesion
+(`api/merchant/session/route.ts`), la navegacion (`backoffice-navigation.tsx`), ajustes y locales. Lo que si esta
+separado: su servidor (`apps/merchant/src/server/pos/`) y su esquema (`packages/db/src/schema/pos.ts`). Las ventas con
+items viven en el core (`core.order` / `core.order_item`, mostrador y POS).
+
+**Propuestas de Claude (a decidir; esto termina en un ADR):**
+- Regla unica: **el modulo depende del core; el core nunca depende de un modulo.** Chequeable con un comando (lint de
+  fronteras de imports) → hook/gate.
+- El core expone **puntos de enganche** y el modulo se registra en ellos: entrada de navegacion, permisos propios,
+  panel de ajustes, y **eventos del core** (venta registrada, producto creado/borrado). Ejemplo: recetas escucha «venta
+  registrada» del core (`core.order_item`), no al POS, y asi no depende de que el comercio tenga POS.
+- Cada modulo con su paquete y su esquema de base propios (`pos.*`, `recetas.*`); claves foraneas solo modulo → core.
+- Activacion generica por comercio (una tabla de modulos activos), no una columna por modulo en `core.business`.
+- No es instalar codigo en caliente como WordPress (hay un solo deploy): es desacople de arquitectura. Limite honesto:
+  un error de compilacion en un modulo sigue rompiendo el build de la app; lo que se gana es que un modulo apagado o
+  roto en ejecucion no toca el core, y que cambiar un modulo no obliga a tocar el core.
+- Orden sugerido: inventariar los enganches reales del POS para diseñar el contrato, que **recetas nazca ya como
+  modulo**, y migrar el POS despues (esta en vivo con comercios reales).
+
+**Preguntas abiertas:** que pasa con los datos al desinstalar (se ocultan o se borran); si un modulo puede depender de
+otro (mesas → POS); si los modulos se cobran aparte o van atados al plan (ADR 0134).
