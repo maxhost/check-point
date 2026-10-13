@@ -139,3 +139,25 @@ items viven en el core (`core.order` / `core.order_item`, mostrador y POS).
 
 **Preguntas abiertas:** que pasa con los datos al desinstalar (se ocultan o se borran); si un modulo puede depender de
 otro (mesas → POS); si los modulos se cobran aparte o van atados al plan (ADR 0134).
+
+### Respuestas del owner (2026-10-12, no volver a preguntar)
+
+1. **Al desinstalar un modulo los datos quedan; nada se borra.**
+2. **Un modulo puede depender de otro.** Mesas depende de POS (sin POS no sirve); recetas depende de catalogo (core);
+   stock depende de recetas («sin recetas no hay stock, o eso creo, a no ser que tengamos otra forma»).
+3. **Los modulos van atados al plan** (no se cambia ese concepto, ADR 0134). Lo que si puede haber es un **limite de
+   uso de IA**, porque tiene costo adicional. Meta: de los $20 del plan base, despues de infraestructura (Neon,
+   Vercel, IA, dominio), **quedan limpios al menos $15 por comercio**. El owner no lo calculo todavia.
+
+**Hallazgos de Claude sobre estas respuestas (a decidir):**
+- Datos que quedan + modulo apagado = el modulo no escucha eventos mientras esta apagado. Al reactivar stock, el
+  stock teorico esta viejo: la reactivacion tiene que pedir recalibrar (o recalcular desde las ventas del core).
+- **Stock sin recetas existe: la reventa.** Lo que se compra hecho y se vende igual (gaseosas, alfajores comprados;
+  repuestos en una mecanica, shampoo en una peluqueria) consume 1 unidad del insumo por venta, sin receta. Si stock
+  es el modulo base (insumos + consumo por venta) y recetas lo enriquece (consumo compuesto), stock sirve a otros
+  rubros y la dependencia se invierte: recetas depende de stock. No contradice «un solo stock de materia prima»: lo
+  revendido no es producto hecho por el comercio.
+- La meta de $15 depende mas de cuantos comercios reparten los costos fijos (Vercel, Neon, dominio, Apple) y de la
+  comision de Stripe sobre los $20 que de la IA, que es variable y chica por operacion. Hay que medirla con las
+  facturas reales. Ya existe un cupo de IA para la importacion de catalogo (ADR 0083): el limite de IA puede
+  generalizar ese mecanismo.
