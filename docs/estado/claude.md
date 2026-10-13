@@ -11,10 +11,10 @@
 
 
 
-## ⇥ ESTADO (2026-10-12, noche) — MODULOS (ADR 0138) + STOCK Y RECETAS (SPEC 0210) EN `dev`; 0074/0075 SOLO LOCAL Y CI
+## ⇥ ESTADO (2026-10-12, noche) — MODULOS (ADR 0138) + STOCK Y RECETAS (0210) + DICTADO (0212) EN `dev`; 0074-0076 SOLO LOCAL Y CI
 
-**En PROD:** codigo `origin/main` = `3fe2ad6` (sin cambios). **Base PROD:** hasta 0073. **0074 y 0075 NO estan en PROD**
-(aplicadas en la base local, 76 migraciones leidas por SQL, y en `ci-integration` por `neon-test.sh`).
+**En PROD:** codigo `origin/main` = `3fe2ad6` (sin cambios). **Base PROD:** hasta 0073. **0074, 0075 y 0076 NO estan en PROD**
+(aplicadas en la base local, 77 migraciones, y en `ci-integration` por `neon-test.sh`).
 
 **Hecho esta sesion (en `dev`, sin push):**
 - Analisis con el owner: `docs/analisis-recetas-stock-2026-10-12.md` (decisiones textuales; parqueados #96 prevision,
@@ -25,6 +25,11 @@
   registro general (`GET /api/modules/stock/movements`), migracion 0075. Suites de modulos 31/31 Neon, unitarios 37,
   typecheck y lint verdes; M5 (compra sin precio tapa el costo) mordio y revertida. `PUT /api/modules/{stock,recipes}`
   medido contra `next dev`: 401 (llega al guard, no 405).
+- Spec 0212 implementada (`21728b1`): `POST /api/modules/stock/entries/draft` (texto dictado → borrador validado por el
+  servidor; la IA ve solo insumos del negocio), uso en `stock.draft_request` sin texto y SIN tope (owner: medir primero;
+  `draftsSince` listo para el tope), migracion 0076. Unitarios 5 + Neon 4 verdes; M6 (la IA ve insumos ajenos) mordio y
+  revertida. Proveedor: `STOCK_DRAFT_PROVIDER` → `CATALOG_EXTRACTION_PROVIDER` → `fake`. **Local no tiene
+  `OPENAI_API_KEY`**: en local el borrador vuelve vacio (fake). Sin probar contra OpenAI real.
 - Encargo a GPT: `docs/encargo-gpt-2026-10-12-modulos-stock-recetas.md` (Ajustes + Stock como log + Recetas como
   gestion; SIN costo/margen: van a Analitica, owner). GPT ya commiteo 0211 (cards en Ajustes) y sigue.
 
