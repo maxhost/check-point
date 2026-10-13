@@ -75,3 +75,9 @@ Commit `b49bdcb` reemplaza los accesos anteriores. Botón circular48px MoreVert 
 ## L0: persistencia inmediata de nota
 
 `5f67add`: Aplicar nota en orden creada guarda vía PUT con version y items/contexto del snapshot guardado. Mantiene productos/contexto locales pendientes, actualiza baseline/version, cierra solo tras éxito y muestra toast. Error visible en modal, sin perder texto. Bloquea cierre/duplicados mientras guarda. Wizard sin orden mantiene borrador hasta POST. Formato/diffcheck0; sin tests por owner. Oráculos anteriores de nota diferida no representan este comportamiento nuevo.
+
+## Ajuste: nota optimista y caché
+
+`541be5f`: PosEditor cierra modal y muestra toast inmediato, actualiza snapshot local y pasa note optimista a PosConsole.run. Cache privada acepta nota sin inventar versión, bloquea lecturas pendientes y mantiene bloqueo de otras escrituras mientras PUT confirma. Éxito reemplaza por respuesta; fallo revierte caché confirmada antes del handler existente, retira toast y reabre modal con texto para reintentar. Conflicto/sesión siguen manejo vigente; epoch impide recuperación en otra sesión. Productos pendientes conservados. Toast usa key nueva por nota para reiniciar duración. Wizard sigue local hasta crear orden.
+
+Formato/diffcheck0 y `pnpm --filter @mi-pasaporte/merchant exec tsc --noEmit` salida0. Primera comprobación detectó reset anterior setUpdatedNotice(false), corregido a null en Descartar cambios. Sin tests ni capturas por preferencia del owner; comportamiento optimista/fallos revisado estáticamente, no afirmar comprobación runtime.
