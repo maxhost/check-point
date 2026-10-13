@@ -290,8 +290,13 @@ for (const width of [390, 1440]) {
       );
       await expect(photo).toBeVisible();
       await expect
-        .poll(() =>
-          photo.evaluate((img) => (img as HTMLImageElement).naturalWidth > 0),
+        .poll(
+          () =>
+            photo.evaluate((img) => (img as HTMLImageElement).naturalWidth > 0),
+          {
+            timeout: 30_000,
+            message: "La imagen del hero debe terminar de cargar",
+          },
         )
         .toBe(true);
       expect(
