@@ -92,3 +92,7 @@ Retirar únicamente el icono Notes superpuesto del botón circular MoreVert de o
 ## Ajuste L0 del owner — orden del menú (cerrado, 2026-10-12)
 
 Ordenar acciones: Nota (Añadir/Editar), Escanear QR, Imprimir pedido y Anular. Conservar etiquetas funcionales, bloqueos y separación de Anular. Sin tests; formato/diff.
+
+## Ajuste L0 del owner — toast al guardar nota (cerrado, 2026-10-12)
+
+Tras PUT exitoso de orden abierta cuya nota cambió frente al snapshot, mostrar ConfirmationToast existente con «Nota actualizada» o «Nota eliminada» si quedó sin nota. Cambios sin edición de nota y cambio de mesa mantienen «Pedido actualizado». Aplicar nota al borrador no anuncia persistencia; fallo no muestra éxito. Solo pos-editor.tsx; sin tests por owner. Formato/diff.
