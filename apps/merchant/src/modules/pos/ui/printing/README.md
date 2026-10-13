@@ -23,7 +23,7 @@ orden + TicketSettings + { qr? }
 
 `device.ts` guarda en `localStorage` la impresora de ESTE dispositivo (transporte + nombre) y el
 papel (58 / 80 mm). El ajuste del COMERCIO (que bloques opcionales lleva el ticket) vive en la base:
-`core.ticket_settings`.
+`pos.ticket_settings`.
 
 ## Contrato para las pantallas
 
@@ -60,7 +60,7 @@ setDevicePaper(80); // 58 | 80; getDevicePaper() devuelve 58 si nunca se eligio
 forgetDevicePrinter();
 ```
 
-Ajuste del comercio (solo el owner): `GET` / `PUT /api/merchant/business/ticket` con
+Ajuste del comercio (solo el owner): `GET` / `PUT /api/modules/pos/ticket-settings` con
 `{ printingEnabled: boolean, showBusinessName: boolean, showTable: boolean }` (los tres en el `PUT`).
 `printingEnabled` (spec 0206) arranca en `false`: con `false` el POS no muestra «Imprimir». El POS lo
 lee de `GET /api/modules/pos/ticket`.

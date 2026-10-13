@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   MODULES_DIR,
   SRC,
+  directSchemaModules,
   importsInto,
   moduleLiteralPatterns,
   namesFromSchemaBarrel,
@@ -95,6 +96,28 @@ describe("regla 7: entre modulos (ADR 0141 §9)", () => {
       ),
     );
     expect(offenders).toEqual([]);
+  });
+
+  it("un modulo importa tablas DIRECTO (`@mi-pasaporte/db/schema/modules/<id>`, o por ruta relativa) solo de las suyas y de su `requires`", () => {
+    const offenders = MODULES.flatMap((m) =>
+      sourceFiles(join(MODULES_DIR, m.id)).flatMap((file) =>
+        directSchemaModules(file)
+          .filter((owner) => owner !== m.id && !m.requires.includes(owner))
+          .map((owner) => `${relative(SRC, file)} → schema/modules/${owner}`),
+      ),
+    );
+    expect(offenders).toEqual([]);
+  });
+
+  it("CONTROL de tablas: el especificador directo y el re-export del barril se ven", () => {
+    const owners = schemaExportOwners();
+    expect(
+      namesFromSchemaBarrel(
+        'export { stockItems } from "@mi-pasaporte/db/schema";',
+      ).map((name) => owners.get(name)),
+    ).toEqual(["stock"]);
+    const file = join(MODULES_DIR, "pos", "server", "best-sellers.ts");
+    expect(directSchemaModules(file)).toEqual([]);
   });
 
   it("un modulo nombra como id solo a los de `requires` y `optional`", () => {

@@ -10,9 +10,14 @@ import {
   dropBusiness,
   integrationEnabled,
   seedBusiness,
+  seedConsumer,
 } from "./counter-integration-support";
 import { getDb } from "@mi-pasaporte/db";
-import { memberships } from "@mi-pasaporte/db/schema";
+import {
+  consumerAccounts,
+  memberships,
+  programMemberships,
+} from "@mi-pasaporte/db/schema";
 import { createStaff } from "./staff-create";
 import { openMerchantSession } from "./merchant-session";
 import { POST as LOGIN } from "../app/api/merchant/auth/staff/route";
@@ -53,6 +58,8 @@ describe.skipIf(!integrationEnabled)(
   "ingreso del equipo y PIN temporal obligatorio (spec 0218)",
   () => {
     let a: Seed;
+    let consumerId: string;
+    let couponUrl: string;
 
     beforeAll(async () => {
       a = await seedBusiness({
@@ -62,10 +69,24 @@ describe.skipIf(!integrationEnabled)(
         grant: 1,
         blockAmount: null,
       });
+      // Un pase del negocio, para que el mostrador conteste 200 cuando la escalera deja pasar.
+      consumerId = (await seedConsumer()).id;
+      const [membership] = await getDb()
+        .insert(programMemberships)
+        .values({
+          consumerId,
+          programId: a.programId,
+          businessId: a.business.id,
+        })
+        .returning({ id: programMemberships.id });
+      couponUrl = `/api/counter/coupon-state?membershipId=${membership.id}`;
     }, 60_000);
 
     afterAll(async () => {
       await dropBusiness(a.business.id);
+      await getDb()
+        .delete(consumerAccounts)
+        .where(eq(consumerAccounts.id, consumerId));
     }, 30_000);
 
     const newStaff = (name: string, permissions: string[]) =>
@@ -75,20 +96,11 @@ describe.skipIf(!integrationEnabled)(
         "owner",
       );
 
-    // El mostrador contesta con su propio error de dominio cuando la escalera deja pasar (no hay
-    // un pase sembrado): lo que se mide es la compuerta, no el cupon.
-    const COUPON = `/api/counter/coupon-state?membershipId=${crypto.randomUUID()}`;
     const routes = (cookie: string) =>
       Promise.all([
         MODULES(get("/api/modules", cookie)),
-        COUPON_STATE(get(COUPON, cookie)),
+        COUPON_STATE(get(couponUrl, cookie)),
       ]);
-    const passedTheLadder = async (response: Response) => {
-      expect(response.status).not.toBe(401);
-      if (response.status === 403) {
-        expect((await response.json()).code).not.toBe("pin_change_required");
-      }
-    };
 
     it("con pin_must_change: la API da 403 pin_change_required; despues del cambio, 200", async () => {
       const { staff, pin } = await newStaff("Caja y Mostrador", [
@@ -123,9 +135,9 @@ describe.skipIf(!integrationEnabled)(
       expect(change.status).toBe(200);
       expect(await change.json()).toEqual({ ok: true, mustChangePin: false });
 
-      const [modules, counter] = await routes(cookie);
-      expect(modules.status).toBe(200);
-      await passedTheLadder(counter);
+      for (const response of await routes(cookie)) {
+        expect(response.status).toBe(200);
+      }
     }, 90_000);
 
     it("el owner nunca recibe el 403, aunque su fila diga pin_must_change = true", async () => {
@@ -142,9 +154,9 @@ describe.skipIf(!integrationEnabled)(
       expect(row.pinMustChange).toBe(true);
 
       const cookie = (await openMerchantSession(a.userId)).split(";")[0];
-      const [modules, counter] = await routes(cookie);
-      expect(modules.status).toBe(200);
-      await passedTheLadder(counter);
+      for (const response of await routes(cookie)) {
+        expect(response.status).toBe(200);
+      }
     }, 60_000);
   },
 );

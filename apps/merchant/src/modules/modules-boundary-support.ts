@@ -79,6 +79,24 @@ function schemaExportsOf(file: string): string[] {
   ].map((m) => m[1]);
 }
 
+/**
+ * Spec 0220 (revision de la 2a) — los esquemas de modulo que `file` alcanza SIN pasar por el barril:
+ * el especificador `@mi-pasaporte/db/schema/modules/<id>` (import o re-export) o una ruta relativa
+ * que cae en `packages/db/src/schema/modules/`. Devuelve los `<id>` (nombre del archivo).
+ */
+export function directSchemaModules(file: string): string[] {
+  const viaPackage = specifiers(readFileSync(file, "utf8"))
+    .map((s) =>
+      s.match(/^@mi-pasaporte\/db\/schema\/modules\/([^/]+?)(?:\.ts)?$/),
+    )
+    .filter((m) => m !== null)
+    .map((m) => m[1]);
+  const viaRelative = importsInto(file, DB_MODULES).map((target) =>
+    target.slice(DB_MODULES.length + 1).replace(/\.ts$/, ""),
+  );
+  return [...viaPackage, ...viaRelative];
+}
+
 /** Spec 0220 — de que modulo es cada tabla del barril: `schema/modules/<id>.ts` → `<id>`. */
 export function schemaExportOwners(): Map<string, string> {
   const owners = new Map<string, string>();
@@ -90,9 +108,9 @@ export function schemaExportOwners(): Map<string, string> {
 }
 
 const IMPORT_FROM_SCHEMA =
-  /import\s+(?:type\s+)?\{([^}]*)\}\s*from\s*["']@mi-pasaporte\/db\/schema["']/g;
+  /(?:import|export)\s+(?:type\s+)?\{([^}]*)\}\s*from\s*["']@mi-pasaporte\/db\/schema["']/g;
 
-/** Los nombres que `source` importa del barril `@mi-pasaporte/db/schema`. */
+/** Los nombres que `source` importa (o re-exporta) del barril `@mi-pasaporte/db/schema`. */
 export function namesFromSchemaBarrel(source: string): string[] {
   return [...source.matchAll(IMPORT_FROM_SCHEMA)].flatMap((m) =>
     m[1]
@@ -111,6 +129,29 @@ export function namesFromSchemaBarrel(source: string): string[] {
 /** El core de merchant: todo `apps/merchant/src` fuera de `src/modules/`. */
 export const coreMerchantFiles = () =>
   sourceFiles(SRC).filter((f) => !inside(f, MODULES_DIR));
+
+/** Los tres registros: la unica pieza del core de modulos que nombra modulos (a proposito). */
+export const REGISTRIES = [
+  "registry.ts",
+  "server-registry.ts",
+  "ui-registry.ts",
+];
+
+/**
+ * Spec 0220 (revision de la 2a) — EL CORE DE MODULOS que no es un registro: `modules/*.ts` sin los
+ * tres registros, sin tests y sin los soportes de test (`*-support.ts`). Para la regla 2 es core:
+ * `activation.ts`, `guard.ts`, `dispatch.ts`, `start-page.ts`… no pueden nombrar un modulo.
+ */
+export const coreOfModulesFiles = () =>
+  readdirSync(MODULES_DIR)
+    .filter(
+      (name) =>
+        /\.tsx?$/.test(name) &&
+        !REGISTRIES.includes(name) &&
+        !/\.test\.tsx?$/.test(name) &&
+        !/-support\.ts$/.test(name),
+    )
+    .map((name) => join(MODULES_DIR, name));
 
 const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -172,6 +213,37 @@ export function permissionLiteralCount(
   return perms
     .flatMap(permissionLiteralPatterns)
     .reduce((total, re) => total + [...source.matchAll(re)].length, 0);
+}
+
+/** El codigo sin comentarios: bloques barra-asterisco, lineas que empiezan con doble barra y la
+ * doble barra al final de una linea (con un espacio antes, para no cortar un `https://` dentro de un
+ * texto). Aproximado: alcanza para que el literal exacto no cuente el id en la prosa de un docblock. */
+export function withoutComments(source: string): string {
+  return source
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .split("\n")
+    .filter((line) => !/^\s*\/\//.test(line))
+    .map((line) => line.replace(/\s\/\/\s.*$/, ""))
+    .join("\n");
+}
+
+/**
+ * Spec 0220 (revision de la 2a) — el id de un modulo como LITERAL EXACTO (`"pos"`, `'tables'`,
+ * `` `recipes` ``) fuera de los comentarios: ve el id pasado como argumento
+ * (`isModuleEnabled(b, "pos")`), en un arreglo o en un `case`. Se aplica solo a los ids que NO son
+ * tambien una palabra del core (`EXACT_ID_COLLISIONS`).
+ */
+export function exactIdLiteralCount(
+  source: string,
+  ids: readonly string[],
+): number {
+  const code = withoutComments(source);
+  return ids.reduce(
+    (total, id) =>
+      total +
+      [...code.matchAll(new RegExp(`["'\`]${escape(id)}["'\`]`, "g"))].length,
+    0,
+  );
 }
 
 /** Cuantas veces `source` nombra a alguno de `ids` como modulo. */
