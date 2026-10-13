@@ -65,7 +65,9 @@ Chicos, nuevos, sin datos que cuidar: aca se descubren los huecos del contrato c
 - Test de frontera extendido a pantallas y a la base.
 - **Revision adversarial**: revisor en contexto fresco que intenta acoplar un modulo sin que ningun test lo vea.
 
-## Fase 2 — POS y Mesas como modulos
+## Fase 2 — POS y Mesas como modulos — ADR 0141 + spec 0220 CERRADA 2026-10-13 (sin implementar)
+
+Owner 2026-10-13: con Mesas apagado el POS toma ordenes sin mesa; la app se llama «CheckPass Negocios».
 
 - **2a, servidor y base**: esquema `pos` (mudar tablas), `pos_enabled` → `core.business_module` para cada comercio,
   permiso `pos` declarado por el modulo, `requirePosOperator`/ticket/impresion al modulo, Mesas modulo propio
