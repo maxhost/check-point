@@ -1,13 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Plus } from "iconoir-react";
+import { EditPencil, Package, Plus, Xmark } from "iconoir-react";
 import {
   Button,
-  Card,
+  Dialog,
   Form,
   FormActions,
-  Heading,
   PageHeader,
   Text,
   TextAreaField,
@@ -43,11 +42,14 @@ const dateFormat = new Intl.DateTimeFormat("es", {
 /** Prototipo visual L1: registros de muestra, sin API ni persistencia. */
 export function StockLog() {
   const [entries, setEntries] = useState(examples);
-  const [adding, setAdding] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [registration, setRegistration] = useState<"adjustment" | "new" | null>(
+    null,
+  );
   const [summary, setSummary] = useState("");
 
   function cancel() {
-    setAdding(false);
+    setRegistration(null);
     setSummary("");
   }
 
@@ -58,52 +60,100 @@ export function StockLog() {
           title="Stock"
           description="Consulta los registros de stock de tu negocio."
           actions={
-            <Button onPress={() => setAdding(true)} isDisabled={adding}>
+            <Button
+              onPress={() => setMenuOpen(true)}
+              aria-haspopup="dialog"
+              aria-expanded={menuOpen}
+            >
               <Plus className="size-5" aria-hidden="true" />
-              Añadir Stock
+              Registrar stock
             </Button>
           }
         />
         <Text variant="small">
           Vista de muestra. Los registros que añadas aquí se borran al recargar.
         </Text>
-        {adding && (
-          <Card className="grid gap-4">
-            <Heading level={2}>Añadir Stock</Heading>
-            <Form
-              onSubmit={(event) => {
-                event.preventDefault();
-                if (!summary.trim()) return;
-                setEntries((current) => [
-                  {
-                    id: crypto.randomUUID(),
-                    date: new Date().toISOString(),
-                    summary: summary.trim(),
-                  },
-                  ...current,
-                ]);
-                cancel();
+        <Dialog
+          isOpen={menuOpen}
+          onOpenChange={setMenuOpen}
+          title="Registrar stock"
+          headerAction={
+            <Button
+              variant="quiet"
+              aria-label="Cerrar opciones de stock"
+              className="close-module size-11 shrink-0 rounded-full! bg-primary-soft! p-0!"
+              onPress={() => setMenuOpen(false)}
+            >
+              <Xmark aria-hidden="true" className="size-6" />
+            </Button>
+          }
+        >
+          <div className="grid gap-3">
+            <Button
+              variant="secondary"
+              onPress={() => {
+                setMenuOpen(false);
+                setRegistration("new");
               }}
             >
-              <TextAreaField
-                label="Resumen del stock"
-                placeholder="Por ejemplo: harina, huevos, tomates…"
-                value={summary}
-                onChange={setSummary}
-                maxLength={500}
-                autoFocus
-              />
-              <FormActions>
-                <Button variant="secondary" onPress={cancel}>
-                  Cancelar
-                </Button>
-                <Button type="submit" isDisabled={!summary.trim()}>
-                  Añadir a la vista
-                </Button>
-              </FormActions>
-            </Form>
-          </Card>
-        )}
+              <Package aria-hidden="true" className="size-5" />
+              Nuevo stock
+            </Button>
+            <Button
+              variant="secondary"
+              onPress={() => {
+                setMenuOpen(false);
+                setRegistration("adjustment");
+              }}
+            >
+              <EditPencil aria-hidden="true" className="size-5" />
+              Ajustar stock
+            </Button>
+          </div>
+        </Dialog>
+        <Dialog
+          isOpen={registration !== null}
+          onOpenChange={(open) => {
+            if (!open) cancel();
+          }}
+          title={
+            registration === "adjustment" ? "Ajustar stock" : "Nuevo stock"
+          }
+          description="Vista de muestra. Este registro se borrará al recargar."
+        >
+          <Form
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!summary.trim()) return;
+              setEntries((current) => [
+                {
+                  id: crypto.randomUUID(),
+                  date: new Date().toISOString(),
+                  summary: summary.trim(),
+                },
+                ...current,
+              ]);
+              cancel();
+            }}
+          >
+            <TextAreaField
+              label="Resumen del stock"
+              placeholder="Por ejemplo: harina, huevos, tomates…"
+              value={summary}
+              onChange={setSummary}
+              maxLength={500}
+              autoFocus
+            />
+            <FormActions>
+              <Button variant="secondary" onPress={cancel}>
+                Cancelar
+              </Button>
+              <Button type="submit" isDisabled={!summary.trim()}>
+                Añadir a la vista
+              </Button>
+            </FormActions>
+          </Form>
+        </Dialog>
         <div
           role="table"
           aria-label="Registros de stock"
