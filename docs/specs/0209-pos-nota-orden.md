@@ -80,3 +80,7 @@ En orden ya creada, mover el único botón de nota del footer a la derecha de Ed
 ## Ajuste L0 del owner — menú circular inferior (cerrado, 2026-10-12)
 
 Concentrar Nota, Escanear QR, Imprimir pedido y Anular en el diálogo de acciones existente, accesible por botón circular48px MoreVert junto al CTA inferior. Quitar menú superior y nota junto a tabs. Nota presente: borde primary y distintivo pequeño de documento, sin mostrar texto de nota en pedido. Preservar todos los bloqueos busy/dirty/conflict/printing y modal de nota. Anular separado visualmente. Menú disponible en ambas pestañas de orden creada; Guardar cambios deshabilitado en Editar limpio. Wizard pasos2/3: mismo disparador junto al CTA, solo Nota disponible hasta crear la orden. X de volver al listado se conserva; se elimina el menú superior, no la navegación. Sin kit/CSS/servidor. Owner confirma L0 sin tests; formato/diff y revisión de código únicamente.
+
+## Ajuste L0 del owner — nota directa durante creación (cerrado, 2026-10-12)
+
+Wizard pasos2/3: restaurar botón circular Notes directo al modal de nota, junto a Revisar/Guardar pedido. Órdenes ya creadas conservan menú inferior MoreVert con todas sus acciones. Reutilizar estado/estilo del disparador, aria y distintivo según contexto. Solo pos-editor.tsx; sin tests por owner. Formato/diff únicamente.
