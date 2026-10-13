@@ -5,6 +5,8 @@
 
 ## ESTADO — MENÚ STOCK/RECETAS Y REGISTRO VISUAL STOCK, L1 (2026-10-12)
 
+Propuesta de entradas `f4226fc`: Nuevo stock/Ajustar stock abren StockInputModal reutilizando StaffFormModal de importación catálogo según captura del owner. Tres opciones Foto o archivo/Por voz/Escribir, área archivo con FileButton y lista local, voz visual con ejemplo, texto filas nombre/cantidad/precio y añadir/quitar ítem. IA/grabación deshabilitadas y descritas como propuesta; no subidas/audio/API. Texto añade solo resumen mock a la tabla. Node24 tipos/lint/formato/guardia/diffcheck0. Sin Chrome/tests por owner; revisión visual y significado precio/ajustes aún a definir, no implementación de negocio.
+
 Último ajuste `d729aea`: Registrar stock abre selector Dialog del kit, Nuevo stock primero y Ajustar stock segundo. Botones secondary/iconos Package y EditPencil, gap3 y cierre circular Xmark idéntico a acciones POS. Opciones abren modal de resumen, inline retirado; mock sin API/persistencia. Typecheck/lint/formato/guardia/diffcheck0, sin Chrome/tests por owner.
 
 Commit `08e274c` en dev. Owner pidió links Stock y Recetas (debajo de Stock) visibles como activados, sin consultar API de módulos. Ambos en Mi negocio, desktop y menú móvil, permiso catalog existente y guardas de página equivalentes a Catálogo. Stock muestra tabla/log fecha de creación y resumen, tres registros ficticios y Añadir Stock. Alta provisional inline añade resumen solo al estado React; recargar restaura muestras. Aviso visible de muestra/sin persistencia. Recetas placeholder pendiente de diseño del owner. UI solo, no backend/kit/migraciones. Sin merge/push/deploy.
