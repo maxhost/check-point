@@ -3,7 +3,15 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — ACCESO DEL EQUIPO, SPEC0219 (2026-10-13)
+## ESTADO — LANDING: PREPARACIÓN DE IMÁGENES, SPEC0221 (2026-10-13)
+
+Reserva58714dd; código2ea68ec, dev local sin push/merge. [Handoff](../handoff-0221-landing-imagenes.md). Sustituye warmUpHTTP del srcset (sin Accept navegador, sin consumo/validación, errores ocultos) por Chromium390/1440 con scroll, complete/naturalWidth/decode y diagnósticoURL/ruta. Sin producto/assets/API/servidor/kit ni aflojar aserciones. Diagnóstico original aislado1/1 en14.3s y17/17 en15.8s: intermitencia anterior no reproducida y no se afirma causa única.
+
+Arreglo17/17 en18.7s sin reintentos, capturas hero móvil/escritorio vistas; M1 intercepta hero404 en copia temporal: rojo correcto loaded:false en preparación, SHA/bytes restaurados. ESLint/Prettier/diffcheck verdes. Verify único en copia limpia2ea68ec con CI=true y base4208714, sin DATABASE_URL: EXIT0, todo verde (tipo14.9s/lint8.1/guardia1.2/formato9/unit43.9/build33.8/e2e277.9/Neon468.7). E2e369aprobados/62omitidos, sin fallos/reintentos, incluye17landing+24equipo; Neon3583aprobados/282omitidos en449archivosaprobados/41omitidos. Unit2677 y cuatro builds verdes. CapturasPOS390/1440 del global vistas. Logs /private/tmp/checkpass-0221-*.log. Snapshot excluye cambios SIN commit de Claude0220. CI remoto sigue rojo4208714 por pathsPOS ya corregidos en dev, sin publicación. Spec cerrada hasta revisión independiente; QA real pendiente.
+
+Reserva inicialmente incorporó tres borrados ya preparados por Claude: commit corregido inmediatamente58714dd, solo docs, eliminaciones restablecidas al staging sin tocar archivos. Commit código se hizo con --only landing.spec.ts y no tomó el staging paralelo.
+
+## HISTÓRICO — ACCESO DEL EQUIPO, SPEC0219 (2026-10-13)
 
 UI implementada en dev: reservaee228d2; precisión de estilos83eeb61; codec80b347; whitelist avisos9e4734a. Ruta /acceso-equipo pública fuera de locale, sin push/merge/deploy. [Handoff](../handoff-0219-acceso-equipo.md) con contrato pendiente y tabla REAL. Spec0219 cerrada hasta PASS independiente/QA. Main remoto4208714 sigue rojo por capturasPOS ya corregidas en devb2482c4, sin publicación.
 

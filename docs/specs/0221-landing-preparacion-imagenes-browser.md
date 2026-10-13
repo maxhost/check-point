@@ -31,10 +31,10 @@ Disjunta: sí, respecto0220 backend/POS y0219 equipo.
 
 ## Definition of Done
 
-- [ ] 17e2e landing en servidor aislado, sin reintentos; capturas390/1440 vistas.
-- [ ] Preparación rechaza una imagen rota: mutaciónM1 roja por carga de imagen y restaurada.
-- [ ] ESLint/Prettier/diffcheck verdes.
-- [ ] pnpm verify ejecutado una vez al final; tabla y limitaciones reales registradas.
+- [x] 17e2e landing en servidor aislado, sin reintentos; capturas390/1440 vistas.
+- [x] Preparación rechaza una imagen rota: mutaciónM1 roja por carga de imagen y restaurada.
+- [x] ESLint/Prettier/diffcheck verdes.
+- [x] pnpm verify ejecutado una vez al final; tabla y limitaciones reales registradas.
 
 ## Mutaciones — presupuesto: 1. Clase: los plausibles
 
@@ -50,7 +50,7 @@ No se prueba carga en teléfono real ni se afirma una causa única del fallo ant
 
 ## Handoff
 
-GPT implementa; PASS independiente pendiente. Sin push ni merge.
+GPT implementa; PASS independiente pendiente, estado cerrada. Sin push ni merge. Reserva58714dd; código2ea68ec. [Evidencia y tabla real](../handoff-0221-landing-imagenes.md):17/17 aislados; M1 rojo correcto y revertido; verify único exit0, e2e369/62omitidos, Neon3583/282omitidos.
 
 ## Abierto
 
