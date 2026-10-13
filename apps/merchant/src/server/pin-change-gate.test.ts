@@ -140,12 +140,14 @@ describe("cableado — escalera de permisos (memberLadder)", () => {
   });
 });
 
-describe("cableado — escalera del operador (mostrador y POS)", () => {
+// Spec 0220: el POS dejo de usar esta escalera (es un modulo: pasa por `memberLadder`, cubierta
+// arriba); `resolveOperator` queda para el mostrador, y el scope del caso pasa de `pos` a `counter`.
+describe("cableado — escalera del operador (mostrador)", () => {
   const copy = { missingPermission: "x", emailNotVerified: "y" };
 
   it("staff con PIN temporal → 403 pin_change_required", async () => {
     world.row = member("staff", true);
-    const result = await resolveOperator(request(), "pos", copy);
+    const result = await resolveOperator(request(), "counter", copy);
     expect("response" in result).toBe(true);
     if (!("response" in result)) return;
     expect(result.response.status).toBe(403);
@@ -155,7 +157,7 @@ describe("cableado — escalera del operador (mostrador y POS)", () => {
   it("staff que ya lo cambio y owner con `true` pasan", async () => {
     for (const row of [member("staff", false), member("owner", true)]) {
       world.row = row;
-      const result = await resolveOperator(request(), "pos", copy);
+      const result = await resolveOperator(request(), "counter", copy);
       expect("response" in result).toBe(false);
     }
   });

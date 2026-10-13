@@ -193,7 +193,6 @@ async function findStaff(handle: string, slug: string) {
       pinMustChange: memberships.pinMustChange,
       // Spec 0218: el destino despues de entrar (`readStaffLanding`).
       permissions: memberships.permissions,
-      posEnabled: businesses.posEnabled,
     })
     .from(memberships)
     .innerJoin(businesses, eq(businesses.id, memberships.businessId))

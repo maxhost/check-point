@@ -12,7 +12,14 @@ import {
 
 describe("catalogo valido de permisos (spec 0216)", () => {
   it("es el del core seguido de los de cada modulo, en el orden del registro", () => {
-    expect(validPermissions()).toEqual([...PERMISSIONS, "stock", "recipes"]);
+    // Spec 0220: `pos` salio del core y lo declara el modulo POS.
+    expect(validPermissions()).toEqual([
+      ...PERMISSIONS,
+      "stock",
+      "recipes",
+      "pos",
+    ]);
+    expect(PERMISSIONS).not.toContain("pos");
   });
 
   it("acepta los de modulo y rechaza lo desconocido", () => {
@@ -50,6 +57,7 @@ describe("catalogo valido de permisos (spec 0216)", () => {
     expect(modulePermissionOwner("stock")?.id).toBe("stock");
     expect(modulePermissionOwner("recipes")?.id).toBe("recipes");
     expect(modulePermissionOwner("catalog")).toBeNull();
-    expect(modulePermissionOwner("pos")).toBeNull();
+    expect(modulePermissionOwner("pos")?.id).toBe("pos");
+    expect(modulePermissionOwner("locations")).toBeNull();
   });
 });

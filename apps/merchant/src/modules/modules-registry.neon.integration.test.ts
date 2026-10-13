@@ -88,6 +88,35 @@ describe.skipIf(!modulesIntegrationEnabled)(
             },
           ],
         },
+        // Spec 0220 / ADR 0141: el POS y Mesas entran al registro, despues de los de la Fase 1.
+        {
+          id: "pos",
+          name: "POS",
+          description: "Órdenes de mesa, cobro y ticket",
+          requires: [],
+          enabled: false,
+          suggested: true,
+          navigation: [
+            { path: "", label: "POS", icon: "Shop", permission: "pos" },
+          ],
+          permissions: [
+            {
+              id: "pos",
+              label: "POS",
+              description: "Abrir, editar, cobrar y anular órdenes de mesa.",
+            },
+          ],
+        },
+        {
+          id: "tables",
+          name: "Mesas",
+          description: "Mesas de cada local para el POS",
+          requires: ["pos"],
+          enabled: false,
+          suggested: true,
+          navigation: [],
+          permissions: [],
+        },
       ]);
     }, 120_000);
 
@@ -164,8 +193,9 @@ describe.skipIf(!modulesIntegrationEnabled)(
       ).toEqual([[item.id, "Harina"]]);
     }, 120_000);
 
-    it("errores del PUT: 404 module_not_found (tambien pos), 422 invalid_body", async () => {
-      for (const id of ["nope", "pos"]) {
+    // Spec 0220: `pos` dejo de ser el ejemplo de «no es un modulo» (entro al registro).
+    it("errores del PUT: 404 module_not_found, 422 invalid_body", async () => {
+      for (const id of ["nope", "turnos"]) {
         const r = await api.setModule(world.cookie, id, { enabled: true });
         expect(r.status).toBe(404);
         expect((await r.json()).code).toBe("module_not_found");
@@ -197,7 +227,10 @@ describe.skipIf(!modulesIntegrationEnabled)(
 
     it("aislamiento: el negocio B no ve encendido lo que encendio A, y su ruta sigue en 403", async () => {
       const r = await (await api.modules(other.cookie)).json();
+      // Spec 0220: cuatro modulos en el registro (stock, recetas, pos, mesas), todos apagados en B.
       expect(r.modules.map((m: { enabled: boolean }) => m.enabled)).toEqual([
+        false,
+        false,
         false,
         false,
       ]);

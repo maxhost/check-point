@@ -10,7 +10,7 @@ import {
   printTicket,
   type PrintResult,
   type TicketDoc,
-} from "../../../printing/index";
+} from "../../../modules/pos/ui/printing/index";
 import type { TicketSettings } from "../settings/ticket-settings-types";
 import { PosError, posRequest, type PosOrder } from "./pos-types";
 

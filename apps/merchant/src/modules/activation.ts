@@ -3,6 +3,8 @@ import { type DbTransaction, getDb, withDbTransaction } from "@mi-pasaporte/db";
 import { businessModules, businesses } from "@mi-pasaporte/db/schema";
 import { ModuleError, invalidBody } from "./errors";
 import type { ModuleNavigationEntry, ModulePermission } from "./contract";
+import { moduleLockKey } from "./guard";
+import { SERVER_MODULES } from "./server-registry";
 import {
   MODULES,
   type ModuleManifest,
@@ -19,6 +21,10 @@ import {
  * recipes» y «apagar stock» en paralelo leen los dos el estado viejo y dejan recipes encendido
  * sobre stock apagado. No se bloquea la fila de `core.business` (su `FOR UPDATE` frenaria toda
  * escritura que la referencia por FK).
+ *
+ * Spec 0220 / ADR 0141 §4: al APAGAR, despues de `module_required_by`, corre el `beforeDisable`
+ * del modulo (`server-registry.ts`) bajo el MISMO lock, tomado EXCLUSIVO; lo que lo puede romper
+ * (crear una orden abierta) toma el lock COMPARTIDO con `lockModuleEnabled` (`guard.ts`).
  */
 
 export type ModuleDTO = {
@@ -82,6 +88,12 @@ export async function enabledModuleIds(
   return enabledSet(getDb(), businessId);
 }
 
+/** Spec 0220: los ids ENCENDIDOS en el orden del registro (`business.enabledModules` de la sesion). */
+export async function enabledModuleList(businessId: string): Promise<string[]> {
+  const enabled = await enabledModuleIds(businessId);
+  return MODULES.filter((m) => enabled.has(m.id)).map((m) => m.id);
+}
+
 /** `GET /api/modules` — todos los del registro, en su orden. */
 export async function listModules(businessId: string): Promise<ModuleDTO[]> {
   const db = getDb();
@@ -108,7 +120,7 @@ export async function setModuleEnabled(
   const want = body.enabled;
   return withDbTransaction(async (tx) => {
     await tx.execute(
-      sql`select pg_advisory_xact_lock(hashtextextended(${`business_module:${businessId}`}, 0))`,
+      sql`select pg_advisory_xact_lock(hashtextextended(${moduleLockKey(businessId)}, 0))`,
     );
     const enabled = await enabledSet(tx, businessId);
     if (want) {
@@ -132,6 +144,14 @@ export async function setModuleEnabled(
           "Primero desactiva los módulos que usan este.",
           { dependents },
         );
+      }
+      // Idempotente: apagar un modulo apagado no consulta su regla.
+      const beforeDisable = Object.hasOwn(SERVER_MODULES, manifest.id)
+        ? SERVER_MODULES[manifest.id].beforeDisable
+        : undefined;
+      if (enabled.has(manifest.id) && beforeDisable) {
+        const refusal = await beforeDisable(tx, businessId);
+        if (refusal) throw refusal;
       }
     }
     await tx

@@ -9,6 +9,7 @@ import {
   type SessionBilling,
 } from "../../../../server/session-view";
 import { readBusinessBilling } from "../../../../server/billing-gate";
+import { enabledModuleList } from "../../../../modules/activation";
 import { trialDaysLeft } from "@mi-pasaporte/domain/server/billing-access";
 
 export const dynamic = "force-dynamic";
@@ -52,8 +53,6 @@ export async function GET(request: Request) {
       suspensionReason: businesses.suspensionReason,
       currencyCode: businesses.currencyCode,
       timezone: businesses.timezone,
-      // Spec 0169: el modulo POS, para que la UI pinte la seccion sin sondear `/api/pos/*`.
-      posEnabled: businesses.posEnabled,
       role: memberships.role,
       membershipStatus: memberships.status,
       // Spec 0086 §8: una columna mas en el `innerJoin` que ya existia. Lo que sale por la
@@ -79,6 +78,9 @@ export async function GET(request: Request) {
       },
       row,
       row ? await sessionBilling(row.id) : null,
+      // Spec 0220: los modulos encendidos (`business.enabledModules`). Una membresia no activa
+      // sale con `business: null`, asi que no se leen.
+      row?.membershipStatus === "active" ? await enabledModuleList(row.id) : [],
     ),
   );
 }

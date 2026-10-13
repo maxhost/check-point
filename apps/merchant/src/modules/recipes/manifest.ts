@@ -1,5 +1,5 @@
 import type { ModuleManifest } from "../contract";
-import { GASTRONOMIA } from "../stock/manifest";
+import { GASTRONOMIA } from "../categories";
 
 /** Spec 0210 / 0216 — Recetas: receta de cada producto, costo y margen. Requiere Stock (de ahi
  * puede importar, ADR 0139 §1). Permiso propio `recipes`. */

@@ -12,11 +12,12 @@ import {
   importsInto,
   inside,
   moduleSchemaExports,
+  namesFromSchemaBarrel,
   sourceFiles,
   specifiers,
 } from "./modules-boundary-support";
 import { MODULES } from "./registry";
-import { SERVER_ROUTES } from "./server-registry";
+import { SERVER_MODULES } from "./server-registry";
 import { UI_SCREENS } from "./ui-registry";
 import { routePermission } from "./dispatch";
 import { validPermissions } from "./permissions";
@@ -41,7 +42,8 @@ import { validPermissions } from "./permissions";
  *    sin esta regla, un archivo permitido (p. ej. `navigation.ts`) podia re-exportar codigo de
  *    `stock/` y el core lo importaba en verde (revisor adversarial de la Fase 1, evasion E2).
  *
- * Barrido estatico de imports: un especificador armado en una variable no lo ve.
+ * Barrido estatico de imports: un especificador armado en una variable no lo ve. La regla 7 (entre
+ * modulos) vive en `modules-boundary-between.test.ts`.
  */
 
 const CORE_OF_MODULES = [
@@ -55,6 +57,8 @@ const CORE_OF_MODULES = [
   "errors.ts",
   "dispatch.ts",
   "screen.ts",
+  // Spec 0220 / ADR 0141 §2: la pagina de inicio (PWA e ingreso del personal).
+  "start-page.ts",
 ].map((name) => join(MODULES_DIR, name));
 
 /**
@@ -62,11 +66,27 @@ const CORE_OF_MODULES = [
  * Fase 1 (spec 0217: las pantallas de Stock y Recetas se mudaron a `modules/<id>/ui/`). Se deja
  * como lista EXACTA: si una migracion futura necesita convivir un tiempo con un directorio viejo,
  * se agrega aca y el test obliga a vaciarla.
+ *
+ * Spec 0220 (2a): las pantallas del POS siguen en `app/backoffice/pos/` hasta que GPT las mude a
+ * `modules/pos/ui/` en la 2b, que baja esta lista a `[]`.
  */
-const PENDING_GPT_DIRS: string[] = [];
+const PENDING_GPT_DIRS: string[] = ["app/backoffice/pos"];
 
-const IMPORT_FROM_SCHEMA =
-  /import\s+(?:type\s+)?\{([^}]*)\}\s*from\s*["']@mi-pasaporte\/db\/schema["']/g;
+/**
+ * REGLA 1 — los imports del core a la carpeta de un modulo que quedan para la 2b (spec 0220): las
+ * pantallas del POS, todavia en el core, importan la impresion que ya se mudo a
+ * `modules/pos/ui/printing/`. Cuenta EXACTA; GPT la baja a `[]` al mudar las pantallas.
+ */
+const PENDING_GPT_IMPORTS: string[] = [
+  "app/backoffice/pos/pos-print-ticket.tsx → modules/pos/ui/printing/index.ts",
+  "app/backoffice/pos/pos-printing.ts → modules/pos/ui/printing/index.ts",
+];
+
+/**
+ * REGLA 6 — entradas de menu sin pantalla que quedan para la 2b (spec 0220): la del POS, que GPT
+ * agrega a `ui-registry.ts` al mudar sus pantallas. Lista EXACTA, baja a `[]`.
+ */
+const PENDING_GPT_SCREENS: string[] = ["pos /"];
 
 const isDir = (path: string) =>
   existsSync(path) && statSync(path).isDirectory();
@@ -89,7 +109,7 @@ describe("frontera core → modulos (ADR 0138 §1, ADR 0139 §7)", () => {
         .filter((target) => !CORE_OF_MODULES.includes(target))
         .map((target) => `${relative(SRC, file)} → ${relative(SRC, target)}`),
     );
-    expect(offenders).toEqual([]);
+    expect(offenders.sort()).toEqual(PENDING_GPT_IMPORTS);
   });
 
   it("REGLA 1b: del core de modulos, solo los tres registros importan de la carpeta de un modulo", () => {
@@ -126,19 +146,9 @@ describe("frontera core → modulos (ADR 0138 §1, ADR 0139 §7)", () => {
       const direct = specifiers(source)
         .filter((s) => s.startsWith("@mi-pasaporte/db/schema/modules"))
         .map((s) => `${relative(SRC, file)} → ${s}`);
-      const viaBarrel = [...source.matchAll(IMPORT_FROM_SCHEMA)].flatMap((m) =>
-        m[1]
-          .split(",")
-          .map(
-            (name) =>
-              name
-                .trim()
-                .replace(/^type\s+/, "")
-                .split(/\s+as\s+/)[0],
-          )
-          .filter((name) => forbidden.has(name))
-          .map((name) => `${relative(SRC, file)} → ${name}`),
-      );
+      const viaBarrel = namesFromSchemaBarrel(source)
+        .filter((name) => forbidden.has(name))
+        .map((name) => `${relative(SRC, file)} → ${name}`);
       return [...direct, ...viaBarrel];
     });
     expect(offenders).toEqual([]);
@@ -167,34 +177,43 @@ describe("frontera core → modulos (ADR 0138 §1, ADR 0139 §7)", () => {
 
   it("REGLA 6: cada modulo del registro esta en server-registry y en ui-registry, y nada sobra", () => {
     const ids = MODULES.map((m) => m.id).sort();
-    expect(Object.keys(SERVER_ROUTES).sort()).toEqual(ids);
+    expect(Object.keys(SERVER_MODULES).sort()).toEqual(ids);
     expect(Object.keys(UI_SCREENS).sort()).toEqual(ids);
   });
 
-  it("REGLA 6: toda ruta resuelve un permiso valido y ninguna declara el PUT de la base (el toggle)", () => {
+  it("REGLA 6: toda ruta resuelve un permiso valido (o es solo del owner) y ninguna declara el PUT de la base (el toggle)", () => {
     const valid = new Set(validPermissions());
+    let ownerRoutes = 0;
     for (const manifest of MODULES) {
-      for (const route of SERVER_ROUTES[manifest.id]) {
+      for (const route of SERVER_MODULES[manifest.id].routes) {
         const where = `${manifest.id} ${route.method} ${route.path}`;
+        expect(route.method === "PUT" && route.path === "", where).toBe(false);
+        if (route.owner) {
+          // ADR 0141 §7: `owner: true` cambia el permiso por el owner; las dos cosas a la vez
+          // serian una declaracion ambigua.
+          expect(route.permission, where).toBeUndefined();
+          ownerRoutes += 1;
+          continue;
+        }
         const permission = routePermission(manifest, route);
         expect(permission, where).not.toBeNull();
         expect(valid.has(permission ?? ""), where).toBe(true);
-        expect(route.method === "PUT" && route.path === "", where).toBe(false);
       }
     }
+    expect(ownerRoutes).toBeGreaterThan(0);
   });
 
-  it("REGLA 6: toda entrada de menu tiene pantalla y pide un permiso valido", () => {
+  it("REGLA 6: toda entrada de menu tiene pantalla (salvo lo pendiente de GPT) y pide un permiso valido", () => {
     const valid = new Set(validPermissions());
+    const withoutScreen: string[] = [];
     for (const manifest of MODULES) {
       for (const entry of manifest.navigation) {
         const where = `${manifest.id} /${entry.path}`;
-        expect(
-          Object.hasOwn(UI_SCREENS[manifest.id].screens, entry.path),
-          where,
-        ).toBe(true);
+        if (!Object.hasOwn(UI_SCREENS[manifest.id].screens, entry.path))
+          withoutScreen.push(where);
         expect(valid.has(entry.permission), where).toBe(true);
       }
     }
+    expect(withoutScreen.sort()).toEqual(PENDING_GPT_SCREENS);
   });
 });

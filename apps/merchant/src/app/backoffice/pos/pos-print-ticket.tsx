@@ -1,4 +1,4 @@
-import type { TicketDoc } from "../../../printing/index";
+import type { TicketDoc } from "../../../modules/pos/ui/printing/index";
 import { Heading, Text } from "../../../ui";
 
 /** The browser fallback renders the same document consumed by the printer. */

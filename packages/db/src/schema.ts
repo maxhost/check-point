@@ -26,12 +26,11 @@ export * from "./schema/welcome-device";
 export * from "./schema/business-customer";
 export * from "./schema/valley";
 export * from "./schema/cross-sale";
-export * from "./schema/dining-table";
-export * from "./schema/pos";
-export * from "./schema/ticket-settings";
 export * from "./schema/balance-expiry";
 export * from "./schema/business-module";
 // Spec 0210 / ADR 0138: los esquemas de los modulos. Este barril es la UNICA pieza del core que
 // los nombra (drizzle lee un solo archivo); ningun otro archivo de `schema/` importa de `modules/`.
 export * from "./schema/modules/stock";
 export * from "./schema/modules/recipes";
+// Spec 0220 / ADR 0141 §6: el POS y Mesas.
+export * from "./schema/modules/pos";

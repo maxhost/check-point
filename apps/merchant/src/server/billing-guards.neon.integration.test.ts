@@ -20,7 +20,8 @@ import {
 } from "@mi-pasaporte/db/schema";
 import { openMerchantSession } from "./merchant-session";
 import { createStaff } from "./staff-create";
-import { GET as TICKET } from "../app/api/merchant/business/ticket/route";
+import { PUT as MODULE_TOGGLE } from "../app/api/modules/[moduleId]/[[...path]]/route";
+import { MODULES } from "../modules/registry";
 import { GET as LOCATIONS } from "../app/api/locations/route";
 import { GET as BILLING_STATE } from "../app/api/billing/state/route";
 import { GET as SESSION } from "../app/api/merchant/session/route";
@@ -34,10 +35,26 @@ import { POST as STAFF_LOGIN } from "../app/api/merchant/auth/staff/route";
  * existen para que pague: el estado de cobro y la sesión. Y el mismo negocio con la prueba
  * vigente pasa en todas.
  *
- * ORÁCULO DE M2: `GET /api/merchant/business/ticket` pasa SOLO por `requireApiOwner` (ningún
- * guard hermano la cubre), así que sacar la llamada al eje de acceso de ese guard la deja en 200.
+ * ORÁCULO DE M2: el toggle de un módulo (`PUT /api/modules/:id`) pasa SOLO por `requireApiOwner`
+ * (ningún guard hermano la cubre), así que sacar la llamada al eje de acceso de ese guard la deja en
+ * 200. Spec 0220 (2026-10-13): hasta acá esta superficie era la lectura del ajuste del ticket del
+ * owner, que se mudó al módulo POS; la reemplaza el toggle, la otra superficie del core que es
+ * solo del owner. Apagar un módulo apagado es idempotente: el caso no cambia nada.
  */
 const DAY = 86_400_000;
+
+/** `PUT /api/modules/<id>` `{ enabled: false }` sobre el primer módulo del registro (apagado). */
+const toggleOff = (cookie: string) => {
+  const moduleId = MODULES[0].id;
+  return MODULE_TOGGLE(
+    new Request(`https://merchant.test/api/modules/${moduleId}`, {
+      method: "PUT",
+      headers: { "content-type": "application/json", cookie },
+      body: JSON.stringify({ enabled: false }),
+    }),
+    { params: Promise.resolve({ moduleId }) },
+  );
+};
 
 const get = (path: string, cookie: string) =>
   new Request(`https://merchant.test${path}`, {
@@ -98,7 +115,7 @@ describe.skipIf(!integrationEnabled)(
     /** Las superficies que cortan, con su desenlace. */
     async function guarded() {
       return {
-        ticket: await TICKET(get("/api/merchant/business/ticket", ownerCookie)),
+        toggle: await toggleOff(ownerCookie),
         locations: await LOCATIONS(get("/api/locations", ownerCookie)),
         counter: await RESOLVE(
           post(
@@ -158,9 +175,7 @@ describe.skipIf(!integrationEnabled)(
         .set({ status: "suspended", suspensionReason: "Prueba de orden." })
         .where(eq(businesses.id, seed.business.id));
       try {
-        const response = await TICKET(
-          get("/api/merchant/business/ticket", ownerCookie),
-        );
+        const response = await toggleOff(ownerCookie);
         expect(response.status).toBe(403);
         expect(await response.json()).toMatchObject({
           code: "business_suspended",

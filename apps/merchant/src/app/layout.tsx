@@ -27,7 +27,7 @@ export const metadata: Metadata = {
   },
   appleWebApp: {
     capable: true,
-    title: "CheckPass POS",
+    title: "CheckPass Negocios",
     statusBarStyle: "default",
   },
 };

@@ -15,12 +15,16 @@ import type { ModuleRoute } from "./route-table";
 
 const h = vi.hoisted(() => ({
   access: vi.fn(),
+  ownerAccess: vi.fn(),
   owner: vi.fn(),
   setEnabled: vi.fn(),
   handler: vi.fn(),
 }));
 
-vi.mock("./guard", () => ({ requireModuleAccess: h.access }));
+vi.mock("./guard", () => ({
+  requireModuleAccess: h.access,
+  requireModuleOwnerAccess: h.ownerAccess,
+}));
 vi.mock("../server/api-owner", () => ({
   requireApiOwner: h.owner,
   apiOwnerFailureResponse: () => new Response(null, { status: 401 }),
@@ -31,21 +35,27 @@ vi.mock("./server-registry", () => {
     method: ModuleRoute["method"],
     path: string,
     permission?: string,
+    owner?: true,
   ): ModuleRoute => ({
     method,
     path,
     permission,
+    owner,
     failure: "No pudimos.",
     handler: (ctx) => h.handler(method, path, ctx),
   });
   return {
-    SERVER_ROUTES: {
-      stock: [
-        route("GET", "items"),
-        route("PATCH", "items/:itemId"),
-        route("GET", "report", "catalog"),
-      ],
-      recipes: [route("GET", "")],
+    // Spec 0220: el registro de servidor pasa a `{ routes, beforeDisable? }` por modulo.
+    SERVER_MODULES: {
+      stock: {
+        routes: [
+          route("GET", "items"),
+          route("PATCH", "items/:itemId"),
+          route("GET", "report", "catalog"),
+          route("PUT", "settings", undefined, true),
+        ],
+      },
+      recipes: { routes: [route("GET", "")] },
     },
   };
 });
@@ -55,9 +65,12 @@ const { dispatchModuleRequest } = await import("./dispatch");
 const request = (method = "GET") =>
   new Request("http://localhost/api/modules/x", { method });
 
+const BUSINESS = { id: "b1", currencyCode: "ARS", status: "active" };
+
 beforeEach(() => {
   for (const fn of Object.values(h)) fn.mockReset();
-  h.access.mockResolvedValue({ business: { id: "b1" }, userId: "u1" });
+  h.access.mockResolvedValue({ business: BUSINESS, userId: "u1" });
+  h.ownerAccess.mockResolvedValue({ business: BUSINESS, userId: "owner-1" });
   h.handler.mockResolvedValue(NextResponse.json({ ok: true }));
 });
 
@@ -78,6 +91,7 @@ describe("despachador de /api/modules (spec 0216)", () => {
       expect(r.status).toBe(status);
       expect((await r.json()).code).toBe(code);
       expect(h.access).not.toHaveBeenCalled();
+      expect(h.ownerAccess).not.toHaveBeenCalled();
       expect(h.handler).not.toHaveBeenCalled();
     },
   );
@@ -97,11 +111,41 @@ describe("despachador de /api/modules (spec 0216)", () => {
       "PATCH",
       "items/:itemId",
       expect.objectContaining({
-        business: { id: "b1" },
+        // ADR 0141 §8: el contexto lleva lo que ya trajo la escalera (moneda y estado).
+        business: { id: "b1", currencyCode: "ARS", status: "active" },
         userId: "u1",
         params: { itemId: "i-9" },
       }),
     );
+    expect(h.ownerAccess).not.toHaveBeenCalled();
+  });
+
+  it("ADR 0141 §7 — una ruta `owner: true` va por la escalera del owner, no por la del permiso", async () => {
+    const r = await dispatchModuleRequest("PUT", request("PUT"), {
+      moduleId: "stock",
+      path: ["settings"],
+    });
+    expect(r.status).toBe(200);
+    expect(h.ownerAccess).toHaveBeenCalledWith(expect.any(Request), "stock");
+    expect(h.access).not.toHaveBeenCalled();
+    expect(h.handler).toHaveBeenCalledWith(
+      "PUT",
+      "settings",
+      expect.objectContaining({ business: BUSINESS, userId: "owner-1" }),
+    );
+  });
+
+  it("si la escalera del owner corta (p. ej. un integrante → not_owner), el handler no corre", async () => {
+    h.ownerAccess.mockResolvedValue({
+      response: NextResponse.json({ code: "not_owner" }, { status: 403 }),
+    });
+    const r = await dispatchModuleRequest("PUT", request("PUT"), {
+      moduleId: "stock",
+      path: ["settings"],
+    });
+    expect(r.status).toBe(403);
+    expect((await r.json()).code).toBe("not_owner");
+    expect(h.handler).not.toHaveBeenCalled();
   });
 
   it("la ruta puede pedir otro permiso; la base de un modulo con ruta base despacha", async () => {

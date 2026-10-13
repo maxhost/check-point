@@ -45,8 +45,11 @@ export type SessionBusiness = {
   suspensionReason: string | null;
   currencyCode: string;
   timezone: string;
-  /** Spec 0169: el modulo POS del comercio. La UI muestra la seccion y el toggle del permiso
-   * `pos` solo si esta encendido (el permiso tampoco se puede dar apagado). */
+  /** Spec 0220 / ADR 0141: los ids de los modulos ENCENDIDOS, en el orden del registro. La UI
+   * decide con esto (y los manifiestos) que dibuja, sin nombrar modulos. */
+  enabledModules: string[];
+  /** PASO TRANSITORIO (spec 0220): el POS encendido, derivado de `enabledModules`, hasta que las
+   * pantallas de la 2b lo dejen de leer; se borra en el paso final de la 2a. */
   posEnabled: boolean;
 };
 
@@ -100,7 +103,6 @@ export type SessionRow = {
   suspensionReason: string | null;
   currencyCode: string;
   timezone: string;
-  posEnabled: boolean;
   role: string;
   membershipStatus: string;
   /** La columna cruda de la membresia. Para un owner es `'{}'` y **no es lo que sale por la
@@ -132,6 +134,8 @@ export function toSessionView(
   user: SessionUser,
   row: SessionRow | null | undefined,
   billing: SessionBilling | null = null,
+  /** Spec 0220: los modulos encendidos del negocio de `row`, en el orden del registro. */
+  enabledModules: readonly string[] = [],
 ): SessionView {
   if (!row || row.membershipStatus !== "active") {
     return {
@@ -154,8 +158,8 @@ export function toSessionView(
       suspensionReason: row.role === "owner" ? row.suspensionReason : null,
       currencyCode: row.currencyCode,
       timezone: row.timezone,
-      // `=== true`: un `undefined` de una fila vieja se lee apagado (fail-closed).
-      posEnabled: row.posEnabled === true,
+      enabledModules: [...enabledModules],
+      posEnabled: enabledModules.includes("pos"),
     },
     membership: {
       role: row.role,

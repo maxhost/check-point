@@ -85,9 +85,12 @@ describe.skipIf(!modulesIntegrationEnabled)(
       const r = await api.modules(counter);
       expect(r.status).toBe(200);
       const { modules } = await r.json();
+      // Spec 0220: el POS y Mesas entraron al registro despues de los de la Fase 1.
       expect(modules.map((m: { id: string }) => m.id)).toEqual([
         "stock",
         "recipes",
+        "pos",
+        "tables",
       ]);
       expect(modules[0].navigation).toEqual([
         { path: "", label: "Stock", icon: "Package", permission: "stock" },
@@ -179,9 +182,34 @@ describe.skipIf(!modulesIntegrationEnabled)(
       const { membership } = await r.json();
       expect(membership.role).toBe("owner");
       expect(membership.permissions).toEqual(
-        expect.arrayContaining(["catalog", "stock", "recipes"]),
+        expect.arrayContaining(["catalog", "stock", "recipes", "pos"]),
       );
-      expect(membership.permissions.slice(-2)).toEqual(["stock", "recipes"]);
+      // Spec 0220: `pos` lo declara el modulo POS, despues de los de la Fase 1.
+      expect(membership.permissions.slice(-3)).toEqual([
+        "stock",
+        "recipes",
+        "pos",
+      ]);
+    }, 120_000);
+
+    it("spec 0220 — la sesion trae `business.enabledModules` en el orden del registro (no el de alta)", async () => {
+      await enableModules(world, ["recipes", "stock"]);
+      const r = await SESSION(
+        conCookie("/api/merchant/session", "GET", world.cookie),
+      );
+      const { business } = await r.json();
+      expect(business.enabledModules).toEqual(["stock", "recipes"]);
+      expect(business.posEnabled).toBe(false);
+      await enableModules(world, ["pos"]);
+      const again = await (
+        await SESSION(conCookie("/api/merchant/session", "GET", world.cookie))
+      ).json();
+      expect(again.business.enabledModules).toEqual([
+        "stock",
+        "recipes",
+        "pos",
+      ]);
+      expect(again.business.posEnabled).toBe(true);
     }, 120_000);
 
     it("404 module_not_found, 404 route_not_found, 405 por metodo y en la base sin ruta", async () => {

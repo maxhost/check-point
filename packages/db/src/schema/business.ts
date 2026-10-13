@@ -1,5 +1,4 @@
 import {
-  boolean,
   check,
   integer,
   jsonb,
@@ -97,9 +96,6 @@ export const businesses = core.table(
     brandRevision: integer("brand_revision").notNull().default(1),
     /** Cache version for the currently published logo variants. */
     logoVersion: integer("logo_version").notNull().default(0),
-    /** Spec 0169 / ADR 0130 §5: el modulo POS, apagado por defecto y en todos los planes.
-     * No se apaga con ordenes abiertas (`server/pos/module.ts`). */
-    posEnabled: boolean("pos_enabled").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

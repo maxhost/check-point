@@ -33,6 +33,14 @@ describe("matchRoute (spec 0216)", () => {
     });
   });
 
+  it("spec 0220 — una ruta `owner: true` se encuentra igual y conserva la marca", () => {
+    const owner: ModuleRoute = { ...route("PUT", "settings"), owner: true };
+    expect(matchRoute([...TABLE, owner], "PUT", ["settings"])).toMatchObject({
+      kind: "found",
+      route: { owner: true, path: "settings" },
+    });
+  });
+
   it("el metodo decide entre dos rutas con el mismo patron", () => {
     expect(matchRoute(TABLE, "POST", ["items"])).toMatchObject({
       kind: "found",

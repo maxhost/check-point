@@ -44,7 +44,7 @@ describe("decideHostRoute — staff.", () => {
 
   it.each([
     "/backoffice",
-    "/backoffice/pos",
+    "/backoffice/counter",
     "/backoffice/catalog?x=1",
     "/acceso-equipo",
     "/acceso-equipo?cambiar-pin=1",
@@ -97,7 +97,7 @@ describe("decideHostRoute — el ingreso del equipo pedido en business.", () => 
   });
 
   it("la portada y el panel del dueño siguen en business.", () => {
-    for (const path of ["/", "/backoffice", "/backoffice/pos"]) {
+    for (const path of ["/", "/backoffice", "/backoffice/counter"]) {
       expect(route("business.checkpass.club", path)).toBeNull();
     }
   });
@@ -158,7 +158,7 @@ describe("decideHostRoute — sin bucle con tres audiencias", () => {
       "/acceso-equipo",
       "/acceso-equipo?cambiar-pin=1",
       "/backoffice",
-      "/backoffice/pos",
+      "/backoffice/counter",
       "/es/business/o",
       "/wallet",
       "/wallet/business",

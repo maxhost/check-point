@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 import { apiOwnerFailureResponse, requireApiOwner } from "../server/api-owner";
 import { setModuleEnabled } from "./activation";
 import { moduleErrorResponse, readModuleBody } from "./errors";
-import { requireModuleAccess } from "./guard";
+import { requireModuleAccess, requireModuleOwnerAccess } from "./guard";
 import { moduleById } from "./registry";
 import { type ModuleRoute, matchRoute } from "./route-table";
-import { SERVER_ROUTES } from "./server-registry";
+import { SERVER_MODULES } from "./server-registry";
 import type { ModuleManifest } from "./contract";
 
 /**
@@ -20,6 +20,8 @@ import type { ModuleManifest } from "./contract";
  *   defecto el del modulo) → modulo encendido (403 `module_disabled`) → handler. El orden
  *   permiso → modulo es el de siempre: un integrante sin el permiso recibe `missing_permission`
  *   sin enterarse de que modulos tiene el comercio.
+ * - Spec 0220 / ADR 0141 §7: una ruta `owner: true` cambia el permiso por `requireApiOwner`
+ *   (integrante → 403 `not_owner`), y despues el modulo encendido.
  */
 
 export type DispatchParams = { moduleId: string; path?: string[] };
@@ -71,8 +73,8 @@ export async function dispatchModuleRequest(
   }
   const manifest = moduleById(moduleId);
   const routes =
-    manifest && Object.hasOwn(SERVER_ROUTES, manifest.id)
-      ? SERVER_ROUTES[manifest.id]
+    manifest && Object.hasOwn(SERVER_MODULES, manifest.id)
+      ? SERVER_MODULES[manifest.id].routes
       : null;
   const match = routes ? matchRoute(routes, method, segments) : null;
   if (segments.length === 0 && match?.kind !== "found") {
@@ -91,16 +93,9 @@ export async function dispatchModuleRequest(
   if (match.kind === "method_not_allowed") {
     return methodNotAllowed(match.allow);
   }
-  const permission = routePermission(manifest, match.route);
-  if (!permission) {
-    // Un modulo sin permisos y una ruta sin `permission`: error de declaracion, fail-closed
-    // (`modules-boundary.test.ts` exige que toda ruta resuelva uno).
-    return moduleErrorResponse(
-      new Error("module_route_without_permission"),
-      match.route.failure,
-    );
-  }
-  const access = await requireModuleAccess(request, manifest.id, permission);
+  const access = match.route.owner
+    ? await requireModuleOwnerAccess(request, manifest.id)
+    : await permissionAccess(request, manifest, match.route);
   if ("response" in access) return access.response;
   try {
     return await match.route.handler({
@@ -112,4 +107,23 @@ export async function dispatchModuleRequest(
   } catch (error) {
     return moduleErrorResponse(error, match.route.failure);
   }
+}
+
+async function permissionAccess(
+  request: Request,
+  manifest: ModuleManifest,
+  route: ModuleRoute,
+): ReturnType<typeof requireModuleAccess> {
+  const permission = routePermission(manifest, route);
+  if (!permission) {
+    // Un modulo sin permisos y una ruta sin `permission`: error de declaracion, fail-closed
+    // (`modules-boundary.test.ts` exige que toda ruta resuelva uno).
+    return {
+      response: moduleErrorResponse(
+        new Error("module_route_without_permission"),
+        route.failure,
+      ),
+    };
+  }
+  return requireModuleAccess(request, manifest.id, permission);
 }

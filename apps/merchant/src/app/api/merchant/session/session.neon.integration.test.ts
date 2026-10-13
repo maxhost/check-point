@@ -168,7 +168,9 @@ describe.skipIf(!integrationEnabled)(
           suspensionReason: null,
           currencyCode: "USD",
           timezone: "America/Guayaquil",
-          // Spec 0169: el modulo POS nace apagado.
+          // Spec 0220: ningun modulo encendido (el POS tambien nace apagado); `posEnabled` es el
+          // paso transitorio hasta la 2b.
+          enabledModules: [],
           posEnabled: false,
         },
         // Spec 0086 §8 / contrato §6: para un OWNER son **los SIETE**, aunque su fila en la
@@ -184,11 +186,12 @@ describe.skipIf(!integrationEnabled)(
             "locations",
             "loyalty",
             "marketing",
-            "pos",
             "staff",
-            // Spec 0216 / ADR 0139 §5: el owner tiene tambien los permisos de modulo.
+            // Spec 0216 / ADR 0139 §5: el owner tiene tambien los permisos de modulo. Spec 0220:
+            // `pos` salio del core y lo declara el modulo POS (despues de los de la Fase 1).
             "stock",
             "recipes",
+            "pos",
           ],
         },
         // Spec 0189 §D10: el estado de cobro, SIN datos de Stripe.

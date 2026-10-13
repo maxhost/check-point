@@ -1,15 +1,5 @@
+import { GASTRONOMIA } from "../categories";
 import type { ModuleManifest } from "../contract";
-
-/** Los rubros gastronomicos (lista curada del alta, `lib/business-categories.ts`). Recetas, que
- * requiere Stock, los reusa. */
-export const GASTRONOMIA = [
-  "gcid:restaurant",
-  "gcid:cafe",
-  "gcid:bakery",
-  "gcid:bar",
-  "gcid:pizza_restaurant",
-  "gcid:ice_cream_shop",
-] as const;
 
 /** Spec 0210 / 0216 — Stock: insumos, compras, ajustes y stock estimado. Permiso propio `stock`. */
 export const manifest: ModuleManifest = {

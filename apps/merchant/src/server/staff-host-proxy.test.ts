@@ -44,7 +44,9 @@ describe("proxy — host staff.", () => {
   });
 
   it("el panel sigue y lleva noindex", () => {
-    const response = proxy(request("staff.checkpass.club", "/backoffice/pos"));
+    const response = proxy(
+      request("staff.checkpass.club", "/backoffice/counter"),
+    );
     expect(response.headers.get("x-middleware-next")).toBe("1");
     expect(response.headers.get("x-robots-tag")).toBe("noindex, nofollow");
   });

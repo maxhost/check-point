@@ -38,7 +38,9 @@ vi.mock("@mi-pasaporte/db", async (importOriginal) => {
   const chain: Record<string, unknown> = {};
   for (const m of ["select", "from", "innerJoin", "where", "orderBy"])
     chain[m] = () => chain;
-  chain.limit = async () => world.rows.shift() ?? [];
+  chain.limit = async () => world.rows.shift() ?? []; // y `then` (spec 0220): sin `.limit()`
+  chain.then = (ok: (r: unknown) => unknown, ko: (e: unknown) => unknown) =>
+    Promise.resolve(world.rows.shift() ?? []).then(ok, ko);
   return {
     ...(await importOriginal<typeof import("@mi-pasaporte/db")>()),
     getDb: () => chain,
@@ -109,8 +111,6 @@ const BUSINESS_ROW = {
   suspensionReason: "Reclamos de consumidores.",
   currencyCode: "USD",
   timezone: "America/Guayaquil",
-  // Spec 0169: `pos_enabled` es `NOT NULL`; la fila del doble lo trae como la base.
-  posEnabled: false,
   role: "owner",
   membershipStatus: "active",
   logoObjectKey: "brand/leak/logo.png",
@@ -170,7 +170,7 @@ const SURFACES: Surface[] = [
       "business.suspensionReason",
       "business.currencyCode",
       "business.timezone",
-      // Spec 0169: el modulo POS del comercio (un booleano, no una clave interna).
+      "business.enabledModules", // spec 0220: ids del registro; posEnabled, transitorio
       "business.posEnabled",
       "membership.role",
       "membership.status",
@@ -184,7 +184,7 @@ const SURFACES: Surface[] = [
       "billing.trialDaysLeft",
     ],
     run: () => {
-      world.rows = [[BUSINESS_ROW], []]; // 2.a: `core.subscription` (billing-gate)
+      world.rows = [[BUSINESS_ROW], [], []]; // 2.a subscription, 3 business_module
       return SESSION(request("/api/merchant/session"));
     },
   },

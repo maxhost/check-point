@@ -11,11 +11,7 @@ import {
   StaffError,
   toStaffDTO,
 } from "./staff";
-import {
-  assertGrantable,
-  assertPosGrantable,
-  parsePermissions,
-} from "./staff-permissions";
+import { assertGrantable, parsePermissions } from "./staff-permissions";
 import { assertModulePermissionsGrantable } from "./staff-module-permissions";
 
 /**
@@ -144,9 +140,8 @@ export async function createStaff(
   // R1 — va ANTES de cualquier escritura: un no-owner que manda `staff` en la lista no puede
   // dejar ni un `user` huerfano detras del rechazo.
   assertGrantable(callerRole, input.permissions);
-  // Spec 0169: `pos` solo con el modulo encendido; tambien antes de escribir nada.
-  await assertPosGrantable(business.id, input.permissions);
-  // Spec 0216: el permiso de un modulo, solo con el modulo encendido.
+  // Spec 0216 / 0220: el permiso de un modulo (tambien `pos`), solo con el modulo encendido;
+  // antes de escribir nada.
   await assertModulePermissionsGrantable(business.id, input.permissions);
   const handle = await freeHandle(business.id, input.name);
   const pin = generatePin();

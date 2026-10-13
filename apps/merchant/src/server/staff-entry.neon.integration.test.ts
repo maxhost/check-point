@@ -12,13 +12,13 @@ import {
   seedBusiness,
 } from "./counter-integration-support";
 import { getDb } from "@mi-pasaporte/db";
-import { businesses, memberships } from "@mi-pasaporte/db/schema";
+import { memberships } from "@mi-pasaporte/db/schema";
 import { createStaff } from "./staff-create";
 import { openMerchantSession } from "./merchant-session";
 import { POST as LOGIN } from "../app/api/merchant/auth/staff/route";
 import { POST as CHANGE_PIN } from "../app/api/staff/[userId]/pin/route";
 import { GET as MODULES } from "../app/api/modules/route";
-import { GET as POS_TABLES } from "../app/api/pos/tables/route";
+import { GET as COUPON_STATE } from "../app/api/counter/coupon-state/route";
 import { GET as SESSION } from "../app/api/merchant/session/route";
 
 /**
@@ -27,9 +27,14 @@ import { GET as SESSION } from "../app/api/merchant/session/route";
  * owner nunca la recibe (su fila nace con `pin_must_change = true`, leido por SQL).
  *
  * Las dos rutas cubren las dos escaleras de API que alcanzan al integrante: `GET /api/modules`
- * (`requireApiMember` → `memberLadder`) y `GET /api/pos/tables` (`requirePosOperator` →
+ * (`requireApiMember` → `memberLadder`) y `GET /api/counter/coupon-state` (`requireOperator` →
  * `resolveOperator`). Ninguna de las dos tiene una compuerta propia: si el 403 aparece, lo puso la
  * escalera.
+ *
+ * Spec 0220 (2026-10-13): hasta aca la segunda ruta era la de mesas del POS, que usaba
+ * `resolveOperator`; el POS paso a ser un modulo (escalera del despachador, `memberLadder`) y el core
+ * no lo nombra, asi que la escalera del operador se mide con el mostrador. El caso del integrante que
+ * solo opera el POS se mudo al modulo (`pos-staff-entry.neon.integration.test.ts`).
  */
 
 const loginRequest = (identifier: string, pin: string) =>
@@ -57,11 +62,6 @@ describe.skipIf(!integrationEnabled)(
         grant: 1,
         blockAmount: null,
       });
-      // `pos` solo se otorga con el POS encendido (spec 0169).
-      await getDb()
-        .update(businesses)
-        .set({ posEnabled: true })
-        .where(eq(businesses.id, a.business.id));
     }, 60_000);
 
     afterAll(async () => {
@@ -75,29 +75,25 @@ describe.skipIf(!integrationEnabled)(
         "owner",
       );
 
+    // El mostrador contesta con su propio error de dominio cuando la escalera deja pasar (no hay
+    // un pase sembrado): lo que se mide es la compuerta, no el cupon.
+    const COUPON = `/api/counter/coupon-state?membershipId=${crypto.randomUUID()}`;
     const routes = (cookie: string) =>
       Promise.all([
         MODULES(get("/api/modules", cookie)),
-        POS_TABLES(get(`/api/pos/tables?locationId=${a.locationId}`, cookie)),
+        COUPON_STATE(get(COUPON, cookie)),
       ]);
-
-    it("login con solo {pos} y el POS encendido → landing /backoffice/pos; la cookie no lleva Domain", async () => {
-      const { staff, pin } = await newStaff("Solo Caja", ["pos"]);
-      const response = await LOGIN(loginRequest(staff.identifier, pin));
-      expect(response.status).toBe(200);
-      const body = await response.json();
-      expect(body.staff.landing).toBe("/backoffice/pos");
-      expect(body.staff.mustChangePin).toBe(true);
-      const cookie = response.headers.get("set-cookie") ?? "";
-      expect(cookie).toContain("HttpOnly");
-      // ADR 0140 §4: la sesion queda atada al host que la abrio (`staff.`), no viaja a `business.`.
-      expect(cookie.toLowerCase()).not.toContain("domain=");
-    }, 60_000);
+    const passedTheLadder = async (response: Response) => {
+      expect(response.status).not.toBe(401);
+      if (response.status === 403) {
+        expect((await response.json()).code).not.toBe("pin_change_required");
+      }
+    };
 
     it("con pin_must_change: la API da 403 pin_change_required; despues del cambio, 200", async () => {
       const { staff, pin } = await newStaff("Caja y Mostrador", [
-        "pos",
         "counter",
+        "catalog",
       ]);
       const login = await LOGIN(loginRequest(staff.identifier, pin));
       expect(login.status).toBe(200);
@@ -127,9 +123,9 @@ describe.skipIf(!integrationEnabled)(
       expect(change.status).toBe(200);
       expect(await change.json()).toEqual({ ok: true, mustChangePin: false });
 
-      for (const response of await routes(cookie)) {
-        expect(response.status).toBe(200);
-      }
+      const [modules, counter] = await routes(cookie);
+      expect(modules.status).toBe(200);
+      await passedTheLadder(counter);
     }, 90_000);
 
     it("el owner nunca recibe el 403, aunque su fila diga pin_must_change = true", async () => {
@@ -146,9 +142,9 @@ describe.skipIf(!integrationEnabled)(
       expect(row.pinMustChange).toBe(true);
 
       const cookie = (await openMerchantSession(a.userId)).split(";")[0];
-      for (const response of await routes(cookie)) {
-        expect(response.status).toBe(200);
-      }
+      const [modules, counter] = await routes(cookie);
+      expect(modules.status).toBe(200);
+      await passedTheLadder(counter);
     }, 60_000);
   },
 );

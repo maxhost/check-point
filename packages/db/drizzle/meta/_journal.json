@@ -554,6 +554,13 @@
       "when": 1791900105852,
       "tag": "0078_permisos_de_modulos",
       "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "7",
+      "when": 1791929591047,
+      "tag": "0079_pos_y_mesas_modulos",
+      "breakpoints": true
     }
   ]
 }

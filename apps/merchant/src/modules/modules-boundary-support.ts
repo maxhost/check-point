@@ -70,10 +70,41 @@ export function importsInto(file: string, dir: string): string[] {
 
 /** Los nombres que exportan los esquemas de los modulos (`export const stockItems = …`). */
 export function moduleSchemaExports(): string[] {
-  return sourceFiles(DB_MODULES).flatMap((file) =>
-    [...readFileSync(file, "utf8").matchAll(/export\s+const\s+(\w+)/g)].map(
-      (m) => m[1],
-    ),
+  return sourceFiles(DB_MODULES).flatMap(schemaExportsOf);
+}
+
+function schemaExportsOf(file: string): string[] {
+  return [
+    ...readFileSync(file, "utf8").matchAll(/export\s+const\s+(\w+)/g),
+  ].map((m) => m[1]);
+}
+
+/** Spec 0220 — de que modulo es cada tabla del barril: `schema/modules/<id>.ts` → `<id>`. */
+export function schemaExportOwners(): Map<string, string> {
+  const owners = new Map<string, string>();
+  for (const file of sourceFiles(DB_MODULES)) {
+    const id = file.slice(DB_MODULES.length + 1).replace(/\.ts$/, "");
+    for (const name of schemaExportsOf(file)) owners.set(name, id);
+  }
+  return owners;
+}
+
+const IMPORT_FROM_SCHEMA =
+  /import\s+(?:type\s+)?\{([^}]*)\}\s*from\s*["']@mi-pasaporte\/db\/schema["']/g;
+
+/** Los nombres que `source` importa del barril `@mi-pasaporte/db/schema`. */
+export function namesFromSchemaBarrel(source: string): string[] {
+  return [...source.matchAll(IMPORT_FROM_SCHEMA)].flatMap((m) =>
+    m[1]
+      .split(",")
+      .map(
+        (name) =>
+          name
+            .trim()
+            .replace(/^type\s+/, "")
+            .split(/\s+as\s+/)[0],
+      )
+      .filter(Boolean),
   );
 }
 
@@ -107,6 +138,40 @@ export function moduleLiteralPatterns(id: string): RegExp[] {
     new RegExp(`${q}${name}${q}\\s*[!=]==?\\s*${subject}\\b`, "g"),
     new RegExp(`\\b(?:segment|moduleId|id)\\s*:\\s*${q}${name}${q}`, "g"),
   ];
+}
+
+/**
+ * Spec 0220 / ADR 0141 §9, regla 2 ampliada — los literales que usan el PERMISO `perm` de un
+ * modulo: `includes("<perm>")`, una comparacion contra `"<perm>"` de algo que se llama permiso o
+ * alcance (`permission`, `x.permissions[0]`, `scope`, `perm`, en los dos ordenes) y la propiedad
+ * `permission: "<perm>"`.
+ *
+ * Lo que NO ve (proxy sintactico): una comparacion contra un nombre que no dice permiso
+ * (`effective[0] === "pos"`, `p === "pos"`), un `Set.has("pos")`, el permiso en un arreglo literal
+ * (`["pos", "counter"]`) y el armado. Lo que deja pasar a proposito: `=== "stock"` sobre algo que no
+ * es un permiso (`image.action === "stock"`, la foto de stock del catalogo).
+ */
+export function permissionLiteralPatterns(perm: string): RegExp[] {
+  const q = "[\"'`]";
+  const name = escape(perm);
+  const subject =
+    "\\b(?:[\\w$]+\\.)*(?:\\w*(?:[pP]ermission|[sS]cope)\\w*|perm)(?:\\[\\d+\\])?";
+  return [
+    new RegExp(`\\.includes\\(\\s*${q}${name}${q}\\s*\\)`, "g"),
+    new RegExp(`${subject}\\s*[!=]==?\\s*${q}${name}${q}`, "g"),
+    new RegExp(`${q}${name}${q}\\s*[!=]==?\\s*${subject}`, "g"),
+    new RegExp(`\\bpermission\\s*:\\s*${q}${name}${q}`, "g"),
+  ];
+}
+
+/** Cuantas veces `source` nombra a alguno de `perms` como permiso de modulo. */
+export function permissionLiteralCount(
+  source: string,
+  perms: readonly string[],
+): number {
+  return perms
+    .flatMap(permissionLiteralPatterns)
+    .reduce((total, re) => total + [...source.matchAll(re)].length, 0);
 }
 
 /** Cuantas veces `source` nombra a alguno de `ids` como modulo. */

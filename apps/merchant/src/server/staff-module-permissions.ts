@@ -4,9 +4,9 @@ import { StaffError } from "./staff-error";
 
 /**
  * Spec 0216 / ADR 0139 §5 — **el permiso de un modulo solo se DA con el modulo encendido**: con el
- * modulo apagado, otorgarlo es `422 module_disabled_permission`. Generaliza para todo modulo del
- * registro lo que `assertPosGrantable` hace con `pos` (que conserva su codigo hasta la Fase 2).
- * Vale para el alta y para el `PATCH`.
+ * modulo apagado, otorgarlo es `422 module_disabled_permission`. Vale para todo modulo del registro
+ * (desde la spec 0220 tambien `pos`, que antes tenia su `pos_disabled` propio) y para el alta y el
+ * `PATCH`.
  *
  * `alreadyHas` es la lista ACTUAL del target: conservar un permiso que ya tenia no es darlo.
  * Apagar un modulo no borra el permiso de quien lo tiene (queda sin efecto: el despachador corta

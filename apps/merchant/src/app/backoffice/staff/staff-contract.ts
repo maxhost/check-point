@@ -41,10 +41,6 @@ const PERMISSION_COPY: Record<
     label: "Campañas",
     detail: "Crear, editar, pausar y activar campañas.",
   },
-  pos: {
-    label: "POS",
-    detail: "Abrir, editar, cobrar y anular órdenes de mesa.",
-  },
   brand: {
     label: "Marca",
     detail: "Editar la identidad visual del negocio.",
@@ -61,7 +57,6 @@ const PERMISSION_ORDER: readonly PermissionScope[] = [
   "locations",
   "loyalty",
   "marketing",
-  "pos",
   "brand",
   "staff",
 ];

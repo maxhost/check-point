@@ -27,8 +27,9 @@ describe("el catálogo de los siete permisos (spec 0086 §1)", () => {
   /** EL CONJUNTO EXACTO, no «al menos». Un octavo valor que entrara sin discutirlo
    * rompería acá **y** el `CHECK` de contención de la migración 0041, que lee esta misma
    * lista: son la misma fuente de verdad a propósito. */
-  // Spec 0169: `pos` entra al catálogo (son OCHO), discutido y decidido en esa spec.
-  it("son EXACTAMENTE ocho y en el orden del catálogo", () => {
+  // Spec 0169: `pos` entró al catálogo (eran OCHO). Spec 0220 / ADR 0141 (2026-10-13): `pos` salió
+  // del core y lo declara el módulo POS (`modules/permissions.test.ts`); el core vuelve a SIETE.
+  it("son EXACTAMENTE siete y en el orden del catálogo", () => {
     expect([...PERMISSIONS]).toEqual([
       "brand",
       "catalog",
@@ -36,7 +37,6 @@ describe("el catálogo de los siete permisos (spec 0086 §1)", () => {
       "locations",
       "loyalty",
       "marketing",
-      "pos",
       "staff",
     ]);
   });

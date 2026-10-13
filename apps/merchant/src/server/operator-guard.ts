@@ -10,10 +10,10 @@ import { type OperatorBusiness, operatorBusiness } from "./counter";
 import { pinChangeFailure } from "./pin-change-gate";
 
 /**
- * LA ESCALERA DEL OPERADOR, compartida por el mostrador (`requireOperator`, scope `counter`) y
- * el POS (`requirePosOperator`, scope `pos`, spec 0169). Antes vivia entera en
- * `app/api/counter/_auth.ts`; se extrajo SIN cambiar el comportamiento del mostrador para que
- * las dos superficies no puedan divergir en el orden de los guards (ADR 0073 §1):
+ * LA ESCALERA DEL OPERADOR del mostrador (`requireOperator`, scope `counter`). Antes vivia entera
+ * en `app/api/counter/_auth.ts`; se extrajo SIN cambiar el comportamiento del mostrador cuando el
+ * POS (spec 0169) la compartia. Desde la spec 0220 (2026-10-13) el POS es un modulo y pasa por la
+ * escalera del despachador (`requireApiPermission`), con el mismo orden (ADR 0073 §1):
  *
  * ```
  * 1. ¿hay sesion?                 → 401
@@ -114,7 +114,7 @@ export async function resolveOperator(
   const failure =
     businessStatusFailure(business.status, null, false) ??
     // EL EJE DE ACCESO (spec 0189 §D4 / ADR 0134 §7): sin suscripcion viva y con la prueba
-    // vencida, el mostrador y el POS no operan. DESPUES del eje `status`.
+    // vencida, el mostrador no opera. DESPUES del eje `status`.
     (await businessBillingFailure(business.id)) ??
     // EL PIN TEMPORAL (spec 0218), ULTIMO: ver `pin-change-gate.ts`.
     pinChangeFailure(operator);

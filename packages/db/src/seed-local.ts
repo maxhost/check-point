@@ -188,7 +188,7 @@ function businessRows(b: Business): Query[] {
     ),
     ...b.tables.map(([name, seats], i) =>
       q(
-        `insert into core.dining_table (id, business_id, location_id, name, seats, sort_order)
+        `insert into pos.dining_table (id, business_id, location_id, name, seats, sort_order)
          values ($1, $2, $3, $4, $5, $6) on conflict do nothing`,
         k.tables[i],
         k.business,

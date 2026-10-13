@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { getDb } from "@mi-pasaporte/db";
-import { businesses, memberships, users } from "@mi-pasaporte/db/schema";
+import { memberships, users } from "@mi-pasaporte/db/schema";
 import {
   isValidPermission,
   normalizeValidPermissions,
@@ -47,7 +47,6 @@ export const STAFF_PERMISSION_CODES = {
   selfPermissionEdit: "self_permission_edit",
   targetIsOwner: "target_is_owner",
   staffNotFound: "staff_not_found",
-  posDisabled: "pos_disabled",
 } as const;
 
 /**
@@ -157,36 +156,6 @@ export function assertNotSelf(callerUserId: string, targetUserId: string) {
 }
 
 /**
- * Spec 0169 — **`pos` solo se DA con el modulo POS encendido** (`core.business.pos_enabled`):
- * con el modulo apagado, otorgarlo es `422 pos_disabled`. Vale para el alta y para el `PATCH`.
- *
- * `alreadyHas` es la lista ACTUAL del target: conservar un `pos` que ya tenia no es darlo.
- * Apagar el modulo no borra el permiso de quien lo tiene (queda sin efecto, lo corta
- * `requirePosOperator`), asi que reenviar el conjunto completo de alguien no puede fallar por eso.
- * Solo consulta la base cuando la lista nueva trae un `pos` que el target no tenia.
- */
-export async function assertPosGrantable(
-  businessId: string,
-  permissions: readonly string[],
-  alreadyHas: readonly string[] | null | undefined = [],
-): Promise<void> {
-  if (!permissions.includes("pos") || (alreadyHas ?? []).includes("pos"))
-    return;
-  const [row] = await getDb()
-    .select({ posEnabled: businesses.posEnabled })
-    .from(businesses)
-    .where(eq(businesses.id, businessId))
-    .limit(1);
-  if (row?.posEnabled !== true) {
-    throw new StaffError(
-      422,
-      "Activa el POS del comercio antes de dar este permiso.",
-      STAFF_PERMISSION_CODES.posDisabled,
-    );
-  }
-}
-
-/**
  * `PATCH /api/staff/:userId/permissions` — **REEMPLAZO TOTAL del conjunto, no un delta**: se
  * manda el conjunto de toggles que quedo prendido y lo que no viaja se quita. No existe
  * `add`/`remove`.
@@ -248,9 +217,8 @@ export async function setStaffPermissions(
   }
   // R1, la otra mitad. Va aca —paso 4bis— para que un id inexistente siga siendo 404.
   assertDemotable(caller.role, target.permissions);
-  // Spec 0169: `pos` con el modulo apagado. Despues del target, para que 404/409 sigan primero.
-  await assertPosGrantable(business.id, permissions, target.permissions);
-  // Spec 0216: lo mismo para el permiso de cualquier modulo del registro.
+  // Spec 0216 / 0220: el permiso de un modulo (tambien `pos`) solo con el modulo encendido.
+  // Despues del target, para que 404/409 sigan primero.
   await assertModulePermissionsGrantable(
     business.id,
     permissions,

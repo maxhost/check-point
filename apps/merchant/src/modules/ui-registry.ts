@@ -21,4 +21,8 @@ export type ModuleScreens = {
 export const UI_SCREENS: Readonly<Record<string, ModuleScreens>> = {
   stock: { screens: { "": StockLog } },
   recipes: { screens: { "": RecipesConsole } },
+  // Spec 0220: las pantallas del POS y el panel de Mesas los pone GPT en la 2b
+  // (`modules-boundary.test.ts`, `PENDING_GPT_SCREENS`).
+  pos: { screens: {} },
+  tables: { screens: {} },
 };
