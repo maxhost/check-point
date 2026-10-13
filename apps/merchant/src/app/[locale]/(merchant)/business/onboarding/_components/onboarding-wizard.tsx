@@ -327,7 +327,13 @@ export function OnboardingWizard({
   );
 }
 
-function WizardShell({ children }: { children: React.ReactNode }) {
+export function WizardShell({
+  children,
+  audience = "Para negocios",
+}: {
+  children: React.ReactNode;
+  audience?: string;
+}) {
   return (
     <main className="merchant-onboarding min-h-svh px-4 py-6 text-content sm:px-6 sm:py-10">
       <div className="merchant-onboarding-inner mx-auto w-full max-w-[var(--content-form)]">
@@ -344,7 +350,7 @@ function WizardShell({ children }: { children: React.ReactNode }) {
               checkpass<span>.</span>club
             </span>
           </div>
-          <span className="merchant-onboarding-context">Para negocios</span>
+          <span className="merchant-onboarding-context">{audience}</span>
         </header>
         <div className="merchant-onboarding-content">{children}</div>
       </div>

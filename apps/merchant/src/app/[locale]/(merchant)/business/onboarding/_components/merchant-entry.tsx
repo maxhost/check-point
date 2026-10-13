@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { OnboardingWizard } from "./_components/onboarding-wizard";
-import "./onboarding.css";
+import { OnboardingWizard } from "./onboarding-wizard";
+import "../onboarding.css";
 
 type EntryProps = {
   searchParams: Promise<{ signup?: string | string[] }>;
@@ -28,3 +28,5 @@ export default async function BusinessOnboardingPage({
     <OnboardingWizard startWithSignup={(await searchParams).signup === "1"} />
   );
 }
+
+export { WizardShell } from "./onboarding-wizard";
