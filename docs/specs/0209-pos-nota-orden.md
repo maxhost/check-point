@@ -100,3 +100,7 @@ Tras PUT exitoso de orden abierta cuya nota cambió frente al snapshot, mostrar 
 ## Ajuste L0 del owner — añadir desde búsqueda de orden abierta (cerrado, 2026-10-12)
 
 Editar orden creada: tras seleccionar producto o sumar una unidad en resultados, limpiar query del buscador y emitir ConfirmationToast «Producto añadido» existente. DetailedSale recibe prop opcional clearSearchOnAdd (false por defecto), activada solo en catálogo de orden creada. Wizard/mostrador conservan comportamiento anterior. Reutilizar toast/reset de duración, no nuevos nativos/CSS/kit. Archivos pos-editor.tsx y counter/sale-forms.tsx. Sin tests por owner; formato/diff.
+
+## Ajuste L0 del owner — guardar nota desde el modal (cerrado, 2026-10-12)
+
+En orden creada, Aplicar nota ejecuta PUT inmediato con version y note normalizada, contexto/items del snapshot guardado. No guardar productos pendientes: mantener borrador local y actualizar baseline/version a respuesta. Tras éxito cerrar modal y mostrar Nota actualizada/eliminada; fallo conserva modal/texto y muestra error. Bloquear cierre/duplicado mientras guarda. Wizard sin orden continúa nota local, persistida al crear pedido. Actualizar explicación según contexto. Sin tests por owner; formato/diff y revisión estática.
