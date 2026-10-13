@@ -45,7 +45,9 @@ export function StaffFormModal({
     document.body.style.overflow = "hidden";
     const frame = requestAnimationFrame(() =>
       modalRef.current
-        ?.querySelector<HTMLElement>("input:not([disabled]), button")
+        ?.querySelector<HTMLElement>(
+          'input:not([disabled]):not([hidden]), textarea:not([disabled]), select:not([disabled]), button:not([disabled]), [tabindex="0"]',
+        )
         ?.focus(),
     );
     const escape = (event: KeyboardEvent) => {
@@ -63,7 +65,7 @@ export function StaffFormModal({
   function trapFocus(event: React.KeyboardEvent<HTMLElement>) {
     if (event.key !== "Tab") return;
     const focusable = modalRef.current?.querySelectorAll<HTMLElement>(
-      "button:not([disabled]), input:not([disabled]), [href]",
+      'button:not([disabled]), input:not([disabled]):not([hidden]), textarea:not([disabled]), select:not([disabled]), [href], [tabindex="0"]',
     );
     if (!focusable?.length) return;
     const first = focusable[0];

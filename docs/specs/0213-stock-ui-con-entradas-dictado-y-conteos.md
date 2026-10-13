@@ -1,7 +1,7 @@
 ---
 spec: 0213
 fecha: 2026-10-12
-estado: cerrada
+estado: implementada
 resumen: Stock deja de ser un mock: log real, compras manuales o dictadas con revisión, y conteos manuales. Sin fotos ni Recetas.
 disjunta: si
 archivos: apps/merchant/src/app/backoffice/stock/**, apps/merchant/src/app/backoffice/staff/staff-form-modal.tsx
@@ -43,9 +43,9 @@ Disjunta: sí, backend0210/0212 y Recetas intactos.
 
 ## Definition of Done
 
-- [ ] Typecheck merchant, ESLint de archivos, formato y guardia UI sin aumentos.
-- [ ] Comprobaciones Node de payloads: unidades, coma decimal, precio opcional/total, conteo0, límites y validaciones.
-- [ ] Sin mocks ni fotos en Stock; dictado llama draft y guardar llama entries/conteos.
+- [x] Typecheck merchant, ESLint de archivos, formato y guardia UI sin aumentos.
+- [x] Comprobaciones Node de payloads: unidades, coma decimal, precio opcional/total, conteo0, límites y validaciones.
+- [x] Sin mocks ni fotos en Stock; dictado llama draft y guardar llama entries/conteos.
 - Sin Chrome/e2e/verify global por preferencia explícita del owner: revisión visual y escritura real quedan en dev para el owner. No afirmar QA real no ejecutada.
 
 ## Mutaciones — presupuesto: 0
@@ -63,3 +63,17 @@ GPT implementa solo UI (L2); owner revisa en dev. Sin subagentes ni publicación
 ## Abierto
 
 Sin decisiones de producto abiertas para este alcance aprobado.
+
+## Verificación real
+
+| Comprobación | Resultado |
+|---|---|
+| Node24 merchant typecheck final | 0 |
+| ESLint Stock/helper modal | 0 |
+| Prettier archivos | 0 |
+| Guardia --base HEAD | 0; sin aumentos |
+| diffcheck | 0 |
+| 22 aserciones Node: payloads/unidades/cantidades/precios | 0 |
+| Chrome/e2e/LLM/escritura real | No ejecutados; owner revisa dev |
+
+Primer typecheck detectó import Alert faltante, corregido; final0. Recetas/backend/kit intactos. Sin producción ni verify global. Registro200 con aviso de límite; no paginación que el contrato no proporciona. Audio/manual anteriores quedan incluidos en implementación final real.
