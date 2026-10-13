@@ -68,3 +68,7 @@ Nada.
 ## Cierre ejecutado
 
 UI `dbeb469`, ajuste de expectativa `ae9a5d1`. Revisor independiente: ship para esta extensión; documenter confirma kit conservado. Cinco pruebas nuevas verdes, capturas390/1280 vistas, gates cerrados con corrección del e2e anterior. Trabajo exclusivamente dev, sin merge/push.
+
+## Ajuste L0 del owner — padding inferior (cerrado, 2026-10-12)
+
+Solicitud exacta: footer `counter-detailed-footer` con padding inferior18px, antes10px. Cambiar la declaración existente en `apps/merchant/src/app/globals.css` a `calc(18px + env(safe-area-inset-bottom))`; conservar padding superior10px/lateral16px, posición y clases responsive. Es una clase compartida con el mostrador y el cambio aplica a ambos usos. Sin nuevas reglas, tokens o piezas del kit. Validación acotada: formato, guardia y padding computado en navegador390/1280; sin nuevos tests para este cambio reversible de espaciado.
