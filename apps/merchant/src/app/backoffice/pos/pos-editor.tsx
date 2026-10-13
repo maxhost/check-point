@@ -455,6 +455,22 @@ export function PosEditor({
       }}
     />
   );
+  const noteButton = (
+    <Button
+      variant="quiet"
+      aria-label={note ? "Nota de la orden: nota añadida" : "Nota de la orden"}
+      aria-haspopup="dialog"
+      aria-expanded={noteOpen}
+      className={`close-module size-12 shrink-0 rounded-full! p-0! ${note ? "bg-primary! text-on-primary!" : "bg-primary-soft!"}`}
+      isDisabled={busy || conflict}
+      onPress={() => {
+        setNoteText(note);
+        setNoteOpen(true);
+      }}
+    >
+      <Notes aria-hidden="true" className="size-6" />
+    </Button>
+  );
   const actionsButton = (
     <Button
       variant="quiet"
@@ -876,7 +892,7 @@ export function PosEditor({
             >
               Revisar pedido
             </Button>
-            {actionsButton}
+            {noteButton}
           </div>
         ) : (
           <>
@@ -890,7 +906,7 @@ export function PosEditor({
               >
                 Guardar pedido
               </Button>
-              {actionsButton}
+              {noteButton}
             </div>
           </>
         )}
