@@ -1863,6 +1863,7 @@ test("wizard POS: tres pasos, revisión sin importes, añadir, quitar/deshacer y
   expect(writes).toEqual([
     {
       tableLabel: "Mesa wizard",
+      note: null,
       locationId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1",
       items: [
         { productId: "dddddddd-dddd-4ddd-8ddd-ddddddddddd1", quantity: 6 },
