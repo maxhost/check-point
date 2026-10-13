@@ -179,6 +179,9 @@ describe("decideHostRoute — H1 and H2", () => {
       for (const path of paths) {
         const r = route(host, path);
         if (!r) continue;
+        // Spec 0218: la decision puede ser una reescritura, pero solo en `staff.`.
+        expect("redirect" in r).toBe(true);
+        if (!("redirect" in r)) continue;
         redirects += 1;
         const target = new URL(r.redirect);
         expect(route(target.host, `${target.pathname}${target.search}`)).toBe(

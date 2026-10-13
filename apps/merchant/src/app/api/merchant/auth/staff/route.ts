@@ -12,6 +12,7 @@ import {
   registerPinAttempt,
   verifyPin,
 } from "../../../../../server/staff-pin";
+import { readStaffLanding } from "../../../../../server/staff-landing";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +38,8 @@ export const dynamic = "force-dynamic";
  *  5. PIN incorrecto → 401;
  *  6. integrante `disabled` → 403 `staff_disabled` (ADR 0055), **despues** de verificar el
  *     PIN: contestarlo antes convertiria la ruta en un oraculo de quien trabaja ahi;
- *  7. todo bien → 200 con la cookie de sesion y `mustChangePin`.
+ *  7. todo bien → 200 con la cookie de sesion, `mustChangePin` y `landing` (spec 0218: a
+ *     donde va despues de entrar, `server/staff-landing.ts`).
  *
  * **Sobre el paso 3, para que el docblock no afirme lo que el codigo no hace:** la spec §4
  * escribe «con `locked_until > now()` la ruta responde 429 **sin evaluar el PIN**». Esta
@@ -134,6 +136,8 @@ async function staffLogin(request: Request): Promise<NextResponse> {
     );
   }
 
+  // Antes de abrir la sesion: si la lectura falla, sale el 503 sin dejar una sesion huerfana.
+  const landing = await readStaffLanding(row);
   const cookie = await openMerchantSession(row.userId);
   return NextResponse.json(
     {
@@ -142,6 +146,7 @@ async function staffLogin(request: Request): Promise<NextResponse> {
         name: row.name,
         identifier: `${parsed?.handle}@${parsed?.slug}`,
         mustChangePin: row.pinMustChange,
+        landing,
       },
     },
     { status: 200, headers: { "set-cookie": cookie } },
@@ -186,6 +191,9 @@ async function findStaff(handle: string, slug: string) {
       businessStatus: businesses.status,
       pinHash: memberships.pinHash,
       pinMustChange: memberships.pinMustChange,
+      // Spec 0218: el destino despues de entrar (`readStaffLanding`).
+      permissions: memberships.permissions,
+      posEnabled: businesses.posEnabled,
     })
     .from(memberships)
     .innerJoin(businesses, eq(businesses.id, memberships.businessId))

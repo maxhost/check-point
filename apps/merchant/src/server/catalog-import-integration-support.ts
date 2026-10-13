@@ -92,6 +92,9 @@ export async function seedIntegrante(
       handle: `seed-${userId.slice(-12)}`,
       pinHash: "seed-sin-pin",
       permissions,
+      // Spec 0218: el integrante que OPERA ya cambio su PIN temporal (si no, la compuerta lo
+      // corta con 403 `pin_change_required` antes de cualquier superficie).
+      pinMustChange: false,
     });
   return userId;
 }

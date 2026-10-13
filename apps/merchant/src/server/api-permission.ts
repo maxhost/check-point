@@ -2,6 +2,7 @@ import { getMerchantAuth } from "./auth";
 import { membershipContext } from "./staff";
 import { type ApiOwnerBusiness } from "./api-owner";
 import { businessBillingFailure } from "./billing-gate";
+import { pinChangeFailure } from "./pin-change-gate";
 // Desde la HOJA pura, igual que `api-owner.ts`: `DEFAULT_MESSAGES` no esta entre lo que ese
 // modulo re-exporta, y traerlo de acá evita una re-exportacion nueva en un archivo que la
 // spec 0075 exige que quede intacto.
@@ -186,6 +187,7 @@ async function resolveMembership(
       role: string;
       permissions: string[];
       emailVerified: boolean;
+      pinMustChange: boolean;
     }
   | { failure: ApiOwnerFailure }
 > {
@@ -247,6 +249,7 @@ async function resolveMembership(
     role: membership.role,
     permissions: membership.permissions,
     emailVerified: session.user.emailVerified === true,
+    pinMustChange: membership.pinMustChange,
   };
 }
 
@@ -260,6 +263,7 @@ async function statusStep(resolved: {
   userId: string;
   role: string;
   permissions: string[];
+  pinMustChange: boolean;
 }): Promise<ApiPermissionResult> {
   const failure = businessStatusFailure(
     resolved.business.status,
@@ -271,6 +275,9 @@ async function statusStep(resolved: {
   // suspendido sigue diciendo `business_suspended`.
   const billing = await businessBillingFailure(resolved.business.id);
   if (billing) return { failure: billing };
+  // PASO 7 — el PIN temporal (spec 0218), ULTIMO: ver `pin-change-gate.ts`.
+  const pin = pinChangeFailure(resolved);
+  if (pin) return { failure: pin };
   return {
     business: resolved.business,
     userId: resolved.userId,

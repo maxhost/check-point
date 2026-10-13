@@ -93,6 +93,8 @@ export type CounterOperator = {
   business: OperatorBusiness;
   role: string;
   permissions: string[];
+  /** Spec 0218: la compuerta del cambio de PIN del guard (`operator-guard.ts`). */
+  pinMustChange: boolean;
 };
 
 export async function operatorBusiness(
@@ -108,6 +110,7 @@ export async function operatorBusiness(
       // fila resuelve el guard.
       role: memberships.role,
       permissions: memberships.permissions,
+      pinMustChange: memberships.pinMustChange,
     })
     .from(memberships)
     .innerJoin(businesses, eq(businesses.id, memberships.businessId))
@@ -125,6 +128,7 @@ export async function operatorBusiness(
     },
     role: row.role,
     permissions: row.permissions,
+    pinMustChange: row.pinMustChange,
   };
 }
 

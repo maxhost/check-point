@@ -7,6 +7,7 @@ import {
   cookieDe,
   limpiarNegocios,
   permisosIntegrationEnabled as enabled,
+  pinTemporalYaCambiado,
   seedOwnerDeNegocio,
 } from "./permissions-integration-support";
 import { getDb } from "@mi-pasaporte/db";
@@ -107,6 +108,8 @@ describe.skipIf(!enabled)(
       adminA = await altaDe(cookieOwnerA, "Admin A", ["staff", "catalog"]);
       peonA = await altaDe(cookieOwnerA, "Peon A", ["counter"]);
       peonB = await altaDe(cookieOwnerB, "Peon B", ["counter"]);
+      // Spec 0218: el admin OPERA, o sea que ya cambio su PIN temporal.
+      await pinTemporalYaCambiado(businessIds.a, adminA);
       cookieAdminA = await cookieDe(adminA);
     }, 180_000);
 
@@ -211,6 +214,7 @@ describe.skipIf(!enabled)(
         `Admin R3 ${randomUUID().slice(0, 6)}`,
         ["staff", "catalog"],
       );
+      await pinTemporalYaCambiado(businessIds.a, propio);
       const cookiePropio = await cookieDe(propio);
       // El cuerpo lleva SOLO permisos que este caller SÍ puede otorgar: así el rojo habla de
       // R3 y no de R1. Con `staff` adentro el `code` sería `permission_not_grantable` —R1 se

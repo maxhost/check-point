@@ -184,6 +184,13 @@ export async function seedMember(opts: {
    * pide explicito. El default no se elige por comodidad: se elige por parecerse al dato real.
    */
   emailVerified?: boolean;
+  /**
+   * Spec 0218: con `pin_must_change = true` las escaleras de guards cortan al integrante con
+   * 403 `pin_change_required`. **`false` por default** porque este seed es el integrante que
+   * OPERA, y en produccion operar exige haber cambiado el PIN temporal (la compuerta lo hace
+   * imposible de otro modo). El integrante recien creado —`true`— se pide explicito.
+   */
+  pinMustChange?: boolean;
 }): Promise<string> {
   const userId = `counter-int-${randomUUID()}`;
   await getDb()
@@ -213,6 +220,7 @@ export async function seedMember(opts: {
             handle: `seed-${userId.slice(-12)}`,
             pinHash: "seed-sin-pin",
             permissions: opts.permissions ?? ["counter"],
+            pinMustChange: opts.pinMustChange ?? false,
           }
         : {}),
     });

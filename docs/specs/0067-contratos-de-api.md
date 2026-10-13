@@ -89,13 +89,25 @@ keyeado por `(IP, path)`, vive en memoria y se apaga fuera de produccion).
     "userId": "…",
     "name": "Lucas Pérez",
     "identifier": "lucas-perez@la-farmacia",
-    "mustChangePin": true
+    "mustChangePin": true,
+    "landing": "/backoffice/pos"
   }
 }
 ```
 
 `mustChangePin: true` significa que el integrante **tiene que pasar por §3 antes de operar**.
-La sesion se abre igual: el cambio se hace ya logueado.
+La sesion se abre igual: el cambio se hace ya logueado. **Desde la spec 0218 el servidor lo
+exige**: mientras no lo cambie, la API le contesta 403 `pin_change_required` y las paginas del
+backoffice lo mandan a `/acceso-equipo?cambiar-pin=1` (ver «Compuerta del PIN temporal» en §3).
+
+`landing` (spec 0218 / ADR 0140 §5) es el path, en el mismo host, a donde va el integrante
+despues de entrar (y, si `mustChangePin`, despues del cambio). Lo calcula el servidor con sus
+permisos EFECTIVOS —`pos` solo con el POS encendido, un permiso de modulo solo con su modulo
+encendido, los del core siempre—: exactamente `{pos}` → `"/backoffice/pos"`; cualquier otro
+conjunto, tambien el vacio → `"/backoffice"`.
+
+La cookie **no lleva `Domain`** (medido en `staff-entry.neon.integration.test.ts`): la sesion
+queda atada al host que la abrio, asi que una sesion abierta en `staff.` no viaja a `business.`.
 
 **Errores**
 
@@ -233,6 +245,19 @@ nombres de parametro en el mismo nivel.
 | 403 | `staff_disabled` | membresia `disabled` |
 | 404 | `staff_not_found` | `userId` no es el de la sesion, no es un staff, **o resuelve a mas de una membresia de staff** (la PK de `business_membership` es `(business_id, user_id)` y la sesion no trae negocio: la ambiguedad se rechaza en vez de elegir un negocio a dedo; hoy es inalcanzable). **404 y no 403**: no se confirma que ese id exista |
 | 429 | `pin_locked` | mismo bloqueo escalado que el login —este endpoint **no** es un camino barato para adivinar el PIN— y con la misma nota: el PIN se evalua igual, el intento no consume nada y el 429 no dice si era correcto |
+
+**Compuerta del PIN temporal (spec 0218).** Mientras `pin_must_change = true` para la sesion
+de un integrante (el owner nunca: no tiene PIN):
+
+- **API** → `403 { "error": "Cambia tu PIN temporal para continuar.", "code": "pin_change_required" }`
+  en toda superficie que pase por las escaleras de guards (`requireApiPermission`,
+  `requireApiPermissionSinGateDeEmail`, `requireApiMember`, el despachador de modulos, el
+  mostrador y el POS). Es el ULTIMO paso de cada escalera: un `401`, `not_member`,
+  `missing_permission`, `business_suspended`/`business_closed` o `payment_required` sale antes.
+- **Paginas del backoffice** → redirect a `/acceso-equipo?cambiar-pin=1`.
+- **Exceptuadas:** esta ruta (§3), `GET /api/merchant/session` y el cierre de sesion
+  (`/api/auth/sign-out`). Tampoco la alcanzan las rutas que no son del integrante
+  (`requireApiOwner` lo corta antes con `not_owner`).
 
 > **El invariante mas peligroso del paso esta aca: no se puede fijar un PIN nuevo sin
 > verificar el actual.** Si se pudiera, `pin_must_change = true` sobre las membresias
@@ -487,6 +512,10 @@ imprimir el parametro crudo**: un codigo desconocido no renderiza nada.
 | `magic_link_invalid` | `GET /api/merchant/auth/magic-link` (§6) | el enlace no traia token, o el token era invalido, estaba vencido o ya se habia usado | «Ese enlace ya no sirve. Pedí uno nuevo.» |
 | `business_closed` | `requireBackofficeSession` (constante `BUSINESS_CLOSED`, spec 0072 §D4) | la cuenta del negocio esta CERRADA; no entra nadie, ni el owner | «Esta cuenta está cerrada.» |
 | `business_suspended` | `requireBackofficeSession` (constante `BUSINESS_SUSPENDED`, spec 0086 §8) | el negocio no opera y el caller **no es el owner**. El owner del mismo negocio NO rebota: entra a leer el motivo | «La cuenta del negocio está suspendida.» |
+
+**En el host del equipo (`staff.`, spec 0218):** `/` se reescribe a `/acceso-equipo` con su
+query, asi que un rebote del guard (`/?e=<codigo>`) llega a la pantalla del ingreso del equipo
+con el mismo `?e=`: esa pantalla tambien traduce estos codigos por allow-list.
 
 **La raíz con y sin codigo (spec 0166):** `/?e=<cualquier valor no vacio>` renderiza la portada y **nunca redirige**, con o sin sesion; `/` sin `?e=` manda una sesion valida a `/backoffice` y sin cookie o con sesion invalida a `/es/business/onboarding`. Todo rebote del guard a `/` sin `?e=` sale sin sesion (`!row` la revoca), asi que no hay ciclo.
 

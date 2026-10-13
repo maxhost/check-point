@@ -1,7 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { cookieDe } from "./permissions-integration-support";
+import {
+  cookieDe,
+  pinTemporalYaCambiado,
+} from "./permissions-integration-support";
 import {
   type Montaje,
   altaDe,
@@ -50,6 +53,8 @@ describe.skipIf(!enabled)("el renombre del integrante (spec 0087)", () => {
     ({ ids, businessIds, slugs, cookieOwnerA } = montaje);
     adminA = await alta(cookieOwnerA, "Admin A");
     await darPermisos(businessIds.a, adminA, ["staff", "catalog"]);
+    // Spec 0218: el admin OPERA, o sea que ya cambio su PIN temporal.
+    await pinTemporalYaCambiado(businessIds.a, adminA);
     cookieAdminA = await cookieDe(adminA);
     peonB = await alta(montaje.cookieOwnerB, "Peon B");
   }, 180_000);

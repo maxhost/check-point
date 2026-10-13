@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 // better-auth necesita estas dos para construirse; valores de test sobre la rama aislada.
 process.env.BETTER_AUTH_SECRET ||= "integration-secret-at-least-32-chars-xx";
@@ -48,6 +48,28 @@ export async function seedOwnerDeNegocio(
   await db
     .insert(memberships)
     .values({ businessId, userId, role: "owner", status: "active" });
+}
+
+/**
+ * Spec 0218: el integrante dado de alta por la ruta real nace con `pin_must_change = true`, y
+ * con eso las escaleras de guards lo cortan con 403 `pin_change_required`. Un integrante que
+ * OPERA en produccion ya hizo el cambio de §3 (contrato 0067); esto deja la fila como queda
+ * despues de ese cambio. El cambio en si se mide por la ruta real en
+ * `staff-entry.neon.integration.test.ts`.
+ */
+export async function pinTemporalYaCambiado(
+  businessId: string,
+  userId: string,
+): Promise<void> {
+  await getDb()
+    .update(memberships)
+    .set({ pinMustChange: false })
+    .where(
+      and(
+        eq(memberships.businessId, businessId),
+        eq(memberships.userId, userId),
+      ),
+    );
 }
 
 /** Cookie de una sesión REAL (`internalAdapter.createSession`), no un doble. */

@@ -7,6 +7,7 @@ import { getMerchantAuth } from "./auth";
 import { businessStatusFailure } from "./api-owner";
 import { businessBillingFailure } from "./billing-gate";
 import { type OperatorBusiness, operatorBusiness } from "./counter";
+import { pinChangeFailure } from "./pin-change-gate";
 
 /**
  * LA ESCALERA DEL OPERADOR, compartida por el mostrador (`requireOperator`, scope `counter`) y
@@ -21,6 +22,7 @@ import { type OperatorBusiness, operatorBusiness } from "./counter";
  * 4. owner con email sin verificar → 403 email_not_verified
  * 5. ¿el negocio OPERA?           → 403 business_suspended | business_closed
  * 6. ¿tiene ACCESO?               → 402 payment_required (spec 0189 §D4)
+ * 7. ¿PIN temporal?               → 403 pin_change_required (spec 0218, solo staff)
  * ```
  *
  * Lo unico que cambia entre superficies es el scope y la COPIA de los dos mensajes propios: el
@@ -113,7 +115,9 @@ export async function resolveOperator(
     businessStatusFailure(business.status, null, false) ??
     // EL EJE DE ACCESO (spec 0189 §D4 / ADR 0134 §7): sin suscripcion viva y con la prueba
     // vencida, el mostrador y el POS no operan. DESPUES del eje `status`.
-    (await businessBillingFailure(business.id));
+    (await businessBillingFailure(business.id)) ??
+    // EL PIN TEMPORAL (spec 0218), ULTIMO: ver `pin-change-gate.ts`.
+    pinChangeFailure(operator);
   if (failure) {
     return {
       response: NextResponse.json(

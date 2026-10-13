@@ -118,6 +118,8 @@ export async function membershipContext(userId: string): Promise<{
   suspensionReason: string | null;
   role: string;
   permissions: string[];
+  /** Spec 0218: la compuerta del cambio de PIN (`pin-change-gate.ts`), una columna mas. */
+  pinMustChange: boolean;
 } | null> {
   const [row] = await getDb()
     .select({
@@ -129,6 +131,7 @@ export async function membershipContext(userId: string): Promise<{
       suspensionReason: businesses.suspensionReason,
       role: memberships.role,
       permissions: memberships.permissions,
+      pinMustChange: memberships.pinMustChange,
     })
     .from(memberships)
     .innerJoin(businesses, eq(businesses.id, memberships.businessId))

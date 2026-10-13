@@ -6,6 +6,7 @@ import { readBusinessBilling } from "./billing-gate";
 import { getDb } from "@mi-pasaporte/db";
 import { businesses, memberships, sessions } from "@mi-pasaporte/db/schema";
 import { memberPermissions } from "../modules/permissions";
+import { PIN_CHANGE_PAGE, pinChangeRequired } from "./pin-change-gate";
 
 /**
  * Reason code the guard puts on `/?e=…` when it bounces a deactivated staff member
@@ -96,7 +97,8 @@ export type BackofficeSession = {
  *  - business `active` SIN ACCESO (spec 0189 §D4): el owner → `/backoffice/subscription`
  *    (salvo `{ allowBlocked: true }`, que es esa misma página), el integrante →
  *    `/?e=payment_required` (no puede pagar, y mandarlo a la página del owner cerraría un
- *    ciclo con el rebote de `requireOwner` a `/backoffice/counter`).
+ *    ciclo con el rebote de `requireOwner` a `/backoffice/counter`);
+ *  - integrante con el PIN temporal sin cambiar → `/acceso-equipo?cambiar-pin=1` (spec 0218).
  *
  * **NO gatea por email verificado, y es una decisión del owner** (spec 0082 / ADR 0070 §11,
  * textual): *«Entra a su cuenta directamente al terminar el wizard y ve el onboarding»*, y el
@@ -140,6 +142,7 @@ export async function requireBackofficeSession(
       role: memberships.role,
       status: memberships.status,
       permissions: memberships.permissions,
+      pinMustChange: memberships.pinMustChange,
     })
     .from(memberships)
     .innerJoin(businesses, eq(businesses.id, memberships.businessId))
@@ -215,6 +218,10 @@ export async function requireBackofficeSession(
       );
     }
   }
+
+  // EL PIN TEMPORAL (spec 0218), ULTIMO: el integrante con `pin_must_change` va a la pantalla
+  // del cambio. El owner nunca (`pin-change-gate.ts`).
+  if (pinChangeRequired(row)) redirect(PIN_CHANGE_PAGE);
 
   return {
     userId: session.user.id,
