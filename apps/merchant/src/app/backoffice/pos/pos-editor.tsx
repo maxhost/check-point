@@ -116,6 +116,7 @@ export function PosEditor({
   const [note, setNote] = useState(order?.note ?? "");
   const [noteOpen, setNoteOpen] = useState(false);
   const [noteText, setNoteText] = useState("");
+  const noteSaving = useRef(false);
   const [baselineSignature, setBaselineSignature] = useState(() =>
     signature(
       order?.tableLabel ?? "",
@@ -390,6 +391,43 @@ export function PosEditor({
               : "Nota eliminada"
             : "Pedido actualizado",
         );
+    }
+  }
+  async function saveNote() {
+    if (busy || conflict || noteSaving.current || noteText.trim().length > 1000)
+      return;
+    if (!baseline) {
+      setNote(noteText.trim());
+      setNoteOpen(false);
+      return;
+    }
+    noteSaving.current = true;
+    setUpdatedNotice(null);
+    try {
+      const result = await onSave({
+        version: baseline.version,
+        tableLabel: baseline.tableLabel,
+        tableId: baseline.tableId ?? null,
+        ...(baseline.location?.id ? { locationId: baseline.location.id } : {}),
+        items: linePayload(draftItems(baseline)),
+        note: noteText.trim() || null,
+      });
+      if (!result) return;
+      setNote(result.note ?? "");
+      setBaseline(result);
+      setBaselineSignature(
+        signature(
+          result.tableLabel,
+          result.location?.id ?? "",
+          draftItems(result),
+          result.tableId ?? null,
+          result.note ?? "",
+        ),
+      );
+      setNoteOpen(false);
+      setUpdatedNotice(result.note ? "Nota actualizada" : "Nota eliminada");
+    } finally {
+      noteSaving.current = false;
     }
   }
   async function saveTable() {
@@ -930,11 +968,19 @@ export function PosEditor({
       />
       <Dialog
         isOpen={noteOpen}
-        onOpenChange={setNoteOpen}
+        onOpenChange={(open) => {
+          if (!busy) setNoteOpen(open);
+        }}
+        isDismissable={!busy}
         title="Nota de la orden"
-        description="Añade los datos para la factura u otra información del pedido. La nota se guardará cuando guardes el pedido o los cambios."
+        description={
+          order
+            ? "Añade los datos para la factura u otra información del pedido. Aplicar nota guarda solo la nota de esta orden."
+            : "Añade los datos para la factura u otra información del pedido. La nota se guardará cuando guardes el pedido."
+        }
       >
         <div className="grid gap-4">
+          {saveError && <Alert kind="error" title={saveError} />}
           <TextAreaField
             label="Nota"
             autoFocus
@@ -949,15 +995,17 @@ export function PosEditor({
             }
           />
           <div className="flex justify-end gap-3">
-            <Button variant="secondary" onPress={() => setNoteOpen(false)}>
+            <Button
+              variant="secondary"
+              isDisabled={busy}
+              onPress={() => setNoteOpen(false)}
+            >
               Cancelar
             </Button>
             <Button
               isDisabled={busy || conflict || noteText.trim().length > 1000}
-              onPress={() => {
-                setNote(noteText.trim());
-                setNoteOpen(false);
-              }}
+              isLoading={busy && noteSaving.current}
+              onPress={() => void saveNote()}
             >
               Aplicar nota
             </Button>
