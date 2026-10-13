@@ -2,15 +2,8 @@
 
 import { useState } from "react";
 import { EditPencil, Package, Plus, Xmark } from "iconoir-react";
-import {
-  Button,
-  Dialog,
-  Form,
-  FormActions,
-  PageHeader,
-  Text,
-  TextAreaField,
-} from "../../../ui";
+import { Button, Dialog, PageHeader, Text } from "../../../ui";
+import { StockInputModal } from "./stock-input-modal";
 
 const examples = [
   {
@@ -46,11 +39,9 @@ export function StockLog() {
   const [registration, setRegistration] = useState<"adjustment" | "new" | null>(
     null,
   );
-  const [summary, setSummary] = useState("");
 
   function cancel() {
     setRegistration(null);
-    setSummary("");
   }
 
   return (
@@ -111,49 +102,23 @@ export function StockLog() {
             </Button>
           </div>
         </Dialog>
-        <Dialog
-          isOpen={registration !== null}
-          onOpenChange={(open) => {
-            if (!open) cancel();
-          }}
-          title={
-            registration === "adjustment" ? "Ajustar stock" : "Nuevo stock"
-          }
-          description="Vista de muestra. Este registro se borrará al recargar."
-        >
-          <Form
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (!summary.trim()) return;
+        {registration && (
+          <StockInputModal
+            kind={registration}
+            onClose={cancel}
+            onRegister={(summary) => {
               setEntries((current) => [
                 {
                   id: crypto.randomUUID(),
                   date: new Date().toISOString(),
-                  summary: summary.trim(),
+                  summary,
                 },
                 ...current,
               ]);
               cancel();
             }}
-          >
-            <TextAreaField
-              label="Resumen del stock"
-              placeholder="Por ejemplo: harina, huevos, tomates…"
-              value={summary}
-              onChange={setSummary}
-              maxLength={500}
-              autoFocus
-            />
-            <FormActions>
-              <Button variant="secondary" onPress={cancel}>
-                Cancelar
-              </Button>
-              <Button type="submit" isDisabled={!summary.trim()}>
-                Añadir a la vista
-              </Button>
-            </FormActions>
-          </Form>
-        </Dialog>
+          />
+        )}
         <div
           role="table"
           aria-label="Registros de stock"
