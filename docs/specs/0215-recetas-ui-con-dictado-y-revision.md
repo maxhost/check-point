@@ -1,7 +1,7 @@
 ---
 spec: 0215
 fecha: 2026-10-12
-estado: cerrada
+estado: implementada
 resumen: Gestión de recetas por producto, selección del catálogo, dictado y revisión editable antes de guardar mediante contratos 0210/0214.
 disjunta: si
 archivos: apps/merchant/src/app/backoffice/recipes/**
@@ -50,3 +50,7 @@ Sin suite de navegador ni escrituras reales por herramientas; no se afirma verif
 ## Abierto
 
 Ninguno.
+
+## Verificación ejecutada (2026-10-13)
+
+Vitest con config de merchant:12/12 en183ms. Primer comando con filtro de proyecto merchant no coincidía con ningún proyecto; se corrigió usando config/cwd del paquete. Typecheck final0 (aserción de test sobre union itemId/newItem corregida), ESLint0, Prettier0, ui-guard sin aumentos y diffcheck0. No Chrome ni escrituras HTTP reales/LLM por herramientas: owner revisa en dev-business. Spec reservada en92c088d; implementación local pendiente de commit. API/kit intactos.

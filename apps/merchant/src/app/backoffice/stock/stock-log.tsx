@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { EditPencil, Package, Plus, Xmark } from "iconoir-react";
-import { Alert, Button, Dialog, PageHeader, Text } from "../../../ui";
+import { Alert, Button, Dialog, Text } from "../../../ui";
+import { ModuleHeader } from "../../components/ui";
 import { StockInputModal } from "./stock-input-modal";
+import { StockLogSkeleton } from "./stock-skeleton";
 import { posRequest, type PosSession } from "../pos/pos-types";
 import type { StockMovement } from "./stock-types";
 
@@ -71,21 +73,23 @@ export function StockLog() {
 
   return (
     <main className="merchant-shell">
-      <div className="backoffice-home grid gap-6">
-        <PageHeader
+      <div className="brand-page catalog-page grid gap-6">
+        <ModuleHeader
+          eyebrow="Stock"
           title="Stock"
           description="Consulta los registros de stock de tu negocio."
-          actions={
-            <Button
-              onPress={() => setMenuOpen(true)}
-              aria-haspopup="dialog"
-              aria-expanded={menuOpen}
-            >
-              <Plus className="size-5" aria-hidden="true" />
-              Registrar stock
-            </Button>
-          }
+          closeHref="/backoffice"
         />
+        <div className="flex flex-wrap justify-end gap-3">
+          <Button
+            onPress={() => setMenuOpen(true)}
+            aria-haspopup="dialog"
+            aria-expanded={menuOpen}
+          >
+            <Plus className="size-5" aria-hidden="true" />
+            Registrar stock
+          </Button>
+        </div>
         {error && (
           <Alert kind="error" title={error}>
             <Button variant="secondary" onPress={reload}>
@@ -93,7 +97,7 @@ export function StockLog() {
             </Button>
           </Alert>
         )}
-        {!entries && !error && <Text>Cargando registro de stock…</Text>}
+        {!entries && !error && <StockLogSkeleton />}
         {entries?.length === 0 && (
           <Text variant="muted">
             Todavía no tienes registros. Registra tu primera compra o un conteo
