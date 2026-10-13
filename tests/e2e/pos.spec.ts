@@ -3602,7 +3602,7 @@ for (const width of [390, 320]) {
 for (const width of [390, 1280]) {
   test(`0209 nota en pasos 2 y 3, crear, editar, conservar y borrar (${width})`, async ({
     page,
-  }) => {
+  }, testInfo) => {
     await setup(page);
     await page.setViewportSize({ width, height: 844 });
     let current = { ...baseOrder };
@@ -3664,7 +3664,7 @@ for (const width of [390, 1280]) {
     ).toBeEnabled();
     await field.fill("  Ana Pérez\nCédula: 1234567890\nana@example.com  ");
     await page.screenshot({
-      path: `/private/tmp/0209-note-${width}.png`,
+      path: testInfo.outputPath(`0209-note-${width}.png`),
       fullPage: true,
     });
     await dialog.getByRole("button", { name: "Aplicar nota" }).click();
