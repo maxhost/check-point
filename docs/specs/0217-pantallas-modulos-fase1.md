@@ -66,3 +66,7 @@ La corrida aislada encontró un fallo en landing.spec.ts:296: naturalWidth del h
 ## Evidencia de implementación
 
 UI `6f2272f` y ajustes e2e `b2482c4`/`8e837c8`, solo dev. [Handoff con tabla real de verify y repetición verde del gate e2e](../handoff-0217-modulos-fase1-2026-10-13.md). La spec sigue cerrada hasta el PASS adversarial de Claude.
+
+## Hallazgo H2 de la revisión adversarial de Claude
+
+PASS conjunto documentado en la spec 0216 y commit 9204c30. H2: el mapa cerrado de iconos obliga a editar el core para otro icono de iconoir. Se sustituye por resolución genérica del nombre contra los exports de la biblioteca, cargados en diferido y con componentes cacheados por nombre. Package queda como placeholder mientras carga; un nombre inválido tiene diagnóstico y fallback seguro. E2e usa Planet en el módulo sintético (sin import ni registro específico en el core) y verifica sus formas SVG, en móvil/escritorio. No cambia navegación, permisos ni contratos.
