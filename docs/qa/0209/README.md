@@ -81,3 +81,7 @@ Commit `b49bdcb` reemplaza los accesos anteriores. Botón circular48px MoreVert 
 `541be5f`: PosEditor cierra modal y muestra toast inmediato, actualiza snapshot local y pasa note optimista a PosConsole.run. Cache privada acepta nota sin inventar versión, bloquea lecturas pendientes y mantiene bloqueo de otras escrituras mientras PUT confirma. Éxito reemplaza por respuesta; fallo revierte caché confirmada antes del handler existente, retira toast y reabre modal con texto para reintentar. Conflicto/sesión siguen manejo vigente; epoch impide recuperación en otra sesión. Productos pendientes conservados. Toast usa key nueva por nota para reiniciar duración. Wizard sigue local hasta crear orden.
 
 Formato/diffcheck0 y `pnpm --filter @mi-pasaporte/merchant exec tsc --noEmit` salida0. Primera comprobación detectó reset anterior setUpdatedNotice(false), corregido a null en Descartar cambios. Sin tests ni capturas por preferencia del owner; comportamiento optimista/fallos revisado estáticamente, no afirmar comprobación runtime.
+
+## Corrección L0: claves únicas de toasts
+
+`d9002a7`: product-added-N/order-updated-N reemplazan claves numéricas de dos toasts hermanos que colisionaban en1. Formato/diffcheck0, sin tests. Error reportado por owner, no atribuido a Next.
