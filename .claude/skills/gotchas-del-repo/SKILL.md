@@ -30,6 +30,10 @@ dominio. El registro historico de `mistake→rule` vive en `docs/LECCIONES.md`.
 - **Las suites `.neon.integration` (168, medido 2026-10-04) se auto-skipean** sin sus dos variables, y vitest no
   lee `.env.local`: van con `tools/neon-test.sh [archivo]`. **Nunca contra `DATABASE_URL`: es `main`, o sea PROD.**
   Entera (~20 min) = CI. Detalle mas abajo («Las suites `.neon.integration`…»).
+- **`tools/neon-test.sh` con muchas suites a la vez da FALSOS ROJOS** (medido 2026-10-13: 8 archivos juntos → 32 fallos en
+  7 archivos; los mismos de a dos → todos verdes). Correr de a 1-2 archivos; un rojo de un archivo ENTERO es la pista.
+- **`git add` de un doc compartido (`docs/INDEX.md`, `PARQUEADO.md`) arrastra los cambios SIN COMMITEAR de GPT** (paso en
+  `9204c30`). Antes: `git diff <archivo>`; si hay lineas ajenas, `git add -p` solo las tuyas.
 - **El Stop hook `verify.sh` no re-corre gates si el codigo no cambio** (spec 0151): guarda la huella
   (`git diff HEAD` + no trackeados bajo `apps/`, `packages/`, `tools/`) del ultimo verde en
   `$(git rev-parse --git-path verify-last-green)` (dentro de `.git`, uno por worktree). Para forzarlo, borrá ese

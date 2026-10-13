@@ -2224,3 +2224,12 @@ esta en la skill `gotchas-del-repo`.** Cargala antes de tocar esos dominios.
   y despues `GH_TOKEN= git -c credential.helper='!gh auth git-credential' push origin main` — el
   `GH_TOKEN=` inline va en el MISMO comando (cada Bash es un shell nuevo).
 ```
+
+## 2026-10-13 — Neon en paralelo y docs compartidos
+
+- **8 suites `.neon.integration` a la vez → 32 fallos falsos.** Al reproducir la evidencia del implementador de la 0216 corri
+  8 archivos juntos con `tools/neon-test.sh`: 7 fallaron enteros. Solos o de a dos, todos verdes (48 tests). Casi se
+  reporta un rojo que no existia. Regla en `gotchas-del-repo`: de a 1-2 archivos.
+- **`git add docs/INDEX.md` commiteo una fila de GPT sin commitear** (`9204c30`, fila 0217). Inocuo esa vez, pero es el
+  mismo mecanismo que mezclaria trabajo ajeno a medias. Regla en `gotchas-del-repo`: `git diff` antes y `git add -p`.
+

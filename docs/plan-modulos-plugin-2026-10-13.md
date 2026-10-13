@@ -57,7 +57,7 @@ grande es desacoplar el POS, y antes el patron tiene que quedar entero.
 5. **Permisos de modulo**: el permiso de un modulo apagado queda sin efecto (como hoy `pos`); el catalogo valido de
    un negocio = permisos del core + los de sus modulos.
 
-## Fase 1 — Stock y Recetas cumplen el contrato (implementacion de referencia)
+## Fase 1 — Stock y Recetas cumplen el contrato (implementacion de referencia) — HECHA 2026-10-13 (0216 + 0217, revisor adversarial PASS)
 
 Chicos, nuevos, sin datos que cuidar: aca se descubren los huecos del contrato con costo bajo.
 - Menu y Ajustes salen del manifiesto; pantallas a `modules/{stock,recipes}/ui` (GPT); permisos propios declarados
@@ -77,6 +77,8 @@ Chicos, nuevos, sin datos que cuidar: aca se descubren los huecos del contrato c
   comercio con POS encendido lo sigue teniendo y de que las ordenes abiertas siguen abiertas.
 - **Revision adversarial con tres focos**: acoplamiento oculto; regresiones del POS (cerrar orden con y sin pase,
   cupon, puntos, impresion, mesa ocupada, apagar con ordenes abiertas); migracion de datos.
+
+**Owner 2026-10-13: UN UNICO push a `main` cuando terminen POS y Mesas.**
 
 ## Como se trabaja cada fase
 
