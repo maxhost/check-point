@@ -1132,6 +1132,18 @@ export function PosEditor({
         }
       >
         <div className="grid gap-3">
+          <Button
+            variant="secondary"
+            isDisabled={busy || conflict}
+            onPress={() => {
+              setActionsOpen(false);
+              setNoteText(note);
+              setNoteOpen(true);
+            }}
+          >
+            <Notes aria-hidden="true" className="size-5" />
+            {note ? "Editar nota" : "Añadir nota"}
+          </Button>
           {order && (
             <Button
               variant="secondary"
@@ -1145,18 +1157,6 @@ export function PosEditor({
               Escanear QR
             </Button>
           )}
-          <Button
-            variant="secondary"
-            isDisabled={busy || conflict}
-            onPress={() => {
-              setActionsOpen(false);
-              setNoteText(note);
-              setNoteOpen(true);
-            }}
-          >
-            <Notes aria-hidden="true" className="size-5" />
-            {note ? "Editar nota" : "Añadir nota"}
-          </Button>
           {order && printing.enabled && (
             <Button
               variant="secondary"
