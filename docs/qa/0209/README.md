@@ -67,3 +67,7 @@ Commit `b49bdcb` reemplaza los accesos anteriores. Botón circular48px MoreVert 
 ## L0: toast de nota guardada
 
 `06e0f0f` reutiliza ConfirmationToast al guardar cambios de nota: «Nota actualizada» o «Nota eliminada». Solo tras respuesta exitosa; mesa/productos sin cambio de nota siguen «Pedido actualizado». Sin tests por owner; formato/diffcheck0.
+
+## L0: búsqueda al añadir producto
+
+`75a27e0`: clearSearchOnAdd opcional en DetailedSale, activado únicamente al editar orden abierta; limpiar búsqueda al seleccionar producto o +unidad. Toast Producto añadido existente se mantiene en onAdd y se extiende a +unidad. Wizard/mostrador intactos. Sin tests por owner; formato/diffcheck0.
