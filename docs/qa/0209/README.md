@@ -43,3 +43,7 @@ Sin pruebas con factura/datos reales ni teclado de teléfono físico. API/servid
 ## Ajuste posterior del owner: padding inferior18px
 
 Commit `5faeed5`, solo declaración existente de globals.css: 10px →18px más safe-area inferior. Padding superior10px y lateral16px intactos. Clase compartida POS/mostrador. Formato, ui-guard contra HEAD previo y diffcheck salida0. CSS real compilado con PostCSS/Tailwind y medido en Chromium:390px → bottom18px/top10px/left16px/fixed;1280px → bottom18px/top10px/left16px/sticky. Script temporal `/private/tmp/0209-footer-padding.mjs`. Primer fixture no pudo resolver vite/package.json; comprobación directa con CSS real salida0. No nuevas pruebas ni corrida global para este ajuste reversible de espaciado.
+
+## Ajuste L0 posterior: nota junto a Editar/Pedido
+
+Commit `a067159`: un único botón Nota en la fila de tabs de orden ya creada, disponible en Editar y Pedido; retirado del footer. Wizard mantiene su ubicación anterior. Solo movimiento en pos-editor.tsx. Formato/diffcheck0. Sin tests ni nuevas capturas por instrucción explícita del owner; las capturas y pruebas anteriores no verifican esta ubicación nueva.
