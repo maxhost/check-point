@@ -3,7 +3,15 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — LANDING EN FRÍO, NÚMEROS Y CIERRE0215 (2026-10-13)
+## ESTADO — MÓDULOS FASE 1, SPEC0217 (2026-10-13)
+
+Encargo387e6fc completado en dev. Specf656cb6; UI6f2272f; corrección CI POSb2482c4; ampliación mecánica documentada6fe87da y esperas de imagen landing8e837c8. Sin merge/push/deploy. [Handoff](../handoff-0217-modulos-fase1-2026-10-13.md) con tabla real y logs. Spec0217 sigue cerrada: falta revisión adversarial de Claude sobre servidor0216+UI0217 y QA owner.
+
+Stock/Recetas mudados a modules/<id>/ui con imports corregidos, páginas fijas borradas y registro actualizado; URLs y payloads intactos. Menú usa moduleNavigation+DTO para cualquier integrante y permisos propios, conserva defensa GET antiguo/evento confirmado. Ajustes lista DTO completo con name/description/requires/suggested, dependencias genéricas y 409 missing/dependents. Equipo muestra labels/descriptions del DTO en selector/listado; módulos apagados deshabilitados, permisos previos conservados al editar otros; reintento GET y copy422, protecciones admin/propios intactas. Listas PENDING_GPT={} y PENDING_GPT_DIRS=[]; sin excepciones nuevas. Fixtures completos y tercer módulo sintético. POS captura portable; landing naturalWidth>0 espera30s con presupuesto120s y umbrales conservados.
+
+Node24.20.0: 48/48 unitarios/frontera; tipos merchant/lint/diffcheck/guardia UI sin aumentos. E2e específicos21/21 en13.2s, notaPOS4/4; ocho capturas390/1280 vistas. Verify único en copia temporal aislada (HEAD0f3cb87+30 archivos propios, sin cambios sin commit de Claude0218): tipos/lint/guardia/formato/unitarios2628/build4/NeonCI3531 verdes. Verify devolvió ROJO por imagen landing desktop con poll5s; corregido y landing Turbopack EN FRÍO4/4 en34.6s. Repetición global normal368pasaron21omitidos18fallos por Merchant caído ERR_CONNECTION_REFUSED. Repetición con servidores nuevos, CI=true workers2 retries0:345pasaron62omitidos0fallos. Gate e2e resuelto; no se afirma verify verde en una sola invocación. Env de copia sin DATABASE_URL; Neon exclusivamente por wrapperCI, sin producción. Servidores originales y trabajo paralelo de Claude/API/kit/paquetes/archivos generados/assets sin seguimiento preservados.
+
+## HISTÓRICO — LANDING EN FRÍO, NÚMEROS Y CIERRE0215 (2026-10-13)
 
 Owner pidió tres tareas L1 en dev, sin mover archivos mientras Claude trabaja0216. Commit autorizado `f82130b`, solo landing.spec.ts y archivos actuales backoffice/stock y backoffice/recipes + documentación propia. No se tocaron API/módulos backend/kit/paquetes ni el staging ajeno de Claude. Sin merge ni push de estas tareas.
 

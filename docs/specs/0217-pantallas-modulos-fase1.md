@@ -41,10 +41,10 @@ No disjunta con 0216 por ui-registry y tests de frontera: servidor ya entregado,
 
 ## Definition of Done
 
-- [ ] PENDING_GPT={} y PENDING_GPT_DIRS=[]; ambas suites de frontera verdes.
-- [ ] Typecheck, lint, formato y node tools/ui-guard.ts --base origin/main sin nuevos hallazgos.
-- [ ] e2e POS nota 390/1280, Ajustes/dependencias, permisos de Equipo, Stock/Recetas desde ubicaciones nuevas verdes.
-- [ ] pnpm verify ejecutado una vez al final; tabla real y límites documentados.
+- [x] PENDING_GPT={} y PENDING_GPT_DIRS=[]; ambas suites de frontera verdes.
+- [x] Typecheck, lint, formato y node tools/ui-guard.ts --base origin/main sin nuevos hallazgos.
+- [x] e2e POS nota 390/1280, Ajustes/dependencias, permisos de Equipo, Stock/Recetas desde ubicaciones nuevas verdes.
+- [x] pnpm verify ejecutado una vez al final; tabla real y límites documentados.
 - [ ] Revisión adversarial de Claude sobre ambas partes antes de marcar implementada.
 
 ## Plan de pruebas y verificación
@@ -62,3 +62,7 @@ Ninguna decisión de producto. QA final del owner y PASS Claude posteriores a im
 ## Extensión mecánica de CI medida en verify
 
 La corrida aislada encontró un fallo en landing.spec.ts:296: naturalWidth del hero desktop seguía en cero al vencer el poll predeterminado de 5 segundos. Se conserva naturalWidth > 0 y el presupuesto total de 120 segundos; el poll de la imagen usa 30 segundos para la optimización en dev bajo carga. No cambia producto ni umbrales de diseño. Se repite el gate e2e afectado sin repetir tipos/unitarios/build/Neon ya verdes sobre el mismo producto.
+
+## Evidencia de implementación
+
+UI `6f2272f` y ajustes e2e `b2482c4`/`8e837c8`, solo dev. [Handoff con tabla real de verify y repetición verde del gate e2e](../handoff-0217-modulos-fase1-2026-10-13.md). La spec sigue cerrada hasta el PASS adversarial de Claude.
