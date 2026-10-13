@@ -63,3 +63,7 @@ Commit `b49bdcb` reemplaza los accesos anteriores. Botón circular48px MoreVert 
 ## L0: orden del menú
 
 `b5a092c`: Nota (Añadir/Editar), Escanear QR, Imprimir pedido y Anular. Solo reordenado; bloqueos intactos. Formato/diffcheck0, sin tests.
+
+## L0: toast de nota guardada
+
+`06e0f0f` reutiliza ConfirmationToast al guardar cambios de nota: «Nota actualizada» o «Nota eliminada». Solo tras respuesta exitosa; mesa/productos sin cambio de nota siguen «Pedido actualizado». Sin tests por owner; formato/diffcheck0.
