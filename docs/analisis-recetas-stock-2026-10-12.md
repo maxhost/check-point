@@ -161,3 +161,17 @@ otro (mesas → POS); si los modulos se cobran aparte o van atados al plan (ADR 
   comision de Stripe sobre los $20 que de la IA, que es variable y chica por operacion. Hay que medirla con las
   facturas reales. Ya existe un cupo de IA para la importacion de catalogo (ADR 0083): el limite de IA puede
   generalizar ese mecanismo.
+
+## Decision del owner: gestion vs. analitica (2026-10-12, noche)
+
+- **Recetas y Stock son pantallas de gestion.** Recetas gestiona recetas como Catalogo gestiona productos; Stock es un
+  registro («log») de entradas: compras y conteos.
+- **El stock restante, el costo y el margen («cuanto gano») son de Analitica**, no de esas pantallas. Para la prueba
+  con el comercio, la vista de costos y margenes **no va**: el owner eligio que el comercio cargue recetas y compras
+  primero, «porque todavia ni siquiera pensamos en como se vera esa analitica ni para que servira ni como se
+  accionara».
+- **Vision del owner para Analitica:** «un inbox donde caen las decisiones que se tienen que tomar y ademas numeros que
+  se ven». Se conecta con el reporte parqueado (PARQUEADO #91) y con los avisos de margen (incremento 7).
+- Propuesta de Claude (a decidir): por el ADR 0138, Analitica es core y no puede nombrar modulos; cada modulo activo le
+  aporta sus vistas y sus decisiones al inbox por un punto de enganche.
+- La API ya calcula costo y margen (`GET /api/modules/recipes`, spec 0210); queda lista para cuando exista Analitica.

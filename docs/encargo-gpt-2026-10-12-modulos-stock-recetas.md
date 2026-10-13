@@ -31,20 +31,26 @@ numera desde **0211**.
   necesita Stock»).
 - Desactivar no borra datos.
 
+### Separacion (owner 2026-10-12, corrige la version anterior de este encargo)
+
+Recetas y Stock son pantallas de **GESTION**. Lo que es lectura (stock restante, costo, margen, «cuanto gano») es de
+**Analitica**, que todavia no se diseño: **no va en estas pantallas**. Owner: «la pantalla de recetas deberia
+gestionar recetas como catalogo gestiona productos, stock deberia gestionar stock pero incluso lo veo como un "log"
+de inputs».
+
 ### B. Stock (visible con el modulo `stock` encendido)
 
-- Lista de insumos con nombre, stock estimado (`onHand` + unidad) y ultimo costo por unidad.
-- Crear insumo (`POST /api/modules/stock/items` `{ name, unit }`, unidad `g` | `ml` | `unit`).
-- Cargar compra de un insumo (`POST …/items/:id/purchases` `{ quantity, totalCost }`).
-- Corregir stock con lo contado (`POST …/items/:id/adjustments` `{ countedQuantity }`).
-- Archivar / reactivar y renombrar (`PATCH …/items/:id`).
+- Insumos: crear (`POST /api/modules/stock/items` `{ name, unit }`, unidad `g` | `ml` | `unit`), renombrar,
+  archivar / reactivar (`PATCH …/items/:id`).
+- Un **registro de entradas** por insumo: cargar compra (`POST …/items/:id/purchases` `{ quantity, totalCost }`) y
+  cargar conteo (`POST …/items/:id/adjustments` `{ countedQuantity }`); el historial sale de
+  `GET …/items/:id/movements`.
 
 ### C. Recetas (visible con el modulo `recipes` encendido)
 
-- Lista de productos del catalogo con precio, costo, margen y margen % (`GET /api/modules/recipes`); marcar los que
-  no tienen receta y los de costo incompleto (`costComplete: false`).
-- Editar la receta de un producto: elegir insumos y poner cantidades (`GET` / `PUT /api/modules/recipes/:productId`
-  `{ lines: [{ itemId, quantity }] }`), viendo el costo de cada linea y el total.
+- Gestionar recetas como Catalogo gestiona productos: lista de productos con o sin receta (`GET /api/modules/recipes`,
+  usar `lineCount`) y editar la receta de un producto: elegir insumos y poner cantidades (`GET` / `PUT
+  /api/modules/recipes/:productId` `{ lines: [{ itemId, quantity }] }`).
 
 ## 3. Propuestas de Claude (no las pidio el owner; decidilas con el)
 
@@ -52,3 +58,6 @@ numera desde **0211**.
   `GET /api/modules` (`enabled`), sin nombrar modulos en la navegacion (ADR 0138).
 - Mostrar `kg`/`l` en pantalla convirtiendo a `g`/`ml` al mandar (la API guarda la unidad base).
 - Marcar como «Sugerido» los modulos con `suggested: true`.
+- Crear un insumo desde el buscador del editor de recetas, sin salir de la receta.
+- Un renglon con el costo resultante dentro del editor de recetas (dato para decidir la cantidad, no analitica). **El
+  owner no lo decidio: preguntale antes de hacerlo.**
