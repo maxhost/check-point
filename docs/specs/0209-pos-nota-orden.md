@@ -84,3 +84,7 @@ Concentrar Nota, Escanear QR, Imprimir pedido y Anular en el diálogo de accione
 ## Ajuste L0 del owner — nota directa durante creación (cerrado, 2026-10-12)
 
 Wizard pasos2/3: restaurar botón circular Notes directo al modal de nota, junto a Revisar/Guardar pedido. Órdenes ya creadas conservan menú inferior MoreVert con todas sus acciones. Reutilizar estado/estilo del disparador, aria y distintivo según contexto. Solo pos-editor.tsx; sin tests por owner. Formato/diff únicamente.
+
+## Ajuste L0 del owner — quitar distintivo superpuesto (cerrado, 2026-10-12)
+
+Retirar únicamente el icono Notes superpuesto del botón circular MoreVert de orden creada. Conservar borde según nota, aria, menú y nota directa del wizard. Sin tests por owner; formato/diff únicamente.
