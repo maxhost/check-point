@@ -50,10 +50,10 @@ Disjunta con0218: pantallas y e2e propios; ningún servidor. INDEX compartido co
 
 ## Definition of Done
 
-- [ ] Login con/sin PIN temporal, errores, 429 con contador y reintento; cambio PIN error/éxito y coincidencia; entrada directa GET sesión; cuatro avisos; permisos vacíos sin acceso. E2e en ruta exacta.
-- [ ] 390/1280 sin overflow y capturas revisadas; navegación documento nuevo a landing confirmado.
-- [ ] Tipos/lint/formato y node tools/ui-guard.ts --base origin/main sin aumentos.
-- [ ] pnpm verify una vez al final, tabla real y límites; suites de DB solo wrapper NeonCI, nunca URL de producción.
+- [x] Login con/sin PIN temporal, errores, 429 con contador y reintento; cambio PIN error/éxito y coincidencia; entrada directa GET sesión; cuatro avisos; permisos vacíos sin acceso. E2e en ruta exacta.
+- [x] 390/1280 sin overflow y capturas revisadas; navegación documento nuevo a landing confirmado.
+- [x] Tipos/lint/formato y node tools/ui-guard.ts --base origin/main sin aumentos.
+- [x] pnpm verify una vez al final, tabla real y límites; suites de DB solo wrapper NeonCI, nunca URL de producción.
 - [ ] Revisor independiente antes de marcar implementada; rechazo de servidor pendiente declarado aparte.
 
 ## Mutaciones
@@ -71,3 +71,7 @@ Sin decisiones de producto abiertas. Implementación del rechazo de servidor per
 ## Extracción del marco con sus estilos existentes
 
 Las capturas mostraron que exportar WizardShell solo no carga onboarding.css: ese import vive en la página del dueño. Se extrae esa página sin cambiar su contenido a _components/merchant-entry.tsx (con su import CSS ya existente), que reexporta WizardShell; la ruta del dueño reexporta default/generateMetadata y la del equipo importa el shell desde esa entrada. Esto comparte el marco realmente estilizado, sin nueva hoja ni import CSS adicional. El rename conserva la deuda original al verificar la guardia. Archivos adicionales: onboarding/page.ts (shim sin JSX) y onboarding/_components/merchant-entry.tsx (traslado de la antigua page.tsx). Se repiten e2e del equipo y regresión del ingreso del dueño.
+
+## Evidencia
+
+UI c80b347 y avisos9e4734a;24 e2e verdes, tipos/lint/guardia46 sin aumentos, build Merchant final0. Verify único rojo solo en imágenes de landing; Neon completo verde. [Handoff y tabla real](../handoff-0219-acceso-equipo.md). La spec permanece cerrada hasta revisión independiente; rechazo de servidor por cero permisos pendiente de Claude.

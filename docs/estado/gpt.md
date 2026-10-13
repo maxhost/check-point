@@ -3,7 +3,19 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — MÓDULOS FASE 1, SPEC0217 (2026-10-13)
+## ESTADO — ACCESO DEL EQUIPO, SPEC0219 (2026-10-13)
+
+UI implementada en dev: reservaee228d2; precisión de estilos83eeb61; codec80b347; whitelist avisos9e4734a. Ruta /acceso-equipo pública fuera de locale, sin push/merge/deploy. [Handoff](../handoff-0219-acceso-equipo.md) con contrato pendiente y tabla REAL. Spec0219 cerrada hasta PASS independiente/QA. Main remoto4208714 sigue rojo por capturasPOS ya corregidas en devb2482c4, sin publicación.
+
+Reutiliza kit Form/TextField/Button/InlineApiError/Heading/Text y marco del dueño WizardShell. La entrada estilizada antigua page.tsx se trasladó a _components/merchant-entry.tsx (rename84%, mismo importCSS), dueño page.ts reexporta default/generateMetadata; audience opcional Para el equipo, default Para negocios intacto. Sin CSS/paleta/kit nuevos. PinField compone campos6números con inputMode numeric, one-time-code, maxLength6 y pattern. Login POST identifier/pin, GET sesión confirma usuario/permisos; cambio obligatorio con currentPin/newPin/repetición, entrada directa GET user.id y fallback/backoffice. Landing del servidor, navegación de documento nuevo, locks/errores/reintento/contador429 y cuatro avisosURL. Propiedades heredadas/desconocidas se ignoran. PIN en memoria, sin storage/URL/logs. Permisos vacíos o membresía inactiva muestran solo Tu acceso no está activado, sin formularios/botones/redirección.
+
+Límite real: APIactual crea sesión con cero permisos. UI corta el flujo; el rechazo ANTES de cookie y el guard del panel los debe cerrar Claude según contrato escrito0219 (decisión owner ya tomada, no pregunta abierta). No se editó servidor/API/kit/migraciones/host/noindex/DNS, no se afirma autorización protegida solo por UI.
+
+Node24.20.0:24/24 e2e Next/Turbopack con HTTPsimulado en10.2s; login/PINerror/cambio, ceros, coincidencia,429ambos, avisos4, GET/directo/sin sesión/permisos0/destino inválido/retry/dobles envíos/claves heredadas. Cuatro capturas390/1280 vistas en dos rondas; marco sin CSS detectado y corregido por compartir estilos existentes. Primeros rojos de selectores Next annuncer/devtools y runner de otra instalación corregidos, sin aflojar aserciones. M1 fuerza cambio con permisos vacíos: rojo correcto por heading no activado ausente, revertida con SHA/bytes iguales. Tipos/lint/formato/diffcheck/guardia46 sin aumentos y build Merchant final0.
+
+Verify único CI=true en copia temporal sobrec80b347: typecheck/lint/guardia/formato/unit2677/build4/NeonCI3583 verdes. ROJO e2e:350pasan62omitidos15no corrieron(grupo serial),1fallo landing390light por naturalWidth0 (hero30s, reintentos POS60s). Dueño y21tests iniciales de equipo pasaron global. No se modificó landing ni se afirma verify verde. Corrección avisos9e posterior validada con24e2e y build final. Env de copia sin DATABASE_URL; DB solo wrapperCI. Servidores/archivos ajenos preservados. Logs /private/tmp/checkpass-0219-*.log y capturas /private/tmp/checkpass-0219-results.
+
+## HISTÓRICO — MÓDULOS FASE 1, SPEC0217 (2026-10-13)
 
 Encargo387e6fc completado en dev. Specf656cb6; UI6f2272f; corrección CI POSb2482c4; ampliación mecánica documentada6fe87da y esperas de imagen landing8e837c8. Sin merge/push/deploy. [Handoff](../handoff-0217-modulos-fase1-2026-10-13.md) con tabla real y logs. Claude documentó PASS conjunto0216+0217 en9204c30; H2(iconos) corregido3e33436 y verificado después. Spec0217 sigue cerrada hasta confirmaciónH2; QA owner antes de publicar.
 
