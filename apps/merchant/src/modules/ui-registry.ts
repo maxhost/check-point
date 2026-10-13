@@ -16,6 +16,9 @@ export type ModuleScreens = {
   /** Spec 0220 / ADR 0141 §3 — el panel que abre el boton del modulo en Locales (si el manifiesto
    * declara `locationAction`). */
   locationPanel?: ComponentType<{ location: { id: string; name: string } }>;
+  /** ADR 0139 §6 — el panel del modulo en Ajustes (si el manifiesto declara `settingsPanel`);
+   * Ajustes lo dibuja solo con el modulo encendido. */
+  settingsPanel?: ComponentType;
 };
 
 export const UI_SCREENS: Readonly<Record<string, ModuleScreens>> = {
