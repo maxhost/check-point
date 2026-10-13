@@ -67,6 +67,11 @@ Salida `200`:
   JSON. Instrucciones: emparejar con un insumo existente cuando es claramente el mismo (sin distinguir mayusculas,
   singular/plural), convertir envases a la cantidad que traen cuando el texto lo dice («carton que trae treinta» → 30
   unit), no inventar precios.
+- *(Ajuste 2026-10-12, QA del owner con dictado real.)* El texto es habla: muletillas, conectores y verbos sueltos («emm»,
+  «hoy compre», «y ah, tambien») se IGNORAN y no van a `unparsed`. `unparsed` es SOLO un insumo mencionado que no se
+  pudo convertir (p. ej. «queso» sin cantidad). Las cantidades aproximadas («creo que unos siete») se toman como el
+  numero. El esquema obliga `quantity`/`totalCost` a `^[0-9]+(\.[0-9]+)?$`. Medido contra `gpt-5-mini` con las dos
+  frases del owner: relleno ignorado, «queso» como unico `unparsed`, cantidades numericas.
 
 Errores: 422 `invalid_text`; 503 `draft_unavailable` (sin proveedor configurado, error de red o del proveedor, salida
 que no es JSON valido) con mensaje en español «No pudimos analizar el texto. Probá de nuevo o cargalo a mano.»; los
