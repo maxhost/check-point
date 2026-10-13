@@ -88,3 +88,7 @@ Wizard pasos2/3: restaurar botón circular Notes directo al modal de nota, junto
 ## Ajuste L0 del owner — quitar distintivo superpuesto (cerrado, 2026-10-12)
 
 Retirar únicamente el icono Notes superpuesto del botón circular MoreVert de orden creada. Conservar borde según nota, aria, menú y nota directa del wizard. Sin tests por owner; formato/diff únicamente.
+
+## Ajuste L0 del owner — orden del menú (cerrado, 2026-10-12)
+
+Ordenar acciones: Nota (Añadir/Editar), Escanear QR, Imprimir pedido y Anular. Conservar etiquetas funcionales, bloqueos y separación de Anular. Sin tests; formato/diff.
