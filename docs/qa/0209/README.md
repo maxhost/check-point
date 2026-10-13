@@ -51,3 +51,7 @@ Commit `a067159`: un único botón Nota en la fila de tabs de orden ya creada, d
 ## Ajuste L0 más reciente: menú circular inferior
 
 Commit `b49bdcb` reemplaza los accesos anteriores. Botón circular48px MoreVert junto a Guardar/Cobrar, borde primary y distintivo de documento cuando existe nota. Menú concentra Escanear QR, Añadir/Editar nota, Imprimir pedido (si habilitado) y Anular separado. Menú superior retirado, X de navegación intacta. Nota junto a tabs retirada. Editar conserva acceso al menú aun limpio, CTA Guardar deshabilitado hasta cambios. Wizard2/3 usa disparador igual con Nota; las acciones que requieren orden creada aparecen después de guardar. Bloqueos busy/dirty/conflict/printing y modal/persistencia conservados. Solo pos-editor.tsx, sin kit/CSS/API. Formato/diffcheck0, revisión estática; sin tests/capturas/verify por owner. Pruebas anteriores tienen selectores previos y no prueban el menú nuevo; adaptación pendiente para próxima verificación autorizada.
+
+## Última corrección L0: nota directa en wizard
+
+`35c04a3`: pasos2/3 de creación restauran botón Notes directo al modal, estilo anterior (primary cuando hay nota, primary-soft cuando no). Menú inferior de órdenes creadas intacto. Formato/diffcheck0; sin tests ni capturas por owner. Cambios de Claude en su estado preservados y fuera del commit.
