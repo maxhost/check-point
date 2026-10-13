@@ -71,3 +71,7 @@ Commit `b49bdcb` reemplaza los accesos anteriores. Botón circular48px MoreVert 
 ## L0: búsqueda al añadir producto
 
 `75a27e0`: clearSearchOnAdd opcional en DetailedSale, activado únicamente al editar orden abierta; limpiar búsqueda al seleccionar producto o +unidad. Toast Producto añadido existente se mantiene en onAdd y se extiende a +unidad. Wizard/mostrador intactos. Sin tests por owner; formato/diffcheck0.
+
+## L0: persistencia inmediata de nota
+
+`5f67add`: Aplicar nota en orden creada guarda vía PUT con version y items/contexto del snapshot guardado. Mantiene productos/contexto locales pendientes, actualiza baseline/version, cierra solo tras éxito y muestra toast. Error visible en modal, sin perder texto. Bloquea cierre/duplicados mientras guarda. Wizard sin orden mantiene borrador hasta POST. Formato/diffcheck0; sin tests por owner. Oráculos anteriores de nota diferida no representan este comportamiento nuevo.
