@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import {
+  Book,
   CreditCard,
   Dashboard,
   Gift,
@@ -63,6 +64,23 @@ const businessLinks = [
     label: "Catálogo",
     icon: Package,
     segment: "catalog",
+    permission: "catalog",
+    delegado: true,
+  },
+  // UI provisional: visibles sin consultar la activación de módulos.
+  {
+    href: "/backoffice/stock",
+    label: "Stock",
+    icon: Package,
+    segment: "stock",
+    permission: "catalog",
+    delegado: true,
+  },
+  {
+    href: "/backoffice/recipes",
+    label: "Recetas",
+    icon: Book,
+    segment: "recipes",
     permission: "catalog",
     delegado: true,
   },
