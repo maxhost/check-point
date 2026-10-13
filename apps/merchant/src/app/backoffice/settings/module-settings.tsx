@@ -4,15 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Alert, Button, Heading, Switch, Text } from "../../../ui";
 import { PosError, posRequest } from "../pos/pos-types";
-
-type Module = {
-  id: string;
-  name: string;
-  description: string;
-  requires: string[];
-  enabled: boolean;
-  suggested: boolean;
-};
+import {
+  publishModules,
+  type BusinessModule as Module,
+} from "./module-navigation";
 
 const cards = [
   {
@@ -50,9 +45,19 @@ export function ModuleSettings() {
     let active = true;
     void posRequest<{ modules: Module[] }>("/api/modules")
       .then((data) => {
-        if (cards.some((card) => !data.modules?.some((m) => m.id === card.id)))
+        if (
+          cards.some(
+            (card) =>
+              !data.modules?.some(
+                (m) => m.id === card.id && typeof m.enabled === "boolean",
+              ),
+          )
+        )
           throw new Error("No pudimos leer los módulos. Intenta otra vez.");
-        if (active) setModules(data.modules);
+        if (active) {
+          setModules(data.modules);
+          publishModules(data.modules);
+        }
       })
       .catch((cause) => {
         if (active)
@@ -94,12 +99,12 @@ export function ModuleSettings() {
       )
         throw new Error("No pudimos confirmar el cambio. Intenta otra vez.");
       if (!mounted.current) return;
-      setModules(
-        (current) =>
-          current?.map((item) =>
-            item.id === module.id ? result.module : item,
-          ) ?? null,
-      );
+      const next =
+        modules?.map((item) =>
+          item.id === module.id ? result.module : item,
+        ) ?? null;
+      setModules(next);
+      if (next) publishModules(next);
       router.refresh();
     } catch (cause) {
       if (!mounted.current) return;

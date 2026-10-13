@@ -24,6 +24,11 @@ import { SignOutButton } from "../components/sign-out-button";
 import { Button, Text } from "../../ui";
 import { POS_NEW_ORDER_EVENT } from "./pos/pos-navigation";
 import { openOnboardingChecklist } from "./onboarding/onboarding-checklist-visibility";
+import {
+  MODULES_CHANGED_EVENT,
+  moduleLinkVisible,
+  type BusinessModule,
+} from "./settings/module-navigation";
 
 type MenuName = "business" | "loyalty" | "more";
 
@@ -67,7 +72,7 @@ const businessLinks = [
     permission: "catalog",
     delegado: true,
   },
-  // UI provisional: visibles sin consultar la activación de módulos.
+  // Visibilidad resuelta con GET /api/modules y guardados confirmados en Ajustes.
   {
     href: "/backoffice/stock",
     label: "Stock",
@@ -238,6 +243,35 @@ export function BackofficeNavigation({
 }) {
   const segment = useSelectedLayoutSegment();
   const [posEnabled, setPosEnabled] = useState(initialPosEnabled);
+  const [modules, setModules] = useState<BusinessModule[]>([]);
+  const canReadModules = isOwner || permissions.includes("catalog");
+  useEffect(() => {
+    if (!canReadModules) return;
+    let active = true;
+    let changed = false;
+    const onModulesChanged = (event: Event) => {
+      changed = true;
+      setModules((event as CustomEvent<BusinessModule[]>).detail);
+    };
+    window.addEventListener(MODULES_CHANGED_EVENT, onModulesChanged);
+    void fetch("/api/modules", { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("No pudimos leer los módulos.");
+        return response.json() as Promise<{ modules: BusinessModule[] }>;
+      })
+      .then((data) => {
+        // Un GET iniciado antes de guardar no puede pisar el nuevo estado.
+        if (active && !changed && Array.isArray(data.modules))
+          setModules(data.modules);
+      })
+      .catch(() => {
+        if (active && !changed) setModules([]);
+      });
+    return () => {
+      active = false;
+      window.removeEventListener(MODULES_CHANGED_EVENT, onModulesChanged);
+    };
+  }, [canReadModules]);
   useEffect(() => {
     let active = true;
     const refresh = () => {
@@ -257,14 +291,20 @@ export function BackofficeNavigation({
       window.removeEventListener("pos-module-changed", refresh);
     };
   }, []);
+  const visibleBusinessLinks = businessLinks.filter((item) =>
+    moduleLinkVisible(item.segment, modules),
+  );
   const links =
     posEnabled && permissions.includes("pos")
-      ? [...businessLinks, posLink]
-      : businessLinks;
+      ? [...visibleBusinessLinks, posLink]
+      : visibleBusinessLinks;
+  const visibleDelegatedLinks = delegatedLinks(permissions).filter((item) =>
+    moduleLinkVisible(item.segment, modules),
+  );
   const delegados =
     posEnabled && permissions.includes("pos")
-      ? [...delegatedLinks(permissions), posLink]
-      : delegatedLinks(permissions);
+      ? [...visibleDelegatedLinks, posLink]
+      : visibleDelegatedLinks;
   const [openMenu, setOpenMenu] = useState<MenuName | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const closeMenu = () => setOpenMenu(null);

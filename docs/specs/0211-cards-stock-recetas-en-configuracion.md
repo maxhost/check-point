@@ -71,3 +71,7 @@ Node 24: typecheck merchant, ESLint archivos, formato, guardia --base HEAD y dif
 Owner pidió conservar información y reducir espacio al sumar módulos. POS, Stock y Recetas se agrupan en un panel con filas separadas por línea; descripción izquierda y estado/acción derecha en escritorio, controles bajo el texto en móvil. Impresión conserva su bloque. Contratos y controles intactos.
 
 Owner pide reemplazar botones por Switch del kit, como impresión. Nombre accesible POS/Stock/Recetas, estado real conservado hasta confirmación HTTP, Guardando… y controles deshabilitados durante PUT; dependencias intactas.
+
+## Activación y navegación real — 2026-10-12
+
+Owner pide conectar el menú con los toggles según contrato0210 ya implementado. Los toggles conservan GET/PUT; cada lectura/guardado confirmado publica el estado completo al menú. Navegación hace GET sin caché para owner o permiso catalog, oculta Stock/Recetas hasta lectura real y filtra desktop/móvil y delegados por enabled. GET anterior no pisa un evento posterior. Fallo de PUT no publica ni cambia menú; dependencias existentes intactas. Pantallas Stock/Recetas siguen como prototipos, no se conecta su contenido ni se cambia API/servidor. Verificación breve sin Chrome por owner: tipos, ESLint, guardia y diffcheck0; 9 aserciones Node de visibilidad/evento verdes.
