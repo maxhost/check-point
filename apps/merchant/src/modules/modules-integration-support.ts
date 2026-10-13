@@ -21,6 +21,7 @@ import { POST as PURCHASE } from "../app/api/modules/stock/items/[itemId]/purcha
 import { POST as ADJUST } from "../app/api/modules/stock/items/[itemId]/adjustments/route";
 import { GET as MOVEMENTS } from "../app/api/modules/stock/items/[itemId]/movements/route";
 import { POST as ENTRY } from "../app/api/modules/stock/entries/route";
+import { POST as DRAFT } from "../app/api/modules/stock/entries/draft/route";
 import { GET as LOG } from "../app/api/modules/stock/movements/route";
 import {
   GET as LIST_RECIPES,
@@ -163,6 +164,8 @@ export const api = {
     ),
   entry: (cookie: string, body: unknown) =>
     ENTRY(conCookie("/api/modules/stock/entries", "POST", cookie, body)),
+  draft: (cookie: string, body: unknown) =>
+    DRAFT(conCookie("/api/modules/stock/entries/draft", "POST", cookie, body)),
   log: (cookie: string, limit?: number) =>
     LOG(
       conCookie(

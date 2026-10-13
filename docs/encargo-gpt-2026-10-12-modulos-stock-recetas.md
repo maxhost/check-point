@@ -51,6 +51,17 @@ de inputs».
 - **«Ajustar stock»** (conteo): `POST /api/modules/stock/items/:id/adjustments` `{ countedQuantity }`.
 - El historial de un solo insumo sigue en `GET …/items/:id/movements` si hace falta.
 
+### B2. Dictado (owner 2026-10-12: input multilinea + microfono del teclado + «Analizar»)
+
+- Input multilinea; enseñarle al dueño a usar el **microfono del teclado** del telefono para dictar.
+- Boton **«Analizar»** → `POST /api/modules/stock/entries/draft` `{ text }` (1..2000) → `{ draft: { lines: [{ itemId |
+  null, name, isNew, quantity, unit, totalCost | null, sourceText }], unparsed: string[] } }`. Spec
+  `docs/specs/0212-borrador-de-entrada-de-stock-desde-texto.md`.
+- Mostrar el resumen editable (insumo, cantidad, unidad, precio; `isNew` = «insumo nuevo»; `unparsed` = «no se pudo
+  leer») y al **aceptar** mandar `POST /api/modules/stock/entries` con las lineas: `itemId` si existe, si no
+  `newItem: { name }`. El borrador NO guarda nada.
+- Error `503 draft_unavailable`: mostrar `error` y dejar cargar a mano.
+
 ### C. Recetas (visible con el modulo `recipes` encendido)
 
 - Gestionar recetas como Catalogo gestiona productos: lista de productos con o sin receta (`GET /api/modules/recipes`,

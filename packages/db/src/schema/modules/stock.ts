@@ -1,6 +1,7 @@
 import {
   check,
   index,
+  integer,
   numeric,
   pgSchema,
   text,
@@ -108,6 +109,42 @@ export const stockMovements = stockSchema.table(
     index("stock_movement_business_occurred_idx").on(
       table.businessId,
       table.occurredAt,
+    ),
+  ],
+);
+
+/**
+ * Spec 0212 — EL USO del borrador por IA (`POST /entries/draft`): una fila por pedido, tambien si el
+ * proveedor falla. Sin tope por ahora (owner: medir el uso normal primero); el tope se agrega
+ * contando las filas del dia por negocio. NO guarda el texto del dueño, solo su largo.
+ */
+export const stockDraftRequests = stockSchema.table(
+  "draft_request",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    businessId: uuid("business_id")
+      .notNull()
+      .references(() => businesses.id, { onDelete: "cascade" }),
+    createdByUserId: text("created_by_user_id"),
+    provider: text("provider").notNull(),
+    model: text("model"),
+    status: text("status").notNull(),
+    lineCount: integer("line_count").notNull().default(0),
+    inputChars: integer("input_chars").notNull(),
+    inputTokens: integer("input_tokens"),
+    outputTokens: integer("output_tokens"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    check(
+      "stock_draft_request_status_check",
+      sql`${table.status} in ('ok', 'failed')`,
+    ),
+    index("stock_draft_request_business_created_idx").on(
+      table.businessId,
+      table.createdAt,
     ),
   ],
 );

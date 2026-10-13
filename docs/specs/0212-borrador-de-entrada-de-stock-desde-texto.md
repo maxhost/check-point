@@ -1,7 +1,7 @@
 ---
 spec: 0212
 fecha: 2026-10-12
-estado: cerrada
+estado: implementada
 resumen: `POST /api/modules/stock/entries/draft` recibe el texto dictado por el dueño («hoy compre 1 kg de harina por 25…») y devuelve un BORRADOR de lineas en JSON (emparejadas con sus insumos) que el dueño corrige y confirma con `POST /entries`. No guarda la entrada; guarda un registro de USO por pedido (sin tope por ahora). Migracion 0076.
 disjunta: si
 archivos: packages/db/src/schema/modules/stock.ts, packages/db/drizzle/0076_*, apps/merchant/src/modules/stock/draft*.ts, apps/merchant/src/app/api/modules/stock/entries/draft/**
@@ -45,7 +45,7 @@ Salida `200`:
 {
   "draft": {
     "lines": [
-      { "itemId": "uuid|null", "name": "Harina", "isNew": false, "quantity": "1", "unit": "kg",
+      { "itemId": "uuid|null", "name": "Harina", "isNew": false, "quantity": "1.000", "unit": "kg",
         "totalCost": "25.00|null", "sourceText": "1kg de harina por 25 dolares" }
     ],
     "unparsed": ["texto que no se pudo leer como compra"]
@@ -98,7 +98,7 @@ El falso (`fake`) devuelve un borrador vacio con todo el texto en `unparsed`: nu
 
 Una fila por pedido que pasa la validacion del texto, tambien si el proveedor falla (`failed`). **No guarda el
 texto** (puede traer datos personales; para medir alcanza el largo). Para agregar el tope despues: contar filas del
-dia por `business_id` antes de llamar al proveedor (una funcion `draftsToday` ya queda escrita y probada).
+dia por `business_id` antes de llamar al proveedor (la funcion `draftsSince(businessId, desde)` ya queda escrita y probada).
 
 ### Archivos
 
