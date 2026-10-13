@@ -148,7 +148,7 @@ export function PushPrompt({
   return (
     <section style={embedded ? undefined : card}>
       {!embedded && (
-        <h3 style={{ fontSize: 15, margin: 0 }}>Avisos de tus beneficios</h3>
+        <h3 style={{ fontSize: 15, margin: 0 }}>Avisos de beneficios</h3>
       )}
       {status === "subscribed" ? (
         <p style={{ color: "#2a7", marginTop: 8, fontSize: 14 }}>
@@ -158,8 +158,8 @@ export function PushPrompt({
         <>
           <p style={{ color: "#555", marginTop: 8, fontSize: 14 }}>
             {embedded
-              ? "Recibí avisos de ofertas cerca de vos y premios antes de que venzan."
-              : "Enterate al instante cuando sumás puntos o sellos."}
+              ? "Avisos de ofertas cercanas y de premios antes de que venzan."
+              : "Avisos al instante al sumar puntos o sellos."}
           </p>
           <button
             type="button"
@@ -181,12 +181,13 @@ export function PushPrompt({
           </button>
           {status === "denied" && (
             <p style={{ color: "#a33", marginTop: 8, fontSize: 13 }}>
-              Permiso denegado. Activalo desde los ajustes del navegador.
+              Permiso denegado. Se puede activar desde los ajustes del
+              navegador.
             </p>
           )}
           {status === "error" && (
             <p style={{ color: "#a33", marginTop: 8, fontSize: 13 }}>
-              No pudimos activar las notificaciones. Probá de nuevo.
+              No pudimos activar las notificaciones. Intentar de nuevo.
             </p>
           )}
         </>

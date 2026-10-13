@@ -22,7 +22,7 @@ export function ActivityView({
       .filter((coupon) => coupon.status === "valid")
       .map((coupon) => ({
         key: `coupon-${coupon.id}`,
-        title: "Tenés un beneficio disponible",
+        title: "Beneficio disponible",
         detail: `${coupon.label} · ${coupon.businessName}`,
         date: new Date(coupon.validFrom),
         action: onShowBenefits,
@@ -30,7 +30,7 @@ export function ActivityView({
       })),
     ...programs.map((program) => ({
       key: `program-${program.membershipId}`,
-      title: "Te sumaste a un programa",
+      title: "Nuevo programa",
       detail: program.businessName,
       date: new Date(program.enrolledAt),
       action: onShowPrograms,
@@ -52,9 +52,9 @@ export function ActivityView({
         ← Volver
       </button>
       <div className="cp-screen-heading">
-        <span className="cp-eyebrow">TUS NOVEDADES</span>
+        <span className="cp-eyebrow">NOVEDADES</span>
         <h2 id="activity-title">Actividad</h2>
-        <p>Beneficios, programas y movimientos en comercios de tu cuenta.</p>
+        <p>Beneficios, programas y movimientos en comercios de la cuenta.</p>
       </div>
       {entries.length ? (
         <div className="cp-activity-list">
@@ -87,10 +87,10 @@ export function ActivityView({
       ) : (
         <div className="cp-empty">
           <span aria-hidden="true">◌</span>
-          <h3>Tu actividad va a aparecer acá</h3>
+          <h3>La actividad va a aparecer aquí</h3>
           <p>
-            Cuando te sumes a un programa, recibas un beneficio o tengas un
-            movimiento en un comercio, vas a encontrarlo en este espacio.
+            Las inscripciones a programas, los beneficios y los movimientos en
+            comercios van a aparecer en este espacio.
           </p>
         </div>
       )}

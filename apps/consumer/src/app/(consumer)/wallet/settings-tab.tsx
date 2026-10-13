@@ -34,9 +34,9 @@ export function SettingsTab({
     <section aria-labelledby="settings-tab-title" className="cp-screen">
       <div className="consumer-programs-heading">
         <div>
-          <span className="cp-eyebrow">TUS DATOS</span>
-          <h2 id="settings-tab-title">Tu cuenta</h2>
-          <p>Tu información y tus preferencias en un lugar.</p>
+          <span className="cp-eyebrow">DATOS</span>
+          <h2 id="settings-tab-title">Cuenta</h2>
+          <p>Información y preferencias en un lugar.</p>
         </div>
       </div>
       <div className="cp-profile-card">
@@ -57,14 +57,14 @@ export function SettingsTab({
             <MarketingSwitch key={program.membershipId} program={program} />
           ))}
           <p className="consumer-settings-note">
-            Si lo apagás dejás de recibir promociones de ese comercio. Los
-            avisos de tus puntos y sellos, y tu saldo en el pase, siguen igual.
+            Al apagarlo se dejan de recibir promociones de ese comercio. Los
+            avisos de puntos y sellos, y el saldo en el pase, siguen igual.
           </p>
         </div>
       ) : (
         <div className="consumer-empty">
           <h3>Todavía no hay nada que configurar</h3>
-          <p>Sumate a un programa y vas a poder elegir qué recibís.</p>
+          <p>Con un programa activo se puede elegir qué recibir.</p>
         </div>
       )}
       <LogoutButton />
@@ -121,7 +121,7 @@ function LogoutButton() {
       </button>
       {failed && (
         <p role="status" className="consumer-settings-error">
-          No pudimos cerrar la sesión. Probá de nuevo.
+          No pudimos cerrar la sesión. Intentar de nuevo.
         </p>
       )}
     </div>
@@ -168,7 +168,7 @@ function MarketingSwitch({ program }: { program: ConsumerProgramSummary }) {
       </label>
       {failed && (
         <p role="status" className="consumer-settings-error">
-          No pudimos guardarlo. Probá de nuevo.
+          No pudimos guardarlo. Intentar de nuevo.
         </p>
       )}
     </div>

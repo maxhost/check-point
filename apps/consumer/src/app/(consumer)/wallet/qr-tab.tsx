@@ -20,8 +20,8 @@ export function QrTab({
     >
       <div className="cp-screen-heading">
         <span className="cp-eyebrow">SIEMPRE A MANO</span>
-        <h2 id="qr-tab-title">Tu pase</h2>
-        <p>Un solo código para todos tus programas.</p>
+        <h2 id="qr-tab-title">Pase</h2>
+        <p>Un solo código para todos los programas.</p>
       </div>
       <div className="cp-pass-card">
         <div className="cp-pass-art">
@@ -36,18 +36,18 @@ export function QrTab({
           </div>
         </div>
         <div className="cp-pass-code-area">
-          <span className="cp-pass-code-label">TU CÓDIGO PERSONAL</span>
+          <span className="cp-pass-code-label">CÓDIGO PERSONAL</span>
           <div
             className="consumer-qr"
-            aria-label="Tu código QR"
+            aria-label="Código QR personal"
             dangerouslySetInnerHTML={{ __html: qrSvg }}
           />
-          <strong>Mostrá este código en caja</strong>
-          <small>Sumá puntos, sellos y usá tus beneficios.</small>
+          <strong>Este código se muestra en caja</strong>
+          <small>Para sumar puntos, sellos y usar beneficios.</small>
         </div>
       </div>
       <div className="consumer-wallet-buttons">
-        <p>Tu pase para volver a los lugares que hacen ciudad.</p>
+        <p>El pase para volver a los lugares que hacen ciudad.</p>
         <WalletButtons isIos={isIos} />
       </div>
       <PushPrompt vapidPublicKey={vapidPublicKey} onSubscribed={onSubscribed} />

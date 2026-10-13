@@ -218,7 +218,7 @@ export function parseGeo(rawLat: unknown, rawLng: unknown): GeoParse {
   ) {
     const missing = values.lat === null ? "lat" : "lng";
     fields[missing] =
-      `Falta ${LABELS[missing].toLowerCase()}: mandá lat y lng juntos.`;
+      `Falta ${LABELS[missing].toLowerCase()}: lat y lng van juntos.`;
   }
   if (Object.keys(fields).length > 0) return { ok: false, fields };
   if (values.lat === null || values.lng === null)

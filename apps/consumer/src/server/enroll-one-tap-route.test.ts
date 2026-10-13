@@ -153,7 +153,11 @@ describe("POST enroll — el alta de un toque (spec 0119)", () => {
 
   it("409 already_member, 404 y 503 salen con su codigo y sin la membresia", async () => {
     enrollment.enrollAccount.mockRejectedValueOnce(
-      new ConsumerError(409, "already_member", "Ya formás parte."),
+      new ConsumerError(
+        409,
+        "already_member",
+        "Esta cuenta ya forma parte del programa.",
+      ),
     );
     const conflict = await post();
     expect(conflict.status).toBe(409);

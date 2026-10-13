@@ -27,9 +27,9 @@ export function ProgramsTab({
     <section aria-labelledby="programs-tab-title" className="cp-screen">
       <div className="consumer-programs-heading">
         <div>
-          <span className="cp-eyebrow">TUS COMERCIOS</span>
-          <h2 id="programs-tab-title">Tus programas</h2>
-          <p>Seguí tus sellos y puntos en cada lugar.</p>
+          <span className="cp-eyebrow">COMERCIOS</span>
+          <h2 id="programs-tab-title">Programas</h2>
+          <p>Sellos y puntos de cada lugar.</p>
         </div>
         {hasClosed && (
           <label className="consumer-closed-toggle">
@@ -53,8 +53,8 @@ export function ProgramsTab({
           <h3>No hay programas para mostrar</h3>
           <p>
             {showClosed
-              ? "Todavía no pertenecés a ningún programa."
-              : "Activá el filtro para ver programas anteriores."}
+              ? "Todavía no hay programas en esta cuenta."
+              : "Con el filtro activo se ven los programas anteriores."}
           </p>
         </div>
       )}

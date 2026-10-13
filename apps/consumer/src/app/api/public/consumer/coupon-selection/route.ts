@@ -22,7 +22,7 @@ const UNAUTHENTICATED = { error: "No autorizado.", code: "unauthenticated" };
 function invalid(message: string) {
   return NextResponse.json(
     {
-      error: "Revisá el cupón.",
+      error: "Revisar el cupón.",
       code: "validation",
       fields: { couponId: message },
     },

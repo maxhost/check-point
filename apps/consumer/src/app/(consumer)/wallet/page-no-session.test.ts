@@ -35,7 +35,7 @@ describe("el portal sin sesión (spec 0065, fase D / ADR 0068)", () => {
     const { default: WalletPage } = await import("./page");
     const html = renderToStaticMarkup(await WalletPage({}));
     expect(html).toContain(
-      "Inicia sesión en tu wallet para acceder a tu pase y beneficios.",
+      "Iniciar sesión en la wallet para acceder al pase y los beneficios.",
     );
     // Ni la barra inferior ni la pestaña: si el shell se renderizara, acá habría botones.
     expect(html).not.toContain("consumer-bottom-nav");

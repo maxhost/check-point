@@ -104,7 +104,7 @@ const PROVIDERS = {
 export function AuthErrorNotice() {
   return (
     <p role="alert" className={styles.error}>
-      No pudimos completar el ingreso. Inténtalo de nuevo.
+      No pudimos completar el ingreso. Intentar de nuevo.
     </p>
   );
 }

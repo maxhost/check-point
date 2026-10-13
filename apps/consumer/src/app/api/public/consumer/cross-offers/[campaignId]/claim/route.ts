@@ -17,7 +17,7 @@ const UNAVAILABLE = {
 
 function invalidLocation(fields: Record<string, string>) {
   return NextResponse.json(
-    { error: "Revisá el local de la oferta.", code: "validation", fields },
+    { error: "Revisar el local de la oferta.", code: "validation", fields },
     { status: 400 },
   );
 }
@@ -79,7 +79,11 @@ export async function POST(
   const geo = parseGeo(body.lat, body.lng);
   if (!geo.ok) {
     return NextResponse.json(
-      { error: "Revisá la ubicación.", code: "validation", fields: geo.fields },
+      {
+        error: "Revisar la ubicación.",
+        code: "validation",
+        fields: geo.fields,
+      },
       { status: 400 },
     );
   }

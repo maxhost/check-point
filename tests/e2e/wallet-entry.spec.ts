@@ -49,7 +49,7 @@ fixture(
       `${entry.url}/?surface=guest&loc=local%20uno&logo=1&welcome=1`,
     );
     await expect(
-      page.getByRole("heading", { name: "Hazte parte de Café del Barrio" }),
+      page.getByRole("heading", { name: "Programa de Café del Barrio" }),
     ).toBeVisible();
     await expect(
       page.getByRole("complementary", { name: "Regalo de bienvenida" }),
@@ -84,9 +84,7 @@ fixture(
     expect(posts).toBe(0);
     const join = page.getByRole("button", { name: "Unirme al programa" });
     await join.click();
-    await expect(
-      page.getByRole("button", { name: "Uniéndote…" }),
-    ).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Uniendo…" })).toBeDisabled();
     await expect(
       page.getByRole("button", { name: "No soy yo" }),
     ).toBeDisabled();
@@ -94,7 +92,7 @@ fixture(
     release();
     await expect(page).toHaveURL(/\/enroll\/demo-program\/ready$/);
     await expect(
-      page.getByRole("heading", { name: "¡Ya eres parte!" }),
+      page.getByRole("heading", { name: "¡Inscripción lista!" }),
     ).toBeVisible();
   },
 );
@@ -111,7 +109,7 @@ for (const status of [401, 409, 503])
     await page.getByRole("button", { name: "Unirme al programa" }).click();
     if (status === 401) {
       await expect(
-        page.getByRole("heading", { name: "Hazte parte de Café del Barrio" }),
+        page.getByRole("heading", { name: "Programa de Café del Barrio" }),
       ).toBeVisible();
       await expect(page.locator('[data-provider="google"]')).toHaveAttribute(
         "href",
@@ -139,7 +137,7 @@ fixture(
     await expect(page.getByRole("alert")).toContainText("problema de conexión");
     await page.getByRole("button", { name: "No soy yo" }).click();
     await expect(
-      page.getByRole("heading", { name: "Hazte parte de Café del Barrio" }),
+      page.getByRole("heading", { name: "Programa de Café del Barrio" }),
     ).toBeVisible();
     await expect(
       page.getByRole("link", { name: "Continuar con Google" }),
@@ -152,7 +150,9 @@ fixture(
   async ({ page, entry }) => {
     await page.goto(`${entry.url}/?surface=member`);
     await expect(
-      page.getByRole("heading", { name: "Ya eres parte de Café del Barrio" }),
+      page.getByRole("heading", {
+        name: "Inscripción activa en Café del Barrio",
+      }),
     ).toBeVisible();
     await expect(
       page.getByRole("link", { name: "Ver mi pase", exact: true }),

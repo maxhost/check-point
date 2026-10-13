@@ -118,7 +118,7 @@ export function IosInstallHint({ accentColor }: { accentColor?: string }) {
   return (
     <section style={card}>
       <h3 style={{ fontSize: 17, margin: 0, color: ink }}>
-        Añadí CheckPass Club a tu pantalla de inicio
+        CheckPass Club en la pantalla de inicio
       </h3>
       <p
         style={{
@@ -128,31 +128,32 @@ export function IosInstallHint({ accentColor }: { accentColor?: string }) {
           lineHeight: 1.5,
         }}
       >
-        Con un toque abrís tu tarjeta y tu código QR, sin buscar el link ni
-        volver a registrarte. Además te avisamos al instante cuando sumás puntos
-        o sellos y tenés un beneficio esperándote.
+        Con un toque se abren la tarjeta y el código QR, sin buscar el link ni
+        volver a registrarse. Además, avisamos al instante al sumar puntos o
+        sellos y cuando hay un beneficio esperando.
       </p>
 
       <div style={{ marginTop: 6 }}>
         <div style={stepRow}>
           <span style={stepNumStyle}>1</span>
           <p style={{ ...stepText, color: "#334155" }}>
-            Tocá el ícono <ShareGlyph stroke={ink} /> <strong>Compartir</strong>{" "}
-            en la barra de Safari (abajo, o arriba a la derecha).
+            Tocar el ícono <ShareGlyph stroke={ink} />{" "}
+            <strong>Compartir</strong> en la barra de Safari (abajo, o arriba a
+            la derecha).
           </p>
         </div>
         <div style={stepRow}>
           <span style={stepNumStyle}>2</span>
           <p style={{ ...stepText, color: "#334155" }}>
-            Deslizá hacia abajo y tocá <AddGlyph stroke={ink} />{" "}
+            Deslizar hacia abajo y tocar <AddGlyph stroke={ink} />{" "}
             <strong>Añadir a pantalla de inicio</strong>.
           </p>
         </div>
         <div style={stepRow}>
           <span style={stepNumStyle}>3</span>
           <p style={{ ...stepText, color: "#334155" }}>
-            Tocá <strong>Añadir</strong>. Listo: ya tenés el ícono de CheckPass
-            en tu teléfono.
+            Tocar <strong>Añadir</strong>. Listo: el ícono de CheckPass ya está
+            en el teléfono.
           </p>
         </div>
       </div>

@@ -53,7 +53,7 @@ export function BenefitsTab({
           cache: "no-store",
         });
         if (!response.ok)
-          throw new Error("No pudimos actualizar tus beneficios.");
+          throw new Error("No pudimos actualizar los beneficios.");
         const data = (await response.json()) as ConsumerCouponList;
         if (alive && sequence === requestNumber.current) setList(data);
       } catch (cause) {
@@ -61,7 +61,7 @@ export function BenefitsTab({
           setError(
             cause instanceof Error
               ? cause.message
-              : "No pudimos actualizar tus beneficios.",
+              : "No pudimos actualizar los beneficios.",
           );
       }
     }
@@ -98,17 +98,17 @@ export function BenefitsTab({
       });
       const data = await response.json().catch(() => null);
       if (!response.ok)
-        throw new Error(data?.error ?? "No pudimos cambiar tu cupón.");
+        throw new Error(data?.error ?? "No pudimos cambiar el cupón.");
       const fresh = await fetch(couponUrl.current, {
         cache: "no-store",
       });
-      if (!fresh.ok) throw new Error("No pudimos actualizar tus beneficios.");
+      if (!fresh.ok) throw new Error("No pudimos actualizar los beneficios.");
       setList((await fresh.json()) as ConsumerCouponList);
       setSelected(null);
       if (couponId) onShowQr();
     } catch (cause) {
       setError(
-        cause instanceof Error ? cause.message : "No pudimos cambiar tu cupón.",
+        cause instanceof Error ? cause.message : "No pudimos cambiar el cupón.",
       );
     } finally {
       setBusy(false);
@@ -177,9 +177,9 @@ export function BenefitsTab({
   return (
     <section aria-labelledby="benefits-tab-title" className="cp-screen">
       <div className="cp-screen-heading">
-        <span className="cp-eyebrow">PARA VOS</span>
-        <h2 id="benefits-tab-title">Tus beneficios</h2>
-        <p>Encontrá lo que podés disfrutar hoy.</p>
+        <span className="cp-eyebrow">BENEFICIOS</span>
+        <h2 id="benefits-tab-title">Beneficios</h2>
+        <p>Lo que se puede disfrutar hoy.</p>
       </div>
       <div className="cp-feature-summary">
         <span className="cp-feature-symbol" aria-hidden="true">
@@ -193,7 +193,7 @@ export function BenefitsTab({
         </div>
       </div>
       {list.here && (
-        <p className="cp-benefit-here">Acá · {list.here.businessName}</p>
+        <p className="cp-benefit-here">Aquí · {list.here.businessName}</p>
       )}
       {error && !current && (
         <p role="alert" className="cp-benefit-error">
@@ -207,8 +207,8 @@ export function BenefitsTab({
           <span aria-hidden="true">✦</span>
           <h3>Todavía no hay beneficios listos</h3>
           <p>
-            Tus cupones van a aparecer acá. Mientras tanto, mirá cómo vas en tus
-            programas.
+            Los cupones van a aparecer aquí. Mientras tanto, el avance de cada
+            programa está en Programas.
           </p>
           <button type="button" onClick={onShowPrograms}>
             Ver mis programas

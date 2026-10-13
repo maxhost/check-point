@@ -49,7 +49,7 @@ describe("la pestaña de Configuración — render", () => {
     // se persiste es el apagado. Se cuenta: un solo `checked` entre los dos switches.
     expect(html.match(/checked=""/g) ?? []).toHaveLength(1);
     expect(html).toContain(
-      "Los avisos de tus puntos y sellos, y tu saldo en el pase, siguen igual.",
+      "Los avisos de puntos y sellos, y el saldo en el pase, siguen igual.",
     );
   });
 

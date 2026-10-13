@@ -52,7 +52,7 @@ export default async function EnrollPage({
             <h1>Este programa no está disponible</h1>
             <p>
               El enlace puede haber vencido o el programa ya no admite nuevos
-              registros. Pide al local un código actualizado.
+              registros. El local puede dar un código actualizado.
             </p>
           </div>
           <a className={styles.passLink} href="/wallet">
@@ -107,8 +107,8 @@ export default async function EnrollPage({
             )}
             <ProviderButtons programId={programId} loc={loc} isIos={isIos} />
             <p className={styles.supportNote}>
-              Al continuar, te unes al programa de este comercio con tu cuenta
-              de CheckPass.
+              Al continuar, la cuenta de CheckPass se une al programa de este
+              comercio.
             </p>
           </>
         )}

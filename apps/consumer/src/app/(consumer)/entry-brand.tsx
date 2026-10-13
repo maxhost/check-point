@@ -50,10 +50,10 @@ export function EnrollmentIntro({
   return (
     <div className={styles.intro}>
       <h1>
-        {signed ? (name ? `${name}, únete a ` : "Únete a ") : "Hazte parte de "}
+        {name && signed ? `Hola, ${name}. Programa de ` : "Programa de "}
         {businessName}
       </h1>
-      <p>Únete a su programa y encuentra tu pase y beneficios en CheckPass.</p>
+      <p>Pase y beneficios del programa, en un solo lugar: CheckPass.</p>
     </div>
   );
 }

@@ -47,7 +47,7 @@ describe("Actividad — avisos de mostrador (spec 0140)", () => {
       html.indexOf("Café gratis"),
     );
     expect(html.indexOf("Café gratis")).toBeLessThan(
-      html.indexOf("Te sumaste a un programa"),
+      html.indexOf("Nuevo programa"),
     );
     expect(html).toContain("+1 sello");
     expect(html).toContain("2 de octubre de 2026");
@@ -64,6 +64,8 @@ describe("Actividad — avisos de mostrador (spec 0140)", () => {
         ...callbacks,
       }),
     );
-    expect(html).toContain("movimiento en un comercio");
+    expect(html).toContain(
+      "los movimientos en comercios van a aparecer en este espacio",
+    );
   });
 });

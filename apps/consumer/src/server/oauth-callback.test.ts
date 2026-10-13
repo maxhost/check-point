@@ -230,7 +230,11 @@ describe("callback de Google", () => {
   it("`already_member` no es error: sesion y 303 a /wallet", async () => {
     withToken(await googleToken());
     enrollment.enrollAccount.mockRejectedValue(
-      new ConsumerError(409, "already_member", "Ya formás parte."),
+      new ConsumerError(
+        409,
+        "already_member",
+        "Esta cuenta ya forma parte del programa.",
+      ),
     );
     const response = await google("code=code-1&state=state-1");
     expect(response.headers.get("location")).toBe(`${ORIGIN}/wallet`);

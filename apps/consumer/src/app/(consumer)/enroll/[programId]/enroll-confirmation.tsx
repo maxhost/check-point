@@ -82,7 +82,7 @@ export function EnrollConfirmation({
       if (choice.outcome !== "accepted") setShowManual(true);
     } catch {
       setInstallError(
-        "No pudimos abrir la instalación. Puedes añadir CheckPass desde el menú de Chrome.",
+        "No pudimos abrir la instalación. CheckPass también se puede añadir desde el menú de Chrome.",
       );
       setShowManual(true);
     } finally {
@@ -102,7 +102,7 @@ export function EnrollConfirmation({
         <span className={styles.membershipSeal}>
           <EntryIcon name="check" />
         </span>
-        <h1>¡Ya eres parte!</h1>
+        <h1>¡Inscripción lista!</h1>
         <strong>{businessName}</strong>
       </div>
       {welcomeOffer && <WelcomeOfferCard offer={welcomeOffer} />}
@@ -113,20 +113,21 @@ export function EnrollConfirmation({
         <div className={styles.installHeading}>
           <CheckPassIcon className={styles.appIcon} />
           <h2 id="install-title">
-            Ten tus beneficios
-            <br />a mano
+            Beneficios
+            <br />
+            siempre a mano
           </h2>
         </div>
         <p>
-          Añade CheckPass a tu pantalla de inicio para encontrar tu pase y todos
-          tus programas.
+          Con CheckPass en la pantalla de inicio, el pase y todos los programas
+          quedan siempre a mano.
         </p>
         <div className={styles.installArea}>
           {installed ? (
             <p className={styles.installed} role="status">
               <EntryIcon name="check" />
-              CheckPass ya está en tu inicio. Ábrelo desde su icono para
-              continuar.
+              CheckPass ya está en la pantalla de inicio. Para continuar,
+              abrirlo desde su icono.
             </p>
           ) : platform === "android" ? (
             <>
@@ -146,9 +147,10 @@ export function EnrollConfirmation({
               </button>
               {showManual && (
                 <p className={styles.instructions}>
-                  En Chrome, abre el menú y elige <strong>Instalar app</strong>{" "}
-                  o <strong>Añadir a pantalla de inicio</strong>. Si ya está
-                  instalada, ábrela desde el icono de CheckPass.
+                  En Chrome, abrir el menú y elegir{" "}
+                  <strong>Instalar app</strong> o{" "}
+                  <strong>Añadir a pantalla de inicio</strong>. Si ya está
+                  instalada, abrirla desde el icono de CheckPass.
                 </p>
               )}
             </>
@@ -158,21 +160,21 @@ export function EnrollConfirmation({
                 <li>
                   <span className={styles.stepNumber}>1</span>
                   <p>
-                    En Safari, toca <strong>Compartir</strong>.
+                    En Safari, tocar <strong>Compartir</strong>.
                   </p>
                   <EntryIcon name="share" />
                 </li>
                 <li>
                   <span className={styles.stepNumber}>2</span>
                   <p>
-                    Elige <strong>Añadir a pantalla de inicio</strong>.
+                    Elegir <strong>Añadir a pantalla de inicio</strong>.
                   </p>
                   <EntryIcon name="add" />
                 </li>
                 <li>
                   <span className={styles.stepNumber}>3</span>
                   <p>
-                    Toca <strong>Añadir</strong> y abre CheckPass desde su
+                    Tocar <strong>Añadir</strong> y abrir CheckPass desde su
                     icono.
                   </p>
                   <EntryIcon name="check" />
@@ -180,7 +182,7 @@ export function EnrollConfirmation({
               </ol>
             </>
           ) : platform === null ? (
-            <p role="status">Preparando tu instalación…</p>
+            <p role="status">Preparando la instalación…</p>
           ) : (
             <a className={styles.primary} href="/wallet">
               Abrir CheckPass <EntryIcon name="arrow" />
@@ -194,11 +196,11 @@ export function EnrollConfirmation({
         )}
         {!installed && platform === "ios" && (
           <p className={styles.installNote}>
-            Si abriste el QR en otra app, abre esta página en Safari.
+            Si el QR se abrió en otra app, abrir esta página en Safari.
           </p>
         )}
         <p className={styles.installNote}>
-          Después, dentro de CheckPass, activa los avisos para recibir tus
+          Después, dentro de CheckPass, activar los avisos para recibir los
           beneficios.
         </p>
         <a className={styles.passLink} href="/wallet">

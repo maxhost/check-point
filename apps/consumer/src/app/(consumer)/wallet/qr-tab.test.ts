@@ -25,7 +25,7 @@ describe("Pase PWA Trama viva", () => {
     expect(html.indexOf('class="cp-pass-art"')).toBeLessThan(
       html.indexOf('class="consumer-qr"'),
     );
-    expect(html).toContain("Mostrá este código en caja");
+    expect(html).toContain("Este código se muestra en caja");
   });
 
   it("en iOS muestra solo Apple Wallet desde el primer render", () => {

@@ -198,7 +198,7 @@ export function WalletShell({
 
       {welcomeIssued > 0 && overlay === null && (
         <div className={styles.toast} role="status">
-          ¡Tu beneficio de bienvenida ya está listo! Revisá tus beneficios.
+          ¡El beneficio de bienvenida ya está listo! Está en Beneficios.
           <button
             type="button"
             onClick={() => setWelcomeIssued(0)}
@@ -225,19 +225,17 @@ export function WalletShell({
                 <div className={styles.symbol} aria-hidden="true">
                   ♧
                 </div>
-                <h2 id="onboarding-title">
-                  Enterate cuando tengas un beneficio
-                </h2>
+                <h2 id="onboarding-title">Avisos de beneficios al instante</h2>
                 <p>
-                  Activá las notificaciones para recibir ofertas cercanas y
-                  avisos antes de que tus premios venzan.
+                  Con las notificaciones activas llegan ofertas cercanas y
+                  avisos antes de que los premios venzan.
                 </p>
                 {hasWelcomeOffer && (
                   <div className={styles.reward}>
-                    <strong>Tu bienvenida te espera</strong>
+                    <strong>Hay una bienvenida esperando</strong>
                     <small>
-                      Al activar los avisos, recibirás tu beneficio por
-                      notificación y podrás verlo aquí, si sigue disponible.
+                      Al activar los avisos, el beneficio llega por notificación
+                      y queda visible aquí, si sigue disponible.
                     </small>
                   </div>
                 )}
@@ -261,7 +259,7 @@ export function WalletShell({
                     }}
                   />
                 ) : (
-                  <p>Preparando tu cuenta…</p>
+                  <p>Preparando la cuenta…</p>
                 )}
                 <button
                   className={styles.later}
@@ -273,13 +271,13 @@ export function WalletShell({
               </>
             ) : (
               <>
-                <span className={styles.step}>TU PASE, SIEMPRE A MANO</span>
+                <span className={styles.step}>EL PASE, SIEMPRE A MANO</span>
                 <div className={styles.symbol} aria-hidden="true">
                   ▣
                 </div>
-                <h2 id="onboarding-title">Guardá tu pase en Wallet</h2>
+                <h2 id="onboarding-title">Guardar el pase en Wallet</h2>
                 <p>
-                  Mostrá tu pase en comercios adheridos incluso cuando no tengas
+                  El pase se muestra en comercios adheridos incluso sin
                   conexión.
                 </p>
                 <WalletButtons isIos={isIos} onAction={closeWallet} />

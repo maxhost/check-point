@@ -64,7 +64,7 @@ export function OneTapEnroll({
       const data = (await res.json().catch(() => ({}))) as { error?: string };
       setToast(data.error ?? "No pudimos completar el registro.");
     } catch {
-      setToast("Hubo un problema de conexión. Inténtalo de nuevo.");
+      setToast("Hubo un problema de conexión. Intentar de nuevo.");
     } finally {
       setSubmitting(false);
     }
@@ -82,8 +82,8 @@ export function OneTapEnroll({
         <>
           <ProviderButtons programId={programId} loc={loc} isIos={isIos} />
           <p className={styles.supportNote}>
-            Al continuar, te unes al programa de este comercio con tu cuenta de
-            CheckPass.
+            Al continuar, la cuenta de CheckPass se une al programa de este
+            comercio.
           </p>
         </>
       ) : (
@@ -93,8 +93,8 @@ export function OneTapEnroll({
               <EntryIcon name="person" />
             </span>
             <div>
-              <p>Has iniciado sesión como</p>
-              <strong>{name || "Tu cuenta"}</strong>
+              <p>Sesión iniciada como</p>
+              <strong>{name || "Cuenta de CheckPass"}</strong>
             </div>
           </div>
           <button
@@ -104,7 +104,7 @@ export function OneTapEnroll({
             className={styles.primary}
             aria-busy={submitting}
           >
-            {submitting ? "Uniéndote…" : "Unirme al programa"}
+            {submitting ? "Uniendo…" : "Unirme al programa"}
           </button>
           <button
             type="button"
@@ -151,18 +151,17 @@ export function MemberNotMe({
         <EnrollmentIntro businessName={businessName} />
         <ProviderButtons programId={programId} loc={loc} isIos={isIos} />
         <p className={styles.supportNote}>
-          Al continuar, te unes al programa de este comercio con tu cuenta de
-          CheckPass.
+          Al continuar, la cuenta de CheckPass se une al programa de este
+          comercio.
         </p>
       </>
     );
   return (
     <section>
       <div className={styles.intro}>
-        <h1>Ya eres parte de {businessName}</h1>
+        <h1>Inscripción activa en {businessName}</h1>
         <p>
-          Tu programa ya está en tu wallet. Abre tu pase para ver tus
-          beneficios.
+          El programa ya está en la wallet. Los beneficios se ven en el pase.
         </p>
       </div>
       <div className={styles.joinActions}>
@@ -171,8 +170,8 @@ export function MemberNotMe({
             <EntryIcon name="person" />
           </span>
           <div>
-            <p>Has iniciado sesión como</p>
-            <strong>{name || "Tu cuenta"}</strong>
+            <p>Sesión iniciada como</p>
+            <strong>{name || "Cuenta de CheckPass"}</strong>
           </div>
         </div>
         <a href="/wallet" className={styles.primary}>

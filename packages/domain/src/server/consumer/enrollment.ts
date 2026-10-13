@@ -144,7 +144,7 @@ export async function enrollAccount(
       throw new ConsumerError(
         409,
         "already_member",
-        "Ya formás parte de este programa.",
+        "Esta cuenta ya forma parte del programa.",
       );
     }
     throw error;

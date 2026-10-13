@@ -36,7 +36,11 @@ export async function GET(request: NextRequest) {
   const geo = parseGeo(params.get("lat"), params.get("lng"));
   if (!geo.ok) {
     return NextResponse.json(
-      { error: "Revisá la ubicación.", code: "validation", fields: geo.fields },
+      {
+        error: "Revisar la ubicación.",
+        code: "validation",
+        fields: geo.fields,
+      },
       { status: 400 },
     );
   }

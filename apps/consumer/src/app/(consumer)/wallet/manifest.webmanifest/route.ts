@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     name: "CheckPass",
     short_name: "CheckPass",
     description:
-      "Tu pase, tus programas y tu código QR en la pantalla de inicio.",
+      "El pase, los programas y el código QR en la pantalla de inicio.",
     id: "/wallet",
     start_url: startUrl,
     scope: "/",

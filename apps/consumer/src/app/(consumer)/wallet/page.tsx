@@ -66,12 +66,12 @@ export default async function WalletPage({
           <EntryBrand large />
           <div className={`${styles.intro} ${styles.accessIntro}`}>
             <h1>
-              Qué bueno
+              Hola
               <br />
-              verte de nuevo
+              de nuevo
             </h1>
             <p>
-              Inicia sesión en tu wallet para acceder a tu pase y beneficios.
+              Iniciar sesión en la wallet para acceder al pase y los beneficios.
             </p>
           </div>
           {(Array.isArray(error) ? error[0] : error) === "auth" && (
@@ -79,7 +79,7 @@ export default async function WalletPage({
           )}
           <ProviderButtons isIos={isIos} />
           <p className={styles.supportNote}>
-            Usa la misma cuenta con la que te uniste a tus programas.
+            Con la misma cuenta usada para unirse a los programas.
           </p>
         </div>
       </main>

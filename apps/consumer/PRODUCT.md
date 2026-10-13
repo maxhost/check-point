@@ -30,7 +30,7 @@ La wallet existente contiene Beneficios, Programas, Pase y Cuenta, además de ac
 
 ## Brand Commitments
 
-Nombre: CheckPass. La invitación debe identificar al comercio con nombre y logo real cuando existe; si no hay logo, se utiliza la inicial. Se conservan Google y Apple como proveedores de acceso y sus marcas, enlaces y orden por dispositivo. El copy tutea.
+Nombre: CheckPass. La invitación debe identificar al comercio con nombre y logo real cuando existe; si no hay logo, se utiliza la inicial. Se conservan Google y Apple como proveedores de acceso y sus marcas, enlaces y orden por dispositivo. El copy es neutro e impersonal (`apps/consumer/COPY.md`).
 
 ## Evidence on Hand
 

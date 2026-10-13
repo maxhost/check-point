@@ -126,8 +126,8 @@ describe("Bienvenida en la UI", () => {
         },
       }),
     );
-    expect(html).toContain("Te espera un beneficio de bienvenida");
-    expect(html).toContain("activa las notificaciones");
+    expect(html).toContain("Hay un beneficio de bienvenida esperando");
+    expect(html).toContain("las notificaciones activas");
     expect(html).not.toContain("Un café gratis");
     expect(html).not.toContain("Solo en mostrador");
   });

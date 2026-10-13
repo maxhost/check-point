@@ -106,8 +106,8 @@ function RewardItem({
           className={`consumer-reward-gap ${missing <= 0 ? "is-ready" : ""}`}
         >
           {missing <= 0
-            ? "Ya podés canjearlo"
-            : `Te faltan ${missing} ${unitName}`}
+            ? "Listo para canjear"
+            : `Faltan ${missing} ${unitName}`}
         </span>
       )}
     </li>
