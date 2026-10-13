@@ -5,7 +5,7 @@
 
 ## ESTADO — LANDING EN FRÍO, NÚMEROS Y CIERRE0215 (2026-10-13)
 
-Owner pidió tres tareas L1 en dev, sin mover archivos mientras Claude trabaja0216. Cambios locales pendientes de commit, solo landing.spec.ts y archivos actuales backoffice/stock y backoffice/recipes + documentación propia. No se tocaron API/módulos backend/kit/paquetes ni el staging ajeno de Claude.
+Owner pidió tres tareas L1 en dev, sin mover archivos mientras Claude trabaja0216. Commit autorizado `f82130b`, solo landing.spec.ts y archivos actuales backoffice/stock y backoffice/recipes + documentación propia. No se tocaron API/módulos backend/kit/paquetes ni el staging ajeno de Claude. Sin merge ni push de estas tareas.
 
 Landing: gotoReady usa DOMContentLoaded, espera heading visible, hojas CSS cargadas y document.fonts.ready. WarmUp también corre con PUBLIC_LANDING_TEST_URL, incluye rutas punto-de-venta/privacy antes faltantes. Mediciones x/límite horizontal/ancho móvil usan expect.poll con los mismos umbrales, imagen naturalWidth>0 conservada, presupuesto de carga en frío explícito (sin sleeps). Prueba real aislada, Next dev --webpack, copia temporal sin .next y sin tocar los servidores abiertos:4/4 landing390/1440 light/dark en34.3s. Artefactos /private/tmp/checkpass-landing-cold-zb7g0xp3/results. No se afirma corrida con Turbopack ni suite completa. Primer arranque bloqueado EPERM se repitió autorizado; filtro inicial no seleccionó tests, corregido. Hubo avisos de hidratación de details en consola del servidor, sin pageerrors y con las cuatro pruebas verdes; no se cambió producto fuera de alcance.
 
