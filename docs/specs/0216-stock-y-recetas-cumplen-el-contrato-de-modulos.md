@@ -140,3 +140,25 @@ Presupuesto: < 25 min de suites. Clases de error: **acoplamiento oculto**, **fug
 Todo lo anterior con salida real; contratos HTTP de 0210/0212/0214 sin cambios; migracion 0078 en local y CI (PROD con
 OK del owner). Despues: encargo a GPT (pantallas a `modules/<id>/ui/`, menu y Ajustes desde manifiestos) y revisor
 adversarial sobre las dos partes. No se marca `implementada` sin el PASS.
+
+## Precisado al implementar (`4e6973e`, revisado por el orquestador)
+
+- **CHECK de forma**: el texto de la spec (`array_to_string(...) ~ regex`) dejaba pasar `{"a,b"}` y `{stock,NULL}`
+  (medido por SQL). Se implemento la forma del ADR, «cada elemento ~ forma» (separador `'*'` para los NULL y cantidad de
+  comas = `cardinality - 1`). Rechaza mayuscula, espacio, coma interna, NULL y cadena vacia.
+- **Permiso desconocido**: hoy es **400** `unknown_permission` (no 422 como decia la spec); se conserva el 400.
+- **Despachador con path vacio**: `PUT` = toggle; otro metodo despacha la ruta BASE del modulo si existe (`GET
+  /api/modules/recipes` es contrato vigente) y si no 405.
+- **Archivos fuera de la lista, necesarios**: `server/auth-guards.ts` (la sesion de backoffice trae los permisos de
+  modulo), `server/staff.ts` (`toStaffDTO` conserva `stock`/`recipes` al reenviar), `server/staff-create.ts` (el alta
+  tambien rechaza otorgar un permiso de modulo apagado).
+- **Reglas 2 y 5 de la frontera** quedan verdes contra la cuenta EXACTA de lo pendiente de GPT (`PENDING_GPT`,
+  `PENDING_GPT_DIRS`), como trinquete; la meta del encargo `docs/encargo-gpt-2026-10-13-modulos-fase1.md` es vaciarlas.
+- **Tres tests cambiaron aserciones por el contrato nuevo** (no se aflojaron): `modules-registry.neon` (GET /api/modules
+  suma `navigation`/`permissions`; un integrante sin `catalog` lista con 200 pero sigue con 403 en `items`),
+  `session.neon` (el owner suma `stock`/`recipes`), `membership-permissions-checks.neon` (de 1 caso de pertenencia a 5 de
+  forma; la pertenencia la valida el writer).
+- **Limites declarados**: `requireApiPermission` acepta cualquier string (un error de tipeo en una ruta del core ya no lo
+  caza `tsc`; falla cerrado para un integrante); el barrido de literales es un proxy (no ve un id armado, `case
+  "stock":`, comentarios); hasta que GPT mude las pantallas, `/backoffice/stock` lo sirve la pagina fija, que exige
+  `catalog`.
