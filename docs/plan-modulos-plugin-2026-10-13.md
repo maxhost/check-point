@@ -35,7 +35,7 @@ grande es desacoplar el POS, y antes el patron tiene que quedar entero.
   POS llama al core — direccion permitida), `seed-local.ts`.
 - `core.pos_order.order_id` → `core.order` (modulo → core: permitido). Ninguna tabla del core apunta a las del POS.
 
-## Fase 0 — el contrato completo (ADR 0139, amplia el 0138)
+## Fase 0 — el contrato completo (ADR 0139, amplia el 0138) — HECHA 2026-10-13: `docs/adr/0139-…` + `docs/MODULOS.md`
 
 1. **Manifiesto** (ademas de `id`, `name`, `description`, `requires`, `suggestedFor`):
    - `navigation`: entradas de menu (ruta, nombre, icono, orden);
@@ -61,7 +61,7 @@ grande es desacoplar el POS, y antes el patron tiene que quedar entero.
 
 Chicos, nuevos, sin datos que cuidar: aca se descubren los huecos del contrato con costo bajo.
 - Menu y Ajustes salen del manifiesto; pantallas a `modules/{stock,recipes}/ui` (GPT); permisos propios declarados
-  (decidir con el owner si `stock`/`recipes` piden permiso propio o siguen con `catalog`).
+  Owner 2026-10-13: **permisos propios** `stock` y `recipes`; a quien tiene `catalog` se le asignan los dos.
 - Test de frontera extendido a pantallas y a la base.
 - **Revision adversarial**: revisor en contexto fresco que intenta acoplar un modulo sin que ningun test lo vea.
 

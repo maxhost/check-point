@@ -66,6 +66,8 @@ disco se re-lee. **Handoff SIEMPRE seguido de `/clear`**: handoff primero (a dis
 
 - Zonas (ADR 0114): GPT hace pantallas, estilos y e2e; Claude API, servidor, paquetes y tooling. La frontera
   es el contrato HTTP escrito.
+- **Modulos (ADR 0138/0139): `docs/MODULOS.md`.** Un modulo es una carpeta `modules/<id>/`; el core nunca lo importa ni
+  lo nombra (ni rutas en `app/`, ni `if` con su id): falta un punto de enganche → ADR, no excepcion.
 - La UI vieja de lo que se refactoriza se BORRA (ADR 0070 §17), con sus referencias: un `redirect` a una
   ruta borrada es un 404.
 - No editar ni borrar tests para que el gate pase: un test rojo se arregla o se discute.

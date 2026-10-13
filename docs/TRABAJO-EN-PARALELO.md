@@ -55,6 +55,11 @@ en `origin/main`).
 | Paquetes y migraciones | Claude | `packages/**`, `**/drizzle/**` |
 | Tooling, hooks y CI | Claude | `tools/**`, `.githooks/**`, `.claude/**`, `.github/**` |
 | Kit y guardias de UI (ADR 0123) | Claude | `apps/merchant/src/ui/**` (incluye `tokens.css`), `eslint.config.mjs`, `tools/ui-guard*` |
+| Pantallas de modulo (ADR 0139) | GPT | `apps/merchant/src/modules/*/ui/**` y su linea en `modules/ui-registry.ts` |
+| Resto de un modulo (ADR 0139) | Claude | `apps/merchant/src/modules/**` fuera de `*/ui/**`, `packages/db/src/schema/modules/**` |
+
+**Modulos:** antes de tocar uno, leer `docs/MODULOS.md`. Un modulo NUNCA suma archivos en `app/` ni nombra su id en el
+core: si una pantalla de modulo necesita un lugar nuevo en el panel, se pide el punto de enganche.
 
 La frontera es el **contrato HTTP escrito** (ADR 0070): si una pantalla necesita un dato que la API no da, se
 pide en el contrato, no se toca el servidor del otro. El hook no bloquea por zona (git no sabe quién pushea):

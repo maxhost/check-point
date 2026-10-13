@@ -18,6 +18,9 @@ Instrucciones para GPT/Codex en este repo. Claude lee `CLAUDE.md`; las reglas co
 - **Guardia de UI del merchant:** `pnpm verify` corre `node tools/ui-guard.ts`; ningún archivo que cambies en
   `apps/merchant/src` puede sumar nativos, `onX` en nativos, `style`, paleta cruda, `text-sm`/`font-*`/`leading-*`,
   valores arbitrarios ni CSS (categorías en `docs/design-system.md` §Guardia). `--report` da los totales.
+- **Modulos (Stock, Recetas, y despues POS/Mesas):** leé `docs/MODULOS.md`. Sus pantallas van en
+  `apps/merchant/src/modules/<id>/ui/` (tu zona) con su linea en `modules/ui-registry.ts`; nunca en `app/` ni nombrando
+  el modulo en el menu u otra pantalla del core: eso lo dibujan los manifiestos (ADR 0139).
 - **Node 24:** corre `nvm use` (sin argumento; hay `.nvmrc`) antes de cualquier comando.
 - **Al empezar:** `git pull --ff-only` y `pnpm ci:status`. Si `main` está rojo en tu zona, eso va primero.
 - **Antes de pushear:** `git pull --rebase`. El hook `pre-push` corre `pnpm verify` y bloquea si da rojo.
