@@ -7,6 +7,7 @@ import {
   coreMerchantFiles,
   coreOfModulesFiles,
   exactIdLiteralCount,
+  moduleUseLiteralCount,
   moduleLiteralCount,
   permissionLiteralCount,
   withoutComments,
@@ -32,9 +33,10 @@ import { modulePermissionIds } from "./permissions";
  * `moduleLiteralPatterns`, `permissionLiteralPatterns` y `exactIdLiteralCount`
  * (`modules-boundary-support.ts`). LO QUE NO SE VE, ademas: el literal exacto de los ids de
  * `EXACT_ID_COLLISIONS` (hoy `stock`, que el core usa como valor propio — la foto de stock del
- * catalogo, `imageAction: "stock"`): para esos solo valen las rutas, comparaciones y propiedades de
- * `moduleLiteralPatterns` y los patrones de permiso; un `isModuleEnabled(b, "stock")` en el core NO
- * se ve. Tampoco un id armado ni uno dentro de un texto mas largo. El trabajo lo hacen esos
+ * catalogo, `imageAction: "stock"`): para esos valen las rutas, comparaciones y propiedades de
+ * `moduleLiteralPatterns`, los patrones de permiso y `moduleUseLiteralCount` (el id como argumento
+ * de una funcion de modulos, `isModuleEnabled(b, "stock")`, o en `enabledModules.has("stock")`).
+ * No se ve un id armado, uno guardado antes en una variable ni uno dentro de un texto mas largo. El trabajo lo hacen esos
  * patrones; el piso de archivos y los controles prueban que el barrido mira.
  *
  * `PENDING_GPT` (Fase 2, spec 0220): las pantallas que todavia nombran el POS hasta que GPT las mude
@@ -119,6 +121,7 @@ function coreCount(source: string): number {
     moduleLiteralCount(source, IDS) +
     permissionLiteralCount(source, PERMS) +
     exactIdLiteralCount(source, EXACT_IDS) +
+    moduleUseLiteralCount(source, EXACT_ID_COLLISIONS) +
     [...source.matchAll(LEGACY_POS)].length
   );
 }
@@ -216,6 +219,33 @@ describe("regla 2: el core no nombra modulos ni sus permisos (ADR 0139 §7, ADR 
       expect(exactIdLiteralCount(source, EXACT_IDS), source).toBe(0);
     }
     expect(withoutComments('a("https://x/pos")')).toBe('a("https://x/pos")');
+  });
+
+  it("CONTROL del id que choca: se ve usado como modulo, no como valor propio del core", () => {
+    for (const source of [
+      'await isModuleEnabled(businessId, "stock");',
+      "await requireModule(business.id, 'stock');",
+      'await lockModuleEnabled(tx, businessId, "stock");',
+      'const m = moduleById("stock");',
+      'if (enabledModules.has("stock")) show();',
+      "session.business.enabledModules.includes(`stock`)",
+    ]) {
+      expect(moduleUseLiteralCount(source, EXACT_ID_COLLISIONS), source).toBe(
+        1,
+      );
+    }
+    for (const source of [
+      'imageAction: "stock",',
+      'setImageAction("stock");',
+      'image.action === "stock"',
+      '// isModuleEnabled(b, "stock") en un comentario',
+      "isModuleEnabled(businessId, moduleId);",
+      'enabledModules.has("stocks")',
+    ]) {
+      expect(moduleUseLiteralCount(source, EXACT_ID_COLLISIONS), source).toBe(
+        0,
+      );
+    }
   });
 
   it('la colision declarada existe de verdad: el core usa `"stock"` como valor propio', () => {

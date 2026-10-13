@@ -246,6 +246,36 @@ export function exactIdLiteralCount(
   );
 }
 
+/**
+ * El id de un modulo usado COMO MODULO aunque sea tambien una palabra del core (`stock`, la foto de
+ * stock del catalogo): argumento literal de una funcion cuyo nombre dice modulo
+ * (`isModuleEnabled(b, "stock")`, `requireModule(id, "stock")`, `lockModuleEnabled(tx, b, "stock")`,
+ * `moduleById("stock")`) o consulta a una coleccion de modulos (`enabledModules.has("stock")`,
+ * `modules.includes("stock")`). Fuera de comentarios. No ve una llamada con parentesis anidados
+ * antes del literal, una funcion de modulos importada con otro nombre (`import { isModuleEnabled as
+ * on }`) ni el id guardado antes en una variable.
+ */
+export function moduleUseLiteralCount(
+  source: string,
+  ids: readonly string[],
+): number {
+  const code = withoutComments(source);
+  const q = "[\"'`]";
+  return ids.reduce((total, id) => {
+    const name = escape(id);
+    const patterns = [
+      new RegExp(`\\b\\w*[mM]odule\\w*\\s*\\([^()]*?${q}${name}${q}`, "g"),
+      new RegExp(
+        `\\b\\w*[mM]odules?\\w*\\s*\\.\\s*(?:has|includes)\\(\\s*${q}${name}${q}\\s*\\)`,
+        "g",
+      ),
+    ];
+    return (
+      total + patterns.reduce((n, re) => n + [...code.matchAll(re)].length, 0)
+    );
+  }, 0);
+}
+
 /** Cuantas veces `source` nombra a alguno de `ids` como modulo. */
 export function moduleLiteralCount(
   source: string,
