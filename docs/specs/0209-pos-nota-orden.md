@@ -76,3 +76,7 @@ Solicitud exacta: footer `counter-detailed-footer` con padding inferior18px, ant
 ## Ajuste L0 del owner — nota junto a tabs (cerrado, 2026-10-12)
 
 En orden ya creada, mover el único botón de nota del footer a la derecha de Editar/Pedido en la misma fila. Disponible en ambas pestañas incluso sin cambios pendientes; conservar modal, estados y bloqueo busy/conflict. El wizard mantiene el botón junto a sus CTAs. Solo pos-editor.tsx, sin kit/CSS/servidor. Owner solicita explícitamente no ejecutar tests por ser L0; verificar únicamente formato/diff.
+
+## Ajuste L0 del owner — menú circular inferior (cerrado, 2026-10-12)
+
+Concentrar Nota, Escanear QR, Imprimir pedido y Anular en el diálogo de acciones existente, accesible por botón circular48px MoreVert junto al CTA inferior. Quitar menú superior y nota junto a tabs. Nota presente: borde primary y distintivo pequeño de documento, sin mostrar texto de nota en pedido. Preservar todos los bloqueos busy/dirty/conflict/printing y modal de nota. Anular separado visualmente. Menú disponible en ambas pestañas de orden creada; Guardar cambios deshabilitado en Editar limpio. Wizard pasos2/3: mismo disparador junto al CTA, solo Nota disponible hasta crear la orden. X de volver al listado se conserva; se elimina el menú superior, no la navegación. Sin kit/CSS/servidor. Owner confirma L0 sin tests; formato/diff y revisión de código únicamente.
