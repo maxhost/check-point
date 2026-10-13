@@ -3,7 +3,15 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — MENÚ STOCK/RECETAS Y REGISTRO VISUAL STOCK, L1 (2026-10-12)
+## ESTADO — ACTIVACIÓN REAL STOCK/RECETAS Y MENÚ (2026-10-12)
+
+Commit `d1a213b` en dev. Contrato0210 revisado, API implementada. Toggles ya hacían GET /api/modules + PUT /api/modules/:id; ahora publican estado completo confirmado por GET/PUT y menú consulta GET sin caché (owner/catalog). Stock y Recetas se filtran por enabled tanto desktop/móvil como delegados. Sin estado real aparecen ocultos; GET anterior no pisa un evento confirmado posterior. Fallo PUT conserva estado y no publica cambio. Dependencias Recetas→Stock intactas. Contenido Stock/Recetas sigue prototipo, no se conectó; no cambios API/servidor/kit/migraciones. Sin merge/push/deploy.
+
+Node24 tipos merchant/ESLint/Prettier/guardia --base HEAD/diffcheck0; 9 aserciones Node de visibilidad/evento0. Sin Chrome/e2e/verify por preferencia owner, quien comprueba en dev-business. Activación contra servidor real autenticado pendiente del owner; no se escribieron datos vía herramientas. Spec0211 documenta extensión. Ajuste L0 anterior Audio/Foto o archivo/Manual sigue local pendiente de commit; archivos next-env/config/assets ajenos preservados.
+
+## HISTÓRICO — MENÚ STOCK/RECETAS Y REGISTRO VISUAL STOCK, L1 (2026-10-12)
+
+Ajuste L0 local pendiente de commit: orden Audio / Foto o archivo / Manual; Audio seleccionado por defecto. Formato, ESLint y diffcheck0. Sin Chrome/tests por owner.
 
 Propuesta de entradas `f4226fc`: Nuevo stock/Ajustar stock abren StockInputModal reutilizando StaffFormModal de importación catálogo según captura del owner. Tres opciones Foto o archivo/Por voz/Escribir, área archivo con FileButton y lista local, voz visual con ejemplo, texto filas nombre/cantidad/precio y añadir/quitar ítem. IA/grabación deshabilitadas y descritas como propuesta; no subidas/audio/API. Texto añade solo resumen mock a la tabla. Node24 tipos/lint/formato/guardia/diffcheck0. Sin Chrome/tests por owner; revisión visual y significado precio/ajustes aún a definir, no implementación de negocio.
 
