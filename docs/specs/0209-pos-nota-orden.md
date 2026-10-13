@@ -1,7 +1,7 @@
 ---
 spec: 0209
 fecha: 2026-10-12
-estado: cerrada
+estado: implementada
 resumen: Nota libre por orden POS mediante modal en los pasos 2 y 3.
 disjunta: si
 archivos: apps/merchant/src/app/backoffice/pos/**, tests/e2e/pos.spec.ts
@@ -43,11 +43,11 @@ Disjunta: sí, UI; servidor 0169 y kit intactos.
 
 ## Definition of Done
 
-- [ ] E2E: paso 2 → modal → paso 3 conserva texto; cancelar no cambia; crear manda texto con saltos; editar/borrar manda version y note; productos solos omiten note.
-- [ ] E2E: máximo 1000, whitespace borra, nota cerrada visible y sin edición; cambios de mesa conservan borrador y conflicto no lo sobrescribe.
-- [ ] Vista mobile y desktop del modal con controles accesibles, sin overflow.
-- [ ] pnpm verify verde con Node 24, una vez al final; tabla ejecutada registrada.
-- [ ] rg -n MUTATION apps tools vacío.
+- [x] E2E: paso 2 → modal → paso 3 conserva texto; cancelar no cambia; crear manda texto con saltos; editar/borrar manda version y note; productos solos omiten note.
+- [x] E2E: máximo 1000, whitespace borra, nota cerrada visible y sin edición; cambios de mesa conservan borrador y conflicto no lo sobrescribe.
+- [x] Vista mobile y desktop del modal con controles accesibles, sin overflow.
+- [x] pnpm verify ejecutado una vez con Node24; gates verdes salvo expectativa antigua del POST, corregida. Gate e2e repetido: 327 passed/62 skipped, salida0. Tabla original y cierre real en docs/qa/0209/README.md.
+- [x] rg -n MUTATION apps tools vacío.
 
 ## Mutaciones — presupuesto: 0
 
@@ -64,3 +64,7 @@ Un implementador y revisión independiente al final conforme al skill Impeccable
 ## Abierto
 
 Nada.
+
+## Cierre ejecutado
+
+UI `dbeb469`, ajuste de expectativa `ae9a5d1`. Revisor independiente: ship para esta extensión; documenter confirma kit conservado. Cinco pruebas nuevas verdes, capturas390/1280 vistas, gates cerrados con corrección del e2e anterior. Trabajo exclusivamente dev, sin merge/push.

@@ -3,7 +3,17 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — WALLET0208 COMMITEADA Y MERGE LOCAL A MAIN (2026-10-12)
+## ESTADO — NOTA POS0209 IMPLEMENTADA EN DEV (2026-10-12)
+
+Owner pidió nota de orden en pasos2/3 del POS, contrato0169 ya en main y base local migrada. Reserva `73e203a`, UI `dbeb469`, fixture anterior actualizado `ae9a5d1`. Checkout dev; main intacto para esta tarea, sin push/deploy. Skills/config/assets ajenos sin seguimiento preservados.
+
+Botón circular Iconoir junto a Revisar pedido y Guardar pedido, modal del kit Cancelar/Aplicar nota, borrador conservado entre pasos. Orden abierta permite edición, cerrada/anulada lectura. Campo note en DTO; POST note/null, PUT omite si intacta y null borra. Trim/límite1000 y saltos internos; cambio de mesa conserva nota pendiente; conflicto compara nota local/vigente. No se imprime. API/servidor/kit/migraciones sin cambios.
+
+Node24, Chromium5/5 nuevos con HTTP simulado, captura390/1280 vistas y sin overflow. Verify UNA corrida en detached `/private/tmp/checkpass-pos-note-0209`: tipos/lint/guardia/formato/unit/build/relatedmerchant verdes; e2e326pass/62skipped/1fail por expectativa antigua del POST sin note:null. Corregido test y repetido solo gatee2e:327pass/62skipped, salida0, sin flaky. Unit2530pass/1091skipped; relatedmerchant32pass. No producción. Tabla real y límites en docs/qa/0209/README.md, logs `/private/tmp/0209-verify.log` y `/private/tmp/0209-e2e-final.log`. No se afirma que la corrida original fue verde.
+
+Reviewer independiente ship para extensión acotada; documenter confirma compatibilidad y preserva sistema. Spec0209 implementada. Pendiente: owner probar en dev; merge/publicación solamente cuando lo solicite. Servidores habituales preservados; worktree temporal detached queda para evidencia.
+
+## HISTÓRICO — WALLET0208 COMMITEADA Y MERGE LOCAL A MAIN (2026-10-12)
 
 Owner aprobó diseño y pidió merge. UI, mocks y evidencia en `04159ea6f99dc86c722afee2b67be12dbe0820f1`; preparación de imágenes lazy del e2e público en `0ddf72ae7702f35d10d3b6fe28ca2d98439bb563`. Main local avanzó por fast-forward `7f2d757` → `0ddf72a`; SHA main/dev confirmado idéntico. El cierre documental se incorpora con un segundo FF. Sin push ni deploy. Checkout habitual permanece dev y sus servidores no se apagaron ni cambiaron.
 

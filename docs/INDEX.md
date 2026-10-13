@@ -441,4 +441,4 @@ técnica, Definition of Done y plan de pruebas antes de que su estado pase a `ce
 
 | 0206 | 2026-10-11 | **Imprimir tickets: si o no, por negocio** (L2, API + migracion 0072; pantallas de GPT). **Que es:** `printingEnabled` en el ajuste del ticket, APAGADO por defecto para todos (owner); con `false` el POS oculta «Imprimir». **Por que importa:** un comercio sin impresora no ve un boton que no sirve. | **API + UI implementadas; aprobadas por owner y merge local a main** (`da9c924`, ajuste POS `b6a04c7`; e2e UI 121/121 previos); **en PROD `3fe2ad6`** (2026-10-11), migración 0072 aplicada antes del deploy (snapshot `snap-late-water-ax6pc362`) | no | `specs/0206-imprimir-por-negocio.md` |
 
-| 0209 | 2026-10-12 | Nota libre en la orden POS: modal en pasos 2 y 3, edición abierta y lectura cerrada. | cerrada; trabajo local en dev | si | `specs/0209-pos-nota-orden.md` |
+| 0209 | 2026-10-12 | Nota libre en la orden POS: modal en pasos 2 y 3, edición abierta y lectura cerrada. | implementada en dev (`dbeb469`, test `ae9a5d1`); gates resueltos y reviewer ship; revisión owner pendiente | si | `specs/0209-pos-nota-orden.md` |
