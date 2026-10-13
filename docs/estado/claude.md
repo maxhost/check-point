@@ -11,10 +11,12 @@
 
 
 
-## ⇥ ESTADO (2026-10-12, noche) — MODULOS (ADR 0138) + STOCK Y RECETAS (0210) + DICTADO DE STOCK (0212) Y DE RECETAS (0214) EN `dev`; 0074-0077 SOLO LOCAL Y CI
+## ⇥ ESTADO (2026-10-12, noche) — MODULOS (ADR 0138) + STOCK Y RECETAS (0210) + DICTADO DE STOCK (0212) Y DE RECETAS (0214) EN `dev`; 0074-0077 YA EN PROD (CODIGO NO)
 
-**En PROD:** codigo `origin/main` = `3fe2ad6` (sin cambios). **Base PROD:** hasta 0073. **0074, 0075, 0076 y 0077 NO estan en PROD**
-(aplicadas en la base local, 78 migraciones, y en `ci-integration` por `neon-test.sh`).
+**En PROD:** codigo `origin/main` = `3fe2ad6` (sin cambios). **Base PROD: 0074-0077 APLICADAS el 2026-10-13** por MCP (`run_sql_transaction`, una transaccion; snapshot previo
+`snap-round-paper-axm7z3lj`; leido por SQL: 78 migraciones, los 4 hashes = sha256 de cada `.sql`, tablas `core.business_module`,
+`stock.{item,movement,draft_request}`, `recipes.line`, columnas `entry_id` y `kind`; 4 comercios y 144 productos intactos). Aditivas: el codigo
+de PROD (`3fe2ad6`) no las lee. Tambien en la base local (78 migraciones, y en `ci-integration` por `neon-test.sh`).
 
 **Hecho esta sesion (en `dev`, sin push):**
 - Analisis con el owner: `docs/analisis-recetas-stock-2026-10-12.md` (decisiones textuales; parqueados #96 prevision,
