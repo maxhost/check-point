@@ -55,3 +55,7 @@ Commit `b49bdcb` reemplaza los accesos anteriores. Botón circular48px MoreVert 
 ## Última corrección L0: nota directa en wizard
 
 `35c04a3`: pasos2/3 de creación restauran botón Notes directo al modal, estilo anterior (primary cuando hay nota, primary-soft cuando no). Menú inferior de órdenes creadas intacto. Formato/diffcheck0; sin tests ni capturas por owner. Cambios de Claude en su estado preservados y fuera del commit.
+
+## L0: distintivo superpuesto retirado
+
+`327a4bb` elimina únicamente Notes superpuesto al menú circular de orden creada. Borde/aria y wizard conservados. Sin tests por owner; formato/diffcheck0.
