@@ -22,6 +22,7 @@ export function DetailedSale({
   showPrices = true,
   allowPriceInput = true,
   searchOnly = false,
+  clearSearchOnAdd = false,
   compactSearch = false,
   showHeading = true,
   stickyControls = false,
@@ -44,6 +45,8 @@ export function DetailedSale({
   allowPriceInput?: boolean;
   /** Compact catalog search for adding items while reviewing a POS draft. */
   searchOnly?: boolean;
+  /** Reset search after selecting a product while editing a POS order. */
+  clearSearchOnAdd?: boolean;
   compactSearch?: boolean;
   showHeading?: boolean;
   stickyControls?: boolean;
@@ -188,7 +191,7 @@ export function DetailedSale({
             className="counter-product-add"
             onClick={() => {
               onAdd(product);
-              if (searchOnly) setQuery("");
+              if (searchOnly || clearSearchOnAdd) setQuery("");
             }}
             aria-label={`Agregar ${product.name}`}
           >
@@ -219,7 +222,10 @@ export function DetailedSale({
                 type="button"
                 disabled={disabled}
                 aria-label={`Agregar un ${product.name}`}
-                onClick={() => onQty(product.id, 1)}
+                onClick={() => {
+                  onQty(product.id, 1);
+                  if (clearSearchOnAdd) setQuery("");
+                }}
               >
                 +
               </button>

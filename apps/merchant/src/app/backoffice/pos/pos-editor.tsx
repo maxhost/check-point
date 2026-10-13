@@ -657,6 +657,7 @@ export function PosEditor({
             disabled={busy || conflict}
             showPrices={false}
             compactSearch
+            clearSearchOnAdd={!!order}
             showHeading={false}
             stickyControls
             allowPriceInput={false}
@@ -673,9 +674,13 @@ export function PosEditor({
                 setAddedNotice(true);
               }
             }}
-            onQty={(id, delta) =>
-              setLines((current) => productQuantity(current, id, delta))
-            }
+            onQty={(id, delta) => {
+              setLines((current) => productQuantity(current, id, delta));
+              if (order && delta > 0) {
+                setAddedNoticeId((current) => current + 1);
+                setAddedNotice(true);
+              }
+            }}
             onLinePrice={() => {}}
             onRepeat={() => {}}
           />
