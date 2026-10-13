@@ -11,7 +11,10 @@ import { sql } from "drizzle-orm";
 import { core } from "./_schemas";
 import { users } from "./auth";
 import { businesses } from "./business";
-import { PERMISSIONS } from "../permissions-catalog";
+import { PERMISSION_SHAPE } from "../permissions-catalog";
+
+/** `PERMISSION_SHAPE` sin las anclas: el patron de UN elemento dentro del arreglo unido. */
+const PERMISSION_ELEMENT = PERMISSION_SHAPE.slice(1, -1);
 
 /**
  * LA MEMBRESIA — quien opera un negocio, con que rol y con que alcances.
@@ -77,15 +80,20 @@ export const memberships = core.table(
       "business_membership_staff_identity_check",
       sql`${table.role} <> 'staff' or (${table.handle} is not null and ${table.pinHash} is not null)`,
     ),
-    /** CHECK 1 — ningun valor fuera del catalogo. `<@` es contencion de conjuntos, y la
-     * lista sale de `permissions-catalog.ts` para que el conjunto que la base declara
-     * CERRADO y el que valida el writer sean literalmente el mismo. **No impide duplicados**
-     * (`{catalog,catalog}` lo satisface): eso lo normaliza el writer. */
+    /** CHECK 1 — LA FORMA de cada permiso (spec 0216 / ADR 0139 §5), no su pertenencia: la
+     * base ya no declara el catalogo CERRADO, para que agregar un modulo con permisos no migre
+     * el core. La pertenencia (core + manifiestos) la valida el writer (`staff-permissions.ts`).
+     *
+     * Cada elemento `~ PERMISSION_SHAPE`, expresado sin subconsulta (un `CHECK` no la admite):
+     * el arreglo unido por `,` tiene que ser `e(,e)*` Y tener exactamente `cardinality - 1`
+     * comas. Sin la cuenta de comas, un elemento `'a,b'` pasaria como dos; sin el `'*'` como
+     * `null_string`, `array_to_string` SALTEA un `NULL` y `{stock,NULL}` pasaria. Arreglo
+     * vacio: el owner (CHECK 2). **No impide duplicados**: eso lo normaliza el writer. */
     check(
       "business_membership_permissions_check",
-      sql`${table.permissions} <@ ${sql.raw(
-        `array[${PERMISSIONS.map((permission) => `'${permission}'`).join(", ")}]::text[]`,
-      )}`,
+      sql`cardinality(${table.permissions}) = 0 or (array_to_string(${table.permissions}, ',', '*') ~ ${sql.raw(
+        `'^${PERMISSION_ELEMENT}(,${PERMISSION_ELEMENT})*$'`,
+      )} and length(array_to_string(${table.permissions}, ',', '*')) - length(replace(array_to_string(${table.permissions}, ',', '*'), ',', '')) = cardinality(${table.permissions}) - 1)`,
     ),
     /** CHECK 2 — el owner NO tiene permisos: los ignora por definicion (ADR 0079 §4). Sin
      * esto existe el estado «owner con permisos» y alguien va a terminar decidiendo por el.

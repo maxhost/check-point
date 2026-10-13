@@ -2,11 +2,12 @@ import { and, eq } from "drizzle-orm";
 import { getDb } from "@mi-pasaporte/db";
 import { businesses, memberships, users } from "@mi-pasaporte/db/schema";
 import {
-  isPermission,
-  normalizePermissions,
-  PERMISSIONS,
-} from "@mi-pasaporte/db/permissions-catalog";
+  isValidPermission,
+  normalizeValidPermissions,
+  validPermissions,
+} from "../modules/permissions";
 import { type StaffDTO, StaffError, toStaffDTO } from "./staff";
+import { assertModulePermissionsGrantable } from "./staff-module-permissions";
 
 /**
  * Spec 0086 §4 y §5 — EL VALIDADOR Y EL WRITER DE LOS PERMISOS, con las CUATRO reglas
@@ -71,15 +72,16 @@ export function parsePermissions(value: unknown): string[] {
     );
   }
   for (const item of value) {
-    if (!isPermission(item)) {
+    // Spec 0216: el catalogo VALIDO (core + permisos de los modulos), no el del core solo.
+    if (!isValidPermission(item)) {
       throw new StaffError(
         400,
-        `El permiso no existe. Los válidos son: ${PERMISSIONS.join(", ")}.`,
+        `El permiso no existe. Los válidos son: ${validPermissions().join(", ")}.`,
         STAFF_PERMISSION_CODES.unknownPermission,
       );
     }
   }
-  const permissions = normalizePermissions(value);
+  const permissions = normalizeValidPermissions(value);
   // DESPUES de normalizar, no antes: `[]` y `['catalog','catalog']` son casos distintos y
   // solo el primero es «lista vacia». Quitarle todo a alguien ya tiene nombre y es
   // DESACTIVARLO (`POST /api/staff/{userId}/status`).
@@ -248,6 +250,12 @@ export async function setStaffPermissions(
   assertDemotable(caller.role, target.permissions);
   // Spec 0169: `pos` con el modulo apagado. Despues del target, para que 404/409 sigan primero.
   await assertPosGrantable(business.id, permissions, target.permissions);
+  // Spec 0216: lo mismo para el permiso de cualquier modulo del registro.
+  await assertModulePermissionsGrantable(
+    business.id,
+    permissions,
+    target.permissions,
+  );
 
   const [row] = await getDb()
     .update(memberships)

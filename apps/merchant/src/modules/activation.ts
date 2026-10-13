@@ -2,6 +2,7 @@ import { eq, sql } from "drizzle-orm";
 import { type DbTransaction, getDb, withDbTransaction } from "@mi-pasaporte/db";
 import { businessModules, businesses } from "@mi-pasaporte/db/schema";
 import { ModuleError, invalidBody } from "./errors";
+import type { ModuleNavigationEntry, ModulePermission } from "./contract";
 import {
   MODULES,
   type ModuleManifest,
@@ -27,6 +28,9 @@ export type ModuleDTO = {
   requires: string[];
   enabled: boolean;
   suggested: boolean;
+  /** Spec 0216 / ADR 0139 §6: lo que el menu y el selector de permisos dibujan sin nombrar modulos. */
+  navigation: ModuleNavigationEntry[];
+  permissions: ModulePermission[];
 };
 
 function toDTO(
@@ -42,6 +46,8 @@ function toDTO(
     enabled: enabled.has(manifest.id),
     suggested:
       categoryGcid !== null && manifest.suggestedFor.includes(categoryGcid),
+    navigation: manifest.navigation.map((entry) => ({ ...entry })),
+    permissions: manifest.permissions.map((permission) => ({ ...permission })),
   };
 }
 
@@ -66,6 +72,14 @@ async function categoryOf(
     .where(eq(businesses.id, businessId))
     .limit(1);
   return row?.gcid ?? null;
+}
+
+/** Los ids de los modulos ENCENDIDOS del negocio (spec 0216: el writer de permisos no deja
+ * otorgar el permiso de un modulo apagado). */
+export async function enabledModuleIds(
+  businessId: string,
+): Promise<Set<string>> {
+  return enabledSet(getDb(), businessId);
 }
 
 /** `GET /api/modules` — todos los del registro, en su orden. */

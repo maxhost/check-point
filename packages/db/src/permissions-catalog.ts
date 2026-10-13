@@ -42,6 +42,14 @@ export const PERMISSIONS = [
 
 export type PermissionScope = (typeof PERMISSIONS)[number];
 
+/**
+ * Spec 0216 / ADR 0139 §5 — LA FORMA de un permiso, la unica regla que la base conoce: el
+ * `CHECK` de `core.business_membership.permissions` valida la FORMA y no la pertenencia, para que
+ * agregar un modulo con permisos no migre el core. La pertenencia (core + manifiestos) la valida
+ * la app. Fuente del `CHECK` (`schema/membership.ts`) y del test del registro de modulos.
+ */
+export const PERMISSION_SHAPE = "^[a-z][a-z_]{0,39}$";
+
 /** El conjunto de los ocho como `string[]` mutable, que es lo que devuelve la API para un
  * owner (§8 de la spec: la API **no expone la columna, expone la capacidad**). Se copia en
  * cada llamada: devolver el arreglo congelado dejaria que un consumidor lo mute. */
@@ -65,9 +73,14 @@ export function isPermission(value: unknown): value is PermissionScope {
  * mismo hoy porque la lista esta escrita en orden, y si alguna vez dejan de serlo manda la
  * lista — el consumidor pinta toggles en el orden del catalogo, no del alfabeto.
  */
-export function normalizePermissions(values: readonly string[]): string[] {
+export function normalizePermissions(
+  values: readonly string[],
+  /** Spec 0216 / ADR 0139 §5: la app pasa el catalogo VALIDO (core + permisos de los modulos,
+   * `apps/merchant/src/modules/permissions.ts`); este paquete no puede leer el registro. */
+  catalog: readonly string[] = PERMISSIONS,
+): string[] {
   const seen = new Set(values);
-  return PERMISSIONS.filter((permission) => seen.has(permission));
+  return catalog.filter((permission) => seen.has(permission));
 }
 
 /**
@@ -81,9 +94,11 @@ export function normalizePermissions(values: readonly string[]): string[] {
 export function permissionsForRole(
   role: string,
   stored: readonly string[] | null | undefined,
+  /** Spec 0216: el catalogo valido de la app (core + modulos). El owner recibe TODO el catalogo. */
+  catalog: readonly string[] = PERMISSIONS,
 ): string[] {
-  if (role === "owner") return allPermissions();
-  return normalizePermissions(stored ?? []);
+  if (role === "owner") return [...catalog];
+  return normalizePermissions(stored ?? [], catalog);
 }
 
 /**
@@ -99,7 +114,8 @@ export function permissionsForRole(
 export function hasScope(
   role: string,
   permissions: readonly string[] | null | undefined,
-  scope: PermissionScope,
+  /** Un permiso del core o de un modulo (spec 0216): la decision es la misma. */
+  scope: PermissionScope | (string & {}),
 ): boolean {
   if (role === "owner") return true;
   return (permissions ?? []).includes(scope);

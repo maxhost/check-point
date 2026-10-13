@@ -1,98 +1,73 @@
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { dirname, join, relative, sep } from "node:path";
+import { existsSync, readFileSync, statSync } from "node:fs";
+import { basename, dirname, join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
+import {
+  APP_DIR,
+  DB_BARREL,
+  DB_MODULES,
+  DB_SRC,
+  MODULES_DIR,
+  SRC,
+  coreMerchantFiles,
+  importsInto,
+  inside,
+  moduleSchemaExports,
+  sourceFiles,
+  specifiers,
+} from "./modules-boundary-support";
+import { MODULES } from "./registry";
+import { SERVER_ROUTES } from "./server-registry";
+import { UI_SCREENS } from "./ui-registry";
+import { routePermission } from "./dispatch";
+import { validPermissions } from "./permissions";
 
 /**
- * Spec 0210 §Frontera / ADR 0138 §1 — EL CORE NUNCA IMPORTA DE UN MODULO.
+ * Spec 0210 / 0216 — ADR 0138 §1 y ADR 0139 §7 — LA FRONTERA CORE → MODULOS. Reglas 1, 3, 5 y 6
+ * (la 2, literales, en `modules-boundary-literals.test.ts`; la 4, FKs, en
+ * `modules-fk.neon.integration.test.ts`: necesita la base).
  *
- * 1. En `apps/merchant/src`, ningun archivo fuera de `src/modules/**` y `src/app/api/modules/**`
- *    importa de `src/modules/` salvo `src/modules/registry` y `src/modules/guard` (las puertas).
- * 2. En `packages/db/src`, ningun archivo fuera de `schema/modules/` importa de `schema/modules/`,
- *    salvo el barril `schema.ts` (drizzle lee un solo archivo).
- * 3. En `apps/merchant/src`, fuera de las mismas dos carpetas, nadie importa del barril
- *    `@mi-pasaporte/db/schema` una tabla de un modulo (ni `@mi-pasaporte/db/schema/modules/*`):
- *    sin esto, el core leeria `stock.item` por el barril sin pasar nunca por `schema/modules/`.
+ * 1. Fuera de `src/modules/`, nadie importa de `src/modules/<carpeta>/…` (el codigo de un modulo),
+ *    y de `src/modules/*.ts` solo el core de modulos (`CORE_OF_MODULES`): los tres registros, el
+ *    guard, la navegacion, los permisos, la activacion, los errores y los dos despachadores.
+ * 3. En `packages/db/src`, nada fuera de `schema/modules/` importa de ahi salvo el barril
+ *    `schema.ts`; y el core de merchant no importa tablas de un modulo por el barril.
+ * 5. Ningun id del registro es un directorio de `app/backoffice/`, `app/api/` o `app/api/modules/`
+ *    (Next le da prioridad al segmento fijo y el despachador quedaria tapado).
+ * 6. Cada modulo del registro esta en `server-registry` y en `ui-registry` (y nada sobra), toda
+ *    ruta resuelve un permiso del catalogo valido, ninguna declara el `PUT` de la base (es el
+ *    toggle) y toda entrada de menu tiene pantalla.
  *
- * Barrido estatico (como `tools/app-boundary.test.ts`): ve `from "<literal>"`, `import "<literal>"`
- * e `import("<literal>")`. Un especificador armado en una variable no lo ve, y eso se declara.
+ * Barrido estatico de imports: un especificador armado en una variable no lo ve.
  */
 
-const SRC = join(import.meta.dirname, "..");
-const MODULES_DIR = join(SRC, "modules");
-const MODULES_API = join(SRC, "app", "api", "modules");
-const DB_SRC = join(SRC, "..", "..", "..", "packages", "db", "src");
-const DB_MODULES = join(DB_SRC, "schema", "modules");
-const DB_BARREL = join(DB_SRC, "schema.ts");
-const GATES = [join(MODULES_DIR, "registry.ts"), join(MODULES_DIR, "guard.ts")];
+const CORE_OF_MODULES = [
+  "registry.ts",
+  "server-registry.ts",
+  "ui-registry.ts",
+  "guard.ts",
+  "navigation.ts",
+  "permissions.ts",
+  "activation.ts",
+  "errors.ts",
+  "dispatch.ts",
+  "screen.ts",
+].map((name) => join(MODULES_DIR, name));
 
-function sourceFiles(dir: string, found: string[] = []): string[] {
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    const full = join(dir, entry.name);
-    if (entry.isDirectory()) {
-      if (entry.name === "node_modules" || entry.name === ".next") continue;
-      sourceFiles(full, found);
-    } else if (/\.tsx?$/.test(entry.name)) {
-      found.push(full);
-    }
-  }
-  return found;
-}
-
-const SPECIFIER = [
-  /\bfrom\s*(["'])([^"'\n]+)\1/g,
-  /\bimport\s*(["'])([^"'\n]+)\1/g,
-  /\bimport\(\s*(["'])([^"'\n]+)\1/g,
-];
-
-function specifiers(source: string): string[] {
-  return SPECIFIER.flatMap((re) => [...source.matchAll(re)].map((m) => m[2]));
-}
-
-const isFile = (path: string) => existsSync(path) && statSync(path).isFile();
-
-/** Como resuelve el bundler un relativo sin extension. Si no resuelve, la ruta base (igual cuenta). */
-function resolveRelative(fromFile: string, specifier: string): string {
-  const base = join(dirname(fromFile), specifier);
-  for (const candidate of [
-    `${base}.ts`,
-    `${base}.tsx`,
-    base,
-    join(base, "index.ts"),
-  ]) {
-    if (isFile(candidate)) return candidate;
-  }
-  return base;
-}
-
-const inside = (file: string, dir: string) =>
-  file === dir || file.startsWith(dir + sep);
-
-/** Los imports relativos de `file` que caen dentro de `dir`. */
-function importsInto(file: string, dir: string): string[] {
-  return specifiers(readFileSync(file, "utf8"))
-    .filter((s) => s.startsWith("."))
-    .map((s) => resolveRelative(file, s))
-    .filter((target) => inside(target, dir));
-}
-
-/** Los nombres que exportan los esquemas de los modulos (`export const stockItems = …`). */
-function moduleSchemaExports(): string[] {
-  return sourceFiles(DB_MODULES).flatMap((file) =>
-    [...readFileSync(file, "utf8").matchAll(/export\s+const\s+(\w+)/g)].map(
-      (m) => m[1],
-    ),
-  );
-}
+/**
+ * REGLA 5 — PENDIENTE DE GPT (encargo de la Fase 1, spec 0216 «No entra»): las pantallas de Stock y
+ * Recetas todavia viven en `app/backoffice/{stock,recipes}/` y GPT las muda a `modules/<id>/ui/`.
+ * Es una lista EXACTA, no una excepcion abierta: un directorio nuevo que choque da rojo, y el dia
+ * que GPT borre estos el test tambien da rojo hasta vaciar la lista.
+ */
+const PENDING_GPT_DIRS = ["app/backoffice/recipes", "app/backoffice/stock"];
 
 const IMPORT_FROM_SCHEMA =
   /import\s+(?:type\s+)?\{([^}]*)\}\s*from\s*["']@mi-pasaporte\/db\/schema["']/g;
 
-const coreMerchantFiles = () =>
-  sourceFiles(SRC).filter(
-    (f) => !inside(f, MODULES_DIR) && !inside(f, MODULES_API),
-  );
+const isDir = (path: string) =>
+  existsSync(path) && statSync(path).isDirectory();
 
-describe("frontera core → modulos (ADR 0138 §1)", () => {
+describe("frontera core → modulos (ADR 0138 §1, ADR 0139 §7)", () => {
   it("el barrido ve archivos de las tres zonas (piso: un barrido vacio no prueba nada)", () => {
     expect(coreMerchantFiles().length).toBeGreaterThan(500);
     expect(sourceFiles(MODULES_DIR).length).toBeGreaterThan(5);
@@ -100,18 +75,20 @@ describe("frontera core → modulos (ADR 0138 §1)", () => {
     expect(moduleSchemaExports()).toEqual(
       expect.arrayContaining(["stockItems", "stockMovements", "recipeLines"]),
     );
+    for (const file of CORE_OF_MODULES)
+      expect(existsSync(file), file).toBe(true);
   });
 
-  it("el core de merchant solo importa de src/modules/ el registro y el guard", () => {
+  it("REGLA 1: el core solo importa de src/modules/ el core de modulos, nunca codigo de un modulo", () => {
     const offenders = coreMerchantFiles().flatMap((file) =>
       importsInto(file, MODULES_DIR)
-        .filter((target) => !GATES.includes(target))
+        .filter((target) => !CORE_OF_MODULES.includes(target))
         .map((target) => `${relative(SRC, file)} → ${relative(SRC, target)}`),
     );
     expect(offenders).toEqual([]);
   });
 
-  it("ningun archivo de packages/db/src fuera de schema/modules/ importa de ahi, salvo schema.ts", () => {
+  it("REGLA 3: ningun archivo de packages/db/src fuera de schema/modules/ importa de ahi, salvo schema.ts", () => {
     const offenders = sourceFiles(DB_SRC)
       .filter((f) => !inside(f, DB_MODULES) && f !== DB_BARREL)
       .flatMap((file) =>
@@ -122,7 +99,7 @@ describe("frontera core → modulos (ADR 0138 §1)", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("el core de merchant no importa tablas de un modulo por el barril de @mi-pasaporte/db", () => {
+  it("REGLA 3: el core de merchant no importa tablas de un modulo por el barril de @mi-pasaporte/db", () => {
     const forbidden = new Set(moduleSchemaExports());
     const offenders = coreMerchantFiles().flatMap((file) => {
       const source = readFileSync(file, "utf8");
@@ -145,5 +122,59 @@ describe("frontera core → modulos (ADR 0138 §1)", () => {
       return [...direct, ...viaBarrel];
     });
     expect(offenders).toEqual([]);
+  });
+
+  it("REGLA 5: ningun id del registro choca con un directorio de app/backoffice, app/api o app/api/modules", () => {
+    const parents = ["backoffice", "api", join("api", "modules")];
+    for (const parent of parents)
+      expect(isDir(join(APP_DIR, parent))).toBe(true);
+    const clashes = MODULES.flatMap(({ id }) =>
+      parents
+        .map((parent) => join(APP_DIR, parent, id))
+        .filter(isDir)
+        .map((dir) => relative(SRC, dir)),
+    ).sort();
+    expect(clashes).toEqual(PENDING_GPT_DIRS);
+  });
+
+  it("REGLA 5: los dos despachadores existen (sin ellos no hay a quien tapar)", () => {
+    const pages = join(APP_DIR, "backoffice", "[module]", "[[...path]]");
+    const api = join(APP_DIR, "api", "modules", "[moduleId]", "[[...path]]");
+    expect(existsSync(join(pages, "page.tsx"))).toBe(true);
+    expect(existsSync(join(api, "route.ts"))).toBe(true);
+    expect(basename(dirname(pages))).toBe("[module]");
+  });
+
+  it("REGLA 6: cada modulo del registro esta en server-registry y en ui-registry, y nada sobra", () => {
+    const ids = MODULES.map((m) => m.id).sort();
+    expect(Object.keys(SERVER_ROUTES).sort()).toEqual(ids);
+    expect(Object.keys(UI_SCREENS).sort()).toEqual(ids);
+  });
+
+  it("REGLA 6: toda ruta resuelve un permiso valido y ninguna declara el PUT de la base (el toggle)", () => {
+    const valid = new Set(validPermissions());
+    for (const manifest of MODULES) {
+      for (const route of SERVER_ROUTES[manifest.id]) {
+        const where = `${manifest.id} ${route.method} ${route.path}`;
+        const permission = routePermission(manifest, route);
+        expect(permission, where).not.toBeNull();
+        expect(valid.has(permission ?? ""), where).toBe(true);
+        expect(route.method === "PUT" && route.path === "", where).toBe(false);
+      }
+    }
+  });
+
+  it("REGLA 6: toda entrada de menu tiene pantalla y pide un permiso valido", () => {
+    const valid = new Set(validPermissions());
+    for (const manifest of MODULES) {
+      for (const entry of manifest.navigation) {
+        const where = `${manifest.id} /${entry.path}`;
+        expect(
+          Object.hasOwn(UI_SCREENS[manifest.id].screens, entry.path),
+          where,
+        ).toBe(true);
+        expect(valid.has(entry.permission), where).toBe(true);
+      }
+    }
   });
 });

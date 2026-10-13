@@ -58,6 +58,17 @@ describe.skipIf(!modulesIntegrationEnabled)(
           requires: [],
           enabled: false,
           suggested: true,
+          // Spec 0216 / ADR 0139 §6: lo que el menu y el selector de permisos dibujan.
+          navigation: [
+            { path: "", label: "Stock", icon: "Package", permission: "stock" },
+          ],
+          permissions: [
+            {
+              id: "stock",
+              label: "Stock",
+              description: "Insumos, compras, ajustes y stock estimado.",
+            },
+          ],
         },
         {
           id: "recipes",
@@ -66,6 +77,16 @@ describe.skipIf(!modulesIntegrationEnabled)(
           requires: ["stock"],
           enabled: false,
           suggested: true,
+          navigation: [
+            { path: "", label: "Recetas", icon: "Book", permission: "recipes" },
+          ],
+          permissions: [
+            {
+              id: "recipes",
+              label: "Recetas",
+              description: "Recetas, costo y margen de cada producto.",
+            },
+          ],
         },
       ]);
     }, 120_000);
@@ -156,7 +177,9 @@ describe.skipIf(!modulesIntegrationEnabled)(
       }
     }, 120_000);
 
-    it("solo el owner enciende; el staff con catalog lista pero no cambia; sin catalog no lista", async () => {
+    // Spec 0216 §5: `GET /api/modules` es de CUALQUIER integrante (antes exigia `catalog`); el
+    // modulo sigue cerrado para quien no tiene su permiso.
+    it("solo el owner enciende; el staff con catalog lista pero no cambia; sin catalog lista pero no usa stock", async () => {
       const withCatalog = await moduleStaff(world, ["catalog"]);
       expect((await api.modules(withCatalog)).status).toBe(200);
       const put = await api.setModule(withCatalog, "stock", { enabled: false });
@@ -166,8 +189,7 @@ describe.skipIf(!modulesIntegrationEnabled)(
 
       const without = await moduleStaff(world, ["counter"]);
       const r = await api.modules(without);
-      expect(r.status).toBe(403);
-      expect((await r.json()).code).toBe("missing_permission");
+      expect(r.status).toBe(200);
       const items = await api.items(without);
       expect(items.status).toBe(403);
       expect((await items.json()).code).toBe("missing_permission");

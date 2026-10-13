@@ -22,7 +22,9 @@
  * alternativa —copiar los ocho valores acá— seria una quinta fuente de verdad para el
  * conjunto que el `CHECK` de la base declara cerrado.
  */
-import { permissionsForRole } from "@mi-pasaporte/db/permissions-catalog";
+// Spec 0216: `memberPermissions` es puro (catalogo del core + manifiestos del registro, que
+// tampoco importan runtime), asi que la propiedad de arriba se sostiene.
+import { memberPermissions } from "../modules/permissions";
 
 export type SessionUser = {
   id: string;
@@ -158,7 +160,7 @@ export function toSessionView(
     membership: {
       role: row.role,
       status: row.membershipStatus,
-      permissions: permissionsForRole(row.role, row.permissions),
+      permissions: memberPermissions(row.role, row.permissions),
     },
   };
 }

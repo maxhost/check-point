@@ -7,12 +7,13 @@ import { ModuleError, moduleErrorResponse } from "./errors";
 import type { NextResponse } from "next/server";
 
 /**
- * Spec 0210 / ADR 0138 §6 y §7 — EL GUARD DE LAS RUTAS DE UN MODULO.
+ * Spec 0210 / 0216 — ADR 0138 §6 y ADR 0139 §4 — EL GUARD DE LAS RUTAS DE UN MODULO.
  *
  * `requireModule` corta con 403 `module_disabled` si el negocio no tiene el modulo encendido (sin
- * fila = apagado). `requireModuleAccess` es la escalera entera de una ruta de Stock o Recetas: la del
- * permiso `catalog` del core (`requireApiPermission`: sesion, membresia, permiso, email del owner,
- * `status`, cobro — ADR 0138 §7 y §8) y DESPUES el modulo, para que un staff sin `catalog` reciba
+ * fila = apagado). `requireModuleAccess` es la escalera entera que el despachador de
+ * `/api/modules/<id>/…` aplica UNA vez antes del handler: la del permiso que pide la ruta (el del
+ * modulo por defecto; `requireApiPermission`: sesion, membresia, permiso, email del owner,
+ * `status`, cobro) y DESPUES el modulo, para que un integrante sin el permiso reciba
  * `missing_permission` sin enterarse de que modulos tiene el comercio.
  */
 export async function requireModule(
@@ -44,9 +45,10 @@ export type ModuleAccess =
 export async function requireModuleAccess(
   request: Request,
   moduleId: string,
+  permission: string,
 ): Promise<ModuleAccess> {
-  const auth = await requireApiPermission(request, "catalog", {
-    missingPermission: "No tienes permiso para gestionar el catálogo.",
+  const auth = await requireApiPermission(request, permission, {
+    missingPermission: "No tienes permiso para usar este módulo.",
     emailNotVerified: "Verifica tu email para usar este módulo.",
   });
   if ("failure" in auth) {

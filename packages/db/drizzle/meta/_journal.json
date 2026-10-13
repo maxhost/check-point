@@ -547,6 +547,13 @@
       "when": 1791866990067,
       "tag": "0077_dictado_de_recetas",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1791900105852,
+      "tag": "0078_permisos_de_modulos",
+      "breakpoints": true
     }
   ]
 }

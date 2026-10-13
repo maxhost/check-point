@@ -16,6 +16,7 @@ import {
   assertPosGrantable,
   parsePermissions,
 } from "./staff-permissions";
+import { assertModulePermissionsGrantable } from "./staff-module-permissions";
 
 /**
  * Spec 0067 §4 — el ALTA del integrante, separada de `staff.ts` porque ese archivo ya
@@ -145,6 +146,8 @@ export async function createStaff(
   assertGrantable(callerRole, input.permissions);
   // Spec 0169: `pos` solo con el modulo encendido; tambien antes de escribir nada.
   await assertPosGrantable(business.id, input.permissions);
+  // Spec 0216: el permiso de un modulo, solo con el modulo encendido.
+  await assertModulePermissionsGrantable(business.id, input.permissions);
   const handle = await freeHandle(business.id, input.name);
   const pin = generatePin();
   const pinHash = await hashPin(pin);

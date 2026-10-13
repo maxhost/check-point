@@ -11,27 +11,13 @@ import { getDb } from "@mi-pasaporte/db";
 import { businessModules, businesses, products } from "@mi-pasaporte/db/schema";
 import { seedMember } from "../server/counter-integration-support";
 import { GET as LIST_MODULES } from "../app/api/modules/route";
-import { PUT as SET_MODULE } from "../app/api/modules/[moduleId]/route";
 import {
-  GET as LIST_ITEMS,
-  POST as CREATE_ITEM,
-} from "../app/api/modules/stock/items/route";
-import { PATCH as UPDATE_ITEM } from "../app/api/modules/stock/items/[itemId]/route";
-import { POST as PURCHASE } from "../app/api/modules/stock/items/[itemId]/purchases/route";
-import { POST as ADJUST } from "../app/api/modules/stock/items/[itemId]/adjustments/route";
-import { GET as MOVEMENTS } from "../app/api/modules/stock/items/[itemId]/movements/route";
-import { POST as ENTRY } from "../app/api/modules/stock/entries/route";
-import { POST as DRAFT } from "../app/api/modules/stock/entries/draft/route";
-import { GET as LOG } from "../app/api/modules/stock/movements/route";
-import {
-  GET as LIST_RECIPES,
-  PUT as SET_RECIPES_MODULE,
-} from "../app/api/modules/recipes/route";
-import {
-  GET as READ_RECIPE,
-  PUT as SAVE_RECIPE,
-} from "../app/api/modules/recipes/[productId]/route";
-import { POST as RECIPE_DRAFT } from "../app/api/modules/recipes/[productId]/draft/route";
+  DELETE,
+  GET,
+  PATCH,
+  POST,
+  PUT,
+} from "../app/api/modules/[moduleId]/[[...path]]/route";
 
 /**
  * Spec 0210 — EL MUNDO DE LOS MODULOS para las suites `modules-*.neon.integration`: un negocio con
@@ -116,87 +102,83 @@ export async function seedProduct(
   return row.id;
 }
 
-const p = <T extends Record<string, string>>(params: T) => ({
-  params: Promise.resolve(params),
-});
+const HANDLERS = { GET, POST, PUT, PATCH, DELETE };
+type Method = keyof typeof HANDLERS;
+
+/**
+ * Spec 0216 — UNA llamada como la resuelve Next: todo `/api/modules/<id>/…` cae en el despachador
+ * `[moduleId]/[[...path]]` (el unico archivo de ruta de modulos que queda), con `params` armados
+ * desde la URL igual que Next (`path` ausente cuando no hay segmentos). Cambio de SOPORTE: las
+ * suites siguen llamando a `api.*` con las mismas firmas.
+ */
+export function callModuleRoute(
+  method: Method,
+  url: string,
+  cookie: string,
+  body?: unknown,
+): Promise<Response> {
+  const pathname = new URL(url, "http://localhost").pathname;
+  const [moduleId, ...rest] = pathname
+    .replace(/^\/api\/modules\//, "")
+    .split("/")
+    .map(decodeURIComponent);
+  const params = rest.length > 0 ? { moduleId, path: rest } : { moduleId };
+  return HANDLERS[method](conCookie(url, method, cookie, body), {
+    params: Promise.resolve(params),
+  });
+}
+
 const ITEMS = "/api/modules/stock/items";
 
 /** Las rutas de `/api/modules/**` con la cookie del caller. Devuelven el `Response` crudo. */
 export const api = {
   modules: (cookie: string) =>
     LIST_MODULES(conCookie("/api/modules", "GET", cookie)),
-  /** El handler que Next elige de verdad: `/api/modules/recipes` es la ruta estatica de Recetas,
-   * no `[moduleId]` (ver `modules/toggle-route.ts`). */
-  setModule: (cookie: string, moduleId: string, body: unknown) => {
-    const request = conCookie(`/api/modules/${moduleId}`, "PUT", cookie, body);
-    return moduleId === "recipes"
-      ? SET_RECIPES_MODULE(request)
-      : SET_MODULE(request, p({ moduleId }));
-  },
+  setModule: (cookie: string, moduleId: string, body: unknown) =>
+    callModuleRoute("PUT", `/api/modules/${moduleId}`, cookie, body),
   items: (cookie: string, status?: string) =>
-    LIST_ITEMS(
-      conCookie(status ? `${ITEMS}?status=${status}` : ITEMS, "GET", cookie),
+    callModuleRoute(
+      "GET",
+      status ? `${ITEMS}?status=${status}` : ITEMS,
+      cookie,
     ),
   createItem: (cookie: string, body: unknown) =>
-    CREATE_ITEM(conCookie(ITEMS, "POST", cookie, body)),
+    callModuleRoute("POST", ITEMS, cookie, body),
   updateItem: (cookie: string, itemId: string, body: unknown) =>
-    UPDATE_ITEM(
-      conCookie(`${ITEMS}/${itemId}`, "PATCH", cookie, body),
-      p({ itemId }),
-    ),
+    callModuleRoute("PATCH", `${ITEMS}/${itemId}`, cookie, body),
   purchase: (cookie: string, itemId: string, body: unknown) =>
-    PURCHASE(
-      conCookie(`${ITEMS}/${itemId}/purchases`, "POST", cookie, body),
-      p({ itemId }),
-    ),
+    callModuleRoute("POST", `${ITEMS}/${itemId}/purchases`, cookie, body),
   adjust: (cookie: string, itemId: string, body: unknown) =>
-    ADJUST(
-      conCookie(`${ITEMS}/${itemId}/adjustments`, "POST", cookie, body),
-      p({ itemId }),
-    ),
+    callModuleRoute("POST", `${ITEMS}/${itemId}/adjustments`, cookie, body),
   movements: (cookie: string, itemId: string, limit?: number) =>
-    MOVEMENTS(
-      conCookie(
-        `${ITEMS}/${itemId}/movements${limit === undefined ? "" : `?limit=${limit}`}`,
-        "GET",
-        cookie,
-      ),
-      p({ itemId }),
+    callModuleRoute(
+      "GET",
+      `${ITEMS}/${itemId}/movements${limit === undefined ? "" : `?limit=${limit}`}`,
+      cookie,
     ),
   entry: (cookie: string, body: unknown) =>
-    ENTRY(conCookie("/api/modules/stock/entries", "POST", cookie, body)),
+    callModuleRoute("POST", "/api/modules/stock/entries", cookie, body),
   draft: (cookie: string, body: unknown) =>
-    DRAFT(conCookie("/api/modules/stock/entries/draft", "POST", cookie, body)),
+    callModuleRoute("POST", "/api/modules/stock/entries/draft", cookie, body),
   log: (cookie: string, limit?: number) =>
-    LOG(
-      conCookie(
-        `/api/modules/stock/movements${limit === undefined ? "" : `?limit=${limit}`}`,
-        "GET",
-        cookie,
-      ),
+    callModuleRoute(
+      "GET",
+      `/api/modules/stock/movements${limit === undefined ? "" : `?limit=${limit}`}`,
+      cookie,
     ),
   recipes: (cookie: string) =>
-    LIST_RECIPES(conCookie("/api/modules/recipes", "GET", cookie)),
+    callModuleRoute("GET", "/api/modules/recipes", cookie),
   recipe: (cookie: string, productId: string) =>
-    READ_RECIPE(
-      conCookie(`/api/modules/recipes/${productId}`, "GET", cookie),
-      p({ productId }),
-    ),
+    callModuleRoute("GET", `/api/modules/recipes/${productId}`, cookie),
   recipeDraft: (cookie: string, productId: string, body: unknown) =>
-    RECIPE_DRAFT(
-      conCookie(
-        `/api/modules/recipes/${productId}/draft`,
-        "POST",
-        cookie,
-        body,
-      ),
-      p({ productId }),
+    callModuleRoute(
+      "POST",
+      `/api/modules/recipes/${productId}/draft`,
+      cookie,
+      body,
     ),
   saveRecipe: (cookie: string, productId: string, body: unknown) =>
-    SAVE_RECIPE(
-      conCookie(`/api/modules/recipes/${productId}`, "PUT", cookie, body),
-      p({ productId }),
-    ),
+    callModuleRoute("PUT", `/api/modules/recipes/${productId}`, cookie, body),
 };
 
 /** Crea un insumo por la ruta (falla ruidoso si no es 201). */

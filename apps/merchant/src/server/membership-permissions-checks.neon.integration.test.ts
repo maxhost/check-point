@@ -90,13 +90,25 @@ describe.skipIf(!enabled)(
       }
     }, 120_000);
 
-    /** CHECK 1 — contención de conjuntos. `<@` contra el catálogo de los siete. */
-    it("CHECK 1: un permiso fuera del catálogo se RECHAZA", async () => {
-      const fallo = await insertarStaff(`array['billing']::text[]`);
-      expect(fallo?.code).toBe("23514");
-      expect(fallo?.constraint).toBe("business_membership_permissions_check");
-      await limpiarStaff();
-    }, 120_000);
+    /** CHECK 1 — desde la spec 0216 (migración 0078, ADR 0139 §5) valida la FORMA de cada
+     * permiso, no la pertenencia al catálogo: mayúscula, espacio, coma dentro de un elemento
+     * (que unido parecería dos), un `NULL` (que `array_to_string` saltearía) y la cadena vacía. */
+    it.each([
+      ["mayúscula", `array['Stock']::text[]`],
+      ["espacio", `array['a b']::text[]`],
+      ["coma dentro de un elemento", `array['a,b']::text[]`],
+      ["un NULL", `array['stock', NULL]::text[]`],
+      ["cadena vacía", `array['catalog', '']::text[]`],
+    ])(
+      "CHECK 1: un permiso con %s se RECHAZA",
+      async (_label, permissions) => {
+        const fallo = await insertarStaff(permissions);
+        expect(fallo?.code).toBe("23514");
+        expect(fallo?.constraint).toBe("business_membership_permissions_check");
+        await limpiarStaff();
+      },
+      120_000,
+    );
 
     /** CHECK 2 — el owner NO tiene permisos. Se ataca por `UPDATE` sobre la fila del owner,
      * que es el camino real: la fila ya existe y alguien intenta escribirle un alcance. */
@@ -156,6 +168,14 @@ describe.skipIf(!enabled)(
     it("los estados VÁLIDOS entran: staff con permisos, owner con `'{}'`", async () => {
       expect(
         await insertarStaff(`array['catalog','counter']::text[]`),
+      ).toBeNull();
+      // Spec 0216: un permiso de modulo, y uno con la forma correcta que ningún catálogo
+      // declara — la pertenencia ya no es de la base, es del writer (`staff-permissions.ts`).
+      expect(
+        await ejecutar(
+          `update core.business_membership set permissions = array['stock','recipes','billing']::text[]
+             where business_id = '${businessId}' and user_id = '${staffId}'`,
+        ),
       ).toBeNull();
       // Y el duplicado ENTRA: `<@` es contención y no impide repetidos — la normalización es
       // del writer y tiene su propio caso. Queda escrito para que nadie lo lea como un bug.

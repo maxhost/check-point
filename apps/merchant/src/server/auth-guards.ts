@@ -5,7 +5,7 @@ import { getMerchantAuth } from "./auth";
 import { readBusinessBilling } from "./billing-gate";
 import { getDb } from "@mi-pasaporte/db";
 import { businesses, memberships, sessions } from "@mi-pasaporte/db/schema";
-import { permissionsForRole } from "@mi-pasaporte/db/permissions-catalog";
+import { memberPermissions } from "../modules/permissions";
 
 /**
  * Reason code the guard puts on `/?e=…` when it bounces a deactivated staff member
@@ -233,7 +233,8 @@ export async function requireBackofficeSession(
     membership: {
       role: row.role,
       status: row.status,
-      permissions: permissionsForRole(row.role, row.permissions),
+      // Spec 0216: con los permisos de modulo (el despachador de pantallas los mira).
+      permissions: memberPermissions(row.role, row.permissions),
     },
   };
 }

@@ -186,6 +186,9 @@ describe.skipIf(!integrationEnabled)(
             "marketing",
             "pos",
             "staff",
+            // Spec 0216 / ADR 0139 §5: el owner tiene tambien los permisos de modulo.
+            "stock",
+            "recipes",
           ],
         },
         // Spec 0189 §D10: el estado de cobro, SIN datos de Stripe.

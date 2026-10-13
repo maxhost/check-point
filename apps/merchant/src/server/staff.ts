@@ -6,7 +6,7 @@ import {
   sessions,
   users,
 } from "@mi-pasaporte/db/schema";
-import { normalizePermissions } from "@mi-pasaporte/db/permissions-catalog";
+import { normalizeValidPermissions } from "../modules/permissions";
 import { StaffError } from "./staff-error";
 import { assertTargetNotAdministrator } from "./staff-admin-target";
 
@@ -160,7 +160,9 @@ export function toStaffDTO(row: {
     // `normalizePermissions` y no `row.permissions` crudo: el `CHECK` de contencion de la
     // base NO impide duplicados, asi que una fila escrita por fuera del writer podria traer
     // `{catalog,catalog}`. La forma que sale por la API es siempre la normalizada.
-    permissions: normalizePermissions(row.permissions ?? []),
+    // Spec 0216: contra el catalogo VALIDO, o el DTO perderia `stock`/`recipes` y la pantalla
+    // de Equipo los borraria al reenviar el conjunto.
+    permissions: normalizeValidPermissions(row.permissions ?? []),
     createdAt: row.createdAt.toISOString(),
   };
 }

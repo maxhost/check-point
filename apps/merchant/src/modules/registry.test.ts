@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { BUSINESS_CATEGORIES } from "../lib/business-categories";
+import {
+  PERMISSIONS,
+  PERMISSION_SHAPE,
+} from "@mi-pasaporte/db/permissions-catalog";
 import { MODULES, dependentsOf, moduleById } from "./registry";
 
 /** Spec 0210 §Plan 1 — el registro: ids unicos, `requires` existe y sin ciclos, gcids validos. */
@@ -41,5 +45,15 @@ describe("registro de modulos", () => {
     expect(dependentsOf("stock").map((m) => m.id)).toEqual(["recipes"]);
     expect(moduleById("pos")).toBeNull();
     expect(moduleById(42)).toBeNull();
+  });
+
+  /** Spec 0216 / ADR 0139 §5: la base solo valida la forma; que no choquen lo valida esto. */
+  it("los permisos de modulo cumplen la forma de la base y no chocan con el core ni entre si", () => {
+    const shape = new RegExp(PERMISSION_SHAPE);
+    const ids = MODULES.flatMap((m) => m.permissions.map((p) => p.id));
+    for (const id of ids) expect(shape.test(id), id).toBe(true);
+    const all = [...PERMISSIONS, ...ids];
+    expect(new Set(all).size).toBe(all.length);
+    expect(ids).toEqual(["stock", "recipes"]);
   });
 });

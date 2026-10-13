@@ -93,10 +93,27 @@ export type ApiPermissionMessages = {
   emailNotVerified?: string;
 };
 
+/** Un permiso del core o de un modulo (spec 0216 / ADR 0139 §5): el despachador de
+ * `/api/modules/<id>/…` pide el permiso que declara el manifiesto. */
+export type ApiScope = PermissionScope | (string & {});
+
 export async function requireApiPermission(
   request: Request,
-  scope: PermissionScope,
+  scope: ApiScope,
   messages: ApiPermissionMessages = {},
+): Promise<ApiPermissionResult> {
+  return memberLadder(request, scope, messages);
+}
+
+/**
+ * La escalera con el paso 4. `scope === null` saltea SOLO el paso 3: es `requireApiMember`
+ * (spec 0216, `api-member.ts`), la superficie que cualquier integrante del negocio puede leer.
+ * Se exporta para esa hermana y no como flag de `requireApiPermission` (spec 0075 §D1).
+ */
+export async function memberLadder(
+  request: Request,
+  scope: ApiScope | null,
+  messages: ApiPermissionMessages,
 ): Promise<ApiPermissionResult> {
   const resolved = await resolveMembership(request, scope, messages);
   if ("failure" in resolved) return resolved;
@@ -143,7 +160,7 @@ export async function requireApiPermission(
  */
 export async function requireApiPermissionSinGateDeEmail(
   request: Request,
-  scope: PermissionScope,
+  scope: ApiScope,
   /** Sin `emailNotVerified`: el tipo hace imposible pasarlo por accidente a una funcion que
    * no evalua ese paso. */
   messages: Omit<ApiPermissionMessages, "emailNotVerified"> = {},
@@ -160,7 +177,7 @@ export async function requireApiPermissionSinGateDeEmail(
  * es el paso 4, y por eso es lo unico que queda afuera de esta pieza. */
 async function resolveMembership(
   request: Request,
-  scope: PermissionScope,
+  scope: ApiScope | null,
   messages: ApiPermissionMessages,
 ): Promise<
   | {
@@ -201,7 +218,11 @@ async function resolveMembership(
 
   // PASO 3 — el alcance. La decision es pura y vive en `permissions-catalog.ts`: el owner
   // pasa sin mirar la columna (ADR 0079 §4), el staff necesita el scope en su lista.
-  if (!hasScope(membership.role, membership.permissions, scope)) {
+  // `null`: `requireApiMember`, cualquier integrante ACTIVO (spec 0216).
+  if (
+    scope !== null &&
+    !hasScope(membership.role, membership.permissions, scope)
+  ) {
     return {
       failure: {
         status: 403,
