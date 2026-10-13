@@ -164,7 +164,7 @@ export function PosEditor({
   const [addedNotice, setAddedNotice] = useState(false);
   const [addedNoticeId, setAddedNoticeId] = useState(0);
   const [discardOpen, setDiscardOpen] = useState(false);
-  const [updatedNotice, setUpdatedNotice] = useState(false);
+  const [updatedNotice, setUpdatedNotice] = useState<string | null>(null);
   const [removeClientOpen, setRemoveClientOpen] = useState(false);
   const reviewListRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -367,30 +367,36 @@ export function PosEditor({
   }
   async function save(exitAfter = false) {
     if (invalid || busy || conflict || (!order && surface !== "order")) return;
-    setUpdatedNotice(false);
+    setUpdatedNotice(null);
+    const noteChanged = note.trim() !== (baseline?.note ?? "");
     const result = await onSave({
       ...(order ? { version: baseline!.version } : {}),
       tableLabel: table.trim(),
       ...(tableId ? { tableId } : order ? { tableId: null } : {}),
       ...(locationId ? { locationId } : {}),
       items: linePayload(lines),
-      ...(!order || note.trim() !== (baseline?.note ?? "")
-        ? { note: note.trim() || null }
-        : {}),
+      ...(!order || noteChanged ? { note: note.trim() || null } : {}),
     });
     if (!result) return;
     apply(result);
     if (exitAfter) leave();
     else {
       changeSurface("order");
-      if (order) setUpdatedNotice(true);
+      if (order)
+        setUpdatedNotice(
+          noteChanged
+            ? result.note
+              ? "Nota actualizada"
+              : "Nota eliminada"
+            : "Pedido actualizado",
+        );
     }
   }
   async function saveTable() {
     if (!baseline || busy || conflict || contextSaving.current) return;
     contextSaving.current = true;
     setContextAttempted(true);
-    setUpdatedNotice(false);
+    setUpdatedNotice(null);
     const draftLines = lines;
     const draftRemoved = removedLines;
     const draftNote = note;
@@ -414,7 +420,7 @@ export function PosEditor({
         setRemovedLines(draftRemoved);
       }
       setContextOpen(false);
-      setUpdatedNotice(true);
+      setUpdatedNotice("Pedido actualizado");
     } finally {
       contextSaving.current = false;
     }
@@ -914,8 +920,8 @@ export function PosEditor({
           />
         )}
       <ConfirmationToast
-        message={updatedNotice ? "Pedido actualizado" : null}
-        onDismiss={() => setUpdatedNotice(false)}
+        message={updatedNotice}
+        onDismiss={() => setUpdatedNotice(null)}
       />
       <Dialog
         isOpen={noteOpen}
