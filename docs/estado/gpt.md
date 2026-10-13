@@ -3,7 +3,15 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — ACTIVACIÓN REAL STOCK/RECETAS Y MENÚ (2026-10-12)
+## ESTADO — STOCK REAL: COMPRAS, DICTADO Y CONTEOS (2026-10-12)
+
+Spec0213 reserva `2016ff3`, implementación `8ee7a91` en dev. Owner aprobó adaptar Stock a contratos0210/0212 y quitar Foto/archivo. Log GET movements?limit=200, filas individuales fecha createdAt y compra/conteo+insumo+cantidad+precio total opcional. Sesión aporta timezone/currency; sin métricas de Analítica. Nuevo stock: Audio default/Manual; insumo activo o nuevo, cantidad/unidad separadas, totalCost opcional y coma decimal. Dictado trim1..2000→POST entries/draft, revisión editable real con sourceText, unparsed y reconocimiento de pendientes; nada persiste hasta POST entries. Sin ejemplos falsos. Conteo solo manual, un insumo por guardado, cantidad≥0, kg/l convertidos exactamente a base antes de POST adjustments; sin precio. Load/error/retry, locks y cierre deshabilitado en vuelo, errores conservan borrador; éxito cierra y recarga log. Helper StaffFormModal incluye textarea/select y tabindex0 en foco. API/servidor/kit/Recetas/migraciones intactos. Sin merge/push/deploy.
+
+Node24: tipo merchant final0 (primer intento Alert import faltante, corregido), ESLint, formato, guardia --base HEAD y diffcheck0. 22 aserciones Node de unidades/cantidades/validaciones/payloads0. No Chrome/e2e/LLM/escritura real por preferencia owner; revisa en dev-business. Tabla real en spec0213. No verify global ni producción. StockTypes frontend sin importar módulos del servidor. Skills/config/assets y next-env generados ajenos preservados. Ajustes locales anteriores de Audio/Manual/multiline quedan incluidos en implementación final.
+
+## HISTÓRICO — ACTIVACIÓN REAL STOCK/RECETAS Y MENÚ (2026-10-12)
+
+Ajuste visual local pendiente de commit: Audio usa TextAreaField con «Usa el micrófono en tu teclado» y Analizar. Sin endpoint, muestra etapa editable con dos ítems explícitamente de ejemplo (no extraídos del texto), Guardar/Descartar y Volver al texto conservando transcripción. Manual y revisión mantienen borradores separados. Guardar sigue solo estado mock. Incluye orden previo Audio/Foto o archivo/Manual pendiente. Tipos merchant/ESLint/formato/guardia/diffcheck0; sin Chrome/tests por owner.
 
 Commit `d1a213b` en dev. Contrato0210 revisado, API implementada. Toggles ya hacían GET /api/modules + PUT /api/modules/:id; ahora publican estado completo confirmado por GET/PUT y menú consulta GET sin caché (owner/catalog). Stock y Recetas se filtran por enabled tanto desktop/móvil como delegados. Sin estado real aparecen ocultos; GET anterior no pisa un evento confirmado posterior. Fallo PUT conserva estado y no publica cambio. Dependencias Recetas→Stock intactas. Contenido Stock/Recetas sigue prototipo, no se conectó; no cambios API/servidor/kit/migraciones. Sin merge/push/deploy.
 
