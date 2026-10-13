@@ -108,3 +108,7 @@ En orden creada, Aplicar nota ejecuta PUT inmediato con version y note normaliza
 ## Ajuste del owner — nota optimista (cerrado, 2026-10-12)
 
 Aplicar nota en orden creada: actualizar estado/editor y caché privada inmediatamente, cerrar modal y emitir toast; luego confirmar PUT. Mantener version actual hasta respuesta real y bloqueo de escrituras/navegación vigente. onSave admite segundo argumento opcional note optimista (undefined: flujo anterior, null: borrar). Console run publica snapshot optimista después de beginWrite; éxito reemplaza con respuesta; fallo revierte caché a confirmado antes de manejo de error/conflicto existente, sin revertir otra sesión (epoch). Editor revierte nota/snapshot, retira toast y reabre modal con texto para reintentar; preserva borrador de productos. No persistencia local ni timers/reescrituras al kit/API. PosEditor/PosConsole solamente. Continúa preferencia L0 sin tests; formato/diff y revisión estática, no afirmar verificación de navegador.
+
+## Corrección L0 — claves de toasts (cerrada, 2026-10-12)
+
+Los toasts hermanos de producto y actualización comparten claves numéricas cuando ambos contadores valen1. Prefijar keys product-added y order-updated para preservar identidad sin colisiones; no cambiar comportamiento/duración. Sin tests conforme preferencia vigente; formato/diff.
