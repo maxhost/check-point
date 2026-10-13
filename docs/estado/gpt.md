@@ -5,6 +5,8 @@
 
 ## ESTADO — MENÚ STOCK/RECETAS Y REGISTRO VISUAL STOCK, L1 (2026-10-12)
 
+Último ajuste `d729aea`: Registrar stock abre selector Dialog del kit, Nuevo stock primero y Ajustar stock segundo. Botones secondary/iconos Package y EditPencil, gap3 y cierre circular Xmark idéntico a acciones POS. Opciones abren modal de resumen, inline retirado; mock sin API/persistencia. Typecheck/lint/formato/guardia/diffcheck0, sin Chrome/tests por owner.
+
 Commit `08e274c` en dev. Owner pidió links Stock y Recetas (debajo de Stock) visibles como activados, sin consultar API de módulos. Ambos en Mi negocio, desktop y menú móvil, permiso catalog existente y guardas de página equivalentes a Catálogo. Stock muestra tabla/log fecha de creación y resumen, tres registros ficticios y Añadir Stock. Alta provisional inline añade resumen solo al estado React; recargar restaura muestras. Aviso visible de muestra/sin persistencia. Recetas placeholder pendiente de diseño del owner. UI solo, no backend/kit/migraciones. Sin merge/push/deploy.
 
 Owner pidió revisar personalmente y no comprobar en Chrome. No se ejecutó QA visual ni pruebas de navegador; harness/tests preparados retirados. Node24 typecheck merchant, ESLint archivos, guardia --base HEAD y diffcheck0, formato aplicado. No verify global por L1. Revisión visual pendiente del owner en dev-business /backoffice/stock. Trabajo paralelo Claude y next-env generados preservados.
