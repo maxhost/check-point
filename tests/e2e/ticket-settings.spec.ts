@@ -11,6 +11,16 @@ test.beforeAll(async () => {
 test.afterAll(async () => harness.close());
 
 async function setup(page: Page) {
+  await page.route("**/api/modules", (route) =>
+    route.fulfill({
+      json: {
+        modules: [
+          { id: "stock", enabled: false },
+          { id: "recipes", enabled: false },
+        ],
+      },
+    }),
+  );
   await page.route("**/api/merchant/session", (route) =>
     route.fulfill({
       json: {

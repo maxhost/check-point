@@ -1,13 +1,15 @@
 ---
 spec: 0211
 fecha: 2026-10-12
-estado: cerrada
+estado: implementada
 resumen: Dos cards Stock y Recetas en Configuración, con activación mediante el contrato 0210 y dependencias visibles.
 disjunta: si
 archivos: apps/merchant/src/app/backoffice/settings/module-settings.tsx, apps/merchant/src/app/backoffice/settings/pos-settings.tsx, tests/e2e/module-settings.spec.ts
 ---
 
 # 0211 — Cards de Stock y Recetas en Configuración
+
+Owner clasifica este ajuste como **L1** (ADR 0129): mini plan y pruebas menores de 3 minutos, sin verify global ni revisor. Se conserva esta reserva documental previa a su aclaración; no agrega requisitos L2/L3.
 
 ## Problema
 
@@ -38,11 +40,11 @@ Disjunta: sí, de 0210 (API/servidor) y 0209 (POS).
 
 ## Definition of Done
 
-- [ ] E2E: dos cards visibles, persistencia tras recarga y dependencias respetadas; fallo y reintento sin estado ficticio; no-owner no consulta módulos.
-- [ ] Capturas a 390 y 1280 px vistas, sin overflow.
-- [ ] Typecheck merchant, ESLint de archivos, formato y guardia UI en verde.
-- [ ] `pnpm verify` una vez al final con tabla real; fallos ajenos se declaran.
-- [ ] Revisión independiente con evidencia antes de marcar implementada.
+- [x] E2E: dos cards visibles, persistencia tras recarga y dependencias respetadas; fallo y reintento sin estado ficticio; no-owner no consulta módulos.
+- [x] Capturas a 390 y 1280 px vistas, sin overflow.
+- [x] Typecheck merchant, ESLint de archivos, formato y guardia UI en verde.
+- No se corre `pnpm verify`: cambio L1, por instrucción del owner.
+- Revisión directa del diff, sin subagentes (L1).
 
 ## Mutaciones — presupuesto: 0
 
@@ -54,8 +56,12 @@ Backend 0210 y migración local pueden estar en curso: el E2E simulado no prueba
 
 ## Handoff
 
-GPT implementa la UI; revisor independiente al cierre. Solo dev local.
+GPT implementa la UI. Solo dev local; verificación acotada L1.
 
 ## Abierto
 
 Ninguna decisión de producto abierta para estas dos cards.
+
+## Verificación real L1
+
+Node 24: typecheck merchant, ESLint archivos, formato, guardia --base HEAD y diffcheck salida 0. Chromium: 3/3 en 2.3 segundos, HTTP simulado; capturas 390/1280 vistas, sin overflow. Primer intento bloqueado por listen EPERM del sandbox; repetición autorizada verde. No verify global ni revisor, por L1. Backend y base local no verificados por estas pruebas. Capturas en `/private/tmp/checkpass-0211-results/`.

@@ -444,4 +444,4 @@ técnica, Definition of Done y plan de pruebas antes de que su estado pase a `ce
 
 | 0209 | 2026-10-12 | Nota libre en la orden POS: modal en pasos 2 y 3, edición abierta y lectura cerrada. | implementada en dev (`dbeb469`, test `ae9a5d1`); gates resueltos y reviewer ship; revisión owner pendiente | si | `specs/0209-pos-nota-orden.md` |
 | 0210 | 2026-10-12 | **Modulos: registro, Stock y Recetas (capa A)** (L3, API + migracion 0074; pantallas de GPT). **Que es:** registro de modulos (ADR 0138), insumos con compras y ajustes, receta por producto con costo y margen. **Por que importa:** el comercio ve cuanto le cuesta cada producto y su margen real, actualizado con cada compra. | cerrada | si | `specs/0210-modulos-stock-y-recetas.md` |
-| 0211 | 2026-10-12 | Cards Stock y Recetas en Configuración, activación y dependencias mediante contrato 0210. | cerrada | si | `specs/0211-cards-stock-recetas-en-configuracion.md` |
+| 0211 | 2026-10-12 | Cards Stock y Recetas en Configuración, activación y dependencias mediante contrato 0210 (L1). | implementada en dev | si | `specs/0211-cards-stock-recetas-en-configuracion.md` |
