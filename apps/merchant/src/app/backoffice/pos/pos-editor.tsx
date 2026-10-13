@@ -484,14 +484,6 @@ export function PosEditor({
       onPress={() => setActionsOpen(true)}
     >
       <MoreVert aria-hidden="true" className="size-6" />
-      {note && (
-        <span
-          aria-hidden="true"
-          className="absolute right-0 top-0 grid size-5 place-items-center rounded-full bg-primary text-on-primary"
-        >
-          <Notes className="size-3" />
-        </span>
-      )}
     </Button>
   );
   return (
