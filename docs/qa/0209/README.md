@@ -47,3 +47,7 @@ Commit `5faeed5`, solo declaración existente de globals.css: 10px →18px más 
 ## Ajuste L0 posterior: nota junto a Editar/Pedido
 
 Commit `a067159`: un único botón Nota en la fila de tabs de orden ya creada, disponible en Editar y Pedido; retirado del footer. Wizard mantiene su ubicación anterior. Solo movimiento en pos-editor.tsx. Formato/diffcheck0. Sin tests ni nuevas capturas por instrucción explícita del owner; las capturas y pruebas anteriores no verifican esta ubicación nueva.
+
+## Ajuste L0 más reciente: menú circular inferior
+
+Commit `b49bdcb` reemplaza los accesos anteriores. Botón circular48px MoreVert junto a Guardar/Cobrar, borde primary y distintivo de documento cuando existe nota. Menú concentra Escanear QR, Añadir/Editar nota, Imprimir pedido (si habilitado) y Anular separado. Menú superior retirado, X de navegación intacta. Nota junto a tabs retirada. Editar conserva acceso al menú aun limpio, CTA Guardar deshabilitado hasta cambios. Wizard2/3 usa disparador igual con Nota; las acciones que requieren orden creada aparecen después de guardar. Bloqueos busy/dirty/conflict/printing y modal/persistencia conservados. Solo pos-editor.tsx, sin kit/CSS/API. Formato/diffcheck0, revisión estática; sin tests/capturas/verify por owner. Pruebas anteriores tienen selectores previos y no prueban el menú nuevo; adaptación pendiente para próxima verificación autorizada.
