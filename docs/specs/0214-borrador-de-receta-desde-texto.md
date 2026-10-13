@@ -51,7 +51,8 @@ Salida `200`:
 - **Por UNA unidad del producto.** Si el dueño dice para cuantas unidades es lo que dicta («salen 40 medialunas»,
   «para 10 pizzas»), el modelo devuelve `yield` y el SERVIDOR divide cada cantidad por `yield` (redondeo a 3
   decimales, mitades lejos del cero; una cantidad que redondea a 0 queda `null`). Sin rendimiento dicho, `yield: 1`.
-  *(Propuesta de Claude para la panaderia; el owner no lo pidio: se informa en la entrega.)*
+  *(Propuesta de Claude para la panaderia. Owner 2026-10-13: «me parece interesante, veremos, dejalo por
+  ahora» — se queda, a revisar con el uso real.)*
 - `unit` es la **unidad base** (`g`, `ml`, `unit`): el servidor convierte `kg` → g y `l` → ml (× 1000). La pantalla
   guarda con `unit` igual a esa base.
 - `quantity: null` = ingrediente sin cantidad («oregano a gusto», «una pizca»): la pantalla exige completarla antes de
