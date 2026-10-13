@@ -13,10 +13,13 @@
 
 ## ⇥ ESTADO (2026-10-12, noche) — MODULOS (ADR 0138) + STOCK Y RECETAS (0210) + DICTADO DE STOCK (0212) Y DE RECETAS (0214) EN `dev`; 0074-0077 YA EN PROD (CODIGO NO)
 
-**En PROD:** codigo `origin/main` = `3fe2ad6` (sin cambios). **Base PROD: 0074-0077 APLICADAS el 2026-10-13** por MCP (`run_sql_transaction`, una transaccion; snapshot previo
-`snap-round-paper-axm7z3lj`; leido por SQL: 78 migraciones, los 4 hashes = sha256 de cada `.sql`, tablas `core.business_module`,
-`stock.{item,movement,draft_request}`, `recipes.line`, columnas `entry_id` y `kind`; 4 comercios y 144 productos intactos). Aditivas: el codigo
-de PROD (`3fe2ad6`) no las lee. Tambien en la base local (78 migraciones, y en `ci-integration` por `neon-test.sh`).
+**En PROD (2026-10-13 ~01:20):** `origin/main` = `4208714` — modulos (ADR 0138), Stock y Recetas (0210), dictado de Stock (0212)
+y de Recetas (0214), mas lo de GPT (pantallas, nota POS, copy neutro). Vercel: merchant, customer, public y admin `success`;
+`/api/health` 200 y `/api/modules*` 401 en `business.checkpass.club`. **Pusheado con `--no-verify` CON OK EXPLICITO DEL OWNER:**
+el pre-push corrio entero desde un worktree limpio en ese sha y dio verde typecheck, lint, ui-guard, formato, unit, build y Neon
+completa (436 archivos, 3478 tests); el unico rojo fue `landing.spec.ts` (1 de 360 e2e) por arranque en frio (timeout de
+`page.goto`; otra corrida en frio fallo con otra asercion), que pasa 4/4 en caliente. Antes, `4208714` arreglo 85 e2e viejos
+(acciones de la orden en el menu `b49bdcb`, nota inmediata `5f67add`, banco de modulos, copy neutro): 371/371 en la carpeta.
 
 **Hecho esta sesion (en `dev`, sin push):**
 - Analisis con el owner: `docs/analisis-recetas-stock-2026-10-12.md` (decisiones textuales; parqueados #96 prevision,
@@ -45,8 +48,7 @@ Fase 1 Stock/Recetas como referencia, Fase 2 POS+Mesas), con revision adversaria
 esquema `pos`, permisos declarados por modulo, rutas bajo `/api/modules`, pantallas las mueve GPT con encargo.
 
 **QUE SIGUE:**
-1. GPT cierra pantallas → probar en local → OK del owner para 0074+0075 a PROD (snapshot previo, MCP) → `main` ←
-   `merge --ff-only dev`, probar `main`, push con OK. El comercio real lo prueba despues.
+1. QA del owner con el comercio real en PROD. Hallazgo: `landing.spec.ts` es inestable en frio (deuda de GPT, sin perseguir).
 2. Hallazgos a decidir: path del toggle (`/api/modules/:id/state` evita la colision de Next); `GET /api/modules` exige
    permiso `catalog` (no hay guard «cualquier miembro»); test de frontera no ve `import * as schema` (hoy solo en
    `server/auth.ts`).
