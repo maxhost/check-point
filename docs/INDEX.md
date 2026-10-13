@@ -455,3 +455,5 @@ técnica, Definition of Done y plan de pruebas antes de que su estado pase a `ce
 
 | 0217 | 2026-10-13 | Pantallas de módulos fase 1: menú, Ajustes y permisos desde manifiestos. | cerrada; UI `6f2272f`, PASS conjunto de Claude; H2 corregido `3e33436`, confirmación pendiente | no | `specs/0217-pantallas-modulos-fase1.md` |
 | 0218 | 2026-10-13 | **Ingreso del equipo por `staff.` (parte Claude)** (L2; ADR 0140). **Que es:** host `staff.` en `decideHostRoute` (rewrite de la portada al ingreso, 308 cruzados), `noindex` + `robots.txt`, `landing` calculado en el login del equipo, cambio de PIN temporal obligatorio en el servidor (403 `pin_change_required`). Pantallas: owner + GPT. **Por que importa:** el personal hoy no puede entrar. | cerrada | si | `specs/0218-ingreso-del-equipo-por-staff.md` |
+
+| 0219 | 2026-10-13 | Acceso del equipo: login/PIN, cambio obligatorio y avisos usando el kit existente. | cerrada; UI dev sin push | si | `specs/0219-acceso-equipo-ui.md` |
