@@ -96,3 +96,7 @@ Ordenar acciones: Nota (Añadir/Editar), Escanear QR, Imprimir pedido y Anular. 
 ## Ajuste L0 del owner — toast al guardar nota (cerrado, 2026-10-12)
 
 Tras PUT exitoso de orden abierta cuya nota cambió frente al snapshot, mostrar ConfirmationToast existente con «Nota actualizada» o «Nota eliminada» si quedó sin nota. Cambios sin edición de nota y cambio de mesa mantienen «Pedido actualizado». Aplicar nota al borrador no anuncia persistencia; fallo no muestra éxito. Solo pos-editor.tsx; sin tests por owner. Formato/diff.
+
+## Ajuste L0 del owner — añadir desde búsqueda de orden abierta (cerrado, 2026-10-12)
+
+Editar orden creada: tras seleccionar producto o sumar una unidad en resultados, limpiar query del buscador y emitir ConfirmationToast «Producto añadido» existente. DetailedSale recibe prop opcional clearSearchOnAdd (false por defecto), activada solo en catálogo de orden creada. Wizard/mostrador conservan comportamiento anterior. Reutilizar toast/reset de duración, no nuevos nativos/CSS/kit. Archivos pos-editor.tsx y counter/sale-forms.tsx. Sin tests por owner; formato/diff.
