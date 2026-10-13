@@ -976,14 +976,14 @@ export function PosEditor({
         ((order && surface === "products") ||
           (!order && surface === "order")) && (
           <ConfirmationToast
-            key={addedNoticeId}
+            key={`product-added-${addedNoticeId}`}
             message="Producto añadido"
             durationMs={1400}
             onDismiss={() => setAddedNotice(false)}
           />
         )}
       <ConfirmationToast
-        key={updatedNoticeId}
+        key={`order-updated-${updatedNoticeId}`}
         message={updatedNotice}
         onDismiss={() => setUpdatedNotice(null)}
       />
