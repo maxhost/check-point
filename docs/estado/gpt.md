@@ -3,7 +3,13 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — CONFIGURACIÓN COMPACTA CON TOGGLES, L1 (2026-10-12)
+## ESTADO — MENÚ STOCK/RECETAS Y REGISTRO VISUAL STOCK, L1 (2026-10-12)
+
+Commit `08e274c` en dev. Owner pidió links Stock y Recetas (debajo de Stock) visibles como activados, sin consultar API de módulos. Ambos en Mi negocio, desktop y menú móvil, permiso catalog existente y guardas de página equivalentes a Catálogo. Stock muestra tabla/log fecha de creación y resumen, tres registros ficticios y Añadir Stock. Alta provisional inline añade resumen solo al estado React; recargar restaura muestras. Aviso visible de muestra/sin persistencia. Recetas placeholder pendiente de diseño del owner. UI solo, no backend/kit/migraciones. Sin merge/push/deploy.
+
+Owner pidió revisar personalmente y no comprobar en Chrome. No se ejecutó QA visual ni pruebas de navegador; harness/tests preparados retirados. Node24 typecheck merchant, ESLint archivos, guardia --base HEAD y diffcheck0, formato aplicado. No verify global por L1. Revisión visual pendiente del owner en dev-business /backoffice/stock. Trabajo paralelo Claude y next-env generados preservados.
+
+## HISTÓRICO — CONFIGURACIÓN COMPACTA CON TOGGLES, L1 (2026-10-12)
 
 Owner pidió cards Stock/Recetas en Ajustes y clasificó L1; después pidió compactar y reemplazar botones por toggles como impresión. Reserva previa0211 `7791399`, cards `327d0a7`, diseño compacto/toggles `65878d1` en dev. Un panel con filas POS/Stock/Recetas, descripción conservada y estado + Switch del kit; impresión aparte. Recetas requiere Stock y Stock no se apaga con Recetas activo; carga/reintento/error/lock y estados confirmados vía contrato0210. UI solo, sin API/servidor/kit/migraciones. No merge/push/deploy. Backend0210 y base local en trabajo paralelo de Claude, no verificados por GPT.
 
