@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Browser, type Page } from "@playwright/test";
 import { spawn, type ChildProcess } from "node:child_process";
 import { createServer } from "node:net";
 import { createRequire } from "node:module";
@@ -16,11 +16,11 @@ test.beforeEach(() => {
 let landingURL: string;
 let server: ChildProcess | undefined;
 
-test.beforeAll(async () => {
+test.beforeAll(async ({ browser }) => {
   test.setTimeout(240_000);
   if (process.env.PUBLIC_LANDING_TEST_URL) {
     landingURL = process.env.PUBLIC_LANDING_TEST_URL;
-    await warmUp(landingURL);
+    await warmUp(landingURL, browser);
     return;
   }
   const reservation = createServer();
@@ -80,41 +80,63 @@ test.beforeAll(async () => {
       { timeout: 100_000, message: "Public landing server must start" },
     )
     .toBe(200);
-  await warmUp(landingURL);
+  await warmUp(landingURL, browser);
 });
 
-/**
- * `next dev` compila cada pagina y optimiza cada imagen en su PRIMER pedido. En un arbol frio
- * (worktree nuevo, pre-push) la primera visita a `/negocios` paso los 30 s del test esperando
- * `load` (rojo en el pre-push, 2026-10-11). Se paga aca, dentro del `beforeAll` (240 s), y no
- * dentro del primer test que la toque.
- */
-async function warmUp(base: string) {
-  for (const route of [
-    "/",
-    "/negocios",
-    "/marketing-para-comercios",
-    "/programa-de-fidelizacion",
-    "/explorar",
-    "/punto-de-venta",
-    "/es/privacy",
-  ]) {
-    const html = await (
-      await fetch(base + route, { signal: AbortSignal.timeout(60_000) })
-    ).text();
-    // Todo `/_next/image?...` del HTML: `src` y cada entrada del `srcset`.
-    const images = new Set(
-      [...html.matchAll(/\/_next\/image\?[^"\s,]+/g)].map((match) =>
-        match[0].replaceAll("&amp;", "&"),
-      ),
-    );
-    await Promise.all(
-      [...images].map((image) =>
-        fetch(base + image, { signal: AbortSignal.timeout(60_000) }).catch(
-          () => undefined,
-        ),
-      ),
-    );
+/** Prepara únicamente las variantes y formatos que selecciona Chromium, sin ocultar errores. */
+async function warmUp(base: string, browser: Browser) {
+  for (const width of [390, 1440]) {
+    const context = await browser.newContext({
+      viewport: { width, height: 960 },
+      reducedMotion: "reduce",
+    });
+    try {
+      const page = await context.newPage();
+      for (const route of [
+        "/",
+        "/negocios",
+        "/marketing-para-comercios",
+        "/programa-de-fidelizacion",
+        "/explorar",
+        "/punto-de-venta",
+        "/es/privacy",
+      ]) {
+        const response = await gotoReady(page, base + route);
+        expect(response?.status(), `Preparación ${route} a ${width}px`).toBe(
+          200,
+        );
+        for (const image of await page.locator("img").all()) {
+          if (!(await image.isVisible())) continue;
+          await image.scrollIntoViewIfNeeded();
+          const source = await image.evaluate(
+            (element) =>
+              (element as HTMLImageElement).currentSrc ||
+              element.getAttribute("src"),
+          );
+          await expect
+            .poll(
+              () =>
+                image.evaluate((element) => {
+                  const img = element as HTMLImageElement;
+                  return {
+                    complete: img.complete,
+                    loaded: img.naturalWidth > 0,
+                  };
+                }),
+              {
+                timeout: 60_000,
+                message: `Imagen ${source} en ${route} a ${width}px`,
+              },
+            )
+            .toEqual({ complete: true, loaded: true });
+          await image.evaluate((element) =>
+            (element as HTMLImageElement).decode(),
+          );
+        }
+      }
+    } finally {
+      await context.close();
+    }
   }
 }
 
