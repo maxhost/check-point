@@ -1,5 +1,6 @@
 import {
   countedQuantity,
+  editableAmount,
   baseUnit,
   type EntryUnit,
   type StockItem,
@@ -56,7 +57,7 @@ export function draftIngredients(draft: RecipeDraft): RecipeLine[] {
   return draft.lines.map((line, index) => ({
     ...line,
     key: `draft-${index}`,
-    quantity: line.quantity ?? "",
+    quantity: editableAmount(line.quantity),
   }));
 }
 export function recipePayload(

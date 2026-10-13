@@ -7,7 +7,7 @@ import { ModuleHeader } from "../../components/ui";
 import { StockInputModal } from "./stock-input-modal";
 import { StockLogSkeleton } from "./stock-skeleton";
 import { posRequest, type PosSession } from "../pos/pos-types";
-import type { StockMovement } from "./stock-types";
+import { formatAmount, type StockMovement } from "./stock-types";
 
 export function StockLog() {
   const [entries, setEntries] = useState<StockMovement[] | null>(null);
@@ -190,14 +190,16 @@ export function StockLog() {
                         {entry.itemName}
                       </Text>
                       <Text>
-                        {entry.kind === "adjustment"
-                          ? entry.countedQuantity
-                          : entry.quantity}{" "}
+                        {formatAmount(
+                          entry.kind === "adjustment"
+                            ? entry.countedQuantity
+                            : entry.quantity,
+                        )}{" "}
                         {entry.unit === "unit" ? "unidades" : entry.unit}
                         {entry.kind === "purchase"
                           ? entry.totalCost === null
                             ? " · Sin precio"
-                            : ` · Total: ${entry.totalCost}${currency ? ` ${currency}` : ""}`
+                            : ` · Total: ${formatAmount(entry.totalCost)}${currency ? ` ${currency}` : ""}`
                           : " contados"}
                       </Text>
                     </div>

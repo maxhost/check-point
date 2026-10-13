@@ -6,6 +6,7 @@ import {
   type RecipeLine,
 } from "./recipe-types";
 import type { StockItem } from "../stock/stock-types";
+import { editableAmount, formatAmount } from "../stock/stock-types";
 
 const items: StockItem[] = [
   { id: "flour", name: "Harina", unit: "g", status: "active" },
@@ -22,6 +23,26 @@ const ingredient = (patch: Partial<RecipeLine> = {}): RecipeLine => ({
 });
 
 describe("revisión de recetas y payload HTTP", () => {
+  it("formatea cantidades españolas sin cambiar su valor en el payload", () => {
+    for (const [api, displayed] of [
+      ["15.000", "15"],
+      ["7.500", "7,5"],
+      ["0.100", "0,1"],
+    ]) {
+      expect(formatAmount(api)).toBe(displayed);
+      expect(editableAmount(api)).toBe(displayed);
+      expect(
+        recipePayload([ingredient({ quantity: editableAmount(api) })], items)[0]
+          .quantity,
+      ).toBe(String(Number(api)));
+    }
+    expect(editableAmount(null)).toBe("");
+    expect(editableAmount("15000.500")).toBe("15000,5");
+    expect(formatAmount("15000.500")).toBe(
+      Number("15000.500").toLocaleString("es", { maximumFractionDigits: 3 }),
+    );
+    expect(formatAmount("0.000")).toBe("0");
+  });
   it("guarda cantidades por unidad sin volver a dividir por rendimiento", () => {
     const draft: RecipeDraft = {
       yield: 40,
@@ -39,7 +60,7 @@ describe("revisión de recetas y payload HTTP", () => {
     };
     const lines = draftIngredients(draft);
     expect(recipePayload(lines, items)).toEqual([
-      { itemId: "flour", quantity: "25.000", unit: "g" },
+      { itemId: "flour", quantity: "25", unit: "g" },
     ]);
     expect(lines[0].sourceText).toBe("1 kg para 40 medialunas");
   });

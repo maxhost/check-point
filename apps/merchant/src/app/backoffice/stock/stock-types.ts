@@ -46,6 +46,21 @@ export const units = [
   { id: "l", label: "Litros" },
   { id: "unit", label: "Unidades" },
 ];
+/** Números de la API para lectura; los payloads siguen usando punto decimal. */
+export function formatAmount(value: string | number | null): string {
+  return value === null
+    ? ""
+    : Number(value).toLocaleString("es", { maximumFractionDigits: 3 });
+}
+/** Inicializa un campo editable sin separadores de miles ni ceros sobrantes. */
+export function editableAmount(value: string | null): string {
+  return value === null
+    ? ""
+    : Number(value).toLocaleString("es", {
+        maximumFractionDigits: 3,
+        useGrouping: false,
+      });
+}
 export function baseUnit(unit: EntryUnit): StockUnit {
   return unit === "kg" ? "g" : unit === "l" ? "ml" : unit;
 }

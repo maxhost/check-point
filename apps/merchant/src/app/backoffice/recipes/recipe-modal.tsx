@@ -15,7 +15,11 @@ import {
 import { Skeleton, SkeletonScreen } from "../../components/ui";
 import { StaffFormModal } from "../staff/staff-form-modal";
 import { posRequest } from "../pos/pos-types";
-import type { StockItem } from "../stock/stock-types";
+import {
+  editableAmount,
+  formatAmount,
+  type StockItem,
+} from "../stock/stock-types";
 import { RecipeLines } from "./recipe-lines";
 import {
   blankIngredient,
@@ -166,7 +170,7 @@ function RecipeEditor({
             key: `existing-${index}`,
             itemId: line.itemId,
             name: line.itemName,
-            quantity: line.quantity,
+            quantity: editableAmount(line.quantity),
             unit: line.unit,
           })),
         );
@@ -332,7 +336,7 @@ function RecipeEditor({
           <Text variant="muted">
             Las cantidades corresponden a una unidad de {product.productName}.
             {yieldCount > 1
-              ? ` Se dividieron las cantidades de la tanda entre ${yieldCount}.`
+              ? ` Se dividieron las cantidades de la tanda entre ${formatAmount(yieldCount)}.`
               : ""}{" "}
             Completa las cantidades que hayan quedado vacías.
           </Text>

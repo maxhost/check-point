@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { spawn, type ChildProcess } from "node:child_process";
 import { createServer } from "node:net";
 import { createRequire } from "node:module";
@@ -9,6 +9,10 @@ import { onboardingUrl } from "../../apps/public/src/app/site-config";
 // Una sola instancia de Next para las cuatro revisiones; CI la levanta sin DB.
 // Para QA contra el dev abierto: PUBLIC_LANDING_TEST_URL=http://localhost:3003.
 test.describe.configure({ mode: "serial" });
+test.beforeEach(() => {
+  // El presupuesto incluye preparación en frío; las comprobaciones conservan sus umbrales.
+  test.setTimeout(120_000);
+});
 let landingURL: string;
 let server: ChildProcess | undefined;
 
@@ -16,6 +20,7 @@ test.beforeAll(async () => {
   test.setTimeout(240_000);
   if (process.env.PUBLIC_LANDING_TEST_URL) {
     landingURL = process.env.PUBLIC_LANDING_TEST_URL;
+    await warmUp(landingURL);
     return;
   }
   const reservation = createServer();
@@ -91,6 +96,8 @@ async function warmUp(base: string) {
     "/marketing-para-comercios",
     "/programa-de-fidelizacion",
     "/explorar",
+    "/punto-de-venta",
+    "/es/privacy",
   ]) {
     const html = await (
       await fetch(base + route, { signal: AbortSignal.timeout(60_000) })
@@ -111,6 +118,30 @@ async function warmUp(base: string) {
   }
 }
 
+/** Espera el documento y su presentación, sin depender del evento load de imágenes. */
+async function gotoReady(page: Page, url: string) {
+  const response = await page.goto(url, {
+    waitUntil: "domcontentloaded",
+    timeout: 90_000,
+  });
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() =>
+          [
+            ...document.querySelectorAll<HTMLLinkElement>(
+              'link[rel="stylesheet"]',
+            ),
+          ].every((link) => link.sheet !== null),
+        ),
+      { message: "Los estilos de la página deben estar cargados" },
+    )
+    .toBe(true);
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  return response;
+}
+
 test.afterAll(async () => {
   if (!server || server.exitCode != null) return;
   const stopped = new Promise<void>((resolve) =>
@@ -129,7 +160,7 @@ for (const width of [390, 1440]) {
       page.on("pageerror", (error) => errors.push(error.message));
       await page.setViewportSize({ width, height: 960 });
       await page.emulateMedia({ colorScheme, reducedMotion: "reduce" });
-      const response = await page.goto(landingURL);
+      const response = await gotoReady(page, landingURL);
       expect(response?.status()).toBe(200);
       await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
       await expect(page.getByRole("heading", { level: 1 })).toHaveText(
@@ -229,7 +260,7 @@ for (const width of [390, 1440]) {
       page.on("pageerror", (error) => errors.push(error.message));
       await page.setViewportSize({ width, height: 960 });
       await page.emulateMedia({ colorScheme, reducedMotion: "reduce" });
-      const response = await page.goto(landingURL + "/negocios");
+      const response = await gotoReady(page, landingURL + "/negocios");
       expect(response?.status()).toBe(200);
       await expect(page.getByRole("heading", { level: 1 })).toHaveText(
         "Dale a tu próximo cliente un motivo para entrar.",
@@ -373,11 +404,21 @@ for (const width of [390, 1440]) {
         )
         .toBe(true);
       for (const selector of [".barrio-map", ".barrio-service-visual"]) {
-        const box = await page.locator(selector).boundingBox();
-        expect(box).not.toBeNull();
-        expect(box!.x).toBeGreaterThanOrEqual(0);
-        expect(box!.x + box!.width).toBeLessThanOrEqual(width);
-        if (width === 390) expect(box!.width).toBeGreaterThan(width * 0.75);
+        const element = page.locator(selector);
+        await expect(element).toBeVisible();
+        await expect
+          .poll(async () => (await element.boundingBox())?.x ?? -1)
+          .toBeGreaterThanOrEqual(0);
+        await expect
+          .poll(async () => {
+            const box = await element.boundingBox();
+            return box ? box.x + box.width : Infinity;
+          })
+          .toBeLessThanOrEqual(width);
+        if (width === 390)
+          await expect
+            .poll(async () => (await element.boundingBox())?.width ?? 0)
+            .toBeGreaterThan(width * 0.75);
       }
       for (const scene of await page
         .locator(".barrio-map img, .barrio-reward img, .barrio-attention img")
@@ -390,7 +431,7 @@ for (const width of [390, 1440]) {
           .poll(
             () =>
               scene.evaluate((img) => (img as HTMLImageElement).naturalWidth),
-            { timeout: 20_000 },
+            { timeout: 60_000 },
           )
           .toBeGreaterThan(0);
       }
@@ -449,7 +490,8 @@ for (const width of [390, 1440]) {
       page.on("pageerror", (error) => errors.push(error.message));
       await page.setViewportSize({ width, height: 960 });
       await page.emulateMedia({ colorScheme, reducedMotion: "reduce" });
-      const response = await page.goto(
+      const response = await gotoReady(
+        page,
         `${landingURL}/marketing-para-comercios`,
       );
       expect(response?.status()).toBe(200);
@@ -546,7 +588,8 @@ for (const width of [390, 1440]) {
       page.on("pageerror", (error) => errors.push(error.message));
       await page.setViewportSize({ width, height: 960 });
       await page.emulateMedia({ colorScheme, reducedMotion: "reduce" });
-      const response = await page.goto(
+      const response = await gotoReady(
+        page,
         `${landingURL}/programa-de-fidelizacion`,
       );
       expect(response?.status()).toBe(200);
@@ -639,7 +682,7 @@ test("0197: enlaces entre audiencias, fichas y sitemap", async ({
     "/marketing-para-comercios",
     "/punto-de-venta",
   ]) {
-    await page.goto(landingURL + route);
+    await gotoReady(page, landingURL + route);
     const plans = page
       .locator("header")
       .getByRole("link", { name: "Planes", exact: true });
@@ -652,7 +695,7 @@ test("0197: enlaces entre audiencias, fichas y sitemap", async ({
       }),
     ).toBeInViewport();
   }
-  await page.goto(landingURL + "/explorar");
+  await gotoReady(page, landingURL + "/explorar");
   await expect(
     page.locator("header").getByRole("link", { name: "Para negocios" }),
   ).toHaveAttribute("href", "/negocios");
@@ -668,7 +711,7 @@ test("0197: enlaces entre audiencias, fichas y sitemap", async ({
   ).toHaveAttribute("href", "/negocios");
   await page.getByRole("link", { name: "Volver a explorar" }).click();
   await expect(page).toHaveURL(landingURL + "/explorar#explorar");
-  await page.goto(landingURL + "/es/privacy");
+  await gotoReady(page, landingURL + "/es/privacy");
   await expect(
     page.locator("header").getByRole("link", { name: "Para negocios" }),
   ).toHaveAttribute("href", "/negocios");

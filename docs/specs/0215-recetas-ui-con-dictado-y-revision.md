@@ -53,4 +53,10 @@ Ninguno.
 
 ## Verificación ejecutada (2026-10-13)
 
-Vitest con config de merchant:12/12 en183ms. Primer comando con filtro de proyecto merchant no coincidía con ningún proyecto; se corrigió usando config/cwd del paquete. Typecheck final0 (aserción de test sobre union itemId/newItem corregida), ESLint0, Prettier0, ui-guard sin aumentos y diffcheck0. No Chrome ni escrituras HTTP reales/LLM por herramientas: owner revisa en dev-business. Spec reservada en92c088d; implementación local pendiente de commit. API/kit intactos.
+Vitest con config de merchant:12/12 en183ms. Primer comando con filtro de proyecto merchant no coincidía con ningún proyecto; se corrigió usando config/cwd del paquete. Typecheck final0 (aserción de test sobre union itemId/newItem corregida), ESLint0, Prettier0, ui-guard sin aumentos y diffcheck0. No Chrome ni escrituras HTTP reales/LLM por herramientas: owner revisa en dev-business. Spec reservada en92c088d; implementación868f3b3, merge local a main3dcd5a5 autorizado por owner. API/kit intactos.
+
+## Cierre de pendientes (2026-10-13)
+
+Revisada por pedido del owner: no queda funcionalidad pendiente dentro del alcance. Dictado, revisión de cantidades vacías, rendimiento por unidad, insumos nuevos, edición y errores ya implementados. QA visual/LLM real del comercio sigue declarado fuera de los oráculos ejecutados; no se presenta como probado por GPT.
+
+Ajuste posterior L1: cantidades recibidas por GET/draft se inicializan en español sin agrupación para los campos editables (15.000→15;7.500→7,5;0.100→0,1). No se reformatea al teclear. Payloads convierten coma a punto y conservan valor; 13/13 tests específicos en136ms. Tipos merchant/ESLint/formato/guardia sin aumentos/diffcheck0. No se movieron archivos: migración de pantallas de0216 queda para el encargo posterior.
