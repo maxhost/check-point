@@ -2,8 +2,6 @@
 
 import Link from "next/link";
 import {
-  Book,
-  Calendar,
   CreditCard,
   Dashboard,
   Gift,
@@ -33,11 +31,7 @@ import {
 import { readModules } from "./settings/module-request";
 import { moduleNavigation } from "../../modules/navigation";
 
-const moduleIcons: Record<string, typeof HomeSimple> = {
-  Package,
-  Book,
-  Calendar,
-};
+import { moduleIcon } from "./module-icon";
 
 type MenuName = "business" | "loyalty" | "more";
 
@@ -280,7 +274,7 @@ export function BackofficeNavigation({
     (entry) => ({
       ...entry,
       segment: entry.moduleId,
-      icon: moduleIcons[entry.icon] ?? Package,
+      icon: moduleIcon(entry.icon),
     }),
   );
   const visibleBusinessLinks = [...businessLinks, ...moduleLinks];

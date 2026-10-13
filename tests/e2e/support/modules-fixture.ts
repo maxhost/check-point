@@ -57,7 +57,7 @@ export function extraModule(enabled = false): BusinessModule {
       {
         path: "",
         label: "Turnos de prueba",
-        icon: "Calendar",
+        icon: "Planet",
         permission: "appointments_manage",
       },
       {

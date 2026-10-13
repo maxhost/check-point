@@ -65,6 +65,12 @@ for (const width of [390, 1280]) {
     await expect(
       nav.getByRole("link", { name: "Turnos de prueba", exact: true }),
     ).toHaveAttribute("href", "/backoffice/appointments");
+    // Planet no está importado ni registrado en el core. Su círculo distingue el SVG de Package.
+    await expect(
+      nav
+        .getByRole("link", { name: "Turnos de prueba", exact: true })
+        .locator("svg circle"),
+    ).toHaveAttribute("r", "8");
     await expect(
       nav.getByRole("link", { name: "Historial de turnos", exact: true }),
     ).toHaveCount(0);
