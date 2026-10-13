@@ -451,3 +451,24 @@ test("una solicitud en curso bloquea dobles envíos de credenciales", async ({
   ).toBeVisible();
   expect(requests).toBe(1);
 });
+
+for (const code of ["desconocido", "__proto__", "constructor"]) {
+  test(`aviso desconocido ${code} no altera ni rompe el ingreso`, async ({
+    page,
+  }) => {
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    await page.goto(`${origin}/acceso-equipo?e=${encodeURIComponent(code)}`);
+    await expect(
+      page.getByRole("heading", {
+        name: "Entra como integrante del equipo",
+        exact: true,
+      }),
+    ).toBeFocused();
+    await expect(page.getByRole("main").getByRole("status")).toHaveCount(0);
+    await expect(
+      page.getByRole("textbox", { name: "Identificador", exact: true }),
+    ).toBeVisible();
+    expect(errors).toEqual([]);
+  });
+}

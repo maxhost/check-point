@@ -148,12 +148,14 @@ export function StaffAccess({
         Tu acceso no está activado
       </Heading>
     );
+  const noticeMessage =
+    notice && Object.hasOwn(notices, notice) ? notices[notice] : null;
   const changing = stage === "change";
   const mismatch = repeatedPin.length > 0 && newPin !== repeatedPin;
   return (
     <>
-      {notice && notices[notice] && (
-        <Alert kind="warning" title={notices[notice]} className="mb-5" />
+      {noticeMessage && (
+        <Alert kind="warning" title={noticeMessage} className="mb-5" />
       )}
       <Heading
         level={1}
