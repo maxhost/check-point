@@ -1,6 +1,9 @@
+import { TrialNotice } from "../../../apps/merchant/src/app/backoffice/subscription/trial-notice";
+import { TicketSettings } from "../../../apps/merchant/src/modules/pos/ui/ticket-settings";
+import { operationModules } from "./modules-fixture";
 import { createRoot } from "react-dom/client";
-import { PosConsole } from "../../../apps/merchant/src/app/backoffice/pos/pos-console";
-import { PosSettings } from "../../../apps/merchant/src/app/backoffice/settings/pos-settings";
+import { PosConsole } from "../../../apps/merchant/src/modules/pos/ui/pos-console";
+import { ModuleConfiguration } from "../../../apps/merchant/src/app/backoffice/settings/module-configuration";
 import { BackofficeNavigation } from "../../../apps/merchant/src/app/backoffice/backoffice-navigation";
 import { PermissionPicker } from "../../../apps/merchant/src/app/backoffice/staff/permission-picker";
 // Exercise the real QrScanner lifecycle with a deterministic camera stream.
@@ -65,14 +68,17 @@ createRoot(document.getElementById("root")!).render(
       permissions={settingsOwner ? ["pos", "staff"] : ["pos"]}
     />
     <div className="backoffice-content print:m-0 print:p-0">
+      {params.has("trial") && <TrialNotice />}
       {mode === "settings" ? (
-        <PosSettings />
+        <ModuleConfiguration
+          panels={[{ moduleId: "pos", content: <TicketSettings /> }]}
+        />
       ) : mode === "permissions-off" || mode === "permissions-on" ? (
         <PermissionPicker
           value={[]}
           onChange={() => {}}
           isOwner
-          posEnabled={mode === "permissions-on"}
+          modules={operationModules(mode === "permissions-on", false)}
         />
       ) : (
         <PosConsole

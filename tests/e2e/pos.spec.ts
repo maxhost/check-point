@@ -1,3 +1,4 @@
+import { operationModules } from "./support/modules-fixture";
 import { expect, test, type Page } from "@playwright/test";
 import { startCatalogHarness } from "./support/catalog-harness-server";
 import {
@@ -5,12 +6,12 @@ import {
   historyKey,
   DiscardedPosRead,
   PosCache,
-} from "../../apps/merchant/src/app/backoffice/pos/pos-cache";
+} from "../../apps/merchant/src/modules/pos/ui/pos-cache";
 import type {
   ResolveResponse,
   CounterCouponState,
 } from "../../apps/merchant/src/app/backoffice/counter/types";
-import type { PosOrder } from "../../apps/merchant/src/app/backoffice/pos/pos-types";
+import type { PosOrder } from "../../apps/merchant/src/modules/pos/ui/pos-types";
 let harness: Awaited<ReturnType<typeof startCatalogHarness>>;
 test.beforeAll(async () => {
   harness = await startCatalogHarness(
@@ -100,11 +101,14 @@ const resolved: ResolveResponse = {
   rewards: [],
 };
 async function setup(page: Page, enabled = true) {
+  await page.route("**/api/modules", (route) =>
+    route.fulfill({ json: { modules: operationModules(enabled, false) } }),
+  );
   const counterCalls: string[] = [];
-  await page.route("**/api/pos/tables**", (route) =>
+  await page.route("**/api/modules/pos/tables**", (route) =>
     route.fulfill({ json: { tables: [] } }),
   );
-  await page.route("**/api/pos/ticket", (route) =>
+  await page.route("**/api/modules/pos/ticket", (route) =>
     route.fulfill({
       json: { printingEnabled: true, showBusinessName: true, showTable: true },
     }),
@@ -122,14 +126,14 @@ async function setup(page: Page, enabled = true) {
           id: "business-1",
           status: "active",
           timezone: "UTC",
-          posEnabled: enabled,
+          enabledModules: enabled ? ["pos", "tables"] : [],
           currencyCode: "USD",
         },
         membership: { role: "owner", status: "active", permissions: ["pos"] },
       },
     }),
   );
-  await page.route("**/api/pos/catalog**", (route) =>
+  await page.route("**/api/modules/pos/catalog**", (route) =>
     route.fulfill({
       json: {
         products: [
@@ -141,7 +145,7 @@ async function setup(page: Page, enabled = true) {
       },
     }),
   );
-  await page.route("**/api/pos/orders", (route) =>
+  await page.route("**/api/modules/pos/orders", (route) =>
     route.fulfill({
       json: {
         open: [{ ...baseOrder, itemCount: 1, saleTotal: null }],
@@ -150,7 +154,7 @@ async function setup(page: Page, enabled = true) {
     }),
   );
   await page.route(
-    "**/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+    "**/api/modules/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
     (route) => route.fulfill({ json: baseOrder }),
   );
   return counterCalls;
@@ -213,7 +217,7 @@ test("crear en pasos con precio de catálogo; editar conserva snapshot y lineId;
   const calls = await setup(page);
   let createBody: Record<string, unknown> | null = null;
   let editBody: Record<string, unknown> | null = null;
-  await page.route("**/api/pos/orders", (route) => {
+  await page.route("**/api/modules/pos/orders", (route) => {
     if (route.request().method() === "POST") {
       createBody = route.request().postDataJSON();
       return route.fulfill({ status: 201, json: baseOrder });
@@ -221,7 +225,7 @@ test("crear en pasos con precio de catálogo; editar conserva snapshot y lineId;
     return route.fulfill({ json: { open: [], closedToday: [] } });
   });
   await page.route(
-    "**/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+    "**/api/modules/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
     (route) => {
       if (route.request().method() === "PUT") {
         editBody = route.request().postDataJSON();
@@ -239,7 +243,7 @@ test("crear en pasos con precio de catálogo; editar conserva snapshot y lineId;
   );
   const closeBodies: unknown[] = [];
   await page.route(
-    "**/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1/close",
+    "**/api/modules/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1/close",
     (route) => {
       closeBodies.push(route.request().postDataJSON());
       return route.fulfill({
@@ -367,7 +371,7 @@ test("conflicto carga versión vigente y anulación confirmada", async ({
   await setup(page);
   let current = baseOrder;
   await page.route(
-    "**/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+    "**/api/modules/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
     (route) =>
       route.request().method() === "PUT"
         ? ((current = { ...baseOrder, version: 4, tableLabel: "Mesa actual" }),
@@ -383,7 +387,7 @@ test("conflicto carga versión vigente y anulación confirmada", async ({
   );
   let voided = false;
   await page.route(
-    "**/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1/void",
+    "**/api/modules/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1/void",
     (route) => {
       voided = true;
       return route.fulfill({
@@ -432,19 +436,19 @@ test("cobro con pase usa solo POS y reintenta con UUID y cuerpo idénticos", asy
   page,
 }) => {
   const calls = await setup(page);
-  await page.route("**/api/pos/resolve", (route) => {
+  await page.route("**/api/modules/pos/resolve", (route) => {
     expect(route.request().postDataJSON()).toEqual({
       qrToken: "qa-token",
       locationId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1",
     });
     return route.fulfill({ json: resolved });
   });
-  await page.route("**/api/pos/coupon-state**", (route) =>
+  await page.route("**/api/modules/pos/coupon-state**", (route) =>
     route.fulfill({ json: { couponState: coupon } }),
   );
   const bodies: unknown[] = [];
   await page.route(
-    "**/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1/close",
+    "**/api/modules/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1/close",
     (route) => {
       bodies.push(route.request().postDataJSON());
       if (bodies.length === 1)
@@ -509,19 +513,19 @@ test("cupón inválido se puede quitar; error al cerrar conserva orden abierta",
       message: "El cupón venció.",
     },
   };
-  await page.route("**/api/pos/resolve", (route) =>
+  await page.route("**/api/modules/pos/resolve", (route) =>
     route.fulfill({ json: { ...resolved, couponState: invalid } }),
   );
-  await page.route("**/api/pos/coupon-state**", (route) =>
+  await page.route("**/api/modules/pos/coupon-state**", (route) =>
     route.fulfill({ json: { couponState: invalid } }),
   );
   let removed: unknown;
-  await page.route("**/api/pos/coupon-remove", (route) => {
+  await page.route("**/api/modules/pos/coupon-remove", (route) => {
     removed = route.request().postDataJSON();
     return route.fulfill({ json: { ok: true } });
   });
   await page.route(
-    "**/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1/close",
+    "**/api/modules/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1/close",
     (route) =>
       route.fulfill({
         status: 409,
@@ -554,15 +558,16 @@ test("activación y desactivación bloqueada por órdenes abiertas", async ({
 }) => {
   await setup(page, false);
   const bodies: unknown[] = [];
-  await page.route("**/api/merchant/business/pos", (route) => {
+  await page.route("**/api/modules/pos", (route) => {
     const body = route.request().postDataJSON();
     bodies.push(body);
     return body.enabled
-      ? route.fulfill({ json: { enabled: true } })
+      ? route.fulfill({ json: { module: operationModules(true, false)[0] } })
       : route.fulfill({
           status: 409,
           json: {
-            error: "Órdenes abiertas",
+            error:
+              "No puedes desactivar el POS con órdenes abiertas. Ciérralas o anúlalas primero.",
             code: "pos_has_open_orders",
             openCount: 3,
           },
@@ -587,14 +592,14 @@ test("activación y desactivación bloqueada por órdenes abiertas", async ({
   ).toBeVisible();
   expect(bodies).toEqual([{ enabled: true }, { enabled: false }]);
 });
-test("módulo apagado oculta permiso y bloquea POS; encendido ofrece permiso y navegación a staff pos", async ({
+test("módulo apagado deshabilita permiso y bloquea POS; encendido ofrece permiso y navegación a staff pos", async ({
   page,
 }) => {
   await setup(page, false);
   await page.goto(`${harness.url}?mode=permissions-off`);
   await expect(
     page.getByRole("switch", { name: "POS", exact: true }),
-  ).toHaveCount(0);
+  ).toBeDisabled();
   await page.goto(harness.url);
   await expect(
     page.getByRole("heading", { name: "POS no disponible" }),
@@ -616,7 +621,7 @@ test("pérdida del permiso retira las acciones y no llama al mostrador", async (
   page,
 }) => {
   const calls = await setup(page);
-  await page.route("**/api/pos/orders", (route) =>
+  await page.route("**/api/modules/pos/orders", (route) =>
     route.fulfill({
       status: 403,
       json: {
@@ -659,7 +664,7 @@ test("POS reutiliza catálogo de Mostrador: ranking HTTP, categorías en carruse
       categoryId: category.id,
     })),
   ];
-  await page.route("**/api/pos/catalog**", (route) =>
+  await page.route("**/api/modules/pos/catalog**", (route) =>
     route.fulfill({
       json: {
         products,
@@ -767,7 +772,7 @@ for (const scenario of [
 ]) {
   test(`POS: ${scenario.name}`, async ({ page }) => {
     await setup(page);
-    await page.route("**/api/pos/catalog**", (route) =>
+    await page.route("**/api/modules/pos/catalog**", (route) =>
       route.fulfill({
         json: {
           products: [
@@ -824,7 +829,7 @@ test("el resumen mantiene snapshots duplicados y productos borrados separados al
   ];
   let body: unknown;
   await page.route(
-    "**/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+    "**/api/modules/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
     (route) => {
       if (route.request().method() === "PUT")
         body = route.request().postDataJSON();
@@ -876,7 +881,7 @@ function trackedReads(page: Page) {
     if (
       request.method() === "GET" &&
       (url.pathname === "/api/merchant/session" ||
-        url.pathname.startsWith("/api/pos/"))
+        url.pathname.startsWith("/api/modules/pos/"))
     )
       reads.push(url.pathname + url.search);
   });
@@ -890,13 +895,13 @@ test("caché POS: crear, editar, volver y abrir no repite GET ni por reloj/foco"
   const reads = trackedReads(page);
   let saved = baseOrder;
   let body: unknown;
-  await page.route("**/api/pos/orders", (route) =>
+  await page.route("**/api/modules/pos/orders", (route) =>
     route.request().method() === "POST"
       ? route.fulfill({ status: 201, json: saved })
       : route.fulfill({ json: { open: [], closedToday: [] } }),
   );
   await page.route(
-    "**/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+    "**/api/modules/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
     (route) => {
       if (route.request().method() === "PUT") {
         body = route.request().postDataJSON();
@@ -924,11 +929,16 @@ test("caché POS: crear, editar, volver y abrir no repite GET ni por reloj/foco"
   await expect(
     page.getByRole("radio", { name: "Editar", exact: true }),
   ).toBeVisible();
-  const firstReads = reads.filter((url) => !url.startsWith("/api/pos/tables?"));
-  expect(reads.filter((url) => url === "/api/pos/orders")).toHaveLength(1);
+  const firstReads = reads.filter(
+    (url) => !url.startsWith("/api/modules/pos/tables?"),
+  );
+  expect(reads.filter((url) => url === "/api/modules/pos/orders")).toHaveLength(
+    1,
+  );
   expect(
     reads.filter(
-      (url) => url === "/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+      (url) =>
+        url === "/api/modules/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
     ),
   ).toHaveLength(0);
   await page
@@ -961,16 +971,18 @@ test("caché POS: crear, editar, volver y abrir no repite GET ni por reloj/foco"
   });
   await page.getByRole("button", { name: "Abrir Mesa 4" }).click();
   await expect(page.getByRole("heading", { name: "Mesa 4" })).toBeVisible();
-  expect(reads.filter((url) => !url.startsWith("/api/pos/tables?"))).toEqual(
-    firstReads,
-  );
+  expect(
+    reads.filter((url) => !url.startsWith("/api/modules/pos/tables?")),
+  ).toEqual(firstReads);
   // Occupancy is fresh on each workspace; cached order/catalog reads stay unchanged.
   expect(
-    reads.filter((url) => url.startsWith("/api/pos/tables?")),
+    reads.filter((url) => url.startsWith("/api/modules/pos/tables?")),
   ).toHaveLength(4);
   await page.reload();
   await expect(page.getByRole("button", { name: "Nueva orden" })).toBeVisible();
-  expect(reads.filter((url) => url === "/api/pos/orders")).toHaveLength(2);
+  expect(reads.filter((url) => url === "/api/modules/pos/orders")).toHaveLength(
+    2,
+  );
 });
 
 test("caché POS: detalle se lee una vez; recargar obtiene la versión actual", async ({
@@ -991,11 +1003,12 @@ test("caché POS: detalle se lee una vez; recargar obtiene la versión actual", 
   ).toBeVisible();
   expect(
     reads.filter(
-      (url) => url === "/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+      (url) =>
+        url === "/api/modules/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
     ),
   ).toHaveLength(1);
   await page.route(
-    "**/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+    "**/api/modules/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
     (route) =>
       route.fulfill({
         json: { ...baseOrder, version: 2, tableLabel: "Mesa actual" },
@@ -1009,10 +1022,13 @@ test("caché POS: detalle se lee una vez; recargar obtiene la versión actual", 
   ).toBeVisible();
   expect(
     reads.filter(
-      (url) => url === "/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+      (url) =>
+        url === "/api/modules/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
     ),
   ).toHaveLength(2);
-  expect(reads.filter((url) => url === "/api/pos/orders")).toHaveLength(2);
+  expect(reads.filter((url) => url === "/api/modules/pos/orders")).toHaveLength(
+    2,
+  );
 });
 
 test("caché POS: catálogo por local reutilizado conserva el borrador", async ({
@@ -1020,7 +1036,7 @@ test("caché POS: catálogo por local reutilizado conserva el borrador", async (
 }) => {
   await setup(page);
   const reads = trackedReads(page);
-  await page.route("**/api/pos/catalog**", (route) =>
+  await page.route("**/api/modules/pos/catalog**", (route) =>
     route.fulfill({
       json: {
         products:
@@ -1101,14 +1117,14 @@ test("caché POS: catálogo por local reutilizado conserva el borrador", async (
     reads.filter(
       (url) =>
         url ===
-        "/api/pos/catalog?locationId=bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1",
+        "/api/modules/pos/catalog?locationId=bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1",
     ),
   ).toHaveLength(1);
   expect(
     reads.filter(
       (url) =>
         url ===
-        "/api/pos/catalog?locationId=bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2",
+        "/api/modules/pos/catalog?locationId=bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2",
     ),
   ).toHaveLength(1);
 });
@@ -1123,7 +1139,7 @@ test("caché POS: una respuesta de A no desplaza la mesa B seleccionada", async 
     tableLabel: "Mesa dos",
   };
   let release!: () => void;
-  await page.route("**/api/pos/orders", (route) =>
+  await page.route("**/api/modules/pos/orders", (route) =>
     route.fulfill({
       json: {
         open: [baseOrder, other].map((order) => ({
@@ -1136,7 +1152,7 @@ test("caché POS: una respuesta de A no desplaza la mesa B seleccionada", async 
     }),
   );
   await page.route(
-    "**/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+    "**/api/modules/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
     async (route) => {
       await new Promise<void>((resolve) => {
         release = resolve;
@@ -1145,7 +1161,7 @@ test("caché POS: una respuesta de A no desplaza la mesa B seleccionada", async 
     },
   );
   await page.route(
-    "**/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2",
+    "**/api/modules/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2",
     (route) => route.fulfill({ json: other }),
   );
   await page.goto(harness.url);
@@ -1154,7 +1170,7 @@ test("caché POS: una respuesta de A no desplaza la mesa B seleccionada", async 
   await page.getByRole("button", { name: "Abrir Mesa dos" }).click();
   await expect(page.getByRole("heading", { name: "Mesa dos" })).toBeVisible();
   const response = page.waitForResponse(
-    "**/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+    "**/api/modules/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
   );
   release();
   await response;
@@ -1172,7 +1188,7 @@ for (const status of [401, 403, 404, 503, "transport"] as const) {
       page.getByRole("radio", { name: "Editar", exact: true }),
     ).toBeVisible();
     await page.route(
-      "**/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+      "**/api/modules/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
       (route) =>
         status === "transport"
           ? route.abort()
@@ -1246,7 +1262,7 @@ for (const action of ["close", "void"] as const) {
     await setup(page);
     const reads = trackedReads(page);
     let finished: PosOrder | null = null;
-    await page.route("**/api/pos/orders", (route) =>
+    await page.route("**/api/modules/pos/orders", (route) =>
       route.fulfill({
         json: {
           open: finished
@@ -1259,7 +1275,7 @@ for (const action of ["close", "void"] as const) {
       }),
     );
     await page.route(
-      `**/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1/${action}`,
+      `**/api/modules/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1/${action}`,
       (route) => {
         finished = {
           ...baseOrder,
@@ -1288,7 +1304,9 @@ for (const action of ["close", "void"] as const) {
       ).toBeVisible();
     }
     await expect
-      .poll(() => reads.filter((url) => url === "/api/pos/orders").length)
+      .poll(
+        () => reads.filter((url) => url === "/api/modules/pos/orders").length,
+      )
       .toBe(2);
     await page
       .getByRole("button", { name: "Volver al listado de órdenes" })
@@ -1309,7 +1327,9 @@ for (const action of ["close", "void"] as const) {
     ).toBeVisible();
     expect(
       reads.filter(
-        (url) => url === "/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+        (url) =>
+          url ===
+          "/api/modules/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
       ),
     ).toHaveLength(action === "close" ? 1 : 2);
   });
@@ -1322,7 +1342,7 @@ test("caché POS: anulación relee y exige revisar una orden que cambió", async
   let calls = 0;
   let voided = false;
   await page.route(
-    "**/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+    "**/api/modules/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
     (route) => {
       calls += 1;
       return route.fulfill({
@@ -1334,7 +1354,7 @@ test("caché POS: anulación relee y exige revisar una orden que cambió", async
     },
   );
   await page.route(
-    "**/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1/void",
+    "**/api/modules/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1/void",
     (route) => {
       voided = true;
       return route.fulfill({
@@ -1389,7 +1409,7 @@ for (const context of ["signed-out", "revoked", "other-business"] as const) {
                     context === "other-business" ? "business-2" : "business-1",
                   status: "active",
                   timezone: "UTC",
-                  posEnabled: true,
+                  enabledModules: ["pos", "tables"],
                   currencyCode: "USD",
                 },
                 membership: {
@@ -1419,7 +1439,9 @@ for (const context of ["signed-out", "revoked", "other-business"] as const) {
     ).toHaveValue("Mesa 4");
     expect(
       reads.filter(
-        (url) => url === "/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+        (url) =>
+          url ===
+          "/api/modules/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
       ),
     ).toHaveLength(2);
   });
@@ -1475,7 +1497,7 @@ test("caché POS: conflicto sin snapshot bloquea acciones hasta releer la versi�
   let reads = 0;
   let release!: () => void;
   await page.route(
-    "**/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+    "**/api/modules/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
     async (route) => {
       if (route.request().method() === "PUT")
         return route.fulfill({
@@ -1556,7 +1578,7 @@ test("órdenes abiertas: filas compactas con mesa, total y Abrir", async ({
       total: "35.00",
     },
   ];
-  await page.route("**/api/pos/orders", (route) =>
+  await page.route("**/api/modules/pos/orders", (route) =>
     route.fulfill({
       json: {
         open: orders.map((order) => ({
@@ -1569,7 +1591,7 @@ test("órdenes abiertas: filas compactas con mesa, total y Abrir", async ({
     }),
   );
   await page.route(
-    "**/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2",
+    "**/api/modules/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2",
     (route) => route.fulfill({ json: orders[1] }),
   );
   await page.setViewportSize({ width: 390, height: 844 });
@@ -1639,7 +1661,9 @@ test("orden abierta ocupa el ancho y X vuelve al listado con caché", async ({
   await page.setViewportSize({ width: 1100, height: 900 });
   await page.screenshot({ path: "/tmp/pos-0176-desktop.png" });
   await page.setViewportSize({ width: 390, height: 844 });
-  const firstReads = reads.filter((url) => !url.startsWith("/api/pos/tables?"));
+  const firstReads = reads.filter(
+    (url) => !url.startsWith("/api/modules/pos/tables?"),
+  );
   await page
     .getByRole("button", { name: "Volver al listado de órdenes", exact: true })
     .click();
@@ -1669,13 +1693,13 @@ test("orden abierta ocupa el ancho y X vuelve al listado con caché", async ({
   expect(
     reads.filter(
       (url) =>
-        !url.startsWith("/api/pos/tables?") &&
+        !url.startsWith("/api/modules/pos/tables?") &&
         url !==
-          "/api/pos/catalog?locationId=bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1",
+          "/api/modules/pos/catalog?locationId=bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1",
     ),
   ).toEqual(firstReads);
   expect(
-    reads.filter((url) => url.startsWith("/api/pos/tables?")),
+    reads.filter((url) => url.startsWith("/api/modules/pos/tables?")),
   ).toHaveLength(2);
 });
 
@@ -1741,7 +1765,7 @@ test("wizard POS: tres pasos, revisión sin importes, añadir, quitar/deshacer y
 }) => {
   await setup(page);
   const reads = trackedReads(page);
-  await page.route("**/api/pos/catalog**", (route) =>
+  await page.route("**/api/modules/pos/catalog**", (route) =>
     route.fulfill({
       json: {
         products: [
@@ -1754,7 +1778,7 @@ test("wizard POS: tres pasos, revisión sin importes, añadir, quitar/deshacer y
     }),
   );
   const writes: unknown[] = [];
-  await page.route("**/api/pos/orders", (route) => {
+  await page.route("**/api/modules/pos/orders", (route) => {
     if (route.request().method() !== "POST")
       return route.fulfill({ json: { open: [], closedToday: [] } });
     const body = route.request().postDataJSON();
@@ -1798,7 +1822,7 @@ test("wizard POS: tres pasos, revisión sin importes, añadir, quitar/deshacer y
     reads.filter(
       (url) =>
         url ===
-        "/api/pos/catalog?locationId=bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1",
+        "/api/modules/pos/catalog?locationId=bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1",
     ),
   ).toHaveLength(1);
   const beforeTaking = [...reads];
@@ -1908,10 +1932,10 @@ test("0183 Dialog móvil: contenido largo y acciones alcanzables con teclado", a
         ),
     },
   } as CounterCouponState;
-  await page.route("**/api/pos/resolve", (route) =>
+  await page.route("**/api/modules/pos/resolve", (route) =>
     route.fulfill({ json: { ...resolved, couponState: long } }),
   );
-  await page.route("**/api/pos/coupon-state**", (route) =>
+  await page.route("**/api/modules/pos/coupon-state**", (route) =>
     route.fulfill({ json: { couponState: long } }),
   );
   await page.setViewportSize({ width: 320, height: 400 });
@@ -1945,10 +1969,10 @@ async function customerRoutes(
   state: CounterCouponState = coupon,
   program = resolved.program,
 ) {
-  await page.route("**/api/pos/resolve", (route) =>
+  await page.route("**/api/modules/pos/resolve", (route) =>
     route.fulfill({ json: { ...resolved, program, couponState: state } }),
   );
-  await page.route("**/api/pos/coupon-state**", (route) =>
+  await page.route("**/api/modules/pos/coupon-state**", (route) =>
     route.fulfill({ json: { couponState: state } }),
   );
 }
@@ -1972,12 +1996,12 @@ test("0183 cancelar/reabrir conserva cliente beneficio y cambio; confirmar doble
     removes = 0;
   const bodies: unknown[] = [];
   let release!: () => void;
-  await page.route("**/api/pos/coupon-remove", (route) => {
+  await page.route("**/api/modules/pos/coupon-remove", (route) => {
     removes++;
     return route.abort();
   });
   await page.route(
-    "**/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1/close",
+    "**/api/modules/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1/close",
     async (route) => {
       closes++;
       bodies.push(route.request().postDataJSON());
@@ -2048,7 +2072,7 @@ for (const state of [
     await customerRoutes(page, state);
     let body: Record<string, unknown> | null = null;
     await page.route(
-      "**/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1/close",
+      "**/api/modules/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1/close",
       (route) => {
         body = route.request().postDataJSON();
         return route.fulfill({
@@ -2161,7 +2185,7 @@ for (const benefit of [
     const quantity = "quantity" in benefit ? benefit.quantity : 1;
     if (quantity === 2)
       await page.route(
-        "**/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+        "**/api/modules/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
         (route) =>
           route.fulfill({
             json: {
@@ -2175,7 +2199,7 @@ for (const benefit of [
       );
     let closes = 0;
     await page.route(
-      "**/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1/close",
+      "**/api/modules/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1/close",
       (route) => {
         closes++;
         return route.fulfill({
@@ -2268,7 +2292,7 @@ test("0183 nueva selección externa exige revisión y limpia recibido; exclusió
       discountValue: "20",
     },
   } as CounterCouponState;
-  await page.route("**/api/pos/coupon-state**", (route) =>
+  await page.route("**/api/modules/pos/coupon-state**", (route) =>
     route.fulfill({ json: { couponState: replacement } }),
   );
   await page.getByRole("button", { name: "Cobrar", exact: true }).click();
@@ -2397,7 +2421,7 @@ test("0183 escáner cámara: lectura duplicada resuelve una vez y detiene tracks
 }) => {
   await setup(page);
   let resolves = 0;
-  await page.route("**/api/pos/resolve", (route) => {
+  await page.route("**/api/modules/pos/resolve", (route) => {
     resolves++;
     return route.fulfill({ json: resolved });
   });
@@ -2450,7 +2474,7 @@ test("0183 resolve tarde cancelado de A no pinta B ni reemplaza cliente nuevo", 
 }) => {
   await setup(page);
   let release!: () => void;
-  await page.route("**/api/pos/resolve", async (route) => {
+  await page.route("**/api/modules/pos/resolve", async (route) => {
     await new Promise<void>((resolve) => {
       release = resolve;
     });
@@ -2461,7 +2485,7 @@ test("0183 resolve tarde cancelado de A no pinta B ni reemplaza cliente nuevo", 
     id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2",
     tableLabel: "Mesa B",
   };
-  await page.route("**/api/pos/orders", (route) =>
+  await page.route("**/api/modules/pos/orders", (route) =>
     route.fulfill({
       json: {
         open: [baseOrder, other].map((o) => ({
@@ -2474,7 +2498,7 @@ test("0183 resolve tarde cancelado de A no pinta B ni reemplaza cliente nuevo", 
     }),
   );
   await page.route(
-    "**/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2",
+    "**/api/modules/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2",
     (route) => route.fulfill({ json: other }),
   );
   await open(page);
@@ -2492,7 +2516,7 @@ test("0183 resolve tarde cancelado de A no pinta B ni reemplaza cliente nuevo", 
     .getByRole("button", { name: "Volver al listado de órdenes", exact: true })
     .click();
   await page.getByRole("button", { name: "Abrir Mesa B", exact: true }).click();
-  const response = page.waitForResponse("**/api/pos/resolve");
+  const response = page.waitForResponse("**/api/modules/pos/resolve");
   release();
   await response;
   await expect(
@@ -2523,7 +2547,7 @@ test("0183 revalidación tarde cancelada no pisa cliente reemplazado", async ({
   await open(page);
   await scan(page);
   let release!: () => void;
-  await page.route("**/api/pos/coupon-state**", async (route) => {
+  await page.route("**/api/modules/pos/coupon-state**", async (route) => {
     await new Promise<void>((resolve) => {
       release = resolve;
     });
@@ -2537,7 +2561,7 @@ test("0183 revalidación tarde cancelada no pisa cliente reemplazado", async ({
     .getByRole("dialog", { name: "Cobrar Mesa 4" })
     .getByRole("button", { name: "Cancelar", exact: true })
     .click();
-  await page.route("**/api/pos/resolve", (route) =>
+  await page.route("**/api/modules/pos/resolve", (route) =>
     route.fulfill({
       json: {
         ...resolved,
@@ -2547,7 +2571,7 @@ test("0183 revalidación tarde cancelada no pisa cliente reemplazado", async ({
     }),
   );
   await scan(page);
-  const response = page.waitForResponse("**/api/pos/coupon-state**");
+  const response = page.waitForResponse("**/api/modules/pos/coupon-state**");
   release();
   await response;
   await expect(page.getByText("Cliente nuevo", { exact: true })).toBeVisible();
@@ -2561,7 +2585,7 @@ test("0183 guardar misma orden conserva cliente y recalcula; dirty bloquea QR y 
   await setup(page);
   await customerRoutes(page);
   await page.route(
-    "**/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+    "**/api/modules/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
     (route) =>
       route.fulfill({
         json:
@@ -2628,13 +2652,13 @@ for (const failure of [
     await scan(page);
     let closes = 0;
     await page.route(
-      "**/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1/close",
+      "**/api/modules/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1/close",
       (route) => {
         closes++;
         return route.abort();
       },
     );
-    await page.route("**/api/pos/coupon-state**", (route) =>
+    await page.route("**/api/modules/pos/coupon-state**", (route) =>
       route.fulfill({
         status: failure.status,
         json: { code: failure.code, error: "No se pudo revisar el beneficio." },
@@ -2685,7 +2709,7 @@ for (const failure of [
     let closes = 0;
     let gets = 0;
     await page.route(
-      "**/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+      "**/api/modules/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
       (route) => {
         gets++;
         return route.fulfill({
@@ -2701,7 +2725,7 @@ for (const failure of [
       },
     );
     await page.route(
-      "**/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1/close",
+      "**/api/modules/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1/close",
       (route) => {
         closes++;
         return route.fulfill({
@@ -2771,7 +2795,7 @@ test("0183 timeout después del commit congela UUID/cuerpo, bloquea navegación 
     },
   };
   await page.route(
-    "**/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1/close",
+    "**/api/modules/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1/close",
     async (route) => {
       bodies.push(route.request().postDataJSON());
       if (bodies.length === 1) {
@@ -2817,7 +2841,7 @@ test("0183 timeout después del commit congela UUID/cuerpo, bloquea navegación 
   await expect(
     dialog.getByRole("button", { name: "Cancelar", exact: true }),
   ).toBeDisabled();
-  await page.route("**/api/pos/coupon-state**", (route) =>
+  await page.route("**/api/modules/pos/coupon-state**", (route) =>
     route.fulfill({ json: { couponState: { status: "none" } } }),
   );
   await dialog
@@ -2874,7 +2898,7 @@ for (const problem of [
     );
     let closes = 0;
     await page.route(
-      "**/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1/close",
+      "**/api/modules/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1/close",
       (route) => {
         closes++;
         return route.abort();
@@ -2917,12 +2941,12 @@ test("0183 cupón expira al confirmar: rollback, revisión y exclusión explíci
       message: "El cupón venció.",
     },
   } as CounterCouponState;
-  await page.route("**/api/pos/coupon-state**", (route) =>
+  await page.route("**/api/modules/pos/coupon-state**", (route) =>
     route.fulfill({ json: { couponState: expired } }),
   );
   const bodies: Record<string, unknown>[] = [];
   await page.route(
-    "**/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1/close",
+    "**/api/modules/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1/close",
     (route) => {
       bodies.push(route.request().postDataJSON());
       return bodies.length === 1
@@ -2984,7 +3008,7 @@ test("0183 scanner error conserva cliente; cancelar resolución evita respuestas
   await customerRoutes(page);
   await open(page);
   await scan(page);
-  await page.route("**/api/pos/resolve", (route) =>
+  await page.route("**/api/modules/pos/resolve", (route) =>
     route.fulfill({
       status: 422,
       json: { code: "invalid_qr", error: "El pase no es válido." },
@@ -3005,7 +3029,7 @@ test("0183 scanner error conserva cliente; cancelar resolución evita respuestas
   await expect(
     page.getByText("Cliente de prueba", { exact: true }),
   ).toBeVisible();
-  await page.route("**/api/pos/resolve", (route) =>
+  await page.route("**/api/modules/pos/resolve", (route) =>
     route.fulfill({
       status: 401,
       json: { code: "unauthorized", error: "Sesión revocada" },
@@ -3043,7 +3067,7 @@ for (const failure of [
       let recovered = false;
       const bodies: Record<string, unknown>[] = [];
       await page.route(
-        "**/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+        "**/api/modules/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
         (route) => {
           gets++;
           return recovered
@@ -3064,7 +3088,7 @@ for (const failure of [
         },
       );
       await page.route(
-        "**/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1/close",
+        "**/api/modules/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1/close",
         (route) => {
           closes++;
           bodies.push(route.request().postDataJSON());
@@ -3149,7 +3173,7 @@ test("0183 identificación muestra C animada y toast solo al encontrar cliente",
   await setup(page);
   await customerRoutes(page);
   let release!: () => void;
-  await page.route("**/api/pos/resolve", async (route) => {
+  await page.route("**/api/modules/pos/resolve", async (route) => {
     await new Promise<void>((resolve) => {
       release = resolve;
     });
@@ -3215,7 +3239,7 @@ test("0183 cancelar loading de identificación ignora éxito tardío sin toast",
 }) => {
   await setup(page);
   let release!: () => void;
-  await page.route("**/api/pos/resolve", async (route) => {
+  await page.route("**/api/modules/pos/resolve", async (route) => {
     await new Promise<void>((resolve) => {
       release = resolve;
     });
@@ -3235,7 +3259,7 @@ test("0183 cancelar loading de identificación ignora éxito tardío sin toast",
     dialog.getByRole("status", { name: "Identificando cliente", exact: true }),
   ).toBeVisible();
   await dialog.getByRole("button", { name: "Cancelar", exact: true }).click();
-  const response = page.waitForResponse("**/api/pos/resolve");
+  const response = page.waitForResponse("**/api/modules/pos/resolve");
   release();
   await response;
   await expect(dialog).toBeHidden();
@@ -3253,7 +3277,7 @@ test("0183 toast de cliente queda dentro del viewport con pedido largo", async (
   await setup(page);
   await customerRoutes(page);
   await page.route(
-    "**/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+    "**/api/modules/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
     (route) =>
       route.fulfill({
         json: {
@@ -3451,7 +3475,7 @@ test("0183 Pedido actualizado aparece solo al guardar edición con éxito", asyn
   await setup(page);
   let saves = 0;
   await page.route(
-    "**/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+    "**/api/modules/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
     (route) => {
       if (route.request().method() !== "PUT")
         return route.fulfill({ json: baseOrder });
@@ -3520,7 +3544,7 @@ for (const width of [390, 320]) {
       width === 320
         ? "María Alejandra NombreMuyLargoSinEspaciosParaComprobarElAjusteDelBadge"
         : "Cliente de prueba";
-    await page.route("**/api/pos/resolve", (route) =>
+    await page.route("**/api/modules/pos/resolve", (route) =>
       route.fulfill({ json: { ...resolved, consumer: { displayName: name } } }),
     );
     await page.setViewportSize({ width, height: 844 });
@@ -3607,7 +3631,7 @@ for (const width of [390, 1280]) {
     await page.setViewportSize({ width, height: 844 });
     let current = { ...baseOrder };
     const writes: Record<string, unknown>[] = [];
-    await page.route("**/api/pos/orders", (route) => {
+    await page.route("**/api/modules/pos/orders", (route) => {
       if (route.request().method() === "POST") {
         const body = route.request().postDataJSON();
         writes.push(body);
@@ -3616,7 +3640,7 @@ for (const width of [390, 1280]) {
       }
       return route.fulfill({ json: { open: [], closedToday: [] } });
     });
-    await page.route(`**/api/pos/orders/${baseOrder.id}`, (route) => {
+    await page.route(`**/api/modules/pos/orders/${baseOrder.id}`, (route) => {
       if (route.request().method() === "PUT") {
         const body = route.request().postDataJSON();
         writes.push(body);
@@ -3738,7 +3762,7 @@ test("0209 conflicto de nota conserva borrador y permite revisar la nota vigente
   page,
 }) => {
   await setup(page);
-  await page.route(`**/api/pos/orders/${baseOrder.id}`, (route) =>
+  await page.route(`**/api/modules/pos/orders/${baseOrder.id}`, (route) =>
     route.request().method() === "PUT"
       ? route.fulfill({
           status: 409,
@@ -3783,7 +3807,7 @@ test("0209 conflicto de nota conserva borrador y permite revisar la nota vigente
 for (const status of ["closed", "voided"] as const) {
   test(`0209 nota de orden ${status} es solo lectura`, async ({ page }) => {
     await setup(page);
-    await page.route(`**/api/pos/orders/${baseOrder.id}`, (route) =>
+    await page.route(`**/api/modules/pos/orders/${baseOrder.id}`, (route) =>
       route.fulfill({
         json: {
           ...baseOrder,
@@ -3805,5 +3829,96 @@ for (const status of ["closed", "voided"] as const) {
     await expect(
       page.getByRole("textbox", { name: "Nota", exact: true }),
     ).toHaveCount(0);
+  });
+}
+
+test("0222 barra móvil toma acción e icono del manifiesto y emite módulo correcto", async ({
+  page,
+}, testInfo) => {
+  await setup(page);
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.goto(harness.url);
+  const mobile = page.locator(".backoffice-mobile-nav");
+  const primary = mobile.getByRole("button", {
+    name: "Nueva orden",
+    exact: true,
+  });
+  await expect(primary).toBeVisible();
+  await expect(
+    mobile.getByRole("link", { name: "POS", exact: true }),
+  ).toHaveAttribute("href", "/backoffice/pos");
+  await expect(primary.locator("svg path").first()).toHaveAttribute(
+    "d",
+    "M6 12H12M18 12H12M12 12V6M12 12V18",
+  );
+  await page.screenshot({
+    path: testInfo.outputPath("barra-operacion-mobile.png"),
+    fullPage: true,
+  });
+  await page.evaluate(() => {
+    (window as unknown as { primaryModules: string[] }).primaryModules = [];
+    window.addEventListener("checkpass:module-primary", (event) => {
+      (window as unknown as { primaryModules: string[] }).primaryModules.push(
+        (event as CustomEvent).detail.moduleId,
+      );
+    });
+    window.dispatchEvent(
+      new CustomEvent("checkpass:module-primary", {
+        detail: { moduleId: "another-module" },
+      }),
+    );
+  });
+  await expect(
+    page.getByRole("textbox", { name: "Nombre de mesa" }),
+  ).toHaveCount(0);
+  await primary.click();
+  await expect(
+    page.getByRole("textbox", { name: "Nombre de mesa" }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => (window as unknown as { primaryModules: string[] }).primaryModules,
+    ),
+  ).toEqual(["another-module", "pos"]);
+});
+
+for (const [path, days, visible] of [
+  ["/backoffice/pos", 8, false],
+  ["/backoffice/pos", 7, true],
+  ["/backoffice/pos/history", 8, false],
+  ["/backoffice/catalog", 8, true],
+] as const) {
+  test(`0222 aviso de prueba respeta operation: ${path} días ${days}`, async ({
+    page,
+  }) => {
+    await setup(page);
+    await page.route("**/api/merchant/session", (route) =>
+      route.fulfill({
+        json: {
+          authenticated: true,
+          user: { id: "operator-1" },
+          business: {
+            id: "business-1",
+            status: "active",
+            timezone: "UTC",
+            enabledModules: ["pos"],
+            currencyCode: "USD",
+          },
+          membership: { role: "owner", status: "active", permissions: ["pos"] },
+          billing: { access: "trial", trialDaysLeft: days },
+        },
+      }),
+    );
+    await page.goto(
+      `${harness.url}?trial&fixturePath=${encodeURIComponent(path)}`,
+    );
+    await expect(
+      page.getByRole("heading", { name: "POS", exact: true }),
+    ).toBeVisible();
+    const notice = page.getByText(`Prueba de CheckPass: quedan ${days} días`, {
+      exact: true,
+    });
+    if (visible) await expect(notice).toBeVisible();
+    else await expect(notice).toHaveCount(0);
   });
 }

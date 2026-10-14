@@ -1,3 +1,4 @@
+import { operationModules } from "./support/modules-fixture";
 import { expect, test, type Page } from "@playwright/test";
 import { startCatalogHarness } from "./support/catalog-harness-server";
 
@@ -187,6 +188,10 @@ async function setup(
   page: Page,
   settings = { printingEnabled: true, showBusinessName: true, showTable: true },
 ) {
+  await page.route("**/api/modules", (route) =>
+    route.fulfill({ json: { modules: operationModules() } }),
+  );
+
   const reads: string[] = [],
     writes: string[] = [];
   page.on("request", (request) => {
@@ -203,14 +208,14 @@ async function setup(
         business: {
           id: "business-1",
           status: "active",
-          posEnabled: true,
+          enabledModules: ["pos", "tables"],
           currencyCode: "USD",
         },
         membership: { status: "active", permissions: ["pos"] },
       },
     }),
   );
-  await page.route("**/api/pos/orders", (route) =>
+  await page.route("**/api/modules/pos/orders", (route) =>
     route.fulfill({
       json: {
         open: [{ ...order, itemCount: 2, saleTotal: null }],
@@ -219,18 +224,18 @@ async function setup(
     }),
   );
   await page.route(
-    "**/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+    "**/api/modules/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
     (route) => route.fulfill({ json: order }),
   );
-  await page.route("**/api/pos/catalog**", (route) =>
+  await page.route("**/api/modules/pos/catalog**", (route) =>
     route.fulfill({
       json: { products: [], categories: [], bestSellingProductIds: [] },
     }),
   );
-  await page.route("**/api/pos/ticket", (route) =>
+  await page.route("**/api/modules/pos/ticket", (route) =>
     route.fulfill({ json: settings }),
   );
-  await page.route("**/api/pos/tables**", (route) =>
+  await page.route("**/api/modules/pos/tables**", (route) =>
     route.fulfill({ json: { tables: [] } }),
   );
   return { reads, writes };
@@ -265,13 +270,19 @@ test("0185 precarga ajuste; BLE desde gesto, doble toque bloqueado y segunda imp
   await fakePrinter(page, "ble", true, null, true);
   await page.goto(harness.url);
   await expect
-    .poll(() => calls.reads.filter((url) => url === "/api/pos/ticket").length)
+    .poll(
+      () =>
+        calls.reads.filter((url) => url === "/api/modules/pos/ticket").length,
+    )
     .toBe(1);
   await page.getByRole("button", { name: "Abrir Mesa 4", exact: true }).click();
   await expect(await printAction(page)).toBeEnabled();
   await closeActions(page);
   await expect
-    .poll(() => calls.reads.filter((url) => url === "/api/pos/tables").length)
+    .poll(
+      () =>
+        calls.reads.filter((url) => url === "/api/modules/pos/tables").length,
+    )
     .toBe(1);
   const before = [...calls.reads];
   await (await printAction(page)).click();
@@ -451,7 +462,7 @@ test("0185 ajuste pendiente bloquea imprimir; error reintenta sin defaults", asy
   await fakePrinter(page, "unsupported");
   let release!: () => void,
     attempts = 0;
-  await page.route("**/api/pos/ticket", async (route) => {
+  await page.route("**/api/modules/pos/ticket", async (route) => {
     attempts++;
     if (attempts === 1) {
       await new Promise<void>((resolve) => {
@@ -499,7 +510,7 @@ test("0185 autorización del ajuste revocada deja POS no disponible", async ({
 }) => {
   await setup(page);
   await fakePrinter(page, "unsupported");
-  await page.route("**/api/pos/ticket", (route) =>
+  await page.route("**/api/modules/pos/ticket", (route) =>
     route.fulfill({
       status: 403,
       json: { code: "missing_permission", error: "Sin permiso POS." },
@@ -560,7 +571,7 @@ test("0185 ajuste tardío no revive POS después de revocar la sesión", async (
   await setup(page);
   await fakePrinter(page, "unsupported");
   let release!: () => void;
-  await page.route("**/api/pos/ticket", async (route) => {
+  await page.route("**/api/modules/pos/ticket", async (route) => {
     await new Promise<void>((resolve) => {
       release = resolve;
     });
@@ -568,7 +579,7 @@ test("0185 ajuste tardío no revive POS después de revocar la sesión", async (
       json: { printingEnabled: true, showBusinessName: true, showTable: true },
     });
   });
-  await page.route("**/api/pos/resolve", (route) =>
+  await page.route("**/api/modules/pos/resolve", (route) =>
     route.fulfill({
       status: 401,
       json: { code: "unauthorized", error: "Sesión revocada." },
@@ -587,7 +598,7 @@ test("0185 ajuste tardío no revive POS después de revocar la sesión", async (
   await expect(
     page.getByRole("heading", { name: "POS no disponible", exact: true }),
   ).toBeVisible();
-  const response = page.waitForResponse("**/api/pos/ticket");
+  const response = page.waitForResponse("**/api/modules/pos/ticket");
   release();
   await response;
   await expect(
@@ -619,7 +630,7 @@ for (const printingEnabled of [false, true]) {
       closedAt: "2026-10-01T13:00:00Z",
       closedBy: "Ana",
     };
-    await page.route("**/api/pos/orders", (route) =>
+    await page.route("**/api/modules/pos/orders", (route) =>
       route.fulfill({
         json: {
           open: [{ ...order, itemCount: 2, saleTotal: null }],
@@ -628,7 +639,7 @@ for (const printingEnabled of [false, true]) {
       }),
     );
     await page.route(
-      "**/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2",
+      "**/api/modules/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2",
       (route) => route.fulfill({ json: closed }),
     );
     await page.goto(harness.url);

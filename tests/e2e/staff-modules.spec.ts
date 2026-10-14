@@ -29,7 +29,7 @@ async function setup(page: Page, enabled = true, owner = true) {
         authenticated: true,
         user: { id: "caller" },
         membership: { role: owner ? "owner" : "staff", permissions: ["staff"] },
-        business: { posEnabled: false },
+        business: { enabledModules: [] },
       },
     }),
   );

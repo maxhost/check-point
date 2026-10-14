@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { businessModules } from "./support/modules-fixture";
+import { businessModules, operationModules } from "./support/modules-fixture";
 import { startCatalogHarness } from "./support/catalog-harness-server";
 
 let harness: Awaited<ReturnType<typeof startCatalogHarness>>;
@@ -15,7 +15,7 @@ async function setup(page: Page) {
   await page.route("**/api/modules", (route) =>
     route.fulfill({
       json: {
-        modules: businessModules(),
+        modules: [...businessModules(), ...operationModules(true, false)],
       },
     }),
   );
@@ -23,7 +23,7 @@ async function setup(page: Page) {
     route.fulfill({
       json: {
         user: { id: "owner" },
-        business: { id: "business", posEnabled: true },
+        business: { id: "business", enabledModules: ["pos", "tables"] },
         membership: { role: "owner" },
       },
     }),
@@ -46,7 +46,7 @@ test("0206 prender/apagar guarda tres campos, oculta bloques y conserva sus valo
     showTable: true,
   };
   const bodies: unknown[] = [];
-  await page.route("**/api/merchant/business/ticket", (route) => {
+  await page.route("**/api/modules/pos/ticket-settings", (route) => {
     if (route.request().method() === "PUT") {
       saved = route.request().postDataJSON();
       bodies.push(saved);
@@ -113,7 +113,7 @@ test("fallo conserva ajustes; guardado bloquea dobles cambios y solo éxito avis
   let fail = true;
   let writes = 0;
   let release: (() => void) | undefined;
-  await page.route("**/api/merchant/business/ticket", async (route) => {
+  await page.route("**/api/modules/pos/ticket-settings", async (route) => {
     if (route.request().method() === "GET")
       return route.fulfill({
         json: {
@@ -162,7 +162,7 @@ test("lectura fallida reintenta sin defaults; no owner no consulta ticket", asyn
 }) => {
   await setup(page);
   let reads = 0;
-  await page.route("**/api/merchant/business/ticket", (route) => {
+  await page.route("**/api/modules/pos/ticket-settings", (route) => {
     reads += 1;
     return reads === 1
       ? route.fulfill({

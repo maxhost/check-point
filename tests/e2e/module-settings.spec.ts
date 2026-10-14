@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import {
   businessModules as modules,
   extraModule,
+  operationModules,
 } from "./support/modules-fixture";
 import { startCatalogHarness } from "./support/catalog-harness-server";
 
@@ -17,10 +18,13 @@ test.afterAll(async () => harness.close());
 async function setup(page: Page, role = "owner") {
   await page.route("**/api/merchant/session", (route) =>
     route.fulfill({
-      json: { membership: { role }, business: { posEnabled: true } },
+      json: {
+        membership: { role },
+        business: { enabledModules: ["pos", "tables"] },
+      },
     }),
   );
-  await page.route("**/api/merchant/business/ticket", (route) =>
+  await page.route("**/api/modules/pos/ticket-settings", (route) =>
     route.fulfill({
       json: { printingEnabled: false, showBusinessName: true, showTable: true },
     }),
@@ -254,3 +258,132 @@ for (const code of ["module_requires", "module_required_by"] as const) {
     expect(reads).toBeGreaterThanOrEqual(3);
   });
 }
+
+test("0222 apagar Mesas con una orden en mesa muestra 409 y conserva estado", async ({
+  page,
+}, testInfo) => {
+  await setup(page);
+  const saved = operationModules();
+  const writes: unknown[] = [];
+  const events: number[] = [];
+  await page.exposeFunction("recordModuleChange", () => events.push(1));
+  await page.addInitScript(() =>
+    window.addEventListener("checkpass:modules-changed", () => {
+      void (
+        window as unknown as { recordModuleChange: () => Promise<void> }
+      ).recordModuleChange();
+    }),
+  );
+  await page.route("**/api/modules", (route) =>
+    route.fulfill({ json: { modules: saved } }),
+  );
+  await page.route("**/api/modules/tables", (route) => {
+    writes.push(route.request().postDataJSON());
+    return route.fulfill({
+      status: 409,
+      json: {
+        error:
+          "No puedes desactivar las mesas con órdenes abiertas en una mesa. Ciérralas o anúlalas primero.",
+        code: "tables_has_open_orders",
+        openCount: 2,
+      },
+    });
+  });
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.goto(`${harness.url}?mode=settings`);
+  const toggle = page.getByRole("switch", { name: "Mesas", exact: true });
+  await expect(toggle).toBeChecked();
+  await toggle.locator("xpath=ancestor::label").click();
+  const dialog = page.getByRole("alertdialog", {
+    name: "No puedes desactivar las mesas",
+    exact: true,
+  });
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText(
+    "Hay 2 órdenes abiertas. Cierra o anula esas órdenes antes de desactivar el módulo.",
+  );
+  await page.screenshot({
+    path: testInfo.outputPath("mesas-409-mobile.png"),
+    fullPage: true,
+  });
+  await dialog.getByRole("button", { name: "Entendido" }).click();
+  await expect(toggle).toBeChecked();
+  await expect(toggle).toBeEnabled();
+  expect(writes).toEqual([{ enabled: false }]);
+  expect(events).toEqual([]);
+});
+
+test("0222 panel registrado se monta solo encendido y toggle emite evento confirmado", async ({
+  page,
+}) => {
+  await setup(page);
+  let saved = operationModules(false, false);
+  let ticketReads = 0;
+  await page.route("**/api/modules", (route) =>
+    route.fulfill({ json: { modules: saved } }),
+  );
+  await page.route("**/api/merchant/session", (route) =>
+    route.fulfill({
+      json: {
+        business: {
+          enabledModules: saved
+            .filter((module) => module.enabled)
+            .map((module) => module.id),
+        },
+        membership: { role: "owner" },
+      },
+    }),
+  );
+  await page.route("**/api/modules/pos/ticket-settings", (route) => {
+    ticketReads++;
+    return route.fulfill({
+      json: { printingEnabled: false, showBusinessName: true, showTable: true },
+    });
+  });
+  await page.route("**/api/modules/pos", (route) => {
+    const body = route.request().postDataJSON();
+    saved = operationModules(body.enabled, false);
+    return route.fulfill({ json: { module: saved[0] } });
+  });
+  await page.goto(`${harness.url}?mode=settings`);
+  const toggle = page.getByRole("switch", { name: "POS", exact: true });
+  await expect(toggle).toBeEnabled();
+  await expect(
+    page.getByRole("switch", { name: "Imprimir tickets" }),
+  ).toHaveCount(0);
+  expect(ticketReads).toBe(0);
+  await page.evaluate(() => {
+    (window as unknown as { moduleChanges: number }).moduleChanges = 0;
+    window.addEventListener("checkpass:modules-changed", () => {
+      (window as unknown as { moduleChanges: number }).moduleChanges++;
+    });
+  });
+  await toggle.locator("xpath=ancestor::label").click();
+  await expect(
+    page.getByRole("switch", { name: "Imprimir tickets" }),
+  ).toBeVisible();
+  await expect.poll(() => ticketReads).toBe(1);
+  await expect(
+    page
+      .locator(".backoffice-sidebar")
+      .getByRole("link", { name: "POS", exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => (window as unknown as { moduleChanges: number }).moduleChanges,
+    ),
+  ).toBe(1);
+  await toggle.locator("xpath=ancestor::label").click();
+  await expect(
+    page.getByRole("switch", { name: "Imprimir tickets" }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("link", { name: "POS", exact: true }),
+  ).toHaveCount(0);
+  expect(
+    await page.evaluate(
+      () => (window as unknown as { moduleChanges: number }).moduleChanges,
+    ),
+  ).toBe(2);
+  expect(ticketReads).toBe(1);
+});

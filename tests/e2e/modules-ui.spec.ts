@@ -19,7 +19,7 @@ async function setup(page: Page) {
       json: {
         membership: { role: "owner" },
         business: {
-          posEnabled: false,
+          enabledModules: ["stock", "recipes", "appointments"],
           timezone: "America/Guayaquil",
           currencyCode: "USD",
         },

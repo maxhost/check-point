@@ -1,6 +1,7 @@
+import { operationModules } from "./support/modules-fixture";
 import { expect, test, type Page } from "@playwright/test";
 import { startCatalogHarness } from "./support/catalog-harness-server";
-import type { PosOrder } from "../../apps/merchant/src/app/backoffice/pos/pos-types";
+import type { PosOrder } from "../../apps/merchant/src/modules/pos/ui/pos-types";
 
 const localId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1";
 const northId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2";
@@ -17,7 +18,12 @@ test.beforeAll(async () => {
 });
 test.afterAll(async () => harness.close());
 
-async function setup(page: Page, posEnabled = true) {
+async function setup(page: Page, posEnabled = true, tablesEnabled = true) {
+  await page.route("**/api/modules", (route) =>
+    route.fulfill({
+      json: { modules: operationModules(posEnabled, tablesEnabled) },
+    }),
+  );
   const state = {
     tables: [
       {
@@ -65,7 +71,9 @@ async function setup(page: Page, posEnabled = true) {
         business: {
           id: "business",
           status: "active",
-          posEnabled,
+          enabledModules: posEnabled
+            ? ["pos", ...(tablesEnabled ? ["tables"] : [])]
+            : [],
           timezone: "UTC",
           currencyCode: "USD",
         },
@@ -77,12 +85,12 @@ async function setup(page: Page, posEnabled = true) {
       },
     }),
   );
-  await page.route("**/api/pos/ticket", (route) =>
+  await page.route("**/api/modules/pos/ticket", (route) =>
     route.fulfill({
       json: { printingEnabled: true, showBusinessName: true, showTable: true },
     }),
   );
-  await page.route("**/api/pos/catalog**", (route) =>
+  await page.route("**/api/modules/pos/catalog**", (route) =>
     route.fulfill({
       json: {
         products: [
@@ -99,7 +107,7 @@ async function setup(page: Page, posEnabled = true) {
       },
     }),
   );
-  await page.route("**/api/locations/**/tables**", (route) => {
+  await page.route("**/api/modules/tables/locations/**", (route) => {
     const request = route.request();
     if (request.method() === "GET")
       return route.fulfill({ json: { tables: state.tables } });
@@ -124,12 +132,12 @@ async function setup(page: Page, posEnabled = true) {
       state.tables.push(table);
       return route.fulfill({ status: 201, json: { table } });
     }
-    const id = new URL(request.url()).pathname.split("/")[5];
+    const id = new URL(request.url()).pathname.split("/")[6];
     const table = state.tables.find((item) => item.id === id)!;
     Object.assign(table, body);
     return route.fulfill({ json: { table } });
   });
-  await page.route("**/api/pos/tables**", (route) => {
+  await page.route("**/api/modules/pos/tables**", (route) => {
     state.reads += 1;
     const location = new URL(route.request().url()).searchParams.get(
       "locationId",
@@ -142,13 +150,13 @@ async function setup(page: Page, posEnabled = true) {
       },
     });
   });
-  await page.route("**/api/pos/orders**", (route) => {
+  await page.route("**/api/modules/pos/orders**", (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
     if (request.method() === "GET")
       return route.fulfill({
         json:
-          path === "/api/pos/orders"
+          path === "/api/modules/pos/orders"
             ? {
                 open: state.order
                   ? [{ ...state.order, itemCount: 1, saleTotal: null }]
@@ -604,7 +612,7 @@ test("Locales: carga fallida reintenta; guardado bloquea Confirmar/Cerrar", asyn
   const state = await setup(page);
   let fail = true;
   let release: (() => void) | undefined;
-  await page.route("**/api/locations/**/tables", async (route) => {
+  await page.route("**/api/modules/tables/locations/**", async (route) => {
     if (route.request().method() === "GET")
       return fail
         ? route.fulfill({
@@ -655,15 +663,20 @@ test("Locales: respuesta tardía de Centro no cambia el modal de Norte", async (
 }) => {
   await setup(page);
   let release: (() => void) | undefined;
-  await page.route(`**/api/locations/${localId}/tables`, async (route) => {
-    await new Promise<void>((resolve) => {
-      release = resolve;
-    });
-    await route.fulfill({
-      json: { tables: [{ id: "late", name: "Mesa tardía", status: "active" }] },
-    });
-  });
-  await page.route(`**/api/locations/${northId}/tables`, (route) =>
+  await page.route(
+    `**/api/modules/tables/locations/${localId}`,
+    async (route) => {
+      await new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      await route.fulfill({
+        json: {
+          tables: [{ id: "late", name: "Mesa tardía", status: "active" }],
+        },
+      });
+    },
+  );
+  await page.route(`**/api/modules/tables/locations/${northId}`, (route) =>
     route.fulfill({
       json: {
         tables: [{ id: "north", name: "Terraza norte", status: "active" }],
@@ -696,7 +709,7 @@ test("POS: mesas pertenecen al local elegido; texto libre solo tras confirmar qu
 }) => {
   const state = await setup(page);
   let fail = true;
-  await page.route("**/api/pos/tables**", (route) => {
+  await page.route("**/api/modules/pos/tables**", (route) => {
     const location = new URL(route.request().url()).searchParams.get(
       "locationId",
     );
@@ -743,4 +756,79 @@ test("POS: mesas pertenecen al local elegido; texto libre solo tras confirmar qu
     tableLabel: "Barra norte",
   });
   expect(state.writes[0].body).not.toHaveProperty("tableId");
+});
+
+for (const width of [390, 1280]) {
+  test(`0222 POS sin Mesas ofrece nombre libre y guarda sin tableId (${width})`, async ({
+    page,
+  }, testInfo) => {
+    const state = await setup(page, true, false);
+    await page.setViewportSize({ width, height: 900 });
+    await newOrder(page, false);
+    await expect(
+      page.getByText("Mesas del local", { exact: true }),
+    ).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /Mesa [12] ·/ })).toHaveCount(
+      0,
+    );
+    await expect(
+      page.getByText("Cargando mesas…", { exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByText(
+        "No hay mesas añadidas en este local. Puedes escribir un nombre.",
+        { exact: true },
+      ),
+    ).toHaveCount(0);
+    expect(state.reads).toBe(0);
+    await page
+      .getByRole("textbox", { name: "Nombre de mesa" })
+      .fill("Pedido de Ana");
+    await page.screenshot({
+      path: testInfo.outputPath(`pos-sin-mesas-${width}.png`),
+      fullPage: true,
+    });
+    await review(page);
+    await page
+      .getByRole("button", { name: "Guardar pedido", exact: true })
+      .click();
+    await expect.poll(() => state.writes.length).toBe(1);
+    expect(state.writes[0]).toMatchObject({
+      url: "/api/modules/pos/orders",
+      method: "POST",
+      body: { tableLabel: "Pedido de Ana" },
+    });
+    expect(state.writes[0].body).not.toHaveProperty("tableId");
+    expect(state.reads).toBe(0);
+    await page.goto(`${harness.url}?mode=locations`);
+    await expect(
+      page.getByRole("button", { name: "Editar", exact: true }).first(),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Mesas", exact: true }),
+    ).toHaveCount(0);
+  });
+}
+
+test("0222 Locales relee sesión al cambiar módulos y respeta permiso de la acción", async ({
+  page,
+}) => {
+  await setup(page);
+  await manage(page);
+  await page.route("**/api/merchant/session", (route) =>
+    route.fulfill({
+      json: {
+        authenticated: true,
+        business: { enabledModules: ["pos", "tables"] },
+        membership: { role: "staff", permissions: ["pos"] },
+      },
+    }),
+  );
+  await page.evaluate(() =>
+    window.dispatchEvent(new CustomEvent("checkpass:modules-changed")),
+  );
+  await expect(modal(page)).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Mesas", exact: true }),
+  ).toHaveCount(0);
 });

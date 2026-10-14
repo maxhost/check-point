@@ -1,6 +1,7 @@
+import { LocationTables } from "../../../apps/merchant/src/modules/tables/ui/location-tables";
 import { createRoot } from "react-dom/client";
 import { LocationsConsole } from "../../../apps/merchant/src/app/backoffice/locations/locations-console";
-import { PosConsole } from "../../../apps/merchant/src/app/backoffice/pos/pos-console";
+import { PosConsole } from "../../../apps/merchant/src/modules/pos/ui/pos-console";
 import { BackofficeNavigation } from "../../../apps/merchant/src/app/backoffice/backoffice-navigation";
 
 export const locations = [
@@ -24,6 +25,11 @@ createRoot(document.getElementById("root")!).render(
       initialLocations={locations}
       countryCode="EC"
       activeLimit={3}
+      modulePanels={locations.map((location) => ({
+        moduleId: "tables",
+        locationId: location.id,
+        content: <LocationTables location={location} />,
+      }))}
     />
   ) : (
     <div className="backoffice-layout">

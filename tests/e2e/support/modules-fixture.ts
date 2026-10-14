@@ -76,3 +76,34 @@ export function extraModule(enabled = false): BusinessModule {
     ],
   };
 }
+
+export function operationModules(pos = true, tables = true): BusinessModule[] {
+  return [
+    {
+      id: "pos",
+      name: "POS",
+      description: "Órdenes de mesa, cobro y ticket",
+      requires: [],
+      enabled: pos,
+      suggested: true,
+      navigation: [{ path: "", label: "POS", icon: "Shop", permission: "pos" }],
+      permissions: [
+        {
+          id: "pos",
+          label: "POS",
+          description: "Abrir, editar, cobrar y anular órdenes de mesa.",
+        },
+      ],
+    },
+    {
+      id: "tables",
+      name: "Mesas",
+      description: "Mesas de cada local para el POS",
+      requires: ["pos"],
+      enabled: tables && pos,
+      suggested: true,
+      navigation: [],
+      permissions: [],
+    },
+  ];
+}
