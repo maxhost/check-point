@@ -1,9 +1,14 @@
 import { and, asc, eq, sql } from "drizzle-orm";
 import { type DbTransaction, getDb, withDbTransaction } from "@mi-pasaporte/db";
-import { stockItems, stockMovements } from "@mi-pasaporte/db/schema";
+import {
+  stockItems,
+  stockMovements,
+  stockItemLocations,
+} from "@mi-pasaporte/db/schema";
 import { isUuid, pgErrorCode } from "@mi-pasaporte/domain/server/counter/core";
 import { formatDecimal, fromDb } from "../decimal";
 import { ModuleError, invalidBody } from "../errors";
+import { resolveLocation } from "./local";
 import { QUANTITY, UNIT_COST_SCALE } from "./numbers";
 
 /**
@@ -14,6 +19,7 @@ import { QUANTITY, UNIT_COST_SCALE } from "./numbers";
 
 export type StockUnit = "g" | "ml" | "unit";
 export type ItemDTO = {
+  locationId: string | null;
   id: string;
   name: string;
   unit: StockUnit;
@@ -31,7 +37,7 @@ export const itemColumns = {
   name: stockItems.name,
   unit: stockItems.unit,
   status: stockItems.status,
-  lastUnitCost: stockItems.lastUnitCost,
+  lastUnitCost: sql<string | null>`null::numeric`,
   updatedAt: stockItems.updatedAt,
 };
 
@@ -44,8 +50,13 @@ export type ItemRow = {
   updatedAt: Date;
 };
 
-export function toItemDTO(row: ItemRow, onHand: string | null): ItemDTO {
+export function toItemDTO(
+  row: ItemRow,
+  onHand: string | null,
+  locationId: string | null = null,
+): ItemDTO {
   return {
+    locationId,
     id: row.id,
     name: row.name,
     unit: row.unit as StockUnit,
@@ -103,13 +114,19 @@ async function translatingNameTaken<T>(work: () => Promise<T>): Promise<T> {
 export async function onHandOf(
   db: DbTransaction | ReturnType<typeof getDb>,
   itemId: string,
+  locationId?: string,
 ): Promise<string> {
   const [row] = await db
     .select({
       onHand: sql<string>`coalesce(sum(${stockMovements.quantity}), 0)::text`,
     })
     .from(stockMovements)
-    .where(eq(stockMovements.itemId, itemId));
+    .where(
+      and(
+        eq(stockMovements.itemId, itemId),
+        locationId ? eq(stockMovements.locationId, locationId) : undefined,
+      ),
+    );
   return row.onHand;
 }
 
@@ -139,7 +156,9 @@ export async function lockItem(
 export async function listItems(
   businessId: string,
   rawStatus: string | null,
+  rawLocationId?: unknown,
 ): Promise<ItemDTO[]> {
+  const location = await resolveLocation(businessId, rawLocationId);
   const status = rawStatus ?? "active";
   if (status !== "active" && status !== "archived" && status !== "all") {
     throw new ModuleError(422, "invalid_status", "El estado no es válido.");
@@ -151,13 +170,30 @@ export async function listItems(
       onHand: sql<string>`sum(${stockMovements.quantity})::text`.as("on_hand"),
     })
     .from(stockMovements)
-    .where(eq(stockMovements.businessId, businessId))
+    .where(
+      and(
+        eq(stockMovements.businessId, businessId),
+        eq(stockMovements.locationId, location.id),
+      ),
+    )
     .groupBy(stockMovements.itemId)
     .as("totals");
   const rows = await db
-    .select({ ...itemColumns, onHand: totals.onHand })
+    .select({
+      ...itemColumns,
+      lastUnitCost: stockItemLocations.lastUnitCost,
+      onHand: totals.onHand,
+    })
     .from(stockItems)
     .leftJoin(totals, eq(totals.itemId, stockItems.id))
+    .leftJoin(
+      stockItemLocations,
+      and(
+        eq(stockItemLocations.businessId, businessId),
+        eq(stockItemLocations.itemId, stockItems.id),
+        eq(stockItemLocations.locationId, location.id),
+      ),
+    )
     .where(
       and(
         eq(stockItems.businessId, businessId),
@@ -165,7 +201,7 @@ export async function listItems(
       ),
     )
     .orderBy(asc(sql`lower(${stockItems.name})`), asc(stockItems.id));
-  return rows.map((row) => toItemDTO(row, row.onHand));
+  return rows.map((row) => toItemDTO(row, row.onHand, location.id));
 }
 
 /** `POST /api/modules/stock/items` — `{ name, unit }`. */
@@ -173,6 +209,7 @@ export async function createItem(
   businessId: string,
   body: Record<string, unknown>,
 ): Promise<ItemDTO> {
+  const location = await resolveLocation(businessId, body.locationId);
   const name = parseName(body.name);
   if (typeof body.unit !== "string" || !UNITS.includes(body.unit)) {
     throw new ModuleError(
@@ -187,7 +224,7 @@ export async function createItem(
       .insert(stockItems)
       .values({ businessId, name, unit })
       .returning(itemColumns);
-    return toItemDTO(row, "0");
+    return toItemDTO({ ...row, lastUnitCost: null }, "0", location.id);
   });
 }
 
@@ -197,6 +234,7 @@ export async function updateItem(
   rawItemId: unknown,
   body: Record<string, unknown>,
 ): Promise<ItemDTO> {
+  const location = await resolveLocation(businessId, body.locationId);
   if (body.unit !== undefined) {
     throw new ModuleError(
       422,
@@ -223,7 +261,21 @@ export async function updateItem(
         .set({ ...changes, updatedAt: new Date() })
         .where(eq(stockItems.id, item.id))
         .returning(itemColumns);
-      return toItemDTO(row, await onHandOf(tx, item.id));
+      const [pair] = await tx
+        .select({ lastUnitCost: stockItemLocations.lastUnitCost })
+        .from(stockItemLocations)
+        .where(
+          and(
+            eq(stockItemLocations.businessId, businessId),
+            eq(stockItemLocations.itemId, item.id),
+            eq(stockItemLocations.locationId, location.id),
+          ),
+        );
+      return toItemDTO(
+        { ...row, lastUnitCost: pair?.lastUnitCost ?? null },
+        await onHandOf(tx, item.id, location.id),
+        location.id,
+      );
     }),
   );
 }

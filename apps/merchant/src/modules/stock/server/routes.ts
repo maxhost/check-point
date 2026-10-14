@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { readModuleBody } from "../../errors";
 import type { ModuleRoute } from "../../route-table";
+import { listLocations, resolveLocation } from "../local";
+import {
+  pendingSummary,
+  retryModuleEvents,
+} from "../../../server/module-events";
 import { createItem, listItems, updateItem } from "../items";
 import { listMovements, recordAdjustment, recordPurchase } from "../movements";
 import { listLog, recordEntry } from "../entries";
@@ -16,7 +21,29 @@ import { buildDraft, buildPhotoDraft } from "../draft";
 const query = (request: Request, name: string) =>
   new URL(request.url).searchParams.get(name);
 
+async function readLocal(businessId: string, request: Request) {
+  const location = await resolveLocation(
+    businessId,
+    query(request, "locationId"),
+  );
+  await retryModuleEvents({
+    businessId,
+    locationId: location.id,
+    budgetMs: 1000,
+  });
+  return {
+    locationId: location.id,
+    pending: await pendingSummary(businessId, location.id),
+  };
+}
 export const routes: readonly ModuleRoute[] = [
+  {
+    method: "GET",
+    path: "locations",
+    failure: "No pudimos leer los locales.",
+    handler: async ({ business }) =>
+      NextResponse.json(await listLocations(business.id)),
+  },
   /** `?status=active|archived|all` → `200 { items }`. */
   {
     method: "GET",
@@ -24,7 +51,12 @@ export const routes: readonly ModuleRoute[] = [
     failure: "No pudimos leer los insumos.",
     handler: async ({ request, business }) =>
       NextResponse.json({
-        items: await listItems(business.id, query(request, "status")),
+        ...(await readLocal(business.id, request)),
+        items: await listItems(
+          business.id,
+          query(request, "status"),
+          query(request, "locationId"),
+        ),
       }),
   },
   /** `{ name, unit }` → `201 { item }`. */
@@ -91,10 +123,12 @@ export const routes: readonly ModuleRoute[] = [
     failure: "No pudimos leer los movimientos.",
     handler: async ({ request, business, params }) =>
       NextResponse.json({
+        ...(await readLocal(business.id, request)),
         movements: await listMovements(
           business.id,
           params.itemId,
           query(request, "limit"),
+          query(request, "locationId"),
         ),
       }),
   },
@@ -134,7 +168,12 @@ export const routes: readonly ModuleRoute[] = [
     failure: "No pudimos leer el registro de stock.",
     handler: async ({ request, business }) =>
       NextResponse.json({
-        movements: await listLog(business.id, query(request, "limit")),
+        ...(await readLocal(business.id, request)),
+        movements: await listLog(
+          business.id,
+          query(request, "limit"),
+          query(request, "locationId"),
+        ),
       }),
   },
 ];

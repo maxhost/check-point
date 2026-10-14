@@ -1,6 +1,9 @@
 import type { ModuleServer } from "./route-table";
 import { routes as stock } from "./stock/server/routes";
-import { routes as recipes } from "./recipes/server/routes";
+import {
+  routes as recipes,
+  eventSubscriptions as recipeEvents,
+} from "./recipes/server/routes";
 import { server as pos } from "./pos/server/routes";
 import { server as tables } from "./tables/server/routes";
 
@@ -15,7 +18,7 @@ import { server as tables } from "./tables/server/routes";
  */
 export const SERVER_MODULES: Readonly<Record<string, ModuleServer>> = {
   stock: { routes: stock },
-  recipes: { routes: recipes },
+  recipes: { routes: recipes, eventSubscriptions: recipeEvents },
   pos,
   tables,
 };

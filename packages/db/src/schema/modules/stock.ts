@@ -112,12 +112,12 @@ export const stockMovements = stockSchema.table(
       name: "stock_movement_business_item_fk",
       columns: [table.businessId, table.itemId],
       foreignColumns: [stockItems.businessId, stockItems.id],
-    }),
+    }).onDelete("cascade"),
     foreignKey({
       name: "stock_movement_business_location_fk",
       columns: [table.businessId, table.locationId],
       foreignColumns: [locations.businessId, locations.id],
-    }),
+    }).onDelete("cascade"),
     check(
       "stock_movement_consumption_check",
       sql`${table.kind} <> 'consumption' or (${table.quantity}<0 and ${table.totalCost} is null and ${table.countedQuantity} is null and ${table.sourceOrderId} is not null and ${table.sourceLineId} is not null and ${table.productId} is not null)`,
@@ -163,12 +163,12 @@ export const stockItemLocations = stockSchema.table(
       name: "stock_item_location_item_fk",
       columns: [t.businessId, t.itemId],
       foreignColumns: [stockItems.businessId, stockItems.id],
-    }),
+    }).onDelete("cascade"),
     foreignKey({
       name: "stock_item_location_location_fk",
       columns: [t.businessId, t.locationId],
       foreignColumns: [locations.businessId, locations.id],
-    }),
+    }).onDelete("cascade"),
     check(
       "stock_item_location_cost_check",
       sql`${t.lastUnitCost} is null or ${t.lastUnitCost}>=0`,

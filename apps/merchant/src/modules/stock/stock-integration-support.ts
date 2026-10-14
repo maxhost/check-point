@@ -1,16 +1,16 @@
 import { eq, sql } from "drizzle-orm";
 import { getDb } from "@mi-pasaporte/db";
-import { stockItems, stockMovements } from "@mi-pasaporte/db/schema";
+import { stockItemLocations, stockMovements } from "@mi-pasaporte/db/schema";
 
 /** Spec 0210 — lecturas POR SQL de las suites de Stock (la respuesta de la API no es el oraculo).
  * Sin `expect`: los oraculos viven en los tests. */
 
 export async function lastUnitCost(itemId: string) {
   const [row] = await getDb()
-    .select({ cost: stockItems.lastUnitCost })
-    .from(stockItems)
-    .where(eq(stockItems.id, itemId));
-  return row.cost;
+    .select({ cost: stockItemLocations.lastUnitCost })
+    .from(stockItemLocations)
+    .where(eq(stockItemLocations.itemId, itemId));
+  return row?.cost ?? null;
 }
 
 /** Espera hasta ver `n` backends bloqueados por un lock en una consulta de `stock`. Si no llegan,

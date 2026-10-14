@@ -68,6 +68,10 @@ export const products = core.table(
       .defaultNow(),
   },
   (table) => [
+    uniqueIndex("core_product_business_id_unique").on(
+      table.businessId,
+      table.id,
+    ),
     check(
       "product_unit_price_check",
       sql`${table.unitPrice} is null or ${table.unitPrice} >= 0`,

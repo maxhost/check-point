@@ -44,6 +44,7 @@ describe.skipIf(!modulesIntegrationEnabled)("Modulo Stock (spec 0210)", () => {
     expect(r.status).toBe(201);
     const item = (await r.json()).item;
     expect(item).toEqual({
+      locationId: world.locationId,
       id: item.id,
       name: "zanahoria",
       unit: "g",

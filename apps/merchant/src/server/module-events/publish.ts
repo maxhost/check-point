@@ -129,14 +129,12 @@ export async function publishSaleClosed(
       const eligible = [subscriberId, ...subscription.requiredModules].every(
         (id) => row.enabled.includes(id),
       );
-      await tx
-        .insert(moduleEventDeliveries)
-        .values({
-          eventId: event.id,
-          subscriberId,
-          state: eligible ? "pending" : "skipped",
-          terminalReason: eligible ? null : "modules_disabled",
-        });
+      await tx.insert(moduleEventDeliveries).values({
+        eventId: event.id,
+        subscriberId,
+        state: eligible ? "pending" : "skipped",
+        terminalReason: eligible ? null : "modules_disabled",
+      });
     }
   return { eventId: event.id, closedAt: new Date(payload.closedAt) };
 }

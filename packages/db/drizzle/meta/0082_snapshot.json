@@ -1,5 +1,5 @@
 {
-  "id": "98b1d741-7442-43e6-aa08-11ec98a94bb5",
+  "id": "09ee2be5-fc87-4487-be44-9cc87a378ab5",
   "prevId": "fcf626d4-2e68-4117-868f-638ea2b8304c",
   "version": "7",
   "dialect": "postgresql",
@@ -4458,7 +4458,29 @@
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "core_product_business_id_unique": {
+          "name": "core_product_business_id_unique",
+          "columns": [
+            {
+              "expression": "business_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "product_business_id_business_id_fk": {
           "name": "product_business_id_business_id_fk",
@@ -9504,7 +9526,7 @@
             "business_id",
             "id"
           ],
-          "onDelete": "no action",
+          "onDelete": "cascade",
           "onUpdate": "no action"
         },
         "stock_item_location_location_fk": {
@@ -9520,7 +9542,7 @@
             "business_id",
             "id"
           ],
-          "onDelete": "no action",
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
@@ -9936,7 +9958,7 @@
             "business_id",
             "id"
           ],
-          "onDelete": "no action",
+          "onDelete": "cascade",
           "onUpdate": "no action"
         },
         "stock_movement_business_location_fk": {
@@ -9952,7 +9974,7 @@
             "business_id",
             "id"
           ],
-          "onDelete": "no action",
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
@@ -10090,6 +10112,38 @@
             "id"
           ],
           "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "recipes_line_business_item_fk": {
+          "name": "recipes_line_business_item_fk",
+          "tableFrom": "line",
+          "tableTo": "item",
+          "schemaTo": "stock",
+          "columnsFrom": [
+            "business_id",
+            "item_id"
+          ],
+          "columnsTo": [
+            "business_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "recipes_line_business_product_fk": {
+          "name": "recipes_line_business_product_fk",
+          "tableFrom": "line",
+          "tableTo": "product",
+          "schemaTo": "core",
+          "columnsFrom": [
+            "business_id",
+            "product_id"
+          ],
+          "columnsTo": [
+            "business_id",
+            "id"
+          ],
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
@@ -10699,6 +10753,22 @@
             "order_id"
           ],
           "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "pos_order_business_location_fk": {
+          "name": "pos_order_business_location_fk",
+          "tableFrom": "pos_order",
+          "tableTo": "location",
+          "schemaTo": "core",
+          "columnsFrom": [
+            "business_id",
+            "location_id"
+          ],
+          "columnsTo": [
+            "business_id",
             "id"
           ],
           "onDelete": "no action",

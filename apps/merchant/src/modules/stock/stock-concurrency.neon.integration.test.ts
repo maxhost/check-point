@@ -57,7 +57,20 @@ describe.skipIf(!modulesIntegrationEnabled)(
         return { pending };
       });
       const [a, b] = await pending;
-      expect([a.status, b.status]).toEqual([201, 201]);
+      expect([a.status, b.status].sort()).toEqual([201, 409]);
+      const failed = a.status === 409 ? a : b;
+      expect((await failed.json()).code).toBe("count_changed");
+      // Spec0227 SERIALIZABLE explicitly aborts only the concurrent count; caller retries it.
+      const beforeRetry = (
+        await (await api.movements(world.cookie, item.id)).json()
+      ).movements;
+      expect(
+        beforeRetry.filter((m: { kind: string }) => m.kind === "adjustment"),
+      ).toHaveLength(1);
+      const retry = await api.adjust(world.cookie, item.id, {
+        countedQuantity: a.status === 409 ? 10 : 7,
+      });
+      expect(retry.status).toBe(201);
       const final = await onHandSql(item.id);
       // Sin el lock los dos leen 100 y el saldo termina en (10−100)+(7−100)+100 = −83.
       expect(["10.000", "7.000"]).toContain(final);

@@ -1,6 +1,7 @@
 import {
   boolean,
   check,
+  foreignKey,
   index,
   integer,
   numeric,
@@ -133,6 +134,11 @@ export const posOrders = posSchema.table(
       .defaultNow(),
   },
   (table) => [
+    foreignKey({
+      name: "pos_order_business_location_fk",
+      columns: [table.businessId, table.locationId],
+      foreignColumns: [locations.businessId, locations.id],
+    }),
     check(
       "core_pos_order_status_check",
       sql`${table.status} in ('open', 'closed', 'voided')`,

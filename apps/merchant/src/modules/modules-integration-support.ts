@@ -8,7 +8,12 @@ import {
   seedOwnerDeNegocio,
 } from "../server/permissions-integration-support";
 import { getDb } from "@mi-pasaporte/db";
-import { businessModules, businesses, products } from "@mi-pasaporte/db/schema";
+import {
+  businessModules,
+  businesses,
+  products,
+  locations,
+} from "@mi-pasaporte/db/schema";
 import { seedMember } from "../server/counter-integration-support";
 import { GET as LIST_MODULES } from "../app/api/modules/route";
 import {
@@ -29,6 +34,7 @@ export const modulesIntegrationEnabled = permisosIntegrationEnabled;
 
 export type ModuleWorld = {
   businessId: string;
+  locationId: string;
   ownerId: string;
   cookie: string;
   users: string[];
@@ -46,7 +52,18 @@ export async function seedModuleWorld(label: string): Promise<ModuleWorld> {
     .update(businesses)
     .set({ categoryGcid: "gcid:restaurant" })
     .where(eq(businesses.id, businessId));
+  const [location] = await getDb()
+    .insert(locations)
+    .values({
+      businessId,
+      name: "Local de prueba",
+      addressLabel: "Guayaquil",
+      countryCode: "EC",
+      addressSnapshot: {},
+    })
+    .returning({ id: locations.id });
   return {
+    locationId: location.id,
     businessId,
     ownerId,
     cookie: await cookieDe(ownerId),
