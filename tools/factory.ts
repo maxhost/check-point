@@ -190,7 +190,19 @@ export function run(root: string, args: string[]) {
     }
     const task = registry.tasks.find((candidate) => candidate.id === id);
     if (!task) throw new Error("Unknown task");
-    if (command === "extend") {
+    if (command === "resources") {
+      if (task.state === "integrated" || task.state === "retired")
+        throw new Error("Resource assignment requires an active task");
+      const assigned = {
+        ...task,
+        resources: [...new Set((rest[0] ?? "").split(",").filter(Boolean))],
+      };
+      reserve(
+        registry.tasks.filter((other) => other.id !== id),
+        assigned,
+      );
+      task.resources = assigned.resources;
+    } else if (command === "extend") {
       if (task.state !== "reserved" || task.sha)
         throw new Error("Scope extension requires an implementing task");
       if (!rest[0]) throw new Error("extend ID PATHS[,PATH]");
@@ -307,7 +319,7 @@ export function run(root: string, args: string[]) {
       task.state = "retired";
     } else
       throw new Error(
-        "Use status/reserve/extend/deliver/accept/reject/refresh/integrate/cleanup",
+        "Use status/reserve/extend/resources/deliver/accept/reject/refresh/integrate/cleanup",
       );
   });
   return "OK\n";

@@ -30,6 +30,15 @@ it("QA rejection preserves history and can deliver a corrected revision; stale a
     JSON.parse(readFileSync(join(fixture, ".factory/registry.json"), "utf8"))
       .tasks[0].paths,
   ).toEqual(["feature.ts", "extra.ts"]);
+  run(fixture, ["resources", "task", "db:ci"]);
+  const secondWorker = join(fixture, "second-worker");
+  git(fixture, ["worktree", "add", "-b", "second-task", secondWorker, base]);
+  run(fixture, ["reserve", "second-task", secondWorker, base, "second.ts"]);
+  expect(() => run(fixture, ["resources", "second-task", "db:ci"])).toThrow(
+    "Resources overlap",
+  );
+  run(fixture, ["resources", "task", ""]);
+  run(fixture, ["resources", "second-task", "db:ci"]);
   const commit = (value: number) => {
     writeFileSync(
       join(worker, "feature.ts"),
