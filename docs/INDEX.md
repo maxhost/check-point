@@ -74,6 +74,7 @@ desactualizado es peor que no tenerlo.
 | 0050 | 2026-09-05 | **El re-enroll actualiza el nombre de la cuenta.** Enrolarse con un teléfono ya registrado pisaba el nombre tipeado en silencio (el owner se enroló como "Logan Wolf" y el pase salió "Cliente iOS 4", verificado por SQL en prod). Gana el dato más fresco. No toca teléfono, país ni tokens. **Deja anotado, sin saldarlo, que ese mismo camino ya entrega una sesión completa a quien conozca un teléfono ajeno** (el enroll no verifica el teléfono) — hallazgo preexistente, tarea 41 | **SUPERSEDIDO por el ADR 0051** (el owner rechazó la decisión al verla implementada) | `adr/0050-el-re-enroll-actualiza-el-nombre-de-la-cuenta.md` |
 
 | 0145 | 2026-10-13 | Consumo de Stock mediante evento durable genérico de cierre, revisiones inmutables y aplicación posterior por local. | aceptada; implementación local autorizada | `adr/0145-consumo-stock-al-cobrar.md` |
+| 0146 | 2026-10-14 | Promedio ponderado móvil por insumo/local, apertura única del último costo local y compras válidas aun con pendientes. | aceptada; implementación reservada A0228 | `adr/0146-costo-promedio-ponderado-por-local.md` |
 
 ## Specs — que se construye
 
@@ -472,3 +473,6 @@ técnica, Definition of Done y plan de pruebas antes de que su estado pase a `ce
 | 0225 | 2026-10-13 | Piloto factory local: reglas, roles, worktrees/reservas/limpieza y verificacion proporcional; sin push/PROD. | implementada; QA PASS2b7ae272, cierre local sin publicación | no | `specs/0225-piloto-factory-local.md` |
 | 0226 | 2026-10-13 | Fotos Stock/Recetas UI: contratos0224, camara/galeria,1-3fotos, borrador existente; dos tareas paralelas y QA. | implementada; QA PASS,9browser y2smokesIAreal; sin publicación | si entre tareas | `specs/0226-fotos-stock-recetas-ui.md` |
 | 0227 | 2026-10-13 | Stock por local y consumo idempotente por receta al cerrar POS, sin bloquear venta ni mesa; migración por fases y reintento durable. | implementada e integrada en main local; candidato `f3778519`, QA independiente PASS sobre `2c58a61f`; sin publicación | no | `specs/0227-stock-por-local-y-consumo-por-receta.md` |
+
+| 0228 | 2026-10-14 | Promedio ponderado móvil nullable por insumo/local con precisión6, importe exacto y apertura única. | cerrada; implementación reservada A, esquema único0228/0229 | no | `specs/0228-costo-promedio-ponderado-por-insumo-y-local.md` |
+| 0229 | 2026-10-14 | Datos fiscales privados por comercio en Marca, sin activar cálculos de IVA. | cerrada; implementación reservada B, esquema por A | sí entre dominios; DB serial | `specs/0229-datos-fiscales-del-comercio-en-marca.md` |

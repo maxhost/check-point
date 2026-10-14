@@ -27,6 +27,12 @@ export type Task = {
     review?: "accepted" | "rejected";
     reason?: string;
   }>;
+  continuations?: Array<{
+    sha: string;
+    base: string;
+    paths: string[];
+    resources: string[];
+  }>;
 };
 type Registry = { version: 1; tasks: Task[] };
 
@@ -190,7 +196,58 @@ export function run(root: string, args: string[]) {
     }
     const task = registry.tasks.find((candidate) => candidate.id === id);
     if (!task) throw new Error("Unknown task");
-    if (command === "resources") {
+    if (command === "continue") {
+      const [baseRef, paths, resources = ""] = rest;
+      if (
+        (task.state !== "delivered" && task.state !== "accepted") ||
+        !task.sha ||
+        !baseRef ||
+        !paths
+      )
+        throw new Error(
+          "continue requires a delivery, new base and explicit scope",
+        );
+      const original = registryRoot(root);
+      if (registryRoot(task.worktree) !== original)
+        throw new Error("Worktree belongs to another repo");
+      clean(task);
+      noProcesses(task);
+      if (
+        git(task.worktree, ["rev-parse", "HEAD"]) !== task.sha ||
+        git(task.worktree, ["branch", "--show-current"]) !== task.branch
+      )
+        throw new Error("Checkout changed after delivery");
+      const base = git(original, ["rev-parse", `${baseRef}^{commit}`]);
+      git(original, ["merge-base", "--is-ancestor", task.sha, base]);
+      git(original, ["merge-base", "--is-ancestor", base, "dev"]);
+      const continued: Task = {
+        ...task,
+        base,
+        paths: [...new Set([...task.paths, ...paths.split(",")])],
+        resources: resources.split(",").filter(Boolean),
+        state: "reserved",
+      };
+      reserve(
+        registry.tasks.filter((other) => other.id !== id),
+        continued,
+      );
+      // All checks precede the fast-forward; never discard an earlier revision.
+      git(task.worktree, ["merge", "--ff-only", base]);
+      task.continuations = [
+        ...(task.continuations ?? []),
+        {
+          sha: task.sha,
+          base: task.base,
+          paths: task.paths,
+          resources: task.resources,
+        },
+      ];
+      task.base = continued.base;
+      task.paths = continued.paths;
+      task.resources = continued.resources;
+      task.state = "reserved";
+      delete task.sha;
+    } else if (command === "resources") {
       if (task.state === "integrated" || task.state === "retired")
         throw new Error("Resource assignment requires an active task");
       const assigned = {
@@ -319,7 +376,7 @@ export function run(root: string, args: string[]) {
       task.state = "retired";
     } else
       throw new Error(
-        "Use status/reserve/extend/resources/deliver/accept/reject/refresh/integrate/cleanup",
+        "Use status/reserve/continue/extend/resources/deliver/accept/reject/refresh/integrate/cleanup",
       );
   });
   return "OK\n";

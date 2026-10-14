@@ -9,6 +9,79 @@ afterEach(() => {
   if (fixture) rmSync(fixture, { recursive: true, force: true });
 });
 
+it("continues a documentary delivery without false rejection or losing history", () => {
+  fixture = mkdtempSync(join(tmpdir(), "factory-continuation-"));
+  git(fixture, ["init", "-b", "main"]);
+  git(fixture, ["config", "user.email", "fixture@example.test"]);
+  git(fixture, ["config", "user.name", "Factory fixture"]);
+  writeFileSync(join(fixture, ".gitignore"), ".factory\nworker\nother\n");
+  writeFileSync(join(fixture, "spec.md"), "closed\n");
+  git(fixture, ["add", "."]);
+  git(fixture, ["commit", "-m", "base"]);
+  const originalBase = git(fixture, ["rev-parse", "HEAD"]);
+  git(fixture, ["checkout", "-b", "dev"]);
+  const worker = join(fixture, "worker");
+  git(fixture, ["worktree", "add", "-b", "task", worker, originalBase]);
+  run(fixture, ["reserve", "task", worker, originalBase, "spec.md"]);
+  writeFileSync(join(worker, "spec.md"), "accepted contract\n");
+  git(worker, ["add", "spec.md"]);
+  git(worker, ["commit", "-m", "spec"]);
+  const delivery = git(worker, ["rev-parse", "HEAD"]);
+  run(fixture, ["deliver", "task"]);
+  expect(() =>
+    run(fixture, ["continue", "task", originalBase, "feature.ts"]),
+  ).toThrow();
+  writeFileSync(join(worker, "pending.txt"), "preserve\n");
+  expect(() =>
+    run(fixture, ["continue", "task", delivery, "feature.ts"]),
+  ).toThrow("dirty");
+  rmSync(join(worker, "pending.txt"));
+  git(fixture, ["merge", "--ff-only", delivery]);
+  writeFileSync(join(fixture, "coordinator.md"), "reserved\n");
+  git(fixture, ["add", "coordinator.md"]);
+  git(fixture, ["commit", "-m", "reservation"]);
+  const newBase = git(fixture, ["rev-parse", "HEAD"]);
+  const other = join(fixture, "other");
+  git(fixture, ["worktree", "add", "-b", "other-task", other, newBase]);
+  run(fixture, ["reserve", "other", other, newBase, "foreign.ts", "db:ci"]);
+  expect(() =>
+    run(fixture, ["continue", "task", newBase, "foreign.ts"]),
+  ).toThrow("Paths overlap");
+  expect(() =>
+    run(fixture, ["continue", "task", newBase, "feature.ts", "db:ci"]),
+  ).toThrow("Resources overlap");
+  expect(() =>
+    run(fixture, ["continue", "task", newBase, "../escape"]),
+  ).toThrow("explicit relative");
+  expect(git(worker, ["rev-parse", "HEAD"])).toBe(delivery);
+  run(fixture, ["continue", "task", newBase, "feature.ts", "port:43120"]);
+  const saved = JSON.parse(
+    readFileSync(join(fixture, ".factory/registry.json"), "utf8"),
+  ).tasks[0];
+  expect(saved).toMatchObject({
+    state: "reserved",
+    base: newBase,
+    paths: ["spec.md", "feature.ts"],
+    revisions: [{ sha: delivery }],
+  });
+  expect(saved.sha).toBeUndefined();
+  expect(saved.continuations).toEqual([
+    { sha: delivery, base: originalBase, paths: ["spec.md"], resources: [] },
+  ]);
+  expect(git(worker, ["rev-parse", "HEAD"])).toBe(newBase);
+  expect(() => run(fixture, ["accept", "task", delivery])).toThrow(
+    "delivered SHA",
+  );
+  expect(() => run(fixture, ["cleanup", "task"])).toThrow("Cleanup requires");
+  writeFileSync(join(worker, "feature.ts"), "export const result = 1;\n");
+  git(worker, ["add", "feature.ts"]);
+  git(worker, ["commit", "-m", "implementation"]);
+  run(fixture, ["deliver", "task"]);
+  const implemented = git(worker, ["rev-parse", "HEAD"]);
+  run(fixture, ["accept", "task", implemented]);
+  expect(() => run(fixture, ["integrate", "task"])).toThrow();
+}, 10000);
+
 it("QA rejection preserves history and can deliver a corrected revision; stale approval cannot approve it", () => {
   fixture = mkdtempSync(join(tmpdir(), "factory-lifecycle-"));
   git(fixture, ["init", "-b", "main"]);
