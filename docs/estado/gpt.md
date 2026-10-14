@@ -3,7 +3,17 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — SPEC0227 IMPLEMENTADA E INTEGRADA EN MAIN LOCAL; QA PASS (2026-10-14)
+## ESTADO — SPECS0228/0229 EN IMPLEMENTACIÓN; QA ABIERTA (2026-10-14)
+
+Owner autorizó continuar el [handoff0228/0229](../handoff-0228-0229-implementacion.md) con dos implementadores y QA independiente hasta PASS completo. Reserva/coordinación/harness `e62b07dd`: continuidad documental validada5/5 por autor y QA, histórico preservado, checkout limpio/ancestros/repositorio/scope/recursos/procesos comprobados, cleanup intacto. [Fichas y ampliación B](../factory/0228-0229-contract.md). Main local permanece39d00edf; ningún push/PROD ni autorización final de merge solicitada aún.
+
+A usa reserva `cost-spec-0228`, worktree `/private/tmp/checkpass-0228/factory-0228-cost-spec`, basee62b07dd; fundamento común esquema `c9e75c87`, producto `c22089c3`. Único writer esquema/journal0084 de ambos encargos; expand5columnas3checks, sin contract0227 ni seed histórico. Unit17 y tipos/lint/formatoPASS autor. CI protegida migró0084 mediante wrapper. CorridaDB inicial en sandbox detenida143 con timeouts; escalada posterior sigue abierta, coreconsumption6PASS/4FAIL (concurrencia,10k/20s,cut70k/2s,cancelación). NoPASSfuncional; se comparará baseline exacta si procede, sin subir límites/relajarasserts.
+
+B usa `brand-tax-spec-0229`, worktree `/private/tmp/checkpass-0229/factory-0229-brand-tax-spec`, basec9e75c87; producto/testcorregido `6980207e`, trabajo previo preservado en `backup/0229-brand-before-foundation`. Unit41 y tipos/lint/guardPASS; fiscalbrowser4+regresión19PASS, QA visual390/1280 claro/oscuro conforme. Prueba noefectos movida a raízmodules por frontera,17/17PASS tras corregir ubicación. DB20casos reales preparados, espera reservaA. Ninguna fiscalidad activa ni cálculo Stock lee datosMarca.
+
+QA usa `qa-0228-0229`, tercer árbol `/private/tmp/checkpass-0228-0229/factory-0228-0229-qa`, basee62b07dd; informe propio en elaboración. Harness/snapshot inspeccionados, aceptación A/B y combinación pendientes. Reproducirá señales decisivas y verificará buildMerchant una vez sobre candidato congelado. DB sólo wrapperCI y turno serial reservado también teardown; archivo CI-only `/private/tmp/checkpass-0228-0229-ci.env`. Conservar los tres árboles y entregas, sin cleanup hasta aceptación/merge autorizado a main local.
+
+## HISTÓRICO — SPEC0227 IMPLEMENTADA E INTEGRADA EN MAIN LOCAL; QA PASS (2026-10-14)
 
 Owner autorizó el merge local: «si hacemos el merge a local». Candidato `f37785190ebbb598abbf36dc3111d3cf0a385610` integrado por fast-forward desde `402f38b2`; `dev` sincronizada, sin cambiar de rama el checkout principal ni tocar archivos ajenos. Producto verificado `2c58a61fe600a4b20d504b9f99fa085368c2ade1`, entregas A `87deae34` y B `4a07b7e1`. El cierre posterior modifica sólo documentación. [Informe QA independiente](../factory/0227-qa.md), [entrega A](../factory/0227-stock.md), [entrega B](../factory/0227-integration.md).
 
