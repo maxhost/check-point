@@ -25,6 +25,7 @@ import {
 import { ACCEPTED_IMAGE_LABEL } from "../lib/image-formats";
 import { BrandError, type BrandRecord, imageTypes } from "./brand/core";
 import { validateBrandInput } from "./brand/validation";
+import { resultingBrandVat } from "./brand/vat";
 import { cleanupPrefixNow } from "./brand/cleanup";
 
 export { BrandError } from "./brand/core";
@@ -59,6 +60,9 @@ export async function ownerBusiness(
       name: businesses.name,
       timezone: businesses.timezone,
       currencyCode: businesses.currencyCode,
+      chargesVat: businesses.chargesVat,
+      saleVatRate: businesses.saleVatRate,
+      recoversPurchaseVat: businesses.recoversPurchaseVat,
       brandPrimaryColor: businesses.brandPrimaryColor,
       brandComplementaryColor: businesses.brandComplementaryColor,
       brandAccentColor: businesses.brandAccentColor,
@@ -100,6 +104,9 @@ export async function brandForBusiness(
       name: businesses.name,
       timezone: businesses.timezone,
       currencyCode: businesses.currencyCode,
+      chargesVat: businesses.chargesVat,
+      saleVatRate: businesses.saleVatRate,
+      recoversPurchaseVat: businesses.recoversPurchaseVat,
       brandPrimaryColor: businesses.brandPrimaryColor,
       brandComplementaryColor: businesses.brandComplementaryColor,
       brandAccentColor: businesses.brandAccentColor,
@@ -197,6 +204,23 @@ export async function saveBrand(
   const business = await ownerBusiness(userId, businessId);
   if (!business) throw new BrandError(403, "No tienes un negocio como owner.");
 
+  // Compose legacy omissions only from the version the caller is editing.
+  // The UPDATE predicate below closes the race if another session saves afterwards.
+  if (business.brandRevision !== input.revision) {
+    throw new BrandError(
+      409,
+      "La marca cambió en otra sesión. Recarga la página antes de guardar.",
+    );
+  }
+  const vat = resultingBrandVat(
+    {
+      chargesVat: business.chargesVat,
+      saleVatRate: business.saleVatRate,
+      recoversPurchaseVat: business.recoversPurchaseVat,
+    },
+    input.vat,
+  );
+
   let newPrefix: string | null = null;
   if (input.logoAction === "replace") {
     const upload = await consumeUpload(business.id, input.uploadId!);
@@ -241,6 +265,7 @@ export async function saveBrand(
       name: input.name,
       timezone: input.timezone,
       currencyCode: input.currencyCode ?? businesses.currencyCode,
+      ...vat,
       brandPrimaryColor: input.brandPrimaryColor,
       brandComplementaryColor: input.brandComplementaryColor,
       brandAccentColor: input.brandAccentColor,
@@ -262,6 +287,9 @@ export async function saveBrand(
       name: businesses.name,
       timezone: businesses.timezone,
       currencyCode: businesses.currencyCode,
+      chargesVat: businesses.chargesVat,
+      saleVatRate: businesses.saleVatRate,
+      recoversPurchaseVat: businesses.recoversPurchaseVat,
       brandPrimaryColor: businesses.brandPrimaryColor,
       brandComplementaryColor: businesses.brandComplementaryColor,
       brandAccentColor: businesses.brandAccentColor,

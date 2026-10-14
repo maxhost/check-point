@@ -5,6 +5,7 @@ import { MagicWand, Palette, Settings } from "iconoir-react";
 import { ModuleHeader, Toast } from "../../components/ui";
 import { useIsTouch } from "../catalog/use-is-touch";
 import { RegionalFields } from "./regional-fields";
+import { FiscalFields } from "./fiscal-fields";
 import { BrandIdentity } from "./brand-identity";
 import { BrandRecovery } from "./brand-recovery";
 import { brandColors, validBrandColor } from "./brand-api";
@@ -219,6 +220,27 @@ function BrandEditor({ isOwner }: { isOwner: boolean }) {
                 onCurrencyChange={(currencyCode) =>
                   setDraft({ ...draft, currencyCode })
                 }
+              />
+            </section>
+
+            <section className="brand-section" aria-labelledby="fiscal-title">
+              <header className="brand-section-head">
+                <span aria-hidden="true">
+                  <Settings />
+                </span>
+                <div>
+                  <h2 id="fiscal-title">Datos fiscales</h2>
+                  <p>
+                    Guardamos estos datos para funciones futuras. Hoy no cambian
+                    los precios del catálogo, los cobros del POS ni los costos
+                    de tus insumos.
+                  </p>
+                </div>
+              </header>
+              <FiscalFields
+                draft={draft}
+                onChange={setDraft}
+                disabled={saving || accessDenied}
               />
             </section>
 
