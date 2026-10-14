@@ -1,7 +1,7 @@
 ---
 spec: 0226
 fecha: 2026-10-13
-estado: cerrada
+estado: implementada
 resumen: Rehabilitar Foto en Stock y Recetas con contratos0224, camara/galeria1-3fotos, JPEG2000px o original si no decodifica, multipart y borrador editable existente. Dos tareas independientes del piloto0225 y QAconjunto, sin cambiosAPI/kit/PROD.
 disjunta: si entre Stock y Recetas; helpers comunes preparados antes por coordinador
 archivos: apps/merchant/src/modules/{stock,recipes}/ui/**, apps/merchant/src/app/backoffice/{panel-request.ts,draft-photos.ts}, tests/e2e/{stock-photos,recipes-photos}.spec.ts, tests/e2e/support/*photos*, docs/factory/**
@@ -28,14 +28,18 @@ Coordinador prepara panel-request/draft-photos antes. Workerstock: solo modules/
 
 ## Definition of Done y pruebas
 
-- [ ] Camara/galeria1-3fotos, preparacion/tamaño/fallback y reeleccion disponibles en ambas superficies.
-- [ ] Multipart correcto, error/retry conserva seleccion, dobleenvio/cierre bloqueados.
-- [ ] Borrador editable y guardado explicito preservan flujo de Stock/Recetas; dictado/manual siguen disponibles.
-- [ ] E2e focales de exito+error+concurrencia y limites de fotos, render390/1280 inspeccionado en maxdosrondas.
-- [ ] Tipos/lint/guardia sin aumentos; buildMerchant en candidato; QAindependiente comprueba aceptacion conjunta.
+- [x] Camara/galeria1-3fotos, preparacion/tamaño/fallback y reeleccion disponibles en ambas superficies.
+- [x] Multipart correcto, error/retry conserva seleccion, dobleenvio/cierre bloqueados.
+- [x] Borrador editable y guardado explicito preservan flujo de Stock/Recetas; dictado/manual siguen disponibles.
+- [x] E2e focales de exito+error+concurrencia y limites de fotos, render390/1280 inspeccionado en maxdosrondas.
+- [x] Tipos/lint/guardia sin aumentos; buildMerchant en candidato; QAindependiente comprueba aceptacion conjunta.
 
 No unit+Neon+browser+mutaciones universal: browserpara archivos/multipart/interaccion, helperunitpara logica si aporta. Contrato/guardsDB ya tienen pruebas0224; smoke real si entorno disponible, nuncaIAcontraPROD. Gatefinal0225 cubre backlog.
 
 ## Abierto
 
 Nada de producto abierto. IAreal necesita entorno local configurado; no inventar evidencia ni tocar Vercel/PROD. Spec0224 §Encargo aGPT y ADR0143 son fuente del contrato.
+
+## Entrega y verificación
+
+Stock244882bb y Recetasa2fab2e2, QA independiente2b7ae272 PASS.9/9browser focal;390/1280 inspeccionados. Smoke OpenAI real en DBlocal ficticia: ambas200,2/3líneas, yield2Recetas, sin guardado. Gates y límites en docs/factory/0225-qa.md y estadoGPT. Sin push/PROD.

@@ -3,7 +3,21 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — POS Y MESAS COMO MÓDULOS, SPEC0222 / 0220 PARTE 2b (2026-10-13)
+## ESTADO — PILOTO FACTORY IMPLEMENTADO, QA ACEPTADO; SIN PUBLICACIÓN (2026-10-13)
+
+Owner aprobó dos implementadores fullstack, coordinador y QA independiente, dev como base, main local listo y cada publicación con autorización explícita. Base Claude bca17ec + handoff148c38af. Harness a6dc532d, correcciones ee9a0081/968de91d, fotosStock244882bb y Recetasa2fab2e2; QA2b7ae272 incorporado. [Informe independiente](../factory/0225-qa.md), ADR0144 y specs0225/0226. OpenAI real sobre datos ficticios/local: Stock200 con2líneas8s; Recetas200 con3líneas/yield2 en5s; no compras/recetas guardadas, flags/sesión temporal restaurados. No smoke real del menú/dictado.
+
+Evidencia:9/9browser focal,44/44tools,19/19antiPROD/runner. Tipos/lint/guardia/unit2726 verdes; format corregido f00b093e;4buildsWebpack verdes (TurbopackEPERM). Globalbrowser390PASS62skip sin retries. Neon inicial3674PASS282skip y2suitesPOSFAIL por deadlockDDL; solo esas2repetidas secuencialmente7/7PASS. Nueva receta separa migraciones del resto: auditada y comprobada con guard19/19; no nueva corrida global real. NO afirmar pnpmverifyEXIT0. Preparar publicación con sus gates y migraciones0079/0080/0081 solo cuando owner autorice; PROD/originmain4208714 intactos.
+
+Corrección tras feedback owner40min: main local exige evidencia focal+QA+integración proporcional, sin batería de publicación por defecto. Repetir/ampliar solo por cambio/fallo/riesgo concreto. Pre-push vigente conserva verify, sin bypass; no ocultar duplicación. Factory es piloto operado por coordinador con registro local/locks y tres worktrees temporales, no scheduler autónomo continuo. Siguiente trabajo: tomar otras dos tareas con contratos/scopes disjuntos. Cierre main local y retiro de árboles se registra al completar los comandos; artefactos/skills ajenos preservados.
+
+## HISTÓRICO — INVESTIGACIÓN PREVIA A ADOPCIÓN FACTORY (2026-10-13)
+
+Owner pidió investigar factory continua: descomposición producto→feature→tarea,2implementadores que toman otra tarea mientras QA revisa, fixes reasignables y un integrador. [Investigación Symphony/casos](../investigacion-software-factory-symphony-2026-10-13.md), enlazada desde [plan pendiente](../plan-piloto-multiagente-2026-10-13.md). Recomienda pool2workers incluyendo fixes,1QA y coordinador/integrador para los4lugares actuales; escalar por cola/WIP/aceptación integrada, no todos ocupados ni cero cuellos prometidos. Entregas/SHA preservados y contexto fresco QA; aceptación tarea/feature/combinación/release separadas. Symphony scheduler candidato para spike después del piloto, no instalar ahora; ejemplo WORKFLOW no copiar(PR/push/rework). Main/live deben separarse si se quieren merges remotos continuos. GPT UI/backend al adoptar política; cierre completo/merge/sincronización Claude siguen condición previa, sin inicio automático.
+
+Fuentes primarias abiertas: SymphonyREADME/SPEC/elixirREADME/WORKFLOW; OpenAIharnessengineering y guía verificación; StrongDMfactory relatoCTO; Cursor self-driving investigación; entrevista original RyanCarson/Untangle(agosto2026). Casos pequeños equipos/solo y prototipos separados de equivalenciaSalesforce: no se certifica calidad/escala por PRs o númeroagentes. Symphonypreview; referencia actual documenta Linear/GitHub/Jira/Asana, límites global/estado y workspaces; QAindependiente/migraciones/WIP son adaptación a comprobar. Solo investigación/enlace/estado propio, formato comprobado al cerrar; sin instalación/agentes/worktrees, números reservados, código/hooks/reglas/permisos, commit/merge/push ni operacionesPROD. Backend/staging Claude preservados. CI última consulta previa main4208714 rojoPOS; no se revalidó salud de producto en esta investigación. Pendiente cierre independiente0222 indicado abajo.
+
+## HISTÓRICO — ENTREGA POS Y MESAS COMO MÓDULOS, SPEC0222 / 0220 PARTE 2b (2026-10-13)
 
 Encargo completo entregado en `dev`, sin push/merge/deploy. Reserva `549ae06`; helper HTTP `369da93`; traslado/enganches `1ff282f`; marcado visual de barra `c4ca538`; e2e `f779b80`. Evidencia y bitácora en [spec0222](../specs/0222-pantallas-pos-mesas-modulos.md). Spec cerrada, pendiente PASS independiente conjunto de Claude.
 

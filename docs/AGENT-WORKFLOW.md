@@ -19,6 +19,8 @@ Tarea: preparada → ejecutando → entregada → QA(PASS/FAIL) → integrada en
 
 Preparar recursos comunes → despachar tareas → checksfocales/entregas → QA temprano → integrar serialmente en dev → congelar candidato → QAinteracciones y gates pertinentes → mainlocal → cleanup. La cola admite tareas nuevas mientras QA trabaja si hay recursos/worktrees disponibles. No actualizar un checkout por detras de una prueba ni publicar automaticamente.
 
+Main local no exige la batería de publicación por defecto: reutilizar checks del autor y validar interacciones afectadas. Gates amplios solo por riesgo concreto o al preparar publicación autorizada. Ante un fallo, corregir y repetir el check afectado; no reiniciar toda la batería si la identidad de las demás evidencias sigue válida. Esta es la corrección operativa tras la demora del primer piloto.
+
 Ante fallo: esperado/observado, reproduccion, categoria(producto/interaccion/setup/test) e impacto. Arreglo rutinario dentro de scope no exige specnueva. Cambio material de producto vuelve al owner. Tests obsoletos pueden actualizarse por comportamiento aprobado dejando motivo; no relajarlos para esconder unbug. Reintentos/skips no son aprobacion.
 
 ## Handoff breve
