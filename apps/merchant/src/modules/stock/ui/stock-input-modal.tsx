@@ -1,11 +1,19 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { EditPencil, Microphone, Plus, Spark, Trash } from "iconoir-react";
+import {
+  Camera,
+  EditPencil,
+  Microphone,
+  Plus,
+  Spark,
+  Trash,
+} from "iconoir-react";
 import {
   Alert,
   Button,
   CheckboxField,
+  FileButton,
   Form,
   FormActions,
   Heading,
@@ -15,6 +23,7 @@ import {
   TextField,
 } from "../../../ui";
 import { StaffFormModal } from "../../../app/backoffice/staff/staff-form-modal";
+import { requestPhotoDraft } from "../../../app/backoffice/draft-photos";
 import { panelRequest } from "../../../app/backoffice/panel-request";
 import {
   baseUnit,
@@ -29,7 +38,7 @@ import {
   type StockLine,
 } from "./stock-types";
 
-type Method = "voice" | "text";
+type Method = "voice" | "photo" | "text";
 const message = (cause: unknown) =>
   cause instanceof Error
     ? cause.message
@@ -52,6 +61,7 @@ export function StockInputModal({
   const [lines, setLines] = useState<StockLine[]>([blankLine("first")]);
   const [draftLines, setDraftLines] = useState<StockLine[]>([]);
   const [transcript, setTranscript] = useState("");
+  const [photos, setPhotos] = useState<File[]>([]);
   const [reviewing, setReviewing] = useState(false);
   const [unparsed, setUnparsed] = useState<string[]>([]);
   const [acknowledged, setAcknowledged] = useState(false);
@@ -111,18 +121,42 @@ export function StockInputModal({
     validation = message(cause);
   }
 
+  function close() {
+    if (!lock.current) onClose();
+  }
+  function selectPhotos(selected: File[], append = false) {
+    if (lock.current) return;
+    const next = append ? [...photos, ...selected] : selected;
+    if (next.length > 3) {
+      setError("Elige entre 1 y 3 fotos. Quita una antes de añadir otra.");
+      return;
+    }
+    setPhotos(next);
+    setError(null);
+  }
   async function analyze() {
     const text = transcript.trim();
-    if (lock.current || !text || text.length > 2000 || !items) return;
+    if (
+      lock.current ||
+      !items ||
+      (method === "photo" ? !photos.length : !text || text.length > 2000)
+    )
+      return;
     lock.current = true;
     setBusy("analyze");
     setError(null);
     try {
-      const result = await panelRequest<{ draft: StockDraft }>(
-        "/api/modules/stock/entries/draft",
-        "POST",
-        { text },
-      );
+      const result =
+        method === "photo"
+          ? await requestPhotoDraft<{ draft: StockDraft }>(
+              "/api/modules/stock/entries/draft-photo",
+              photos,
+            )
+          : await panelRequest<{ draft: StockDraft }>(
+              "/api/modules/stock/entries/draft",
+              "POST",
+              { text },
+            );
       if (!mounted.current) return;
       setDraftLines(
         result.draft.lines.length
@@ -179,6 +213,7 @@ export function StockInputModal({
     ? []
     : [
         { id: "voice" as const, label: "Audio", icon: Microphone },
+        { id: "photo" as const, label: "Foto", icon: Camera },
         { id: "text" as const, label: "Manual", icon: EditPencil },
       ];
 
@@ -192,9 +227,9 @@ export function StockInputModal({
           ? "Indica cuánto tienes ahora. El ajuste se calcula a partir del conteo."
           : reviewing
             ? "Revisa los ítems, corrige lo que necesites y guarda o descarta la compra."
-            : "Ingresa tu compra por dictado o a mano. El precio es opcional."
+            : "Ingresa tu compra por audio, foto o a mano. El precio es opcional."
       }
-      onClose={onClose}
+      onClose={close}
       dismissible={!busy}
     >
       <div className="grid gap-6">
@@ -202,7 +237,7 @@ export function StockInputModal({
           <div
             role="group"
             aria-label="Forma de ingresar el stock"
-            className="grid grid-cols-2 gap-2"
+            className="grid grid-cols-3 gap-2"
           >
             {options.map(({ id, label, icon: Icon }) => (
               <Button
@@ -211,8 +246,10 @@ export function StockInputModal({
                 aria-pressed={method === id}
                 isDisabled={!!busy}
                 onPress={() => {
-                  setMethod(id);
-                  setError(null);
+                  if (!lock.current) {
+                    setMethod(id);
+                    setError(null);
+                  }
                 }}
               >
                 <Icon aria-hidden="true" className="size-5" />
@@ -236,7 +273,7 @@ export function StockInputModal({
         )}
         {!items && !itemError && <Text>Cargando insumos…</Text>}
         {error && <Alert kind="error" title={error} />}
-        {!adjusting && !reviewing && method === "voice" && (
+        {!adjusting && !reviewing && method !== "text" && (
           <Form
             onSubmit={(event) => {
               event.preventDefault();
@@ -253,21 +290,86 @@ export function StockInputModal({
                 y guardes.
               </Text>
             </div>
-            <TextAreaField
-              label="Describe tu compra"
-              description="Usa el micrófono en tu teclado. Menciona el nombre, la cantidad y, si lo tienes, el precio total de cada ítem. La transcripción aparecerá aquí."
-              placeholder="Hoy compré 1 kg de harina por 25, un cartón de 30 huevos por 4 y 2 kg de tomates por 7."
-              value={transcript}
-              onChange={setTranscript}
-              maxLength={2000}
-              isDisabled={!!busy}
-            />
-            <Text variant="small">
-              {transcript.length} / 2000 caracteres. Puedes corregir el texto
-              antes de analizar.
-            </Text>
+            {method === "photo" ? (
+              <div className="grid gap-3">
+                <Text>Elige de 1 a 3 fotos de tu compra o comprobante.</Text>
+                <Text variant="small">
+                  Preparamos las fotos antes de enviarlas: hasta 4 MB por foto y
+                  4,4 MB en total.
+                </Text>
+                <div className="flex flex-wrap gap-2">
+                  <FileButton
+                    accept="image/*"
+                    multiple
+                    inputLabel="Fotos de stock desde galería"
+                    isDisabled={!!busy}
+                    onSelect={(files) => selectPhotos(files)}
+                  >
+                    {photos.length ? "Cambiar fotos" : "Elegir fotos"}
+                  </FileButton>
+                  <FileButton
+                    accept="image/*"
+                    camera
+                    inputLabel="Foto de stock desde cámara"
+                    isDisabled={!!busy || photos.length >= 3}
+                    onSelect={(files) => selectPhotos(files, true)}
+                    icon={<Camera />}
+                  >
+                    Tomar foto
+                  </FileButton>
+                </div>
+                {photos.map((photo, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between gap-3"
+                  >
+                    <Text className="min-w-0 break-all">
+                      {index + 1}. {photo.name}
+                    </Text>
+                    <Button
+                      variant="quiet"
+                      aria-label={`Quitar foto ${index + 1}`}
+                      isDisabled={!!busy}
+                      onPress={() => {
+                        if (lock.current) return;
+                        setPhotos((current) =>
+                          current.filter((_, i) => i !== index),
+                        );
+                        setError(null);
+                      }}
+                    >
+                      <Trash aria-hidden="true" className="size-5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <>
+                <TextAreaField
+                  label="Describe tu compra"
+                  description="Usa el micrófono en tu teclado. Menciona el nombre, la cantidad y, si lo tienes, el precio total de cada ítem. La transcripción aparecerá aquí."
+                  placeholder="Hoy compré 1 kg de harina por 25, un cartón de 30 huevos por 4 y 2 kg de tomates por 7."
+                  value={transcript}
+                  onChange={setTranscript}
+                  maxLength={2000}
+                  isDisabled={!!busy}
+                />
+                <Text variant="small">
+                  {transcript.length} / 2000 caracteres. Puedes corregir el
+                  texto antes de analizar.
+                </Text>
+              </>
+            )}
+            {busy === "analyze" && (
+              <div role="status">
+                <Text>
+                  Estamos preparando tu borrador. Puede tardar hasta 45
+                  segundos.
+                </Text>
+              </div>
+            )}
             <FormActions>
-              <Button variant="secondary" onPress={onClose} isDisabled={!!busy}>
+              <Button variant="secondary" onPress={close} isDisabled={!!busy}>
                 Descartar
               </Button>
               <Button
@@ -275,8 +377,9 @@ export function StockInputModal({
                 isLoading={busy === "analyze"}
                 isDisabled={
                   !items ||
-                  !transcript.trim() ||
-                  transcript.trim().length > 2000 ||
+                  (method === "photo"
+                    ? !photos.length
+                    : !transcript.trim() || transcript.trim().length > 2000) ||
                   !!busy
                 }
               >
@@ -287,9 +390,12 @@ export function StockInputModal({
               <div>
                 <Button
                   variant="quiet"
+                  isDisabled={!!busy}
                   onPress={() => {
-                    setMethod("text");
-                    setError(null);
+                    if (!lock.current) {
+                      setMethod("text");
+                      setError(null);
+                    }
                   }}
                 >
                   Cargar a mano
@@ -464,13 +570,15 @@ export function StockInputModal({
                     setError(null);
                   }}
                 >
-                  Volver al texto
+                  {method === "photo"
+                    ? "Volver a las fotos"
+                    : "Volver al texto"}
                 </Button>
               </div>
             )}
             {validation && <Text variant="small">{validation}</Text>}
             <FormActions>
-              <Button variant="secondary" isDisabled={!!busy} onPress={onClose}>
+              <Button variant="secondary" isDisabled={!!busy} onPress={close}>
                 Descartar
               </Button>
               <Button
