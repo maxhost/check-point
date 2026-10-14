@@ -190,7 +190,21 @@ export function run(root: string, args: string[]) {
     }
     const task = registry.tasks.find((candidate) => candidate.id === id);
     if (!task) throw new Error("Unknown task");
-    if (command === "deliver") {
+    if (command === "extend") {
+      if (task.state !== "reserved" || task.sha)
+        throw new Error("Scope extension requires an implementing task");
+      if (!rest[0]) throw new Error("extend ID PATHS[,PATH]");
+      const expanded = {
+        ...task,
+        paths: [...new Set([...task.paths, ...rest[0].split(",")])],
+      };
+      // Reuse every reservation check, including foreign scopes/resources.
+      reserve(
+        registry.tasks.filter((other) => other.id !== id),
+        expanded,
+      );
+      task.paths = expanded.paths;
+    } else if (command === "deliver") {
       if (task.state !== "reserved")
         throw new Error("Task is not implementing");
       clean(task);
@@ -293,7 +307,7 @@ export function run(root: string, args: string[]) {
       task.state = "retired";
     } else
       throw new Error(
-        "Use status/reserve/deliver/accept/reject/refresh/integrate/cleanup",
+        "Use status/reserve/extend/deliver/accept/reject/refresh/integrate/cleanup",
       );
   });
   return "OK\n";

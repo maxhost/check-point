@@ -22,6 +22,14 @@ it("QA rejection preserves history and can deliver a corrected revision; stale a
   const worker = join(fixture, "worker");
   git(fixture, ["worktree", "add", "-b", "task", worker, base]);
   run(fixture, ["reserve", "task", worker, base, "feature.ts"]);
+  expect(() => run(fixture, ["extend", "task", "../foreign"])).toThrow(
+    "explicit relative",
+  );
+  run(fixture, ["extend", "task", "feature.ts,extra.ts"]);
+  expect(
+    JSON.parse(readFileSync(join(fixture, ".factory/registry.json"), "utf8"))
+      .tasks[0].paths,
+  ).toEqual(["feature.ts", "extra.ts"]);
   const commit = (value: number) => {
     writeFileSync(
       join(worker, "feature.ts"),
@@ -33,6 +41,9 @@ it("QA rejection preserves history and can deliver a corrected revision; stale a
   };
   const first = commit(1);
   run(fixture, ["deliver", "task"]);
+  expect(() => run(fixture, ["extend", "task", "late.ts"])).toThrow(
+    "implementing task",
+  );
   run(fixture, ["reject", "task", first, "wrong result"]);
   const second = commit(2);
   run(fixture, ["deliver", "task"]);
