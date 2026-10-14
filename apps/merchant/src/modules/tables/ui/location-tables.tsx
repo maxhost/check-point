@@ -28,6 +28,14 @@ export function LocationTables({
   const [notice, setNotice] = useState<string | null>(null);
   const locked = useRef(false);
   const mounted = useRef(false);
+  const tableList = useRef<HTMLDivElement>(null);
+  const revealNewTable = useRef(false);
+  useEffect(() => {
+    if (revealNewTable.current && tableList.current) {
+      tableList.current.scrollTop = tableList.current.scrollHeight;
+      revealNewTable.current = false;
+    }
+  }, [tables]);
   useEffect(() => {
     mounted.current = true;
     return () => {
@@ -77,6 +85,7 @@ export function LocationTables({
         archive ? { status: "archived" } : { name: draft!.name.trim() },
       );
       if (!mounted.current) return;
+      revealNewTable.current = !archive && !draft?.id;
       setTables((current) => {
         const next = current?.some((item) => item.id === table.id)
           ? current.map((item) => (item.id === table.id ? table : item))
@@ -129,7 +138,10 @@ export function LocationTables({
             )
           ) : (
             <>
-              <div className="grid max-h-64 gap-3 overflow-y-auto">
+              <div
+                ref={tableList}
+                className="grid max-h-64 gap-3 overflow-y-auto"
+              >
                 {!tables.length && (
                   <Text>No hay mesas añadidas en este local.</Text>
                 )}
