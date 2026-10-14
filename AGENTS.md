@@ -4,6 +4,7 @@ Codex: reglas comunes en `docs/TRABAJO-EN-PARALELO.md`, roles en `docs/AGENT-WOR
 
 - GPT puede implementar UI y backend dentro de los paths de su encargo. Kit/guardias/tooling/migraciones necesitan asignacion explicita; spec0225 autoriza el harness del piloto.
 - Dev es base/integracion. Worker usa worktree/ref local asignados; no cambia ramas del checkout principal. Main local recibe candidato tras QA; **cada push/operacionPROD requiere autorizacion explicita para ese caso**. Nunca push de feature/dev.
+- Autonomía autorizada por owner: dentro del encargo, editar, instalar dependencias, preparar/retirar worktrees propios, commit/merge local, ejecutar comprobaciones proporcionales, operar DB de desarrollo/CI protegidas y levantar servidores/túnel no requieren otra confirmación de tarea. **Push y migraciones de DB de producción siempre esperan autorización explícita del owner para ese caso**; una autorización técnica guardada o auto-review no la sustituye. Los permisos del sandbox se resuelven por la configuración de Codex; si bloquean un worker, avisar de inmediato al coordinador, no quedar esperando en silencio ni confundirlo con un fallo del producto.
 - Dos implementadores que tambien corrigen, un coordinador y QA independiente. No subdelegar ni crear reviewers extra por defecto. Specs funcionales cerradas; L0/L1 sin spec universal.
 - Node24: `source ~/.nvm/nvm.sh && nvm use` antes de comandos.
 - Modulos: `docs/MODULOS.md`; UI en `modules/<id>/ui`, no rutas/nombres del modulo en core. Contratos HTTP escritos aunque un agente haga ambas capas.

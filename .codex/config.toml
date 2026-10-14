@@ -1,0 +1,9 @@
+# Owner: local development is authorized; push and production DB migrations
+# require explicit owner authorization for each operation (see AGENTS.md).
+# Applies when this trusted project config is loaded; the active chat's
+# permission selector / managed requirements can override these preferences.
+approval_policy = "on-request"
+approvals_reviewer = "auto_review"
+
+[sandbox_workspace_write]
+network_access = true
