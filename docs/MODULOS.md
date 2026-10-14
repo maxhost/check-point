@@ -46,6 +46,7 @@ Direccion de dependencias: **modulo → core** y **modulo → modulo que declara
 | Permisos | `permissions` | los suma al selector del personal; sin efecto y no otorgables con el modulo apagado |
 | Pantallas | `ui-registry` | despacha `/backoffice/<id>/…`; 404 si el modulo esta apagado |
 | API | `server/routes.ts` | despacha `/api/modules/<id>/…` con guard de permiso + modulo encendido |
+| IA (ADR 0143) | sus tareas en `ai-tasks.ts` (id `<id>.<nombre>`, prompt, esquema, modelo, modo) y la ruta que las usa | `server/ai/` las ejecuta: proveedor, modelo por entorno, imagenes, logs y registro `core.ai_request` |
 
 ¿El modulo necesita algo que no esta en esta tabla (pantalla completa, inicio de la PWA, accion en Locales, regla para
 no apagarse)? **Se agrega el punto de enganche al core por ADR**, generico, y el modulo lo declara. Nunca un `if` con el
