@@ -236,7 +236,7 @@ run(
         });
       }
     });
-    it("late invalid entry line rolls back ledger and average, including seed marker", async () => {
+    it("late invalid entry line rolls back ledger and existing average", async () => {
       const id = await item();
       await purchase(id, "10", "20");
       const before = await pair(id);
