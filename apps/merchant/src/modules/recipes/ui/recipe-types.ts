@@ -10,6 +10,8 @@ export type RecipeSummary = {
   productId: string;
   productName: string;
   lineCount: number;
+  cost: string | null;
+  costComplete: boolean;
 };
 export type RecipeDetail = RecipeSummary & {
   lines: {

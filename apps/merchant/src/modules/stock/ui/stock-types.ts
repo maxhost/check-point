@@ -5,13 +5,19 @@ export type StockItem = {
   name: string;
   unit: StockUnit;
   status: "active" | "archived";
+  onHand?: string;
+  lastUnitCost?: string | null;
 };
 export type StockMovement = {
   id: string;
   itemId: string;
   itemName: string;
   unit: StockUnit;
-  kind: "purchase" | "adjustment";
+  kind: "purchase" | "adjustment" | "consumption";
+  locationId?: string;
+  sourceOrderId?: string | null;
+  sourceLineId?: string | null;
+  productId?: string | null;
   quantity: string;
   countedQuantity: string | null;
   totalCost: string | null;

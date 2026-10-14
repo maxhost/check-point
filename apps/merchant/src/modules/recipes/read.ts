@@ -1,9 +1,15 @@
 import { and, asc, eq, sql } from "drizzle-orm";
 import { type DbTransaction, getDb } from "@mi-pasaporte/db";
-import { products, recipeLines, stockItems } from "@mi-pasaporte/db/schema";
+import {
+  products,
+  recipeLines,
+  stockItems,
+  stockItemLocations,
+} from "@mi-pasaporte/db/schema";
 import { isUuid } from "@mi-pasaporte/domain/server/counter/core";
 import { formatDecimal, fromDb } from "../decimal";
 import { ModuleError } from "../errors";
+import { resolveLocation } from "../stock/local";
 import { UNIT_COST_SCALE } from "../stock/numbers";
 import { type CostSummary, lineCostOf, summarizeCost } from "./cost";
 
@@ -17,6 +23,7 @@ import { type CostSummary, lineCostOf, summarizeCost } from "./cost";
 export type RecipeSummary = CostSummary & {
   productId: string;
   productName: string;
+  locationId: string | null;
 };
 export type RecipeLineDTO = {
   itemId: string;
@@ -38,7 +45,12 @@ export const itemNotFound = () =>
   new ModuleError(404, "item_not_found", "Ese insumo no existe.");
 
 /** Las lineas del negocio (o de un producto), con su insumo, en el orden de la receta. */
-export async function linesOf(db: Db, businessId: string, productId?: string) {
+export async function linesOf(
+  db: Db,
+  businessId: string,
+  productId?: string,
+  locationId?: string | null,
+) {
   return db
     .select({
       productId: recipeLines.productId,
@@ -47,7 +59,7 @@ export async function linesOf(db: Db, businessId: string, productId?: string) {
       itemName: stockItems.name,
       unit: stockItems.unit,
       itemStatus: stockItems.status,
-      unitCost: stockItems.lastUnitCost,
+      unitCost: stockItemLocations.lastUnitCost,
     })
     .from(recipeLines)
     .innerJoin(
@@ -55,6 +67,14 @@ export async function linesOf(db: Db, businessId: string, productId?: string) {
       and(
         eq(stockItems.id, recipeLines.itemId),
         eq(stockItems.businessId, businessId),
+      ),
+    )
+    .leftJoin(
+      stockItemLocations,
+      and(
+        eq(stockItemLocations.businessId, businessId),
+        eq(stockItemLocations.itemId, stockItems.id),
+        locationId ? eq(stockItemLocations.locationId, locationId) : sql`false`,
       ),
     )
     .where(
@@ -73,10 +93,12 @@ type LineRow = Awaited<ReturnType<typeof linesOf>>[number];
 function summaryOf(
   product: { id: string; name: string; unitPrice: string | null },
   lines: LineRow[],
+  locationId: string | null = null,
 ): RecipeSummary {
   return {
     productId: product.id,
     productName: product.name,
+    locationId,
     ...summarizeCost(product.unitPrice, lines),
   };
 }
@@ -84,9 +106,10 @@ function summaryOf(
 export function toRecipe(
   product: { id: string; name: string; unitPrice: string | null },
   lines: LineRow[],
+  locationId: string | null = null,
 ): RecipeDTO {
   return {
-    ...summaryOf(product, lines),
+    ...summaryOf(product, lines, locationId),
     lines: lines.map((line) => ({
       itemId: line.itemId,
       itemName: line.itemName,
@@ -134,8 +157,10 @@ export async function ownProduct(
 /** `GET /api/modules/recipes` — TODOS los productos del catalogo, con o sin receta, por nombre. */
 export async function listRecipes(
   businessId: string,
+  rawLocationId?: unknown,
 ): Promise<RecipeSummary[]> {
   const db = getDb();
+  const locationId = (await resolveLocation(businessId, rawLocationId)).id;
   const [catalog, lines] = await Promise.all([
     db
       .select({
@@ -146,7 +171,7 @@ export async function listRecipes(
       .from(products)
       .where(eq(products.businessId, businessId))
       .orderBy(asc(sql`lower(${products.name})`), asc(products.id)),
-    linesOf(db, businessId),
+    linesOf(db, businessId, undefined, locationId),
   ]);
   const byProduct = new Map<string, LineRow[]>();
   for (const line of lines) {
@@ -154,15 +179,23 @@ export async function listRecipes(
     list.push(line);
     byProduct.set(line.productId, list);
   }
-  return catalog.map((p) => summaryOf(p, byProduct.get(p.id) ?? []));
+  return catalog.map((p) =>
+    summaryOf(p, byProduct.get(p.id) ?? [], locationId),
+  );
 }
 
 /** `GET /api/modules/recipes/:productId`. */
 export async function readRecipe(
   businessId: string,
   rawProductId: unknown,
+  rawLocationId?: unknown,
 ): Promise<RecipeDTO> {
   const db = getDb();
   const product = await ownProduct(db, businessId, rawProductId, false);
-  return toRecipe(product, await linesOf(db, businessId, product.id));
+  const locationId = (await resolveLocation(businessId, rawLocationId)).id;
+  return toRecipe(
+    product,
+    await linesOf(db, businessId, product.id, locationId),
+    locationId,
+  );
 }

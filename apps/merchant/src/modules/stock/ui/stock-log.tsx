@@ -4,15 +4,24 @@ import { useEffect, useState } from "react";
 import { EditPencil, Package, Plus, Xmark } from "iconoir-react";
 import { Alert, Button, Dialog, Text } from "../../../ui";
 import { ModuleHeader } from "../../../app/components/ui";
+import { StockSummary } from "./stock-summary";
 import { StockInputModal } from "./stock-input-modal";
 import { StockLogSkeleton } from "./stock-skeleton";
 import {
   panelRequest,
   type PanelSession,
 } from "../../../app/backoffice/panel-request";
-import { formatAmount, type StockMovement } from "./stock-types";
+import { StockLocationField, useStockLocations } from "./stock-locations";
+import {
+  formatAmount,
+  type StockItem,
+  type StockMovement,
+} from "./stock-types";
 
 export function StockLog() {
+  const local = useStockLocations("/api/modules/stock/locations");
+  const [items, setItems] = useState<StockItem[]>([]);
+  const [pending, setPending] = useState({ count: 0, failed: 0 });
   const [entries, setEntries] = useState<StockMovement[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -34,11 +43,24 @@ export function StockLog() {
   }, []);
   useEffect(() => {
     let active = true;
-    void panelRequest<{ movements: StockMovement[] }>(
-      "/api/modules/stock/movements?limit=200",
-    )
-      .then((data) => {
-        if (active) setEntries(data.movements);
+    if (!local.locationId) return;
+    void Promise.all([
+      panelRequest<{
+        movements: StockMovement[];
+        pending: { count: number; failed: number };
+      }>(
+        `/api/modules/stock/movements?limit=200&locationId=${encodeURIComponent(local.locationId)}`,
+      ),
+      panelRequest<{ items: StockItem[] }>(
+        `/api/modules/stock/items?locationId=${encodeURIComponent(local.locationId)}`,
+      ),
+    ])
+      .then(([data, stock]) => {
+        if (active) {
+          setEntries(data.movements);
+          setPending(data.pending);
+          setItems(stock.items);
+        }
       })
       .catch((cause) => {
         if (active)
@@ -51,7 +73,7 @@ export function StockLog() {
     return () => {
       active = false;
     };
-  }, [attempt]);
+  }, [attempt, local.locationId]);
   function reload() {
     setError(null);
     setEntries(null);
@@ -83,8 +105,40 @@ export function StockLog() {
           description="Consulta los registros de stock de tu negocio."
           closeHref="/backoffice"
         />
+        {local.locations && (
+          <StockLocationField
+            locations={local.locations}
+            locationId={local.locationId}
+            onChange={(id) => {
+              cancel();
+              setEntries(null);
+              setItems([]);
+              setPending({ count: 0, failed: 0 });
+              setError(null);
+              local.setLocationId(id);
+            }}
+          />
+        )}
+        {local.error && (
+          <Alert kind="error" title={local.error}>
+            <Button variant="secondary" onPress={local.reload}>
+              Reintentar locales
+            </Button>
+          </Alert>
+        )}
+        {local.locations && !local.locationId && local.locations.length > 0 && (
+          <Text variant="muted">Elige un local para consultar su stock.</Text>
+        )}
+        {local.locations?.find((entry) => entry.id === local.locationId)
+          ?.status === "archived" && (
+          <Text variant="muted">
+            Este local está archivado. Puedes consultar sus registros y ajustar
+            el conteo.
+          </Text>
+        )}
         <div className="flex flex-wrap justify-end gap-3">
           <Button
+            isDisabled={!local.locationId}
             onPress={() => setMenuOpen(true)}
             aria-haspopup="dialog"
             aria-expanded={menuOpen}
@@ -100,7 +154,18 @@ export function StockLog() {
             </Button>
           </Alert>
         )}
-        {!entries && !error && <StockLogSkeleton />}
+        {!entries &&
+          !error &&
+          !local.error &&
+          (!local.locations || local.locationId) && <StockLogSkeleton />}
+        {entries && (
+          <StockSummary
+            items={items}
+            pending={pending}
+            currency={currency}
+            onReload={reload}
+          />
+        )}
         {entries?.length === 0 && (
           <Text variant="muted">
             Todavía no tienes registros. Registra tu primera compra o un conteo
@@ -125,6 +190,10 @@ export function StockLog() {
           <div className="grid gap-3">
             <Button
               variant="secondary"
+              isDisabled={
+                local.locations?.find((entry) => entry.id === local.locationId)
+                  ?.status !== "active"
+              }
               onPress={() => {
                 setMenuOpen(false);
                 setRegistration("new");
@@ -145,9 +214,10 @@ export function StockLog() {
             </Button>
           </div>
         </Dialog>
-        {registration && (
+        {registration && local.locationId && (
           <StockInputModal
             kind={registration}
+            locationId={local.locationId}
             onClose={cancel}
             onSaved={() => {
               cancel();
@@ -189,8 +259,12 @@ export function StockLog() {
                   <div role="cell" className="col-span-2 min-w-0 break-words">
                     <div className="grid gap-1">
                       <Text variant="label">
-                        {entry.kind === "purchase" ? "Compra" : "Conteo"} ·{" "}
-                        {entry.itemName}
+                        {entry.kind === "purchase"
+                          ? "Compra"
+                          : entry.kind === "consumption"
+                            ? "Consumo"
+                            : "Conteo"}{" "}
+                        · {entry.itemName}
                       </Text>
                       <Text>
                         {formatAmount(
@@ -203,7 +277,12 @@ export function StockLog() {
                           ? entry.totalCost === null
                             ? " · Sin precio"
                             : ` · Total: ${formatAmount(entry.totalCost)}${currency ? ` ${currency}` : ""}`
-                          : " contados"}
+                          : entry.kind === "adjustment"
+                            ? " contados"
+                            : " consumidos"}
+                        {entry.kind === "consumption" &&
+                          entry.sourceOrderId &&
+                          ` · Venta ${entry.sourceOrderId}`}
                       </Text>
                     </div>
                   </div>

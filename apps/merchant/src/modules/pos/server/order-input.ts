@@ -1,6 +1,8 @@
+import { and, asc, eq } from "drizzle-orm";
+import { getDb } from "@mi-pasaporte/db";
+import { locations } from "@mi-pasaporte/db/schema";
 import {
   CounterError,
-  assertLocationInBusiness,
   parseUuid,
 } from "@mi-pasaporte/domain/server/counter/core";
 import { PosError, VERSION_CONFLICT } from "./errors";
@@ -11,14 +13,42 @@ import { readPosOrder } from "./read";
  * del `version_conflict`. Separado de `orders.ts` por el limite del hook `file-size` (spec 0220).
  */
 
-/** `locationId` del cuerpo: ausente/null/"" → sin local; un uuid → tiene que ser un local ACTIVO
- * del negocio (`assertLocationInBusiness`, el error de hoy). */
+/** Orden nueva: local activo obligatorio. Sin selección, solo un activo se resuelve automáticamente. */
 export async function parseLocation(
   businessId: string,
   raw: unknown,
-): Promise<string | null> {
-  if (raw === undefined || raw === null || raw === "") return null;
-  return assertLocationInBusiness(businessId, parseUuid(raw, "locationId"));
+): Promise<string> {
+  const id =
+    raw === undefined || raw === null || raw === ""
+      ? null
+      : parseUuid(raw, "locationId");
+  const rows = await getDb()
+    .select({ id: locations.id, status: locations.status })
+    .from(locations)
+    .where(
+      and(
+        eq(locations.businessId, businessId),
+        id ? eq(locations.id, id) : eq(locations.status, "active"),
+      ),
+    )
+    .orderBy(asc(locations.createdAt), asc(locations.id));
+  if (id) {
+    if (!rows[0])
+      throw new CounterError(404, "location_not_found", "Ese local no existe.");
+    if (rows[0].status !== "active")
+      throw new CounterError(
+        409,
+        "location_archived",
+        "Ese local está archivado. Elige un local activo.",
+      );
+    return id;
+  }
+  if (rows.length === 1) return rows[0].id;
+  throw new CounterError(
+    422,
+    "location_required",
+    "Elige un local activo para la orden.",
+  );
 }
 
 /** `version_conflict` viaja con la orden ACTUAL en el cuerpo, releida despues del rollback. */

@@ -8,6 +8,7 @@ export const manifest: ModuleManifest = {
   name: "Recetas",
   description: "Receta de cada producto, costo y margen",
   requires: ["stock"],
+  optional: ["pos"],
   suggestedFor: [...GASTRONOMIA],
   permissions: [
     {

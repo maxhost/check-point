@@ -1,3 +1,8 @@
+import { after } from "next/server";
+import {
+  publishSaleClosed,
+  retryModuleEvents,
+} from "../../../server/module-events";
 import { and, eq } from "drizzle-orm";
 import { type DbTransaction, withDbTransaction } from "@mi-pasaporte/db";
 import { posOrders } from "@mi-pasaporte/db/schema";
@@ -193,15 +198,34 @@ export async function closePosOrder(
         outcome.created = granted;
       }
 
+      if (!row.locationId)
+        throw new CounterError(
+          422,
+          "location_required",
+          "La orden necesita un local válido.",
+        );
+      const event = await publishSaleClosed(tx, {
+        businessId: business.id,
+        sourceOrderId: id,
+        locationId: row.locationId,
+        closedAt: now,
+        userId,
+        lines: lines.map(({ sourceLineId, productId, quantity }) => ({
+          sourceLineId,
+          productId,
+          quantity,
+        })),
+      });
+      const closedAt = event?.closedAt ?? now;
       const [closed] = await tx
         .update(posOrders)
         .set({
           status: "closed",
-          closedAt: now,
+          closedAt,
           closedByUserId: userId,
           closeRequestId: input.clientRequestId,
           orderId,
-          updatedAt: now,
+          updatedAt: closedAt,
         })
         .where(and(eq(posOrders.id, id), eq(posOrders.status, "open")))
         .returning({ id: posOrders.id });
@@ -214,5 +238,20 @@ export async function closePosOrder(
   // Best-effort y no bloqueante (ADR 0037, spec 0143): el push y la venta cruzada, solo si ESTE
   // cierre creo la orden — nunca en el reintento ni en un rollback.
   if (outcome.created) afterGrant(outcome.created);
+  // Durable deliveries survive request completion; acceleration is bounded and cannot fail this sale.
+  const retry = () =>
+    retryModuleEvents({
+      businessId: business.id,
+      budgetMs: 2000,
+      batchSize: 50,
+    }).then(
+      () => undefined,
+      () => undefined,
+    );
+  try {
+    after(retry);
+  } catch {
+    void retry();
+  }
   return getPosOrder(business.id, id);
 }
