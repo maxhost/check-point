@@ -48,8 +48,8 @@ describe("planVerify", () => {
     const file = "apps/merchant/src/app/backoffice/marketing/composer.tsx";
     const plan = planVerify([file]);
     expect(plan.e2e).toBe(true);
-    // ADR0144: UI pura tiene cobertura browser, sin preparar DB.
-    expect(plan.neon.mode).toBe("none");
+    // app/ puede contener componentes/rutas servidor; conservar related.
+    expect(plan.neon.mode).toBe("related");
     expect(plan.reasons).toContain(`e2e: ${file}`);
   });
 
@@ -68,6 +68,13 @@ describe("planVerify", () => {
     expect(
       planVerify(["apps/merchant/src/modules/stock/server/routes.ts"]),
     ).toMatchObject({ neon: { mode: "related" } });
+  });
+
+  it("ruta servidor fuera app/api conserva cobertura de sesion real", () => {
+    expect(
+      planVerify(["apps/consumer/src/app/(consumer)/c/[webViewToken]/route.ts"])
+        .neon.mode,
+    ).toBe("related");
   });
 
   it("servidor de merchant: related merchant, sin e2e", () => {

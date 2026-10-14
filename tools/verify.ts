@@ -82,7 +82,6 @@ function relatedApps(file: string): Array<"merchant" | "consumer"> {
   // UI-only paths cannot change persistence; browser harness entries are selected separately.
   if (/\/modules\/[^/]+\/ui\//.test(file) || /\/src\/ui\//.test(file))
     return [];
-  if (/\/src\/app\//.test(file) && !/\/app\/api\//.test(file)) return [];
   if (file.startsWith("apps/merchant/src/")) return ["merchant"];
   if (file.startsWith("apps/consumer/src/")) return ["consumer"];
   if (file.startsWith("packages/domain/")) return ["merchant", "consumer"];

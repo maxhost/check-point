@@ -14,7 +14,7 @@
 # respuesta, hubiera o no cambios. Ahora calcula una HUELLA de los cambios de codigo
 # (`git diff HEAD` sin `docs/` + el contenido de los no trackeados bajo apps/, packages/,
 # tools/) y si es igual a la del ultimo verde sale 0 sin correr nada. La huella se guarda
-# SOLO si los tres gates dieron verde: un rojo nunca queda "aprobado" por la corrida
+# SOLO si los checks estaticos pertinentes dieron verde: un rojo nunca queda "aprobado" por la corrida
 # siguiente. Vive dentro de `.git` (`git rev-parse --git-path`), asi que git la ignora y
 # cada worktree tiene la suya. Para forzar los gates: borrar ese archivo.
 #
@@ -86,18 +86,33 @@ out=""
 
 have_script() { node -e "process.exit(require('./package.json').scripts?.['$1']?0:1)" 2>/dev/null; }
 
-if have_script typecheck; then
-  if ! r=$(pnpm run --silent typecheck 2>&1); then
-    out+=$'\n=== typecheck FALLA ===\n'"$(printf '%s' "$r" | tail -30)"
-    fail=1
-  fi
+# Static feedback scopes packages/files to the assigned base and current commit.
+base="${FACTORY_BASE:-HEAD}"
+changed=()
+while IFS= read -r file; do [ -z "$file" ] || changed+=("$file"); done < <(
+  { git diff --name-only "$base"; git diff-tree --no-commit-id --name-only -r HEAD; git ls-files --others --exclude-standard -- apps packages tools tests; } | sort -u
+)
+packages=()
+for package in merchant consumer platform public; do
+  for file in ${changed[@]+"${changed[@]}"}; do
+    case "$file" in apps/"$package"/*) packages+=("$package"); break;; esac
+  done
+done
+shared=0
+for file in ${changed[@]+"${changed[@]}"}; do case "$file" in packages/*|pnpm-lock.yaml|package.json) shared=1;; esac; done
+if [ "$shared" -eq 1 ]; then
+  if ! r=$(pnpm run --silent typecheck 2>&1); then out+=$'\n=== typecheck FALLA ===\n'"$r"; fail=1; fi
+else
+  for package in ${packages[@]+"${packages[@]}"}; do
+    if ! r=$(pnpm --filter "@mi-pasaporte/$package" run typecheck 2>&1); then out+=$'\n=== typecheck FALLA ===\n'"$r"; fail=1; fi
+  done
 fi
-
-if have_script lint; then
-  if ! r=$(pnpm run --silent lint 2>&1); then
-    out+=$'\n=== lint FALLA ===\n'"$(printf '%s' "$r" | tail -20)"
-    fail=1
-  fi
+lint_files=()
+for file in ${changed[@]+"${changed[@]}"}; do
+  case "$file" in *.ts|*.tsx|*.js|*.mjs|*.cjs) [ ! -f "$file" ] || lint_files+=("$file");; esac
+done
+if [ "${#lint_files[@]}" -gt 0 ]; then
+  if ! r=$(pnpm exec eslint ${lint_files[@]+"${lint_files[@]}"} 2>&1); then out+=$'\n=== lint FALLA ===\n'"$r"; fail=1; fi
 fi
 
 # ADR0144: unit/integration/browser run according to task/QA plan, not every Stop.
@@ -108,6 +123,6 @@ if [ "$fail" -ne 0 ]; then
   exit 2
 fi
 
-# Solo un verde completo deja la huella (spec 0151).
+# Solo un verde estatico deja la huella (spec 0151).
 [ -n "$GREEN_FILE" ] && printf '%s\n' "$fp" > "$GREEN_FILE"
 exit 0

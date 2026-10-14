@@ -7,6 +7,7 @@ import {
   renameSync,
   rmdirSync,
   existsSync,
+  realpathSync,
 } from "node:fs";
 import { resolve, join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -20,6 +21,12 @@ export type Task = {
   resources: string[];
   state: State;
   sha?: string;
+  branch?: string;
+  revisions?: Array<{
+    sha: string;
+    review?: "accepted" | "rejected";
+    reason?: string;
+  }>;
 };
 type Registry = { version: 1; tasks: Task[] };
 
@@ -84,7 +91,7 @@ export function assertScope(task: Task, files: string[]) {
 function registryRoot(root: string) {
   // Every worktree resolves back to the original checkout, not its own registry.
   const common = resolve(root, git(root, ["rev-parse", "--git-common-dir"]));
-  return resolve(common, "..");
+  return realpathSync(resolve(common, ".."));
 }
 
 function edit(root: string, action: (registry: Registry) => void) {
@@ -133,8 +140,15 @@ export function assertRetirable(
   task: Task,
   contains: boolean,
   isClean: boolean,
+  head = task.sha,
 ) {
-  if (task.state !== "integrated" || !task.sha || !contains || !isClean)
+  if (
+    task.state !== "integrated" ||
+    !task.sha ||
+    !contains ||
+    !isClean ||
+    head !== task.sha
+  )
     throw new Error(
       "Cleanup requires accepted integration in local main and a clean worktree",
     );
@@ -190,11 +204,38 @@ export function run(root: string, args: string[]) {
       assertScope(task, files);
       if (!files.length) throw new Error("No implementation changes delivered");
       task.sha = git(task.worktree, ["rev-parse", "HEAD"]);
+      task.branch = git(task.worktree, ["branch", "--show-current"]);
+      task.revisions = [...(task.revisions ?? []), { sha: task.sha }];
       task.state = "delivered";
     } else if (command === "accept") {
       if (task.state !== "delivered" || rest[0] !== task.sha)
         throw new Error("QA approval must name the delivered SHA");
       task.state = "accepted";
+      const revision = task.revisions?.at(-1);
+      if (revision) revision.review = "accepted";
+    } else if (command === "reject") {
+      if (
+        (task.state !== "delivered" && task.state !== "accepted") ||
+        rest[0] !== task.sha ||
+        !rest[1]
+      )
+        throw new Error("QA rejection must name delivered SHA and reason");
+      const revision = task.revisions?.at(-1);
+      if (revision) {
+        revision.review = "rejected";
+        revision.reason = rest.slice(1).join(" ");
+      }
+      task.state = "reserved";
+      delete task.sha;
+    } else if (command === "refresh") {
+      if (task.state !== "reserved" || task.sha)
+        throw new Error("Cannot change an active delivery base");
+      clean(task);
+      const base = git(task.worktree, ["rev-parse", rest[0] ?? "HEAD"]);
+      if (git(task.worktree, ["rev-parse", "HEAD"]) !== base)
+        throw new Error("Checkout must already be frozen on new base");
+      git(task.worktree, ["merge-base", "--is-ancestor", task.base, base]);
+      task.base = base;
     } else if (command === "integrate") {
       if (task.state !== "accepted" || !task.sha)
         throw new Error("QA acceptance required");
@@ -206,7 +247,6 @@ export function run(root: string, args: string[]) {
       ]);
       task.state = "integrated";
     } else if (command === "cleanup") {
-      clean(task);
       let contains = false;
       try {
         git(registryRoot(root), [
@@ -219,16 +259,42 @@ export function run(root: string, args: string[]) {
       } catch {
         /* fail closed below */
       }
-      assertRetirable(task, contains, true);
-      noProcesses(task);
-      const branch = git(task.worktree, ["branch", "--show-current"]);
+      const present = existsSync(task.worktree);
+      if (present) clean(task);
+      assertRetirable(
+        task,
+        contains,
+        true,
+        present ? git(task.worktree, ["rev-parse", "HEAD"]) : task.sha,
+      );
+      if (present) noProcesses(task);
+      const branch = task.branch;
       if (!branch || branch === "main" || branch === "dev")
         throw new Error("Ref protected");
-      git(registryRoot(root), ["worktree", "remove", task.worktree]);
-      git(registryRoot(root), ["branch", "-d", branch]);
+      let branchExists = false;
+      try {
+        git(registryRoot(root), [
+          "show-ref",
+          "--verify",
+          `refs/heads/${branch}`,
+        ]);
+        branchExists = true;
+      } catch {
+        /* already removed */
+      }
+      if (
+        branchExists &&
+        git(registryRoot(root), ["rev-parse", branch]) !== task.sha
+      )
+        throw new Error("Branch changed after accepted delivery");
+      if (present)
+        git(registryRoot(root), ["worktree", "remove", task.worktree]);
+      if (branchExists) git(registryRoot(root), ["branch", "-d", branch]);
       task.state = "retired";
     } else
-      throw new Error("Use status/reserve/deliver/accept/integrate/cleanup");
+      throw new Error(
+        "Use status/reserve/deliver/accept/reject/refresh/integrate/cleanup",
+      );
   });
   return "OK\n";
 }

@@ -53,6 +53,9 @@ describe("factory reservations and release", () => {
     const integrated: Task = { ...task, state: "integrated", sha: "accepted" };
     expect(() => assertRetirable(integrated, false, true)).toThrow();
     expect(() => assertRetirable(integrated, true, false)).toThrow();
+    expect(() =>
+      assertRetirable(integrated, true, true, "later-commit"),
+    ).toThrow();
     expect(() => assertRetirable(integrated, true, true)).not.toThrow();
   });
 });

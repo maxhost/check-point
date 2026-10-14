@@ -34,7 +34,7 @@ Direccion de dependencias: **modulo → core** y **modulo → modulo que declara
 3. **Responsable de modulo**: carpeta `modules/<id>/` (manifiesto, `server/`, `routes.ts`), esquema + migracion, **una linea en cada
    registro** (`registry.ts`, `server-registry.ts`, `ui-registry.ts`), tests de servidor.
 4. **Responsable de UI** (puede ser el mismo agente): pantallas en `modules/<id>/ui/`, su linea en `ui-registry.ts`, e2e.
-5. **Gates**: `modules-boundary.test.ts` (la frontera) en verde; las suites del modulo; en L3, revisor adversarial.
+5. **Gates**: `modules-boundary.test.ts` (la frontera) en verde; las suites del modulo; QA independiente; revision especialista solo por riesgo concreto (ADR0144).
 
 ## Lo que el core ofrece (puntos de enganche)
 
