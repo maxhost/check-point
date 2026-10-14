@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { getDb, type DbTransaction } from "@mi-pasaporte/db";
 import { locations, stockItemLocations } from "@mi-pasaporte/db/schema";
 import { isUuid } from "@mi-pasaporte/domain/server/counter/core";
@@ -71,4 +71,31 @@ export async function lockItemLocation(
     )
     .for("update");
   return pair;
+}
+
+/** Caller has already acquired ingredient KEY SHARE locks in the same sorted order. */
+export async function lockItemLocations(
+  tx: DbTransaction,
+  businessId: string,
+  itemIds: readonly string[],
+  locationId: string,
+) {
+  const ids = [...new Set(itemIds)].sort();
+  if (!ids.length) return;
+  await tx
+    .insert(stockItemLocations)
+    .values(ids.map((itemId) => ({ businessId, itemId, locationId })))
+    .onConflictDoNothing();
+  await tx
+    .select({ itemId: stockItemLocations.itemId })
+    .from(stockItemLocations)
+    .where(
+      and(
+        eq(stockItemLocations.businessId, businessId),
+        eq(stockItemLocations.locationId, locationId),
+        inArray(stockItemLocations.itemId, ids),
+      ),
+    )
+    .orderBy(asc(stockItemLocations.itemId))
+    .for("update");
 }
