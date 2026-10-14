@@ -432,10 +432,18 @@ export function BackofficeNavigation({
               />
             ))}
             {PrimaryIcon && operationModule && (
-              <Button
-                variant="quiet"
+              <Link
+                href={operationLinks[0].href}
+                role="button"
                 className="mobile-counter-access col-start-2"
-                onPress={() => {
+                onKeyDown={(event) => {
+                  if (event.key === " ") {
+                    event.preventDefault();
+                    event.currentTarget.click();
+                  }
+                }}
+                onClick={(event) => {
+                  event.preventDefault();
                   closeMenu();
                   window.dispatchEvent(
                     new CustomEvent("checkpass:module-primary", {
@@ -448,7 +456,7 @@ export function BackofficeNavigation({
                   <PrimaryIcon aria-hidden="true" width={24} height={24} />
                 </span>
                 {operation.primaryAction.label}
-              </Button>
+              </Link>
             )}
             {permissions.includes("counter") && (
               <NavLink
