@@ -1,8 +1,10 @@
 import { and, eq, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import { getDb } from "@mi-pasaporte/db";
 import { catalogImports } from "@mi-pasaporte/db/schema";
-import type { CatalogExtractionProvider } from "./types";
-import { catalogExtractionProviderFromEnv } from "./providers/provider";
+import type { AiProvider } from "../ai/task";
+import { aiProviderFromEnv } from "../ai/config";
+import { closeAiJob, pollAiJob } from "../ai/service";
+import { MENU_EXTRACTION_TASK } from "./menu-task";
 import { ANALYZE_LEASE_MS, MAX_ATTEMPTS } from "./prepare";
 import { failImport, finishAnalysis } from "./finish";
 import { purgeImportObjects } from "./cleanup";
@@ -37,7 +39,7 @@ const BATCH = 20;
 
 export async function runCatalogImportReconcile(
   deps: {
-    provider?: CatalogExtractionProvider;
+    provider?: AiProvider;
     now?: Date;
     /**
      * Solo para las suites Neon (PARQUEADO #74): la base de pruebas es compartida y un
@@ -57,9 +59,9 @@ export async function runCatalogImportReconcile(
     failed: 0,
     cancelled: 0,
   };
-  let provider: CatalogExtractionProvider | null = null;
+  let provider: AiProvider | null = null;
   try {
-    provider = deps.provider ?? catalogExtractionProviderFromEnv();
+    provider = deps.provider ?? aiProviderFromEnv();
   } catch {
     provider = null;
   }
@@ -134,13 +136,19 @@ export async function runCatalogImportReconcile(
       summary.failed += 1;
       continue;
     }
-    if (!provider?.poll) continue;
+    if (!provider) continue;
     summary.polled += 1;
     try {
-      const result = await provider.poll(row.providerJobId);
+      const result = await pollAiJob(
+        MENU_EXTRACTION_TASK,
+        { jobId: row.providerJobId, subjectId: row.id },
+        { provider },
+      );
       // `pending` NO es un error: el lease ya se renovo arriba y se vuelve en 5 minutos.
       if (result.status === "pending") continue;
       if (result.status === "failed") {
+        // Spec 0224 ⚑: una salida invalida tambien cierra aca, en el primer poll (el reintento
+        // traia la misma salida).
         await failImport(
           row.id,
           "provider_unavailable",
@@ -149,8 +157,7 @@ export async function runCatalogImportReconcile(
         summary.failed += 1;
         continue;
       }
-      const elapsed = now.getTime() - row.createdAt.getTime();
-      const outcome = await finishAnalysis(row.id, result.extraction, elapsed);
+      const outcome = await finishAnalysis(row.id, result.result);
       if (outcome === "accepted") summary.completed += 1;
       if (outcome === "cancelled") summary.cancelled += 1;
     } catch {
@@ -179,5 +186,6 @@ async function closeCancelled(
         inArray(catalogImports.status, ["queued", "analyzing"]),
       ),
     );
+  await closeAiJob(MENU_EXTRACTION_TASK, importId, "cancelled");
   await purgeImportObjects(importId, businessId).catch(() => undefined);
 }

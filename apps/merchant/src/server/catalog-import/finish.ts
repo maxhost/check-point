@@ -2,6 +2,9 @@ import { and, eq, inArray } from "drizzle-orm";
 import { getDb } from "@mi-pasaporte/db";
 import { catalogImports } from "@mi-pasaporte/db/schema";
 import type { ProviderExtraction } from "./types";
+import type { AiResult } from "../ai/task";
+import { closeAiJob } from "../ai/service";
+import { MENU_EXTRACTION_TASK } from "./menu-task";
 import { writeImportedCatalog } from "./write";
 import { touch } from "./quota";
 import { purgeImportObjects } from "./cleanup";
@@ -19,9 +22,9 @@ export type FinishOutcome = "accepted" | "cancelled" | "noop";
 
 export async function finishAnalysis(
   importId: string,
-  extraction: ProviderExtraction,
-  durationMs: number,
+  result: AiResult<ProviderExtraction>,
 ): Promise<FinishOutcome> {
+  const extraction = result.output;
   const [row] = await getDb()
     .select()
     .from(catalogImports)
@@ -44,22 +47,18 @@ export async function finishAnalysis(
           inArray(catalogImports.status, ["queued", "analyzing"]),
         ),
       );
+    // El resultado se descarta: su fila de uso, si seguia abierta, se cierra (spec 0224 §6).
+    await closeAiJob(MENU_EXTRACTION_TASK, importId, "cancelled");
     await purgeImportObjects(importId, row.businessId).catch(() => undefined);
     return "cancelled";
   }
   // §7 — la extraccion CRUDA se guarda en `draft`, que **deja de ser un borrador editable**:
   // es el resultado persistido para diagnostico, y sigue siendo el discriminante del cupo
-  // `analyses` (`quota.ts:60-70`), que cuenta `draft is not null`.
+  // `analyses` (`quota.ts`), que cuenta `draft is not null`. El USO (tokens, request id, duracion)
+  // ya lo cerro el servicio de IA en `core.ai_request` (spec 0224).
   await getDb()
     .update(catalogImports)
-    .set({
-      draft: extraction,
-      inputTokens: extraction.usage.inputTokens,
-      outputTokens: extraction.usage.outputTokens,
-      providerRequestId: extraction.providerRequestId,
-      durationMs: Number.isFinite(durationMs) ? Math.round(durationMs) : null,
-      ...touch(),
-    })
+    .set({ draft: extraction, ...touch() })
     .where(
       and(
         eq(catalogImports.id, importId),
@@ -77,11 +76,10 @@ export async function finishAnalysis(
   console.info("catalog_import_accepted", {
     importId,
     businessId: row.businessId,
-    provider: row.provider,
-    model: row.model,
-    durationMs: Math.round(durationMs),
-    inputTokens: extraction.usage.inputTokens,
-    outputTokens: extraction.usage.outputTokens,
+    provider: result.provider,
+    model: result.model,
+    inputTokens: result.usage.inputTokens,
+    outputTokens: result.usage.outputTokens,
     categoriesCreated: written.result.categoriesCreated,
     categoriesReused: written.result.categoriesReused,
     productsCreated: written.result.productsCreated,
@@ -126,6 +124,8 @@ export async function failImport(
       businessId: catalogImports.businessId,
     });
   if (!row) return;
+  // El trabajo termino sin resultado: su fila de uso no puede quedar `pending` (spec 0224 §6).
+  await closeAiJob(MENU_EXTRACTION_TASK, importId, code);
   console.info("catalog_import_failed", {
     importId,
     businessId: row.businessId,

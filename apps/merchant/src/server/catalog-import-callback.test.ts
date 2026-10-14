@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import type { ProviderExtraction } from "./catalog-import/types";
+import { ScriptedAiProvider, aiRaw } from "./ai/ai-test-support";
 
 /**
  * Spec 0091 §7 — **EL CUERPO DEL WEBHOOK NO SE CREE.**
@@ -93,8 +94,6 @@ const FILA = {
   sourceKind: "images",
   fileCount: 1,
   draft: null,
-  provider: "openai",
-  model: "gpt-x",
   providerJobId: "resp_real",
   cancelRequestedAt: null,
   attemptCount: 1,
@@ -114,8 +113,6 @@ const REAL: ProviderExtraction = {
   ],
   discarded: [],
   warnings: [],
-  usage: { inputTokens: 1, outputTokens: 2 },
-  providerRequestId: "req_1",
 };
 
 /** Un cuerpo de webhook con un borrador **falso** adentro. Ninguno de sus campos —salvo el
@@ -138,15 +135,20 @@ const CUERPO_MALICIOSO = JSON.stringify({
   },
 });
 
-const proveedor = (opts: { firmaValida: boolean }) => ({
-  id: "openai",
-  model: "gpt-x",
-  start: async () => {
-    throw new Error("no se usa");
-  },
-  poll: async () => ({ status: "done" as const, extraction: REAL }),
-  verifyCallback: () => (opts.firmaValida ? { jobId: "resp_real" } : null),
-});
+const proveedor = (opts: {
+  firmaValida: boolean;
+  retrieve?: () => { status: "pending" };
+}) =>
+  new ScriptedAiProvider({
+    retrieve:
+      opts.retrieve ??
+      (() => ({
+        status: "done" as const,
+        // La salida CRUDA del modelo: pasa por el validador propio de la tarea.
+        raw: aiRaw({ categories: REAL.categories, warnings: [] }),
+      })),
+    verify: () => (opts.firmaValida ? { jobId: "resp_real" } : null),
+  });
 
 beforeEach(() => {
   estado.filas = [];
@@ -178,9 +180,10 @@ describe("callback del proveedor (spec 0091 §7)", () => {
 
   /** ORACULO DE M3. */
   it("persiste y escribe lo que devolvió la API, NO lo que venía en el cuerpo", async () => {
-    // 1) callback busca la fila; 2) finishAnalysis la vuelve a leer; 3) el UPDATE que
-    // persiste la extracción cruda; 4) la reclamación del email.
-    estado.filas = [[FILA], [FILA], [], []];
+    // 1) callback busca la fila; 2) el servicio cierra la fila de uso (spec 0224); 3)
+    // finishAnalysis la vuelve a leer; 4) el UPDATE que persiste la extracción cruda; 5) la
+    // reclamación del email.
+    estado.filas = [[FILA], [{ id: "fila-de-uso" }], [FILA], [], []];
     const outcome = await handleProviderCallback(
       new Headers(),
       CUERPO_MALICIOSO,
@@ -210,10 +213,10 @@ describe("callback del proveedor (spec 0091 §7)", () => {
   it("si el proveedor dice `pending`, no se escribe nada", async () => {
     estado.filas = [[FILA]];
     const outcome = await handleProviderCallback(new Headers(), "{}", {
-      provider: {
-        ...proveedor({ firmaValida: true }),
-        poll: async () => ({ status: "pending" as const }),
-      },
+      provider: proveedor({
+        firmaValida: true,
+        retrieve: () => ({ status: "pending" }),
+      }),
     });
     expect(outcome).toEqual({ status: 200, result: "pending" });
     expect(estado.sets).toHaveLength(0);
@@ -222,6 +225,7 @@ describe("callback del proveedor (spec 0091 §7)", () => {
   it("con `cancel_requested_at` el resultado se DESCARTA y cierra en cancelled", async () => {
     estado.filas = [
       [{ ...FILA, cancelRequestedAt: new Date() }],
+      [{ id: "fila-de-uso" }],
       [{ ...FILA, cancelRequestedAt: new Date() }],
     ];
     const outcome = await handleProviderCallback(new Headers(), "{}", {

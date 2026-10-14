@@ -10,7 +10,9 @@ if (importIntegrationEnabled) process.env.DATABASE_URL = url;
 
 import { getDb } from "@mi-pasaporte/db";
 import { seedTrialSubscription } from "./counter-integration-support";
+import { MENU_EXTRACTION_TASK } from "./catalog-import/menu-task";
 import {
+  aiRequests,
   businesses,
   catalogImportCleanups,
   catalogImportFiles,
@@ -99,7 +101,8 @@ export async function seedIntegrante(
   return userId;
 }
 
-/** Inserta un import con el estado que el caso necesita, sin pasar por la API. */
+/** Inserta un import con el estado que el caso necesita, sin pasar por la API. El uso del proveedor
+ * ya no vive en el import (spec 0224): lo siembra `sembrarUsoMenu`. */
 export async function seedImport(opts: {
   businessId: string;
   userId: string;
@@ -108,41 +111,16 @@ export async function seedImport(opts: {
   createdAt?: Date;
   expiresAt?: Date;
   providerJobId?: string | null;
-  provider?: string | null;
   leaseUntil?: Date | null;
   attemptCount?: number;
   acceptedSummary?: unknown;
 }): Promise<string> {
-  const id = randomUUID();
-  await getDb()
-    .insert(catalogImports)
-    .values({
-      id,
-      businessId: opts.businessId,
-      createdByUserId: opts.userId,
-      status: opts.status,
-      sourceKind: "images",
-      fileCount: 1,
-      draft: opts.draft ?? null,
-      providerJobId: opts.providerJobId ?? null,
-      provider: opts.provider ?? null,
-      leaseUntil: opts.leaseUntil ?? null,
-      attemptCount: opts.attemptCount ?? 0,
-      acceptedSummary: opts.acceptedSummary ?? null,
-      createdAt: opts.createdAt ?? new Date(),
-      expiresAt: opts.expiresAt ?? new Date(Date.now() + 24 * 60 * 60 * 1000),
-    });
+  const [id] = await seedImports(1, opts);
   return id;
 }
 
-/**
- * `n` imports de una sola vez, en UN `insert`.
- *
- * Existe porque los topes del cupo salen del catalogo y hoy estan en **valor de pruebas
- * (100)**: sembrarlos de a uno serian 100 viajes a Neon por caso, y hacerlo con `Promise.all`
- * abriria 100 conexiones en paralelo contra el pool. Un solo `values([...])` no hace ninguna
- * de las dos cosas.
- */
+/** `n` imports en UN `insert`: los topes del cupo estan en valor de pruebas (100), y sembrarlos de a
+ * uno serian 100 viajes a Neon (o 100 conexiones con `Promise.all`). */
 export async function seedImports(
   cantidad: number,
   opts: Parameters<typeof seedImport>[0],
@@ -161,7 +139,6 @@ export async function seedImports(
         fileCount: 1,
         draft: opts.draft ?? null,
         providerJobId: opts.providerJobId ?? null,
-        provider: opts.provider ?? null,
         leaseUntil: opts.leaseUntil ?? null,
         attemptCount: opts.attemptCount ?? 0,
         acceptedSummary: opts.acceptedSummary ?? null,
@@ -170,6 +147,45 @@ export async function seedImports(
       })),
     );
   return ids;
+}
+
+/** Spec 0224 — las filas de `core.ai_request` que deja `submitAiTask` cuando el proveedor ACEPTA el
+ * submit (una por import: `subjectId`). `task` por defecto la del menu. Se borran en cascada con el
+ * negocio. */
+export async function sembrarUsoMenu(opts: {
+  businessId: string;
+  subjectIds: (string | null)[];
+  status?: "pending" | "ok" | "failed";
+  task?: string;
+  mode?: "sync" | "background";
+  createdAt?: Date;
+}): Promise<void> {
+  const status = opts.status ?? "pending";
+  if (opts.subjectIds.length === 0) return;
+  await getDb()
+    .insert(aiRequests)
+    .values(
+      opts.subjectIds.map((subjectId) => ({
+        businessId: opts.businessId,
+        task: opts.task ?? MENU_EXTRACTION_TASK.id,
+        taskVersion: "v2",
+        mode: opts.mode ?? "background",
+        provider: "openai",
+        status,
+        failureCode: status === "failed" ? "provider_error" : null,
+        subjectId,
+        createdAt: opts.createdAt ?? new Date(),
+        finishedAt: status === "pending" ? null : new Date(),
+      })),
+    );
+}
+
+/** Las filas de uso del negocio (para aseverar el registro). */
+export async function usosDe(businessId: string) {
+  return getDb()
+    .select()
+    .from(aiRequests)
+    .where(eq(aiRequests.businessId, businessId));
 }
 
 export async function leerImport(id: string) {

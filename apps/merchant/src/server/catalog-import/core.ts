@@ -19,6 +19,8 @@ import { assertQuota, entitlementContextOf, touch } from "./quota";
 import { enqueueImportCleanup, purgeImportObjects } from "./cleanup";
 import { importSourceFileName } from "./source-file";
 import { toImportDTO } from "./dto";
+import { closeAiJob } from "../ai/service";
+import { MENU_EXTRACTION_TASK } from "./menu-task";
 
 // La allow-list del DTO vive en `./dto` (spec 0147, split por el hook `file-size`); se
 // re-exporta para que `from "./core"` siga resolviendo.
@@ -262,6 +264,9 @@ export async function cancelImport(
     }
     return { import: await dto(current) };
   }
+  // Pasa a `cancelled` directo, tambien desde `analyzing`, y el callback posterior es no-op: la fila
+  // de uso del submit se cierra aca o quedaria `pending` para siempre (spec 0224 §6).
+  await closeAiJob(MENU_EXTRACTION_TASK, row.id, "cancelled");
   await enqueueImportCleanup(row.id, row.businessId).catch(() => undefined);
   await purgeImportObjects(row.id, row.businessId).catch(() => undefined);
   return { import: await dto(updated) };

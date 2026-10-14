@@ -8,6 +8,8 @@ import {
 } from "@mi-pasaporte/db/schema";
 import { deleteObjectKeys } from "@mi-pasaporte/domain/server/r2";
 import { touch } from "./quota";
+import { closeAiJob } from "../ai/service";
+import { MENU_EXTRACTION_TASK } from "./menu-task";
 
 /**
  * Spec 0090 §7 — LIMPIEZA DE LOS ORIGINALES. Cuelga del `assets-cleanup` diario que ya
@@ -120,7 +122,7 @@ export async function cleanupExpiredCatalogImports(): Promise<{
     )
     .limit(CLEANUP_BATCH);
   for (const row of expirable) {
-    await getDb()
+    const [expired] = await getDb()
       .update(catalogImports)
       .set({ status: "expired", ...touch() })
       .where(
@@ -128,7 +130,10 @@ export async function cleanupExpiredCatalogImports(): Promise<{
           eq(catalogImports.id, row.id),
           inArray(catalogImports.status, [...CATALOG_IMPORT_OPEN_STATUSES]),
         ),
-      );
+      )
+      .returning({ id: catalogImports.id });
+    // Vencio sin resultado: su fila de uso no puede quedar `pending` (spec 0224 §6).
+    if (expired) await closeAiJob(MENU_EXTRACTION_TASK, row.id, "expired");
     await enqueueImportCleanup(row.id, row.businessId).catch(() => undefined);
   }
   let purged = 0;

@@ -11,8 +11,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * `GET` es la PRIMERA llamada que hace la pantalla. Con la 0091 la fuga es peor: la columna
  * `draft` guarda **la extraccion cruda del modelo**, que no tiene que viajar nunca.
  *
- * La fila sembrada trae `providerJobId`, `providerRequestId` y los tokens **a proposito**: un
- * assert de claves sobre una fila que no los tiene no prueba nada.
+ * La fila sembrada trae `providerJobId` y el usuario **a proposito**: un assert de claves sobre una
+ * fila que no los tiene no prueba nada. El request id, los tokens y el modelo ya no estan en la fila
+ * (spec 0224, `core.ai_request`): su no-exposicion es estructural — ninguna ruta del menu lee el
+ * registro (`rg -n aiRequests` sobre `core`, `analyze`, `dto` y `app/api/catalog`, vacio).
  */
 const NEGOCIO = "22222222-2222-4222-8222-222222222222";
 const IMPORT_ID = "11111111-1111-4111-8111-111111111111";
@@ -55,15 +57,7 @@ const FILA = {
   fileCount: 3,
   pageCount: 3,
   draft: { categories: [{ name: "Menu crudo del proveedor" }] },
-  provider: "openai",
-  model: "gpt-x",
-  promptVersion: "v1",
-  schemaVersion: "v1",
   providerJobId: "resp_secreto",
-  providerRequestId: "req_secreto",
-  inputTokens: 1234,
-  outputTokens: 567,
-  durationMs: 8900,
   attemptCount: 1,
   leaseUntil: new Date("2026-09-22T11:00:00.000Z"),
   cancelRequestedAt: null,
@@ -102,15 +96,9 @@ const CLAVES = [
 const SECRETOS = [
   "Menu crudo del proveedor",
   "resp_secreto",
-  "req_secreto",
   "u-secreto",
   "detalle interno del proveedor",
-  "1234",
-  "567",
-  "8900",
   NEGOCIO,
-  "openai",
-  "gpt-x",
 ];
 
 const pedido = (path: string) =>
@@ -142,7 +130,7 @@ describe("las rutas que serializan un import (contrato §4)", () => {
   });
 
   /** El assert de claves no alcanza solo: un campo interno podria colarse ANIDADO. */
-  it("ninguna de las dos respuestas lleva ids del proveedor, tokens ni el negocio", async () => {
+  it("ninguna de las dos respuestas lleva el job id del proveedor, el usuario ni el negocio", async () => {
     estado.filas = [[FILA]];
     const activo = await (await ACTIVO(pedido("/api/catalog/imports"))).text();
     estado.filas = [[FILA]];

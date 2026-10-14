@@ -7,6 +7,7 @@
  * Spec 0168: ningun origen (`*ORIGIN`, `*ORIGINS`, `*_URL`) de las apps apunta a PROD, y los del tunel
  * (`dev-business.` / `dev-my.`) estan donde el codigo cae a PROD si faltan. Spec 0190: el panel
  * (`apps/platform/.env.local`) es OPCIONAL —`pnpm dev:local` lo salta si falta—; si esta, se chequea.
+ * Spec 0224: merchant necesita `AI_PROVIDER` (`fake` u `openai`).
  * `CHECK_ENV_ROOT` cambia la raiz (test).
  * Autocontenido (Node 24 corre `.ts` quitando tipos, sin resolver imports del repo).
  */
@@ -124,6 +125,11 @@ for (const app of ["apps/merchant/.env.local", "apps/consumer/.env.local"]) {
     check(
       env.CONSUMER_ORIGIN === TUNNEL_CONSUMER,
       `${app} CONSUMER_ORIGIN = ${TUNNEL_CONSUMER}`,
+    );
+    // Spec 0224: obligatoria; sin ella el servicio de IA contesta `unconfigured` (no hay falso).
+    check(
+      env.AI_PROVIDER === "fake" || env.AI_PROVIDER === "openai",
+      `${app} AI_PROVIDER = fake u openai`,
     );
   }
   if (app.includes("consumer")) {

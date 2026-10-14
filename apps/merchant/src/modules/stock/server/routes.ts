@@ -4,7 +4,7 @@ import type { ModuleRoute } from "../../route-table";
 import { createItem, listItems, updateItem } from "../items";
 import { listMovements, recordAdjustment, recordPurchase } from "../movements";
 import { listLog, recordEntry } from "../entries";
-import { buildDraft } from "../draft";
+import { buildDraft, buildPhotoDraft } from "../draft";
 
 /**
  * Spec 0210 / 0212 / 0216 — LA API DE STOCK, bajo `/api/modules/stock/…`. Los mismos handlers que
@@ -118,6 +118,14 @@ export const routes: readonly ModuleRoute[] = [
       NextResponse.json(
         await buildDraft(business.id, userId, await readModuleBody(request)),
       ),
+  },
+  /** Spec 0223: 1 a 3 fotos (multipart `photos`) de un ticket o nota → el mismo borrador. */
+  {
+    method: "POST",
+    path: "entries/draft-photo",
+    failure: "No pudimos analizar la foto.",
+    handler: async ({ request, business, userId }) =>
+      NextResponse.json(await buildPhotoDraft(business.id, userId, request)),
   },
   /** El registro de todos los insumos, `?limit=50` → `200 { movements }`. */
   {

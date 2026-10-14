@@ -28,8 +28,6 @@ describe("esquema cerrado de la salida del proveedor (spec 0091 §5)", () => {
   const extraccion = (overrides: Record<string, unknown> = {}) => ({
     categories: [{ sourceId: "c1", name: "Bebidas", products: [producto()] }],
     warnings: [],
-    usage: { inputTokens: 1, outputTokens: 2 },
-    providerRequestId: "req_1",
     ...overrides,
   });
 

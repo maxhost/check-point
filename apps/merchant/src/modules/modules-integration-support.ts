@@ -128,6 +128,31 @@ export function callModuleRoute(
   });
 }
 
+/** Spec 0223 — un POST multipart al despachador con `photos` (las fotos de un borrador). `path` es
+ * relativo a `/api/modules/` (`<id>/…`). */
+export function postModulePhotos(
+  path: string,
+  cookie: string,
+  photos: readonly Buffer[],
+): Promise<Response> {
+  const form = new FormData();
+  photos.forEach((photo, i) =>
+    form.append(
+      "photos",
+      new File([new Uint8Array(photo)], `foto-${i}.png`, { type: "image/png" }),
+    ),
+  );
+  const [moduleId, ...rest] = path.split("/");
+  return POST(
+    new Request(`http://localhost:3001/api/modules/${path}`, {
+      method: "POST",
+      headers: { cookie },
+      body: form,
+    }),
+    { params: Promise.resolve({ moduleId, path: rest }) },
+  );
+}
+
 const ITEMS = "/api/modules/stock/items";
 
 /** Las rutas de `/api/modules/**` con la cookie del caller. Devuelven el `Response` crudo. */

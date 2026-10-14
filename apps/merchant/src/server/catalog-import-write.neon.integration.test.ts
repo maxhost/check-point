@@ -37,8 +37,6 @@ const extraccion = (
   categories,
   discarded,
   warnings: [],
-  usage: { inputTokens: 1, outputTokens: 2 },
-  providerRequestId: "req_w",
 });
 
 const prod = (name: string, priceText: string | null = null) => ({

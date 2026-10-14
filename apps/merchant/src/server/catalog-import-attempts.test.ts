@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import type { CatalogExtractionProvider } from "./catalog-import/types";
+import { ScriptedAiProvider } from "./ai/ai-test-support";
 
 /**
  * Spec 0090 §8 — **EL TECHO DE SUBMITS AL PROVEEDOR, Y SU CABLEADO.**
@@ -114,18 +114,29 @@ const archivo = {
   status: "uploaded",
 };
 
-const proveedor = (): CatalogExtractionProvider => ({
-  id: "doble",
-  model: "doble-v1",
-  start: async () => {
-    estado.submits += 1;
-    return { kind: "deferred", jobId: "job-1" };
-  },
-});
+const proveedor = () =>
+  new ScriptedAiProvider({
+    start: async () => {
+      estado.submits += 1;
+      return { kind: "deferred", jobId: "job-1" };
+    },
+  });
 
-/** La cola, en orden: reclamo → archivos/preparacion → suscripcion → conteo → submit → … */
+/** La cola, en orden: reclamo → archivos/preparacion → suscripcion → conteo → intento → fila de
+ * uso del submit aceptado (spec 0224, `core.ai_request`) → paso a `analyzing` → … */
 function cola(usados: number) {
-  return [[fila], [archivo], [], [], [], [{ total: usados }], [], [], [], []];
+  return [
+    [fila],
+    [archivo],
+    [],
+    [],
+    [],
+    [{ total: usados }],
+    [],
+    [{ id: "fila-de-uso" }],
+    [{ id: IMPORT_ID }],
+    [],
+  ];
 }
 
 beforeEach(() => {

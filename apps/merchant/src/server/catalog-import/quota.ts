@@ -10,6 +10,8 @@ import {
   type LimitKey,
 } from "@mi-pasaporte/domain/server/entitlements/index";
 import { CatalogImportError } from "./types";
+import { countAiRequests } from "../ai/service";
+import { MENU_EXTRACTION_TASK } from "./menu-task";
 
 /**
  * Spec 0090 §8 / ADR 0082 §10 — EL CUPO DE ANALISIS, centralizado en entitlements.
@@ -23,9 +25,10 @@ import { CatalogImportError } from "./types";
  *
  * - `catalog.imports.analyses` cuenta los que **llegaron a `ready`** (o mas alla: un
  *   `accepted` fue `ready` antes). **Un fallo no le cuesta el dia al merchant.**
- * - `catalog.imports.attempts` cuenta los submits que el proveedor **acepto** —`provider`
- *   deja de ser null solo despues de que `start()` responde—, tambien si despues fallaron.
- *   Configuracion, preparacion y submits rechazados no bloquean al merchant (ADR 0083).
+ * - `catalog.imports.attempts` cuenta los submits que el proveedor **acepto**: las filas de
+ *   `core.ai_request` de la tarea del menu (spec 0224; nacen solo cuando `start()` fue aceptado),
+ *   tambien si despues fallaron. Configuracion, preparacion y submits rechazados no bloquean al
+ *   merchant (ADR 0083).
  */
 export type QuotaDecision = {
   key: LimitKey;
@@ -62,15 +65,14 @@ export async function usedInWindow(
   const window = windowOf(key);
   if (!window) return 0;
   const since = windowStart(window, now);
-  const consumed =
-    key === "catalog.imports.attempts"
-      ? // `provider` se persiste solo DESPUES de que `start()` fue aceptado. `attempt_count`
-        // es el fusible tecnico del import y puede crecer antes de una caida/rechazo.
-        isNotNull(catalogImports.provider)
-      : // **`ready` o mas alla.** Un `accepted`, un `cancelled` despues de revisar o un
-        // `expired` que llego a tener borrador ya gastaron el analisis; un `failed` no,
-        // y por eso `draft is not null` es el discriminante y no el `status` actual.
-        isNotNull(catalogImports.draft);
+  if (key === "catalog.imports.attempts") {
+    // El submit ACEPTADO, registrado por el servicio de IA. `attempt_count` es el fusible tecnico
+    // del import y puede crecer antes de una caida/rechazo: no cuenta.
+    return countAiRequests(businessId, MENU_EXTRACTION_TASK.id, since);
+  }
+  // `catalog.imports.analyses`: **`ready` o mas alla.** Un `accepted`, un `cancelled` despues de
+  // revisar o un `expired` que llego a tener borrador ya gastaron el analisis; un `failed` no, y
+  // por eso `draft is not null` es el discriminante y no el `status` actual.
   const [row] = await getDb()
     .select({ total: count() })
     .from(catalogImports)
@@ -78,7 +80,7 @@ export async function usedInWindow(
       and(
         eq(catalogImports.businessId, businessId),
         gte(catalogImports.createdAt, since),
-        consumed,
+        isNotNull(catalogImports.draft),
       ),
     );
   // `count()` de drizzle ya viene mapeado a `number`; el `Number()` es el cinturon contra
@@ -120,7 +122,7 @@ export async function assertQuota(
  * No tira `429` como `assertQuota`: quien lo consulta es `runAnalysis`, donde **nadie esta
  * esperando un HTTP**. El llamador cierra el import en `failed`, que el contrato ya cubre.
  *
- * La fila en curso TODAVIA NO esta contada: `provider` se escribe al volver de `start()`.
+ * La fila en curso TODAVIA NO esta contada: su fila de `core.ai_request` nace al volver de `start()`.
  * Por eso se admite sólo cuando `used < limit`: el submit numero `limit` pasa y el siguiente
  * se rechaza. **El valor del tope sale del catalogo** (`entitlements/catalog.ts`), que hoy lo
  * tiene en valor de pruebas; este archivo no lo conoce y no debe conocerlo.

@@ -203,20 +203,9 @@ export function validateProviderExtraction(value: unknown): ProviderExtraction {
         .map((warning) => sanitizeText(String(warning), MAX_WARNING_LENGTH))
         .filter((warning) => warning.length > 0)
     : [];
-  const usage = raw.usage as Record<string, unknown> | undefined;
-  return {
-    categories,
-    discarded,
-    warnings,
-    usage: {
-      inputTokens: optionalInteger(usage?.inputTokens),
-      outputTokens: optionalInteger(usage?.outputTokens),
-    },
-    providerRequestId:
-      typeof raw.providerRequestId === "string"
-        ? sanitizeText(raw.providerRequestId, 120)
-        : null,
-  };
+  // El uso (tokens, request id) ya no viaja en la extraccion: lo registra el servicio de IA en
+  // `core.ai_request` (spec 0224).
+  return { categories, discarded, warnings };
 }
 
 /**
@@ -277,10 +266,4 @@ function readSourceId(value: unknown, seen: Set<string>): string | null {
   if (!id || seen.has(id)) return null;
   seen.add(id);
   return id;
-}
-
-function optionalInteger(value: unknown): number | null {
-  return typeof value === "number" && Number.isInteger(value) && value >= 0
-    ? value
-    : null;
 }

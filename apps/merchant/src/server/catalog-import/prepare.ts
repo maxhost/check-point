@@ -6,18 +6,14 @@ import {
   readObjectAtMost,
 } from "@mi-pasaporte/domain/server/r2";
 import { normalizeImageToJpeg } from "@mi-pasaporte/domain/server/assets/image";
-import {
-  type CatalogExtractionPage,
-  type CatalogExtractionProvider,
-} from "./types";
+import { type CatalogExtractionPage } from "./types";
 import { countPdfPages } from "./pdf-pages";
 import { MAX_IMAGE_BYTES, MAX_PDF_BYTES, MAX_PDF_PAGES } from "./validation";
-import {
-  catalogExtractionProviderFromEnv,
-  promptVersionFromEnv,
-  CATALOG_EXTRACTION_SCHEMA_VERSION,
-} from "./providers/provider";
-import { OpenAiRequestError } from "./providers/openai";
+import { aiProviderFromEnv } from "../ai/config";
+import { AiUnavailableError } from "../ai/errors";
+import { closeAiJob, submitAiTask } from "../ai/service";
+import type { AiInput, AiProvider } from "../ai/task";
+import { MENU_EXTRACTION_TASK } from "./menu-task";
 import { touch, withinAttemptBudget } from "./quota";
 import { failImport, finishAnalysis } from "./finish";
 import { purgeImportObjects } from "./cleanup";
@@ -42,9 +38,8 @@ export type AnalysisOutcome =
  */
 export async function runAnalysis(
   importId: string,
-  deps: { provider?: CatalogExtractionProvider } = {},
+  deps: { provider?: AiProvider } = {},
 ): Promise<AnalysisOutcome> {
-  const started = Date.now();
   const [row] = await getDb()
     .update(catalogImports)
     .set({
@@ -65,12 +60,13 @@ export async function runAnalysis(
   if (!row) return "skipped";
   if (row.cancelRequestedAt) return closeCancelled(row);
 
-  let provider: CatalogExtractionProvider;
+  let provider: AiProvider;
   try {
-    provider = deps.provider ?? catalogExtractionProviderFromEnv();
+    provider = deps.provider ?? aiProviderFromEnv();
   } catch {
     // §4: sin proveedor o clave valida el import termina `failed` con `provider_unavailable`
-    // y el resto del catalogo sigue funcionando. **No hay fallback silencioso.**
+    // ANTES de leer R2 y de sumar `attemptCount`. **No hay fallback silencioso** (spec 0224: sin
+    // `AI_PROVIDER` tampoco hay falso).
     await failImport(
       importId,
       "provider_unavailable",
@@ -109,27 +105,24 @@ export async function runAnalysis(
         ...touch(),
       })
       .where(eq(catalogImports.id, importId));
-    const result = await provider.start({
-      importId,
-      sourceKind: row.sourceKind === "pdf" ? "pdf" : "images",
-      pages,
-    });
-    await getDb()
-      .update(catalogImports)
-      .set({
-        provider: provider.id,
-        model: provider.model,
-        promptVersion: promptVersionFromEnv(),
-        schemaVersion: CATALOG_EXTRACTION_SCHEMA_VERSION,
-        ...touch(),
-      })
-      .where(eq(catalogImports.id, importId));
-    if (result.kind === "deferred") {
-      await getDb()
+    // Spec 0224: el servicio registra el submit ACEPTADO en `core.ai_request` (es lo que cuenta el
+    // cupo `attempts`); un rechazo no deja fila.
+    const submitted = await submitAiTask(
+      MENU_EXTRACTION_TASK,
+      aiInputOf(pages),
+      {
+        businessId: row.businessId,
+        userId: row.createdByUserId,
+        subjectId: importId,
+      },
+      { provider },
+    );
+    if (submitted.kind === "deferred") {
+      const [moved] = await getDb()
         .update(catalogImports)
         .set({
           status: "analyzing",
-          providerJobId: result.jobId,
+          providerJobId: submitted.jobId,
           leaseUntil: new Date(Date.now() + ANALYZE_LEASE_MS),
           ...touch(),
         })
@@ -138,22 +131,24 @@ export async function runAnalysis(
             eq(catalogImports.id, importId),
             eq(catalogImports.status, "queued"),
           ),
-        );
+        )
+        .returning({ id: catalogImports.id });
+      // Se cancelo entre el `start` y este `update`: el trabajo termino sin resultado, y su fila
+      // de uso no puede quedar `pending` (spec 0224 §6).
+      if (!moved) await closeAiJob(MENU_EXTRACTION_TASK, importId, "cancelled");
       return "submitted";
     }
-    await finishAnalysis(importId, result.extraction, Date.now() - started);
+    await finishAnalysis(importId, submitted.result);
     return "ready";
   } catch (error) {
-    // Observabilidad production-safe: el adaptador ya descarta el body del proveedor. Se
-    // conserva solo una clasificacion acotada para distinguir auth/rate-limit/red sin
-    // filtrar prompt, documento, respuesta cruda ni secretos.
+    // Observabilidad production-safe: el detalle del proveedor ya lo logueo el servicio
+    // (`ai_request_failed`); aca solo el motivo acotado.
     if (!(error instanceof PrepareError)) {
       console.warn("catalog_import_provider_start_failed", {
         importId,
         businessId: row.businessId,
-        provider: provider.id,
-        model: provider.model,
-        reason: safeProviderFailure(error),
+        reason:
+          error instanceof AiUnavailableError ? error.reason : "provider_error",
       });
     }
     const { code, detail } = classify(error);
@@ -162,13 +157,21 @@ export async function runAnalysis(
   }
 }
 
-function safeProviderFailure(error: unknown): string | Record<string, unknown> {
-  if (error instanceof OpenAiRequestError) return error.diagnostics;
-  if (!(error instanceof Error)) return "unknown";
-  if (/^openai_http_\d{3}$/.test(error.message)) return error.message;
-  if (error.message === "openai_no_job_id") return error.message;
-  if (error instanceof PrepareError) return error.code;
-  return error.name === "TypeError" ? "network_error" : "provider_error";
+/** Las paginas preparadas como entrada del servicio: imagenes ya JPEG o el PDF. */
+function aiInputOf(pages: CatalogExtractionPage[]): AiInput {
+  return {
+    images: pages
+      .filter((page) => page.contentType !== "application/pdf")
+      .map((page) => ({ kind: "image" as const, jpeg: page.bytes })),
+    files: pages
+      .filter((page) => page.contentType === "application/pdf")
+      .map((page) => ({
+        kind: "pdf" as const,
+        bytes: page.bytes,
+        // No se envia el nombre original del merchant: no aporta nada al analisis.
+        filename: `menu-${page.position + 1}.pdf`,
+      })),
+  };
 }
 
 /** El import cancelado durante `analyzing`/`queued`: se cierra y se limpian los originales. */
@@ -182,6 +185,7 @@ async function closeCancelled(row: ImportRow): Promise<"cancelled"> {
       ...touch(),
     })
     .where(eq(catalogImports.id, row.id));
+  await closeAiJob(MENU_EXTRACTION_TASK, row.id, "cancelled");
   await purgeImportObjects(row.id, row.businessId).catch(() => undefined);
   return "cancelled";
 }

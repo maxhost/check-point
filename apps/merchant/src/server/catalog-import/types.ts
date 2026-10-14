@@ -67,8 +67,6 @@ export type ProviderExtraction = {
   /** Lo ilegible, que NO entra al catalogo y se lista en el resumen (§5). */
   discarded: DiscardedItem[];
   warnings: string[];
-  usage: { inputTokens: number | null; outputTokens: number | null };
-  providerRequestId: string | null;
 };
 
 /** Una pagina ya normalizada, lista para el proveedor. */
@@ -78,32 +76,6 @@ export type CatalogExtractionPage = {
   contentType: string;
   position: number;
 };
-
-export type CatalogExtractionInput = {
-  importId: string;
-  sourceKind: "pdf" | "images";
-  pages: CatalogExtractionPage[];
-};
-
-export type StartResult =
-  | { kind: "completed"; extraction: ProviderExtraction }
-  | { kind: "deferred"; jobId: string };
-
-export type PollResult =
-  | { status: "pending" }
-  | { status: "done"; extraction: ProviderExtraction }
-  | { status: "failed"; code: string };
-
-export interface CatalogExtractionProvider {
-  readonly id: string;
-  readonly model: string;
-  /** Submitea. El adaptador decide si contesta ya o delega. */
-  start(input: CatalogExtractionInput): Promise<StartResult>;
-  /** Solo los diferidos. `pending` es una respuesta valida, no un error. */
-  poll?(jobId: string): Promise<PollResult>;
-  /** Solo los diferidos. Devuelve el jobId si la firma es valida; `null` si no. */
-  verifyCallback?(headers: Headers, rawBody: string): { jobId: string } | null;
-}
 
 /**
  * §9 — EL RESUMEN de una importacion, persistido en `accepted_summary` y servido por el

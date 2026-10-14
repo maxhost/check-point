@@ -6,8 +6,10 @@ import {
   seedImport,
   seedImports,
   seedNegocio,
+  sembrarUsoMenu,
   type SeedImport,
 } from "./catalog-import-integration-support";
+import { ScriptedAiProvider } from "./ai/ai-test-support";
 import { conCookie, cookieDe } from "./permissions-integration-support";
 
 vi.mock("@mi-pasaporte/domain/server/r2", async () => {
@@ -57,8 +59,6 @@ const EXTRACCION = {
   categories: [],
   discarded: [],
   warnings: [],
-  usage: { inputTokens: null, outputTokens: null },
-  providerRequestId: null,
 };
 
 describe.skipIf(!enabled)(
@@ -124,20 +124,25 @@ describe.skipIf(!enabled)(
     /**
      * El techo de SUBMITS (§8), que es el que impide que el loop `cancelar → crear → analizar`
      * queme plata. Es la mitad de M10 que **solo** se puede medir contra la base: lo que decide
-     * que filas cuentan es el predicado `provider is not null` del `WHERE`, y un doble de `./db`
-     * no evalua predicados.
+     * que filas cuentan es el predicado del `WHERE` (spec 0224: las filas de `core.ai_request` de
+     * la tarea del menu), y un doble de `./db` no evalua predicados.
      */
     it("agotado el techo de intentos, el submit se cierra en `failed` sin llamar al proveedor", async () => {
       const negocio = await seedNegocio("Cupo QA intentos");
       negocios.push(negocio);
       // El tope entero de submits YA aceptados hoy (terminales, para no chocar con el único
       // parcial). El que sigue es el que tiene que cerrarse sin llamar al proveedor.
-      await seedImports(TOPE_INTENTOS, {
+      const aceptados = await seedImports(TOPE_INTENTOS, {
         businessId: negocio.businessId,
         userId: negocio.userId,
         status: "failed",
         attemptCount: 1,
-        provider: "openai",
+      });
+      // Spec 0224: el submit aceptado es su fila de uso en `core.ai_request`.
+      await sembrarUsoMenu({
+        businessId: negocio.businessId,
+        subjectIds: aceptados,
+        status: "failed",
       });
       const siguiente = await seedImport({
         businessId: negocio.businessId,
@@ -146,20 +151,37 @@ describe.skipIf(!enabled)(
       });
       let submits = 0;
       const outcome = await runAnalysis(siguiente, {
-        provider: {
-          id: "doble",
-          model: "doble-v1",
+        provider: new ScriptedAiProvider({
           start: async () => {
             submits += 1;
             return { kind: "deferred", jobId: `job-${siguiente}` };
           },
-        },
+        }),
       });
       expect(outcome).toBe("failed");
       expect(submits).toBe(0);
       const fila = await leerImport(siguiente);
       expect(fila?.status).toBe("failed");
       expect(fila?.failureCode).toBe("catalog_import_rate_limited");
+    });
+
+    /**
+     * ORACULO DE M3 (spec 0224): el cupo de intentos cuenta SOLO la tarea del menu. Un negocio con
+     * el tope entero de usos de OTRA tarea (el dictado de Stock) hoy sigue pudiendo crear un import.
+     * Entra por `POST /imports` (`assertQuota`), que usa la misma cuenta que `withinAttemptBudget`.
+     */
+    it("una fila de `stock.entry_text` del mismo negocio no consume intentos del menú", async () => {
+      const negocio = await seedNegocio("Cupo QA otra tarea");
+      negocios.push(negocio);
+      await sembrarUsoMenu({
+        businessId: negocio.businessId,
+        subjectIds: Array.from({ length: TOPE_INTENTOS }, () => null),
+        task: "stock.entry_text",
+        mode: "sync",
+        status: "ok",
+      });
+      const respuesta = await crear(await cookieDe(negocio.userId));
+      expect(respuesta.status).toBe(201);
     });
 
     it("un análisis de AYER no cuenta: la ventana es del día", async () => {

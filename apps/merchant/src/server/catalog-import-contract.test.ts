@@ -10,7 +10,7 @@ import { importError } from "../app/api/catalog/imports/_auth";
  * Spec 0090 §6/§9 — EL CONTRATO, POR VALOR EXACTO.
  *
  * ORACULO DE M7: la fila que se le pasa a `toImportDTO` trae **todo** lo interno
- * —`provider_job_id`, `provider_request_id`, tokens, costo en duracion— y el test asevera el
+ * —`provider_job_id`, el usuario, el detalle del fallo— y el test asevera el
  * objeto **completo** con `toEqual` y ademas la lista de claves. Un campo de mas rompe los
  * dos asserts; un `...row` con `delete` de por medio rompe el segundo en cuanto la tabla gane
  * una columna.
@@ -25,16 +25,7 @@ const FILA: ImportRow = {
   pageCount: 3,
   // La extraccion CRUDA vive en esta columna y **nunca** cruza al cliente (§9).
   draft: { categories: [{ name: "Menu crudo del proveedor" }] },
-  legacyDraftVersion: 0,
-  provider: "openai",
-  model: "gpt-x",
-  promptVersion: "v1",
-  schemaVersion: "v1",
   providerJobId: "resp_secreto",
-  providerRequestId: "req_secreto",
-  inputTokens: 1234,
-  outputTokens: 567,
-  durationMs: 8900,
   attemptCount: 1,
   leaseUntil: null,
   cancelRequestedAt: null,
@@ -112,17 +103,13 @@ describe("el DTO del import es una allow-list cerrada (specs 0090 §6 / 0091 §9
     );
   });
 
-  it("NO filtra el job id, el request id, los tokens ni el negocio — ni serializado", () => {
+  /** Spec 0224: el request id, los tokens y el modelo ya no viven en la fila (`core.ai_request`), y
+   * su no-exposicion es estructural: ninguna ruta del menu lee el registro. */
+  it("NO filtra el job id, el usuario ni el negocio — ni serializado", () => {
     const serializado = JSON.stringify(toImportDTO(FILA, null));
     for (const secreto of [
       "resp_secreto",
-      "req_secreto",
-      "1234",
-      "567",
-      "8900",
       "22222222-2222-4222-8222-222222222222",
-      "openai",
-      "gpt-x",
       "u-1",
     ]) {
       expect(serializado).not.toContain(secreto);

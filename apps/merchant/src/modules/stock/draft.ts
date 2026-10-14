@@ -1,25 +1,31 @@
-import { and, asc, count, eq, gte, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { getDb } from "@mi-pasaporte/db";
-import { stockDraftRequests, stockItems } from "@mi-pasaporte/db/schema";
+import { stockItems } from "@mi-pasaporte/db/schema";
+import { AiInputError, AiUnavailableError } from "../../server/ai/errors";
+import { readAiImages } from "../../server/ai/image-input";
+import { runAiTask } from "../../server/ai/service";
+import type { AiImage, AiProvider } from "../../server/ai/task";
 import { formatDecimal, parseDecimal } from "../decimal";
 import { ModuleError } from "../errors";
 import {
-  type DraftInventoryItem,
-  type RawDraft,
-  type StockDraftProvider,
-  DraftProviderUnavailableError,
-  stockDraftProviderFromEnv,
-} from "./draft-provider";
+  ENTRY_PHOTO_INPUT,
+  type RawEntryDraft,
+  STOCK_ENTRY_PHOTO_TASK,
+  STOCK_ENTRY_TEXT_TASK,
+} from "./ai-tasks";
 import { QUANTITY, TOTAL_COST } from "./numbers";
 
 /**
- * Spec 0212 — EL BORRADOR DE UNA ENTRADA desde el texto dictado. La IA propone y el dueño confirma
- * con `POST /entries` (ADR 0082): aca no se escribe stock. Lo unico que se guarda es el USO
- * (`stock.draft_request`), sin el texto.
+ * Spec 0212 — EL BORRADOR DE UNA ENTRADA desde el texto dictado (o, spec 0223, desde 1 a 3 fotos).
+ * La IA propone y el dueño confirma con `POST /entries` (ADR 0082): aca no se escribe stock. La IA
+ * pasa por el servicio del core (spec 0224), que registra el USO en `core.ai_request`, sin el texto
+ * ni la foto.
  *
  * Todo lo que devuelve el modelo se valida contra el negocio de la sesion: un `itemId` que no es un
  * insumo activo de ESTE negocio nunca sale como existente.
  */
+
+export type DraftInventoryItem = { id: string; name: string; unit: string };
 
 const MAX_TEXT = 2000;
 const MAX_LINES = 30;
@@ -50,7 +56,7 @@ function text(value: unknown, max: number): string {
 
 /** Pura: valida y normaliza la salida del modelo contra los insumos ACTIVOS del negocio. */
 export function normalizeDraft(
-  raw: Pick<RawDraft, "lines" | "unparsed">,
+  raw: RawEntryDraft,
   items: DraftInventoryItem[],
 ): Draft {
   const byId = new Map(items.map((item) => [item.id, item]));
@@ -107,11 +113,33 @@ export function normalizeDraft(
   return { lines, unparsed };
 }
 
-function unavailable(): ModuleError {
+/** 503 `draft_unavailable`, con la copia del dictado o de la foto (spec 0223). La usa Recetas. */
+export function draftUnavailable(photo: boolean): ModuleError {
   return new ModuleError(
     503,
     "draft_unavailable",
-    "No pudimos analizar el texto. Probá de nuevo o cargalo a mano.",
+    photo
+      ? "No pudimos analizar la foto. Probá de nuevo o cargalo a mano."
+      : "No pudimos analizar el texto. Probá de nuevo o cargalo a mano.",
+  );
+}
+
+/** `AiInputError` (fotos invalidas) → el `ModuleError` del contrato, mismo status/codigo/mensaje.
+ * La usa Recetas. */
+export function photoInputError(error: unknown): unknown {
+  return error instanceof AiInputError
+    ? new ModuleError(error.status, error.code, error.message)
+    : error;
+}
+
+/** La lista de insumos que ve el modelo (contexto del servidor, no cuenta en `input_chars`). */
+export function inventoryForModel(items: DraftInventoryItem[]): string {
+  return (
+    items
+      .map(
+        (item) => `- id=${item.id} | ${item.name} | unidad base ${item.unit}`,
+      )
+      .join("\n") || "(ninguno)"
   );
 }
 
@@ -121,7 +149,7 @@ export async function buildDraft(
   businessId: string,
   userId: string,
   body: Record<string, unknown>,
-  provider?: StockDraftProvider,
+  provider?: AiProvider,
 ): Promise<{ draft: Draft }> {
   const input = typeof body.text === "string" ? body.text.trim() : "";
   if (input.length === 0 || input.length > MAX_TEXT) {
@@ -131,25 +159,34 @@ export async function buildDraft(
       `El texto tiene que tener entre 1 y ${MAX_TEXT} caracteres.`,
     );
   }
-  const db = getDb();
-  const record = (values: DraftUsage) =>
-    recordDraftUsage({
-      businessId,
-      userId,
-      inputChars: input.length,
-      kind: "stock_entry",
-      ...values,
-    });
+  return runDraft(businessId, userId, { text: input, photos: [] }, provider);
+}
 
-  let resolved: StockDraftProvider;
+/** `POST /api/modules/stock/entries/draft-photo` — spec 0223: 1 a 3 fotos → el MISMO borrador que el
+ * dictado. Las fotos invalidas cortan antes de la IA y sin registrar. */
+export async function buildPhotoDraft(
+  businessId: string,
+  userId: string,
+  request: Request,
+  provider?: AiProvider,
+): Promise<{ draft: Draft }> {
+  let photos: AiImage[];
   try {
-    resolved = provider ?? stockDraftProviderFromEnv();
+    photos = await readAiImages(request, ENTRY_PHOTO_INPUT);
   } catch (error) {
-    if (!(error instanceof DraftProviderUnavailableError)) throw error;
-    await record({ provider: "unconfigured", status: "failed" });
-    throw unavailable();
+    throw photoInputError(error);
   }
-  const items = await db
+  return runDraft(businessId, userId, { text: "", photos }, provider);
+}
+
+async function runDraft(
+  businessId: string,
+  userId: string,
+  source: { text: string; photos: AiImage[] },
+  provider: AiProvider | undefined,
+): Promise<{ draft: Draft }> {
+  const photo = source.photos.length > 0;
+  const items = await getDb()
     .select({ id: stockItems.id, name: stockItems.name, unit: stockItems.unit })
     .from(stockItems)
     .where(
@@ -160,81 +197,22 @@ export async function buildDraft(
     )
     .orderBy(asc(sql`lower(${stockItems.name})`))
     .limit(MAX_ITEMS_FOR_MODEL);
-
-  let raw: RawDraft;
+  const inventory = `INSUMOS EXISTENTES:\n${inventoryForModel(items)}`;
   try {
-    raw = await resolved.draft({ text: input, items });
-  } catch (error) {
-    console.warn("stock_draft_failed", {
-      provider: resolved.id,
-      name: error instanceof Error ? error.name : typeof error,
-    });
-    await record({
-      provider: resolved.id,
-      model: resolved.model,
-      status: "failed",
-    });
-    throw unavailable();
-  }
-  const draft = normalizeDraft(raw, items);
-  await record({
-    provider: resolved.id,
-    model: resolved.model,
-    status: "ok",
-    lineCount: draft.lines.length,
-    inputTokens: raw.usage.inputTokens,
-    outputTokens: raw.usage.outputTokens,
-  });
-  return { draft };
-}
-
-type DraftUsage = {
-  provider: string;
-  model?: string | null;
-  status: "ok" | "failed";
-  lineCount?: number;
-  inputTokens?: number | null;
-  outputTokens?: number | null;
-};
-
-/** Una fila de USO de un dictado (spec 0212; `kind` de la 0214). Sin el texto: solo su largo. */
-export async function recordDraftUsage(
-  values: DraftUsage & {
-    businessId: string;
-    userId: string;
-    inputChars: number;
-    kind: "stock_entry" | "recipe";
-  },
-): Promise<void> {
-  await getDb()
-    .insert(stockDraftRequests)
-    .values({
-      businessId: values.businessId,
-      createdByUserId: values.userId,
-      inputChars: values.inputChars,
-      kind: values.kind,
-      provider: values.provider,
-      model: values.model ?? null,
-      status: values.status,
-      lineCount: values.lineCount ?? 0,
-      inputTokens: values.inputTokens ?? null,
-      outputTokens: values.outputTokens ?? null,
-    });
-}
-
-/** Pedidos de borrador del negocio desde `since` (para el tope futuro y el portal de admin). */
-export async function draftsSince(
-  businessId: string,
-  since: Date,
-): Promise<number> {
-  const [row] = await getDb()
-    .select({ n: count() })
-    .from(stockDraftRequests)
-    .where(
-      and(
-        eq(stockDraftRequests.businessId, businessId),
-        gte(stockDraftRequests.createdAt, since),
-      ),
+    const result = await runAiTask(
+      photo ? STOCK_ENTRY_PHOTO_TASK : STOCK_ENTRY_TEXT_TASK,
+      photo
+        ? {
+            context: `${inventory}\n\nFOTOS: ${source.photos.length}`,
+            images: source.photos,
+          }
+        : { context: `${inventory}\n\nTEXTO DEL DUEÑO:`, text: source.text },
+      { businessId, userId },
+      { provider },
     );
-  return Number(row.n);
+    return { draft: normalizeDraft(result.output, items) };
+  } catch (error) {
+    if (error instanceof AiUnavailableError) throw draftUnavailable(photo);
+    throw error;
+  }
 }

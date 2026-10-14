@@ -9,10 +9,8 @@ import {
   seedNegocio,
   type SeedImport,
 } from "./catalog-import-integration-support";
-import type {
-  CatalogExtractionProvider,
-  ProviderExtraction,
-} from "./catalog-import/types";
+import type { ProviderExtraction } from "./catalog-import/types";
+import { ScriptedAiProvider, aiRaw } from "./ai/ai-test-support";
 
 vi.mock("@mi-pasaporte/domain/server/r2", async () => {
   const real = await vi.importActual<
@@ -47,30 +45,32 @@ const EXTRACCION: ProviderExtraction = {
   ],
   discarded: [],
   warnings: [],
-  usage: { inputTokens: 1, outputTokens: 1 },
-  providerRequestId: "req_rec",
 };
 
 function proveedorQueCuenta(
   respuesta: "done" | "pending" | "failed" = "done",
-): { provider: CatalogExtractionProvider; polls: string[] } {
-  const polls: string[] = [];
-  return {
-    polls,
-    provider: {
-      id: "fake-diferido",
-      model: "fake-v1",
-      start: async () => ({ kind: "deferred" as const, jobId: "job-x" }),
-      poll: async (jobId: string) => {
-        polls.push(jobId);
-        if (respuesta === "pending") return { status: "pending" as const };
-        if (respuesta === "failed") {
-          return { status: "failed" as const, code: "provider_incomplete" };
-        }
-        return { status: "done" as const, extraction: EXTRACCION };
-      },
+  starts: string[] = [],
+): { provider: ScriptedAiProvider; polls: string[] } {
+  const provider = new ScriptedAiProvider({
+    id: "fake-diferido",
+    model: "fake-v1",
+    start: (req) => {
+      starts.push(req.task.id);
+      return { kind: "deferred" as const, jobId: "job-x" };
     },
-  };
+    retrieve: () => {
+      if (respuesta === "pending") return { status: "pending" as const };
+      if (respuesta === "failed") {
+        return { status: "failed" as const, code: "provider_incomplete" };
+      }
+      return {
+        status: "done" as const,
+        // La salida CRUDA del modelo: pasa por el validador propio de la tarea del menu.
+        raw: aiRaw({ categories: EXTRACCION.categories, warnings: [] }),
+      };
+    },
+  });
+  return { provider, polls: provider.retrieved };
 }
 
 describe.skipIf(!enabled)("reconciliador contra Neon (spec 0091 §8)", () => {
@@ -196,16 +196,10 @@ describe.skipIf(!enabled)("reconciliador contra Neon (spec 0091 §8)", () => {
       leaseUntil: new Date(Date.now() - 60_000),
     });
     const starts: string[] = [];
-    const { provider } = proveedorQueCuenta("pending");
+    const { provider } = proveedorQueCuenta("pending", starts);
     const resumen = await runCatalogImportReconcile({
       businessId: a.businessId,
-      provider: {
-        ...provider,
-        start: async (input) => {
-          starts.push(input.importId);
-          return { kind: "deferred" as const, jobId: "job-no" };
-        },
-      },
+      provider,
     });
     expect(starts).toEqual([]);
     expect(resumen.failed).toBeGreaterThanOrEqual(1);

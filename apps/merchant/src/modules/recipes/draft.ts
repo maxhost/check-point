@@ -1,25 +1,31 @@
 import { and, asc, eq, sql } from "drizzle-orm";
 import { getDb } from "@mi-pasaporte/db";
 import { stockItems } from "@mi-pasaporte/db/schema";
+import { AiUnavailableError } from "../../server/ai/errors";
+import { readAiImages } from "../../server/ai/image-input";
+import { runAiTask } from "../../server/ai/service";
+import type { AiImage, AiProvider } from "../../server/ai/task";
 import { formatDecimal, parseDecimal, roundDiv } from "../decimal";
 import { ModuleError } from "../errors";
-import { recordDraftUsage } from "../stock/draft";
 import {
   type DraftInventoryItem,
-  DraftProviderUnavailableError,
-} from "../stock/draft-provider";
+  draftUnavailable,
+  inventoryForModel,
+  photoInputError,
+} from "../stock/draft";
 import { QUANTITY } from "../stock/numbers";
 import {
+  RECIPE_PHOTO_INPUT,
+  RECIPE_PHOTO_TASK,
+  RECIPE_TEXT_TASK,
   type RawRecipeDraft,
-  type RecipeDraftProvider,
-  recipeDraftProviderFromEnv,
-} from "./draft-provider";
+} from "./ai-tasks";
 import { MAX_RECIPE_LINES, ownProduct } from "./recipes";
 
 /**
  * Spec 0214 — EL BORRADOR DE UNA RECETA desde el texto dictado, POR UNA UNIDAD del producto. La IA
- * propone y el dueño confirma con el `PUT` de la receta (ADR 0082): aca no se escribe la receta. Lo
- * unico que se guarda es el USO (`stock.draft_request`, `kind = 'recipe'`), sin el texto.
+ * propone y el dueño confirma con el `PUT` de la receta (ADR 0082): aca no se escribe la receta. La IA
+ * pasa por el servicio del core (spec 0224), que registra el USO en `core.ai_request`, sin el texto.
  *
  * Todo lo que devuelve el modelo se valida contra el negocio de la sesion: un `itemId` que no es un
  * insumo activo de ESTE negocio nunca sale como existente.
@@ -63,7 +69,7 @@ function parseYield(raw: unknown): bigint {
 
 /** Pura: valida, convierte a unidad base, divide por el rendimiento y junta repetidos. */
 export function normalizeRecipeDraft(
-  raw: Pick<RawRecipeDraft, "yield" | "lines" | "unparsed">,
+  raw: RawRecipeDraft,
   items: DraftInventoryItem[],
 ): RecipeDraft {
   const byId = new Map(items.map((item) => [item.id, item]));
@@ -143,13 +149,7 @@ export function normalizeRecipeDraft(
   };
 }
 
-function unavailable(): ModuleError {
-  return new ModuleError(
-    503,
-    "draft_unavailable",
-    "No pudimos analizar el texto. Probá de nuevo o cargalo a mano.",
-  );
-}
+type Product = Awaited<ReturnType<typeof ownProduct>>;
 
 /** `POST /api/modules/recipes/:productId/draft` — `{ text }`. `provider` se inyecta en los tests. */
 export async function buildRecipeDraft(
@@ -157,7 +157,7 @@ export async function buildRecipeDraft(
   userId: string,
   rawProductId: unknown,
   body: Record<string, unknown>,
-  provider?: RecipeDraftProvider,
+  provider?: AiProvider,
 ): Promise<{ draft: RecipeDraft }> {
   const input = typeof body.text === "string" ? body.text.trim() : "";
   if (input.length === 0 || input.length > MAX_TEXT) {
@@ -167,34 +167,52 @@ export async function buildRecipeDraft(
       `El texto tiene que tener entre 1 y ${MAX_TEXT} caracteres.`,
     );
   }
-  const db = getDb();
   // El producto ANTES de la IA: uno ajeno es 404 sin gastar ni registrar uso.
-  const product = await ownProduct(db, businessId, rawProductId, false);
-  const record = (values: {
-    provider: string;
-    model?: string | null;
-    status: "ok" | "failed";
-    lineCount?: number;
-    inputTokens?: number | null;
-    outputTokens?: number | null;
-  }) =>
-    recordDraftUsage({
-      businessId,
-      userId,
-      inputChars: input.length,
-      kind: "recipe",
-      ...values,
-    });
+  const product = await ownProduct(getDb(), businessId, rawProductId, false);
+  return runRecipeDraft(
+    businessId,
+    userId,
+    product,
+    { text: input, photos: [] },
+    provider,
+  );
+}
 
-  let resolved: RecipeDraftProvider;
+/** `POST /api/modules/recipes/:productId/draft-photo` — spec 0223: 1 a 3 fotos de la receta del
+ * producto → el MISMO borrador que el dictado. El producto se valida UNA vez y ANTES de leer las
+ * fotos; las fotos invalidas cortan antes de la IA y sin registrar. */
+export async function buildRecipePhotoDraft(
+  businessId: string,
+  userId: string,
+  rawProductId: unknown,
+  request: Request,
+  provider?: AiProvider,
+): Promise<{ draft: RecipeDraft }> {
+  const product = await ownProduct(getDb(), businessId, rawProductId, false);
+  let photos: AiImage[];
   try {
-    resolved = provider ?? recipeDraftProviderFromEnv();
+    photos = await readAiImages(request, RECIPE_PHOTO_INPUT);
   } catch (error) {
-    if (!(error instanceof DraftProviderUnavailableError)) throw error;
-    await record({ provider: "unconfigured", status: "failed" });
-    throw unavailable();
+    throw photoInputError(error);
   }
-  const items = await db
+  return runRecipeDraft(
+    businessId,
+    userId,
+    product,
+    { text: "", photos },
+    provider,
+  );
+}
+
+async function runRecipeDraft(
+  businessId: string,
+  userId: string,
+  product: Product,
+  source: { text: string; photos: AiImage[] },
+  provider: AiProvider | undefined,
+): Promise<{ draft: RecipeDraft }> {
+  const photo = source.photos.length > 0;
+  const items = await getDb()
     .select({ id: stockItems.id, name: stockItems.name, unit: stockItems.unit })
     .from(stockItems)
     .where(
@@ -205,34 +223,22 @@ export async function buildRecipeDraft(
     )
     .orderBy(asc(sql`lower(${stockItems.name})`))
     .limit(MAX_ITEMS_FOR_MODEL);
-
-  let raw: RawRecipeDraft;
+  const context = `PRODUCTO: ${product.name}\n\nINSUMOS EXISTENTES:\n${inventoryForModel(items)}`;
   try {
-    raw = await resolved.draft({
-      text: input,
-      productName: product.name,
-      items,
-    });
+    const result = await runAiTask(
+      photo ? RECIPE_PHOTO_TASK : RECIPE_TEXT_TASK,
+      photo
+        ? {
+            context: `${context}\n\nFOTOS: ${source.photos.length}`,
+            images: source.photos,
+          }
+        : { context: `${context}\n\nTEXTO DEL DUEÑO:`, text: source.text },
+      { businessId, userId },
+      { provider },
+    );
+    return { draft: normalizeRecipeDraft(result.output, items) };
   } catch (error) {
-    console.warn("recipe_draft_failed", {
-      provider: resolved.id,
-      name: error instanceof Error ? error.name : typeof error,
-    });
-    await record({
-      provider: resolved.id,
-      model: resolved.model,
-      status: "failed",
-    });
-    throw unavailable();
+    if (error instanceof AiUnavailableError) throw draftUnavailable(photo);
+    throw error;
   }
-  const draft = normalizeRecipeDraft(raw, items);
-  await record({
-    provider: resolved.id,
-    model: resolved.model,
-    status: "ok",
-    lineCount: draft.lines.length,
-    inputTokens: raw.usage.inputTokens,
-    outputTokens: raw.usage.outputTokens,
-  });
-  return { draft };
 }

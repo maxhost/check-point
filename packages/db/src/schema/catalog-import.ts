@@ -70,21 +70,9 @@ export const catalogImports = core.table(
      * como discriminante del cupo `analyses`. Dejo de ser un borrador editable: nadie la
      * revisa y **no cruza al cliente**. */
     draft: jsonb("draft"),
-    /** LEGACY del borrador versionado que la spec 0091 borro. La columna se conserva —esta
-     * spec no lleva migracion— pero **nadie la escribe ni la lee**. */
-    legacyDraftVersion: integer("draft_version").notNull().default(0),
-    provider: text("provider"),
-    model: text("model"),
-    promptVersion: text("prompt_version"),
-    schemaVersion: text("schema_version"),
-    /** El id diferido del proveedor: es la llave con la que entra el callback. */
+    /** El id diferido del proveedor: es la llave con la que entra el callback. El USO del
+     * proveedor (modelo, tokens, duracion) vive en `core.ai_request` (spec 0224). */
     providerJobId: text("provider_job_id"),
-    /** Diagnostico. NUNCA al DTO publico (§6). */
-    providerRequestId: text("provider_request_id"),
-    /** `integer` y no `bigint` a proposito: el driver devuelve bigint como STRING. */
-    inputTokens: integer("input_tokens"),
-    outputTokens: integer("output_tokens"),
-    durationMs: integer("duration_ms"),
     attemptCount: integer("attempt_count").notNull().default(0),
     /** Sin esto `analyzing` es un pozo: un `after()` muerto colgaria el negocio para
      * siempre. El reconciliador reclama por `status + lease_until`. */

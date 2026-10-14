@@ -1,8 +1,9 @@
 import { eq } from "drizzle-orm";
 import { getDb } from "@mi-pasaporte/db";
 import { catalogImports } from "@mi-pasaporte/db/schema";
-import type { CatalogExtractionProvider } from "./types";
-import { catalogExtractionProviderFromEnv } from "./providers/provider";
+import type { AiProvider } from "../ai/task";
+import { pollAiJob, verifyAiCallback } from "../ai/service";
+import { MENU_EXTRACTION_TASK } from "./menu-task";
 import { failImport, finishAnalysis } from "./finish";
 
 /**
@@ -29,17 +30,11 @@ export type CallbackOutcome =
 export async function handleProviderCallback(
   headers: Headers,
   rawBody: string,
-  deps: { provider?: CatalogExtractionProvider } = {},
+  deps: { provider?: AiProvider } = {},
 ): Promise<CallbackOutcome> {
-  let provider: CatalogExtractionProvider;
-  try {
-    provider = deps.provider ?? catalogExtractionProviderFromEnv();
-  } catch {
-    // Sin proveedor configurado no hay firma que verificar: **fail-closed**.
-    return { status: 401 };
-  }
-  // PASO 1 — LA FIRMA. Antes de leer una sola fila.
-  const verified = provider.verifyCallback?.(headers, rawBody) ?? null;
+  // PASO 1 — LA FIRMA. Antes de leer una sola fila. Sin proveedor configurado no hay firma que
+  // verificar: **fail-closed** (`verifyAiCallback` devuelve null).
+  const verified = verifyAiCallback(headers, rawBody, deps);
   if (!verified) return { status: 401 };
 
   // PASO 2/3 — el id contra nuestra tabla. Desconocido ⇒ 200 e ignorado.
@@ -57,15 +52,17 @@ export async function handleProviderCallback(
 
   // PASO 4 — EL RESULTADO SE TRAE DE LA API. **El cuerpo del webhook no se usa para nada
   // mas que el id.**
-  if (!provider.poll) return { status: 200, result: "noop" };
-  const result = await provider.poll(verified.jobId);
+  const result = await pollAiJob(
+    MENU_EXTRACTION_TASK,
+    { jobId: verified.jobId, subjectId: row.id },
+    deps,
+  );
   if (result.status === "pending") return { status: 200, result: "pending" };
   if (result.status === "failed") {
     await failImport(row.id, "provider_unavailable", result.code.slice(0, 120));
     return { status: 200, result: "failed" };
   }
-  const elapsed = Date.now() - row.createdAt.getTime();
-  const outcome = await finishAnalysis(row.id, result.extraction, elapsed);
+  const outcome = await finishAnalysis(row.id, result.result);
   return {
     status: 200,
     result: outcome === "accepted" ? "accepted" : "noop",

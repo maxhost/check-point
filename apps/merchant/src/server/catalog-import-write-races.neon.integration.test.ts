@@ -37,8 +37,6 @@ const extraccion = (
   categories,
   discarded: [],
   warnings: [],
-  usage: { inputTokens: null, outputTokens: null },
-  providerRequestId: null,
 });
 
 const prod = (name: string, priceText: string | null = null) => ({

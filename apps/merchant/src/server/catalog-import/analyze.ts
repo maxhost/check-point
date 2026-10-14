@@ -5,7 +5,7 @@ import { getPrivateObject } from "@mi-pasaporte/domain/server/r2";
 import { CatalogImportError, type CatalogImportDTO } from "./types";
 import { requireImport, toImportDTO, type ImportRow } from "./core";
 import { SNIFF_BYTES } from "./validation";
-import { sniffKind } from "./sniff";
+import { sniffKind } from "../ai/sniff";
 import { touch } from "./quota";
 import { importSourceFileName } from "./source-file";
 

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { readModuleBody } from "../../errors";
 import type { ModuleRoute } from "../../route-table";
 import { listRecipes, readRecipe, saveRecipe } from "../recipes";
-import { buildRecipeDraft } from "../draft";
+import { buildRecipeDraft, buildRecipePhotoDraft } from "../draft";
 
 /**
  * Spec 0210 / 0214 / 0216 — LA API DE RECETAS, bajo `/api/modules/recipes/…`. Los mismos handlers
@@ -54,6 +54,21 @@ export const routes: readonly ModuleRoute[] = [
           userId,
           params.productId,
           await readModuleBody(request),
+        ),
+      ),
+  },
+  /** Spec 0223: 1 a 3 fotos (multipart `photos`) de la receta → el mismo borrador. */
+  {
+    method: "POST",
+    path: ":productId/draft-photo",
+    failure: "No pudimos analizar la foto.",
+    handler: async ({ request, business, userId, params }) =>
+      NextResponse.json(
+        await buildRecipePhotoDraft(
+          business.id,
+          userId,
+          params.productId,
+          request,
         ),
       ),
   },

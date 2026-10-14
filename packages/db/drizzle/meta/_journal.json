@@ -561,6 +561,20 @@
       "when": 1791929591047,
       "tag": "0079_pos_y_mesas_modulos",
       "breakpoints": true
+    },
+    {
+      "idx": 80,
+      "version": "7",
+      "when": 1791940987261,
+      "tag": "0080_ai_request",
+      "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "7",
+      "when": 1791941006554,
+      "tag": "0081_ai_request_copia_y_borrado",
+      "breakpoints": true
     }
   ]
 }

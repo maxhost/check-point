@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { CatalogImportError } from "./catalog-import/types";
 import { validateImportFiles } from "./catalog-import/validation";
-import { sniffKind } from "./catalog-import/sniff";
+import { sniffKind } from "./ai/sniff";
 
 /**
  * Spec 0090 §2/§4 — LA MATRIZ DE ENTRADA: formatos, mezcla, cantidades, tamaños, y el

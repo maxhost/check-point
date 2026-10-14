@@ -9,6 +9,8 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["src/**/*.test.ts"],
+    // Spec 0224: el proveedor de IA de las suites (`AI_PROVIDER=fake`, sin clave de OpenAI).
+    setupFiles: ["./vitest.setup.ts"],
     // El default de vitest son 10 s, y los teardowns de las suites `.neon.integration`
     // borran mundos enteros contra una rama Neon compartida. Medido al cerrar la spec
     // 0065 B2: `marketing-lifecycle` se paso de los 10 s en 2 de 3 corridas y marco el

@@ -4,6 +4,10 @@ import {
 } from "../../../../../modules/dispatch";
 
 export const dynamic = "force-dynamic";
+/** Spec 0223 / ADR 0142 / 0224: el borrador desde fotos llama a la IA en el pedido (timeout del proveedor
+ * 45 s, `server/ai/providers/openai.ts`). Vale para todas las rutas de modulos: es el techo, no lo que
+ * tarda una ruta comun. */
+export const maxDuration = 60;
 
 type Context = { params: Promise<DispatchParams> };
 

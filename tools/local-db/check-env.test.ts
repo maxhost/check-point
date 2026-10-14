@@ -38,6 +38,8 @@ const MERCHANT = {
   BETTER_AUTH_URL: "https://dev-business.checkpass.club",
   CONSUMER_ORIGIN: "https://dev-my.checkpass.club",
   BETTER_AUTH_TRUSTED_ORIGINS: `https://dev-business.checkpass.club,https://${CENTINELA}.example.com`,
+  // Spec 0224: obligatoria en merchant.
+  AI_PROVIDER: "fake",
 };
 const CONSUMER = {
   DATABASE_URL: LOCAL_DB,
@@ -119,6 +121,14 @@ describe("check-env.ts: origenes de las apps (spec 0168)", () => {
       /^MAL .*BETTER_AUTH_SECRET de 32\+ caracteres \(largo 0\)$/m,
     );
     expect(r.code).toBe(1);
+  });
+
+  it("merchant sin AI_PROVIDER (el servicio de IA contesta `unconfigured`) → exit 1", () => {
+    const r = correr({ ...MERCHANT, AI_PROVIDER: undefined });
+    expect(r.out).toMatch(/^MAL .*AI_PROVIDER = fake u openai$/m);
+    expect(r.code).toBe(1);
+    // Un valor que no es un proveedor tampoco.
+    expect(correr({ ...MERCHANT, AI_PROVIDER: "kimi" }).code).toBe(1);
   });
 
   it("(d) PROD como SEGUNDO elemento de una lista → exit 1", () => {

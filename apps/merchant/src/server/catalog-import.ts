@@ -2,7 +2,6 @@
 // entrar en el limite del hook `file-size`; todo `from "../catalog-import"` resuelve acá.
 export { CatalogImportError } from "./catalog-import/types";
 export type {
-  CatalogExtractionProvider,
   CatalogImportDTO,
   CatalogImportErrorCode,
   ImportResult,

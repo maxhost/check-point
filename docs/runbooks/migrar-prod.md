@@ -38,8 +38,8 @@ con filas de PROD):
 3. [ ] El resto de cada archivo, segun los bloques de abajo.
 4. [ ] Verificar: `node tools/local-db/check-env.ts` (imprime claves, largos y veredictos; nunca valores). Exit 0
    solo si ninguna `DATABASE_URL*` de las apps es PROD, las dos usan la base local, las 6 claves R2 son las de
-   desarrollo, el consumer no tiene secretos de wallet ni `CLICKSEND_*`/`TWILIO_*`/`OTP_PROVIDER`, y
-   `packages/db/.env.prod.local` tiene la URL directa de PROD.
+   desarrollo, el consumer no tiene secretos de wallet ni `CLICKSEND_*`/`TWILIO_*`/`OTP_PROVIDER`, merchant tiene
+   `AI_PROVIDER` (`fake` u `openai`, spec 0224), y `packages/db/.env.prod.local` tiene la URL directa de PROD.
 
 **`apps/merchant/.env.local`**
 
@@ -52,6 +52,10 @@ R2_ENDPOINT=<de tools/local-db/.env.r2-dev>
 R2_REGION=<de tools/local-db/.env.r2-dev>
 R2_ACCESS_KEY_ID=<de tools/local-db/.env.r2-dev>
 R2_SECRET_ACCESS_KEY=<de tools/local-db/.env.r2-dev>
+# Spec 0224: OBLIGATORIA. `fake` (sin clave, sin costo) u `openai` (con OPENAI_API_KEY). Sin ella la IA contesta
+# «no configurado» (el dictado y la foto, 503; el menu, `failed`): no hay falso por defecto.
+AI_PROVIDER=fake
+# Ya no se leen (spec 0224): STOCK_DRAFT_PROVIDER, STOCK_DRAFT_MODEL, CATALOG_EXTRACTION_*; pueden borrarse.
 # Sin cambios: NEON_CI_DATABASE_URL, NEON_CI_DATABASE_URL_UNPOOLED, NEON_CI_CONSUMER_DATABASE_URL (rama de CI).
 # Con EMAIL_PROVIDER=console, RESEND_API_KEY no se usa; puede quedar o borrarse.
 ```

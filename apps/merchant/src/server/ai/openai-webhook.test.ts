@@ -4,7 +4,7 @@ import {
   jobIdFromPayload,
   signPayload,
   verifyWebhookSignature,
-} from "./catalog-import/providers/openai-callback";
+} from "./providers/openai-webhook";
 
 /**
  * Spec 0090 §7 — LA FIRMA DEL CALLBACK. Es lo **unico** que separa al proveedor de

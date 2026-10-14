@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { and, eq } from "drizzle-orm";
 import { getDb } from "@mi-pasaporte/db";
-import { stockDraftRequests, stockItems } from "@mi-pasaporte/db/schema";
+import { aiRequests, stockItems } from "@mi-pasaporte/db/schema";
 import {
   type ModuleWorld,
   api,
@@ -12,10 +12,11 @@ import {
   seedModuleWorld,
   seedProduct,
 } from "../modules-integration-support";
+import { ScriptedAiProvider, aiRaw } from "../../server/ai/ai-test-support";
 import { buildRecipeDraft } from "./draft";
-import type { RecipeDraftProvider } from "./draft-provider";
 
-/** Spec 0214 — dictado de recetas con proveedor INYECTADO, y el PUT ampliado (newItem, unit). */
+/** Spec 0214 — dictado de recetas con proveedor INYECTADO, y el PUT ampliado (newItem, unit). Spec
+ * 0224: el uso va a `core.ai_request` (tarea `recipes.recipe_text`). */
 
 let world: ModuleWorld;
 let other: ModuleWorld;
@@ -32,28 +33,19 @@ afterAll(async () => {
   await dropModuleWorld(other);
 }, 240_000);
 
-const scripted = (out: {
-  yield: number;
-  lines: unknown[];
-}): RecipeDraftProvider & { seen: { product: string; items: string[] }[] } => {
-  const seen: { product: string; items: string[] }[] = [];
-  return {
+const scripted = (out: { yield: number; lines: unknown[] }) =>
+  new ScriptedAiProvider({
     id: "scripted",
     model: "test-model",
-    seen,
-    async draft(input) {
-      seen.push({
-        product: input.productName,
-        items: input.items.map((i) => i.name),
-      });
-      return {
-        ...out,
-        unparsed: [],
-        usage: { inputTokens: 7, outputTokens: 3 },
-      };
-    },
-  };
-};
+    run: () =>
+      aiRaw({ ...out, unparsed: [] }, { inputTokens: 7, outputTokens: 3 }),
+  });
+
+const usos = () =>
+  getDb()
+    .select()
+    .from(aiRequests)
+    .where(eq(aiRequests.businessId, world.businessId));
 
 describe.skipIf(!modulesIntegrationEnabled)(
   "Recetas: dictado (spec 0214)",
@@ -101,20 +93,18 @@ describe.skipIf(!modulesIntegrationEnabled)(
         name: "Manteca",
         quantity: "12.500",
       });
-      expect(provider.seen[0]).toEqual({
-        product: "Medialuna",
-        items: ["Harina"],
-      });
+      // El modelo vio el producto y SOLO los insumos de este negocio (contexto del servidor).
+      const context = provider.calls[0].input.context ?? "";
+      expect(context).toContain("PRODUCTO: Medialuna");
+      expect(context).toContain("Harina");
+      expect(context).not.toContain("Manteca");
 
-      const rows = await getDb()
-        .select()
-        .from(stockDraftRequests)
-        .where(eq(stockDraftRequests.businessId, world.businessId));
+      const rows = await usos();
       expect(rows).toHaveLength(1);
       expect(rows[0]).toMatchObject({
-        kind: "recipe",
+        task: "recipes.recipe_text",
         status: "ok",
-        lineCount: 2,
+        outputItems: 2,
         inputTokens: 7,
       });
     }, 120_000);
@@ -122,12 +112,7 @@ describe.skipIf(!modulesIntegrationEnabled)(
     it("producto de OTRO negocio → 404 sin llamar a la IA ni registrar uso", async () => {
       const ajeno = await seedProduct(other, "Ajeno", "1.00");
       const provider = scripted({ yield: 1, lines: [] });
-      const before = (
-        await getDb()
-          .select()
-          .from(stockDraftRequests)
-          .where(eq(stockDraftRequests.businessId, world.businessId))
-      ).length;
+      const before = (await usos()).length;
       await expect(
         buildRecipeDraft(
           world.businessId,
@@ -137,13 +122,8 @@ describe.skipIf(!modulesIntegrationEnabled)(
           provider,
         ),
       ).rejects.toMatchObject({ status: 404, code: "product_not_found" });
-      expect(provider.seen).toHaveLength(0);
-      const after = (
-        await getDb()
-          .select()
-          .from(stockDraftRequests)
-          .where(eq(stockDraftRequests.businessId, world.businessId))
-      ).length;
+      expect(provider.calls).toHaveLength(0);
+      const after = (await usos()).length;
       expect(after).toBe(before);
     }, 120_000);
 
