@@ -12,17 +12,21 @@
 un comando → hook; protocolo o gotcha de dominio → skill en `.claude/skills/`; caso con fecha →
 `docs/LECCIONES.md`. Nunca se referencia `LECCIONES.md` ni una skill con `@`: se cargaria entero.
 
-## Niveles (ADR 0129, owner 2026-10-08)
+## Politica vigente (ADR0144)
+
+`docs/TRABAJO-EN-PARALELO.md`, `docs/AGENT-WORKFLOW.md` y `docs/VERIFICACION.md` mandan sobre las recetas anteriores incompatibles. GPT/Claude pueden implementar UI/backend por tarea; dos workers, coordinador y QA independiente. Worktrees temporales con scope, sin push de feature. Main local listo; cada push/operacionPROD requiere autorizacion explicita.
+
+## Niveles (ADR0144 actualiza0129)
 
 | Nivel | Cuando | Como |
 |---|---|---|
 | **L0 rapido** | un color, un texto, una imagen, un ajuste puntual | investigar donde va, aplicar, releer el diff (typecheck + lint del paquete). Sin spec, sin ADR, sin tests, sin adversarial |
 | **L1 chico** | una seccion nueva, un cambio de layout, modificar algo existente en la base (no agregar ni borrar) | mini plan en la conversacion (no spec, no ADR); pruebas minimas: lo que corra en menos de 3 minutos |
 | **L2 funcionalidad** | una funcionalidad nueva | spec CHICA (`TEMPLATE-CHICA.md`), ADR solo si hay una decision de diseño; tests especificos, no extensos; sin adversarial salvo que algo se vea raro |
-| **L3 grande** | cambios grandes | la suite entera: spec (`TEMPLATE.md`), ADR, tests, UN `implementador` y UN `revisor` (`docs/AGENT-WORKFLOW.md`) |
+| **L3 grande** | cambios grandes | spec y cobertura amplia segun riesgo; QA independiente; especialista solo si corresponde (`docs/VERIFICACION.md`) |
 
 - **Piso L2:** dinero, login/sesiones, aislamiento entre comercios y migraciones a PROD nunca bajan de L2.
-- **Si dudo entre dos niveles, le pregunto al owner** con los dos candidatos. Subagentes solo en L3.
+- **Si dudo entre dos niveles, le pregunto al owner** con los dos candidatos. Paralelismo por independencia y capacidad, no por nivel.
 - `pnpm verify` completo corre al pasar a live (hook `pre-push`, ADR 0128), no en cada cambio L0/L1.
 - Las decisiones del owner se piden ANTES de escribir la spec: una spec escrita dos veces porque el alcance cambio
   es el costo que esto corta.
@@ -30,8 +34,7 @@ un comando → hook; protocolo o gotcha de dominio → skill en `.claude/skills/
 ## Flujo
 
 1. Al arrancar: el bloque ESTADO y `pnpm ci:status`. Si el ultimo `main` esta rojo, se arregla primero.
-   **Se trabaja en la rama local `dev`** (ADR 0128): nunca commitear en `main`; `main` recibe `merge --ff-only dev`
-   y se pushea solo con OK del owner, despues de probar `main` en local.
+   **Dev es base/integracion** (ADR0144); worker usa worktree asignado. Main local recibe candidato verificado y solo se pushea con autorizacion explicita del owner.
 2. Toda decision de diseño genera un ADR (`docs/adr/`) con fecha y `resumen` de una linea en el frontmatter.
 3. Fila de 3 lineas en `docs/INDEX.md` (que es, por que importa, estado) en el mismo commit.
 4. Estado: en L2/L3 el bloque ESTADO se reescribe DESPUES del commit del trabajo (dos commits: el trabajo
@@ -42,7 +45,7 @@ un comando → hook; protocolo o gotcha de dominio → skill en `.claude/skills/
 ## Estado
 
 **Lo que tiene que sobrevivir va a un archivo, no a la conversacion**: la compactacion borra el chat, el
-disco se re-lee. **Handoff SIEMPRE seguido de `/clear`**: handoff primero (a disco), clear despues.
+disco se re-lee. **Handoff a disco por tarea**; el coordinador puede continuar sin clear universal.
 **Nunca compact**: comprime con perdida.
 
 ## Verificacion
@@ -50,8 +53,8 @@ disco se re-lee. **Handoff SIEMPRE seguido de `/clear`**: handoff primero (a dis
 - **Ninguna afirmacion de exito vale sin una señal que el modelo no genero** — test, typecheck, exit code,
   una fila leida por SQL. **Y su espejo:** «no se puede testear» o «costaria una migracion» se verifican
   **intentandolo**, antes de pasarselo al owner o a un doc.
-- **Ningun hallazgo de un subagente entra a una spec, ADR, `INDEX` o mensaje al owner sin reproducir su
-  evidencia** — tambien si viene de un revisor con PASS. Lo que le pasas como insumo es afirmacion tuya: re-medilo.
+- **Ningun hallazgo de un subagente entra a una spec, ADR, `INDEX` o mensaje al owner sin comprobar identidad/alcance de su
+  evidencia; reproducir señal decisiva ante dudas** — tambien si viene de un revisor con PASS. Lo que le pasas como insumo es afirmacion tuya: re-medilo.
 - Mutaciones, tablas de mutacion, presupuesto y corte, mecanismos «medidos»: skill
   **`protocolo-de-verificacion`** — cargala antes de encargar una revision o escribir un plan de pruebas.
 - **No esperar la CI de GitHub** (owner, 2026-09-23): gates locales antes de pushear, sin sondear despues.
@@ -64,7 +67,7 @@ disco se re-lee. **Handoff SIEMPRE seguido de `/clear`**: handoff primero (a dis
 
 ## Codigo
 
-- Zonas (ADR 0114): GPT hace pantallas, estilos y e2e; Claude API, servidor, paquetes y tooling. La frontera
+- Zonas (ADR 0114): GPT y Claude implementan UI/backend segun tarea; kit/tooling/migraciones necesitan asignacion explicita. La frontera
   es el contrato HTTP escrito.
 - **Modulos (ADR 0138/0139): `docs/MODULOS.md`.** Un modulo es una carpeta `modules/<id>/`; el core nunca lo importa ni
   lo nombra (ni rutas en `app/`, ni `if` con su id): falta un punto de enganche → ADR, no excepcion.

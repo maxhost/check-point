@@ -1,88 +1,33 @@
-# Trabajo en paralelo: Claude y GPT sobre la rama `dev`
+# Trabajo en paralelo por tarea
 
-Reglas comunes de los dos agentes ([ADR 0114](adr/0114-claude-y-gpt-trabajan-en-paralelo-sobre-main.md); desde el
-2026-10-08 la rama y el push los manda el [ADR 0128](adr/0128-rama-dev-local-merge-a-main-y-push.md)).
-Las lee GPT desde `AGENTS.md` y Claude desde `CLAUDE.md`. Si algo de acá choca con un prompt, pregúntale al owner.
+Reglas vigentes: ADR0144 sustituye reparto fijo GPT/Claude, carpeta unica y subagentes soloL3 de ADR0071/0113/0114/0128/0129. Las decisiones de producto/arquitectura anteriores siguen vigentes salvo sustitucion explicita.
 
-## 1. Al empezar
+## Inicio y ramas
 
-```sh
-git branch --show-current   # tiene que decir dev
-pnpm ci:status
-```
+Coordinador: Node24, estado propio vigente, `git status --short`, refs reales y `pnpm ci:status`; no pull/switch sobre trabajo ajeno. CI remoto rojo se identifica y su correccion debe estar en el candidato antes de publicar. Dev es punto de partida/integracion, no se pushea. Main local representa lo listo, origin/main lo publicado. No exigir publicacion previa para iniciar desde dev aprobado.
 
-Si no estas en `dev`, `git switch dev` (nunca se trabaja en `main`).
-Si el último `main` está rojo, se arregla **primero**, y lo arregla el dueño de la zona que falla (§5).
-Después lee tu estado: `docs/estado/gpt.md` (GPT) o `docs/estado/claude.md` (Claude).
+Workers: leer ficha/spec cerrada/contrato, confirmar worktree/base y scope antes de escribir. No operar indice, refs, estados, servidores o artefactos de otro checkout. UI/backend pueden ser de GPT o Claude; mantenimiento de kit/tooling/esquema solo por encargo explicito.
 
-## 2. Una sola rama de trabajo: `dev` (local, no se pushea)
+## Aislamiento y recursos
 
-- Los dos trabajan en `~/Documents/claude-workspace/check-point/`, rama `dev`. Sin ramas de feature ni PR.
-- `dev` **no se pushea** (un push de rama es un deploy de preview en Vercel Hobby). Commits chicos en `dev`.
-- El ambiente local (`pnpm dev:local`) corre la rama activa contra la base local en Docker.
+Dos workers y QA, maximo tres worktrees operativos. `tools/worktree-new.sh NAME BASE ROOT` prepara dependencias propias; sin enlaces generales de .envPROD. Puertos/artefactos propios; usar bases de prueba aisladas o reservar DB durante migracion/test/limpieza. Generar journals/snapshots en orden, no merge textual de migraciones concurrentes.
 
-## 3. Cómo se pasa a live (solo con OK del owner)
+El coordinador reserva paths y recursos con `node tools/factory.ts reserve ID WORKTREE BASE PATHS RESOURCES`. Paths son archivos/directorios relativos sin globs. Cada tarea tiene base/contrato/criterios/checks; ampliacion de scope vuelve al coordinador. Contratos/registros/lockfile/INDEX/kit tienen un writer asignado. Worktrees no son frontera de seguridad: las herramientas/permisos y validacion de entregas complementan la regla.
 
-```sh
-pnpm verify                      # en dev, verde; el owner prueba en local
-git switch main
-git merge --ff-only dev
-pnpm dev:local                   # el owner confirma que main anda en local
-git push                         # desde main
-git switch dev
-```
+## Entregas, QA e integracion
 
-El hook `.githooks/pre-push` (común, se instala una vez con `pnpm hooks:install`) corre en todo push a `main`:
-`node tools/check-numbers.ts` (números de spec/ADR duplicados) y `pnpm verify` (gates según lo que cambió; si el
-push es solo de docs, solo `format:check`). **Si da rojo, no se pushea.** `git push --no-verify` solo con OK
-explícito del owner.
+Worker commitea solo archivos propios y entrega SHAs/evidencia/limites. `factory deliver ID` rechaza checkout sucio y paths fuera de scope. QA parte de spec/diff en contexto fresco, trabaja sobre candidato congelado y devuelve PASS/FAIL reproducible. Coordinador registra `factory accept ID SHA` solo con esa evidencia.
 
-## 4. Reservar un número de spec/ADR
+Integrar ramas locales con merge que preserve los commits aceptados, comprobando rango/scope; nunca incorporar una rama ajena por nombre solamente. Dev puede seguir cambiando mientras QA verifica una copia congelada. Correccion genera otra revision y solo invalida checks afectados; no copiar PASS de otro candidato. Worker puede comenzar otra tarea preparada si hay capacidad y preserva entrega/recursos anteriores.
 
-Antes de escribir código: escribe la spec (y su fila de `docs/INDEX.md`), commitea y **pushea solo eso**. El
-número queda tuyo. Si al hacer `pull --rebase` aparece otro con tu número, renumera **la tuya** (la que no está
-en `origin/main`).
+## Main local y produccion
 
-## 5. Zonas
+Tras QA/gates del candidato, avanzar main local al candidato aprobado (fast-forward cuando sea posible), desde un checkout limpio. Volver a dev para seguir. Esto NO publica. El owner decide **cada push a main remoto y cada operacion de produccion**. Confirmar SHA remoto/base/candidato al publicar; si cambiaron, integrar/verificar antes. Pre-push/check-numbers siguen obligatorios; --no-verify solo con autorizacion explicita.
 
-| Zona | Dueño | Globs |
-|---|---|---|
-| Pantallas | GPT | `apps/*/src/app/**` fuera de `app/api/**` |
-| Estilos y estáticos | GPT | `**/*.css`, `apps/*/public/**` |
-| e2e | GPT | `tests/e2e/**`, `playwright.config.*` |
-| API | Claude | `apps/*/src/app/api/**` |
-| Servidor | Claude | `apps/*/src/server/**` |
-| Paquetes y migraciones | Claude | `packages/**`, `**/drizzle/**` |
-| Tooling, hooks y CI | Claude | `tools/**`, `.githooks/**`, `.claude/**`, `.github/**` |
-| Kit y guardias de UI (ADR 0123) | Claude | `apps/merchant/src/ui/**` (incluye `tokens.css`), `eslint.config.mjs`, `tools/ui-guard*` |
-| Pantallas de modulo (ADR 0139) | GPT | `apps/merchant/src/modules/*/ui/**` y su linea en `modules/ui-registry.ts` |
-| Resto de un modulo (ADR 0139) | Claude | `apps/merchant/src/modules/**` fuera de `*/ui/**`, `packages/db/src/schema/modules/**` |
+## Limpieza acotada
 
-**Modulos:** antes de tocar uno, leer `docs/MODULOS.md`. Un modulo NUNCA suma archivos en `app/` ni nombra su id en el
-core: si una pantalla de modulo necesita un lugar nuevo en el panel, se pide el punto de enganche.
+Cuando la entrega esta en main local: `factory integrate ID`; detener procesos propios; `factory cleanup ID`. Exige estado aceptado/integrado, checkout limpio, ancestro de main y sin procesosCWD. Retira worktree y rama local ya integrada, nunca force. Owner autorizo esta limpieza al adoptar el piloto. Si hay pendientes o archivos ajenos, conservar e informar; no borrar para ahorrar espacio. Evidencia/handoff y commits quedan en el repo; registro local en .factory ignorado por Git.
 
-La frontera es el **contrato HTTP escrito** (ADR 0070): si una pantalla necesita un dato que la API no da, se
-pide en el contrato, no se toca el servidor del otro. El hook no bloquea por zona (git no sabe quién pushea):
-se respeta por regla y se declara en el handoff. La zona del kit la vigila `tools/zone-audit.ts` al arrancar la
-sesion de Claude (avisa commits sin su trailer; detecta, no impide). Tocar el kit **nunca** es «arreglo mecanico» (§6):
-se pide la pieza.
+## Estado y reservas documentales
 
-## 6. Rotura cruzada
-
-Si tu cambio rompe un test de la zona del otro:
-
-- **Arreglo mecánico** (texto, lista de campos, clases): lo arreglas tú en el mismo push.
-- **Si no:** anótalo en el estado del otro (`docs/estado/<otro>.md`) y avisa al owner. **Nunca se pushea rojo.**
-
-## 7. Estado por agente
-
-- `docs/estado/claude.md` — lo escribe solo Claude.
-- `docs/estado/gpt.md` — lo escribe solo GPT.
-- `docs/TASKS.md` arriba solo los enlaza; lo de abajo es histórico.
-
-Cada uno reescribe **su** bloque ESTADO entero al cerrar, después del commit del trabajo y con su sha.
-
-## 8. Conflictos en `INDEX.md` o `PARQUEADO.md`
-
-Conserva **las filas de los dos**. Nunca borres una fila del otro para resolver un conflicto. Si la misma fila
-cambió en los dos lados, queda la versión con el estado más nuevo (no dupliques la fila).
+Coordinador reserva spec/ADR y filaINDEX mediante commit local antes del codigo. Workers escriben entrega propia, no INDEX/TASKS/gpt.md/claude.md. Cada coordinador mantiene su estado; no escribir el del otro. Resolver colisiones documentales preservando las filas de ambos. Ante cancelacion/caida: preservar commits, reconciliar procesos/refs y no reasignar writer vivo. Registro tiene lockatomico; nunca robar lock por timeout.

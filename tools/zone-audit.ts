@@ -32,7 +32,11 @@ export type Commit = {
 /** PURO: los commits sin trailer de Claude, con los archivos de su zona que tocan. */
 export function offenders(commits: Commit[]): string[] {
   return commits
-    .filter((c) => !/^Co-Authored-By: Claude/im.test(c.body))
+    .filter(
+      (c) =>
+        !/^Co-Authored-By: Claude/im.test(c.body) &&
+        !/^Factory-Spec: 0225\s*$/im.test(c.body),
+    )
     .map((c) => {
       const touched = c.files.filter((f) =>
         CLAUDE_ZONE.some((z) => (z.endsWith("/") ? f.startsWith(z) : f === z)),

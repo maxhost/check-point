@@ -13,6 +13,8 @@
 # Inyecta la instruccion para que el resumen la arrastre.
 
 set -uo pipefail
+# ADR0144: worker entrega por task ID; no escribe estado central de Claude.
+[ -z "${FACTORY_TASK_ID:-}" ] || exit 0
 cd "${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}" || exit 0
 
 stale=""

@@ -21,6 +21,8 @@
 # de mas abajo hablan de arcos viejos y son legitimas.
 
 set -uo pipefail
+# ADR0144: worker entrega por task ID; no escribe estado central de Claude.
+[ -z "${FACTORY_TASK_ID:-}" ] || exit 0
 
 cd "${CLAUDE_PROJECT_DIR:-.}" || exit 0
 STATE=docs/estado/claude.md

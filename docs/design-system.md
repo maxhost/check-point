@@ -351,7 +351,7 @@ Propósito: elegir archivos con un botón del kit (el input queda oculto y se va
 | `type-scale` | `text-sm`, `font-bold`, `leading-6` | `Heading`/`Text` |
 | `css-file`, `css-selector`, `css-at-rule`, `css-color`, `css-kit-selector` | un `.css` nuevo; selectores, `@apply`/`@layer`/`@theme`, colores o selectores del kit en `globals.css`/`onboarding.css` | borrar, no agregar |
 
-`templates/**` de marca y `poster-preview.tsx` (pintan los colores del comercio) quedan exentos de las categorías de color y estilo; `@media print`, de `css-color`. `node tools/ui-guard.ts --report` da los totales de todo el merchant: es la medida de la Fase 1 (el 2026-10-05: 257 nativos fuera de lista, 193 handlers, 122 `type-scale`, 1491 selectores y 480 colores en CSS). Si una pantalla necesita algo que el kit no tiene, se pide la pieza: el kit y el guard son zona de Claude.
+`templates/**` de marca y `poster-preview.tsx` (pintan los colores del comercio) quedan exentos de las categorías de color y estilo; `@media print`, de `css-color`. `node tools/ui-guard.ts --report` da los totales de todo el merchant: es la medida de la Fase 1 (el 2026-10-05: 257 nativos fuera de lista, 193 handlers, 122 `type-scale`, 1491 selectores y 480 colores en CSS). Si una pantalla necesita algo que el kit no tiene, se pide la pieza: el kit y el guard requieren un encargo de mantenimiento explicito (ADR0144).
 
 ## Convenciones para componentes nuevos
 

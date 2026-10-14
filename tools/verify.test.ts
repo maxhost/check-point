@@ -48,8 +48,8 @@ describe("planVerify", () => {
     const file = "apps/merchant/src/app/backoffice/marketing/composer.tsx";
     const plan = planVerify([file]);
     expect(plan.e2e).toBe(true);
-    // Esta bajo apps/merchant/src: `vitest related` decide (medido: 0 suites), no la regla.
-    expect(plan.neon.mode).toBe("related");
+    // ADR0144: UI pura tiene cobertura browser, sin preparar DB.
+    expect(plan.neon.mode).toBe("none");
     expect(plan.reasons).toContain(`e2e: ${file}`);
   });
 
@@ -59,6 +59,15 @@ describe("planVerify", () => {
       e2e: false,
       neon: { mode: "related", merchant: [file], consumer: [] },
     });
+  });
+
+  it("pantalla modular: e2e sin Neon; servidor modular conserva integracion", () => {
+    expect(
+      planVerify(["apps/merchant/src/modules/stock/ui/stock-input-modal.tsx"]),
+    ).toMatchObject({ e2e: true, neon: { mode: "none" } });
+    expect(
+      planVerify(["apps/merchant/src/modules/stock/server/routes.ts"]),
+    ).toMatchObject({ neon: { mode: "related" } });
   });
 
   it("servidor de merchant: related merchant, sin e2e", () => {

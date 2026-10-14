@@ -10,6 +10,9 @@ description: >
   Los casos que originaron cada regla estan en `docs/LECCIONES.md`.
 ---
 
+> ADR0144: politica vigente en docs/VERIFICACION.md y docs/AGENT-WORKFLOW.md. Las recetas antiguas de verify/revisor/mutaciones universales, zonasGPTsoloUI, envworktree compartido y clear por cada handoff quedan sustituidas. Cargar solo secciones pertinentes; workers escriben entrega de su tarea, no estadoClaude.
+
+
 # Protocolo de verificacion
 
 Version operativa. Cada regla de aca salio de un error real; el caso, la fecha y la evidencia

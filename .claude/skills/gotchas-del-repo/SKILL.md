@@ -10,6 +10,9 @@ description: >
   plugin de auth, una superficie de subida de imagenes, o al diagnosticar un gate/instal roto.
 ---
 
+> ADR0144: politica vigente en docs/VERIFICACION.md y docs/AGENT-WORKFLOW.md. Las recetas antiguas de verify/revisor/mutaciones universales, zonasGPTsoloUI, envworktree compartido y clear por cada handoff quedan sustituidas. Cargar solo secciones pertinentes; workers escriben entrega de su tarea, no estadoClaude.
+
+
 # Gotchas del repo
 
 Todo lo de aca esta **medido**, no supuesto: cada bloque dice como se verifico. Salio de

@@ -17,6 +17,8 @@
 # estado real.
 
 set -uo pipefail
+# ADR0144: worker entrega por task ID; no escribe estado central de Claude.
+[ -z "${FACTORY_TASK_ID:-}" ] || exit 0
 cd "${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}" || exit 0
 
 # Donde vive el codigo. Este es un MONOREPO: `src/` NO existe en la raiz, vive en

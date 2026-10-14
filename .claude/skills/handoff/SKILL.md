@@ -7,6 +7,9 @@ description: >
   cambiar de tarea. La sesion siguiente hereda los archivos, no el chat.
 ---
 
+> ADR0144: politica vigente en docs/VERIFICACION.md y docs/AGENT-WORKFLOW.md. Las recetas antiguas de verify/revisor/mutaciones universales, zonasGPTsoloUI, envworktree compartido y clear por cada handoff quedan sustituidas. Cargar solo secciones pertinentes; workers escriben entrega de su tarea, no estadoClaude.
+
+
 # Handoff — cerrar la sesion por artefactos
 
 El objetivo: que una sesion fresca retome EXACTAMENTE donde quedo esta leyendo solo disco.

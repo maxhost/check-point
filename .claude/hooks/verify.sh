@@ -18,7 +18,8 @@
 # siguiente. Vive dentro de `.git` (`git rev-parse --git-path`), asi que git la ignora y
 # cada worktree tiene la suya. Para forzar los gates: borrar ese archivo.
 #
-# LIMITE DECLARADO: la huella no incluye HEAD. Un `pull`/`merge` que trae codigo ajeno con
+# ADR0144: la huella incluye HEAD; no se reutiliza verde de otro commit.
+# HISTORICO: la huella no incluia HEAD. Un `pull`/`merge` que trae codigo ajeno con
 # el arbol limpio da la misma huella (diff vacio) y no re-corre: eso lo cubren el
 # `pre-push` y `pnpm ci:status`.
 
@@ -30,6 +31,7 @@ cd "${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}" 
 
 code_fingerprint() {
   {
+    git rev-parse HEAD
     git diff HEAD --binary -- . ':(exclude)docs' 2>/dev/null
     printf '\n--untracked--\n'
     while IFS= read -r -d '' f; do
@@ -98,12 +100,7 @@ if have_script lint; then
   fi
 fi
 
-if have_script test; then
-  if ! r=$(pnpm run --silent test 2>&1); then
-    out+=$'\n=== tests FALLAN ===\n'"$(printf '%s' "$r" | tail -30)"
-    fail=1
-  fi
-fi
+# ADR0144: unit/integration/browser run according to task/QA plan, not every Stop.
 
 if [ "$fail" -ne 0 ]; then
   printf 'No podes terminar el turno todavia.%s\n' "$out" >&2

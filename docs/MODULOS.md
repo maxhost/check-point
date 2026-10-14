@@ -15,13 +15,13 @@ Direccion de dependencias: **modulo → core** y **modulo → modulo que declara
 
 | Que | Donde | Quien |
 |---|---|---|
-| Lo que el modulo declara (nombre, dependencias, rubros, permisos, menu, panel de Ajustes) | `apps/merchant/src/modules/<id>/manifest.ts` (puro) | Claude |
-| Logica y handlers de API | `modules/<id>/server/` | Claude |
-| Tabla de rutas de API (`{ method, path, handler }`) | `modules/<id>/server/routes.ts` | Claude |
-| Pantallas y panel de Ajustes | `modules/<id>/ui/` | GPT |
-| Esquema de base | `packages/db/src/schema/modules/<id>.ts` (`pgSchema("<id>")`) + migracion | Claude |
-| Tests de servidor | `modules/<id>/**.test.ts`, `*.neon.integration.test.ts` | Claude |
-| Tests e2e de pantallas | `tests/e2e/<id>*.spec.ts` | GPT |
+| Lo que el modulo declara (nombre, dependencias, rubros, permisos, menu, panel de Ajustes) | `apps/merchant/src/modules/<id>/manifest.ts` (puro) | Responsable asignado UI/backend (ADR0144) |
+| Logica y handlers de API | `modules/<id>/server/` | Responsable asignado UI/backend (ADR0144) |
+| Tabla de rutas de API (`{ method, path, handler }`) | `modules/<id>/server/routes.ts` | Responsable asignado UI/backend (ADR0144) |
+| Pantallas y panel de Ajustes | `modules/<id>/ui/` | Responsable asignado UI/backend (ADR0144) |
+| Esquema de base | `packages/db/src/schema/modules/<id>.ts` (`pgSchema("<id>")`) + migracion | Responsable asignado UI/backend (ADR0144) |
+| Tests de servidor | `modules/<id>/**.test.ts`, `*.neon.integration.test.ts` | Responsable asignado UI/backend (ADR0144) |
+| Tests e2e de pantallas | `tests/e2e/<id>*.spec.ts` | Responsable asignado UI/backend (ADR0144) |
 
 **Nunca** se crea un archivo en `app/` para un modulo: las pantallas las despacha `app/backoffice/[module]/…` y la API
 `app/api/modules/[moduleId]/…`.
@@ -31,9 +31,9 @@ Direccion de dependencias: **modulo → core** y **modulo → modulo que declara
 1. **Decision del owner**: que resuelve, para que rubros, de que modulos depende, que permisos pide. Nivel minimo L2
    (es una funcionalidad nueva; si trae migracion o toca dinero/sesiones, piso L2 de todas formas).
 2. **Spec** con el contrato HTTP (lo que GPT conecta) y el manifiesto.
-3. **Claude**: carpeta `modules/<id>/` (manifiesto, `server/`, `routes.ts`), esquema + migracion, **una linea en cada
+3. **Responsable de modulo**: carpeta `modules/<id>/` (manifiesto, `server/`, `routes.ts`), esquema + migracion, **una linea en cada
    registro** (`registry.ts`, `server-registry.ts`, `ui-registry.ts`), tests de servidor.
-4. **GPT** (con encargo de Claude): pantallas en `modules/<id>/ui/`, su linea en `ui-registry.ts`, e2e.
+4. **Responsable de UI** (puede ser el mismo agente): pantallas en `modules/<id>/ui/`, su linea en `ui-registry.ts`, e2e.
 5. **Gates**: `modules-boundary.test.ts` (la frontera) en verde; las suites del modulo; en L3, revisor adversarial.
 
 ## Lo que el core ofrece (puntos de enganche)

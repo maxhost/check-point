@@ -64,6 +64,9 @@ function isFullTrigger(file: string): boolean {
 /** UI: pantallas fuera de `app/api/`, CSS, `public/`, e2e y config de Playwright. */
 function isE2eTrigger(file: string): boolean {
   return (
+    /^apps\/[^/]+\/src\/modules\/[^/]+\/ui\//.test(file) ||
+    /^apps\/[^/]+\/src\/ui\//.test(file) ||
+    /\/modules\/ui-registry\.tsx?$/.test(file) ||
     (/^apps\/[^/]+\/src\/app\//.test(file) &&
       !/^apps\/[^/]+\/src\/app\/api\//.test(file)) ||
     file.endsWith(".css") ||
@@ -76,6 +79,10 @@ function isE2eTrigger(file: string): boolean {
 /** Las apps cuyas suites Neon pueden importar `file` (solo `.ts`/`.tsx`). */
 function relatedApps(file: string): Array<"merchant" | "consumer"> {
   if (!/\.tsx?$/.test(file)) return [];
+  // UI-only paths cannot change persistence; browser harness entries are selected separately.
+  if (/\/modules\/[^/]+\/ui\//.test(file) || /\/src\/ui\//.test(file))
+    return [];
+  if (/\/src\/app\//.test(file) && !/\/app\/api\//.test(file)) return [];
   if (file.startsWith("apps/merchant/src/")) return ["merchant"];
   if (file.startsWith("apps/consumer/src/")) return ["consumer"];
   if (file.startsWith("packages/domain/")) return ["merchant", "consumer"];

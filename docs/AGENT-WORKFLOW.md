@@ -1,79 +1,31 @@
-# Protocolo de trabajo con agentes
+# Protocolo de tareas y candidatos
 
-Este protocolo se usa **solo para specs L3** (cambios grandes; niveles en `CLAUDE.md` §Niveles, ADR 0129), **después** de que la feature haya sido conversada y su spec esté en estado `cerrada`. No sustituye la conversación de producto ni permite empezar código con una spec incompleta. Un cambio L0, L1 o L2 se hace en la conversación principal, **sin subagentes**.
+ADR0144. Se usa cuando conviene paralelizar tareas independientes de cualquier nivel; riesgo decide pruebas/documentacion, independencia decide concurrencia. No crear specs ni agentes por cada paso trivial. Specfuncional cerrada y contrato antes de implementar.
 
 ## Roles
 
-### 1. Orquestador
+- Coordinador prepara fichas, bases, paths/recursos y dependencias; unico integrador y escritor de indices/estado central. Dirige correcciones, verifica evidencia y prepara main local. PushPROD solo con autorizacion explicita.
+- Dos implementadores trabajan UI/backend del encargo y tambien toman fixes. No subdelegan ni editan core compartido fuera de reserva. Entregan commits/evidencia focal, sin marcar implementada.
+- QA independiente lee spec/diff y valida aceptacion/interacciones sobre revision congelada. Reutiliza evidencia compatible; reproduce señal decisiva si tiene dudas. No implementa el producto que certifica ni repite todo por ceremonia.
+- Revisor especialista adicional solo por riesgo/duda concreta, dentro de capacidad/presupuesto.
 
-Es responsable de la dirección, no de declarar éxito por intuición.
+## Ficha y estados
 
-- Lee la spec cerrada, los ADRs que enlaza, el bloque `⇥ ESTADO` de `docs/estado/claude.md` y el estado/diff del repositorio. `docs/INDEX.md`, `docs/TASKS.md` y `docs/ARCHITECTURE.md` se consultan con `rg`, no se leen enteros.
-- Comprueba que la spec tenga diseño técnico, Definition of Done (DoD), comandos de prueba y archivos previstos.
-- Divide o serializa el trabajo según la sección **Disjunta?** de la spec.
-- Entrega al agente implementador un encargo acotado: número de spec, objetivo, archivos permitidos, contratos, DoD y comandos exigidos.
-- Después de implementación, entrega al revisor la spec, el diff y la evidencia del implementador.
-- Marca la spec `implementada` y actualiza tareas solo tras un PASS independiente documentado.
+Ficha: taskID, objetivo/spec, baseSHA, worktree, paths, contrato/dependencias, aceptacion, checks, puertos/DB/artefactos y fuera de scope. Registrolocal .factory/registry.json; `tools/factory.ts` controla reservas/entrega/cleanup. No modificar el registro a mano durante ejecucion.
 
-### 2. Implementador
+Tarea: preparada → ejecutando → entregada → QA(PASS/FAIL) → integrada en mainlocal → retirada. Commitentregado libera implementacion, no equivale a aceptacion. Correccion genera otra revision/handoff, con reproduccion y candidato. Bloqueada incluye dependencia; no es done. Candidato: congelado → verificando → requierecorreccion/listo → mainlocal. Publicado es otro estado, posterior a autorizacion/deploy confirmado.
 
-Es responsable de modificar código, exclusivamente dentro de una spec cerrada.
+## Secuencia
 
-- Lee la spec completa y los ADRs que ésta referencia antes de editar.
-- No amplía alcance ni cambia decisiones de producto; reporta bloqueos al orquestador.
-- Implementa pruebas automatizadas previstas antes o junto con el código.
-- Ejecuta los comandos de verificación definidos y registra salida, comandos y límites conocidos en su handoff.
-- No marca una spec como implementada.
+Preparar recursos comunes → despachar tareas → checksfocales/entregas → QA temprano → integrar serialmente en dev → congelar candidato → QAinteracciones y gates pertinentes → mainlocal → cleanup. La cola admite tareas nuevas mientras QA trabaja si hay recursos/worktrees disponibles. No actualizar un checkout por detras de una prueba ni publicar automaticamente.
 
-### 3. Revisor independiente
+Ante fallo: esperado/observado, reproduccion, categoria(producto/interaccion/setup/test) e impacto. Arreglo rutinario dentro de scope no exige specnueva. Cambio material de producto vuelve al owner. Tests obsoletos pueden actualizarse por comportamiento aprobado dejando motivo; no relajarlos para esconder unbug. Reintentos/skips no son aprobacion.
 
-Es responsable de buscar incumplimientos, no de asumir que el código funciona.
+## Handoff breve
 
-- Lee la spec cerrada, ADRs relacionados, `git diff` y los archivos modificados.
-- Ejecuta por su cuenta los comandos de test, lint, typecheck y build indicados por la spec.
-- Comprueba cada ítem del DoD contra evidencia observable y revisa seguridad/autorización, aislamiento por negocio y regresiones pertinentes.
-- Devuelve `PASS` o `FAIL`, con una lista concreta de evidencia y hallazgos. No modifica el código salvo que el orquestador abra una spec de corrección separada.
+- TaskID y revision/base/SHAentregado.
+- Archivos reales, contrato y dependencias.
+- Criterios observados y comandos/resultados (incluyendo skips/limites).
+- Fallos/pendientes, procesos que detener y siguiente paso.
 
-## Secuencia obligatoria
-
-```text
-Conversación de feature
-  -> ADR si hay una decisión de diseño nueva
-  -> spec técnica en borrador
-  -> aprobación y estado cerrada
-  -> orquestador orienta
-  -> implementador cambia código y entrega evidencia
-  -> revisor independiente ejecuta pruebas y emite PASS/FAIL
-  -> orquestador actualiza spec, índice y tareas
-```
-
-Si el revisor responde `FAIL`, vuelve al implementador con hallazgos. No se sustituye un FAIL por auto-revisión del mismo agente ni se marca la feature como terminada.
-
-## Handoff mínimo
-
-Todo implementador y revisor entrega este bloque (la bitácora de mutaciones va aquí, y a un archivo del scratchpad si es larga):
-
-```md
-## Handoff — Spec NNNN
-
-Estado: implementado | bloqueado | PASS | FAIL
-Archivos tocados/revisados:
-- ...
-
-Comandos ejecutados y resultado:
-- `...` — salida/resumen verificable
-
-DoD:
-- [x] / [ ] criterio y evidencia
-
-Hallazgos, límites o bloqueos:
-- ...
-```
-
-## Reglas de independencia y seguridad
-
-- Implementador y revisor no pueden ser el mismo agente/turno de trabajo.
-- El revisor parte de la spec y del diff, no del resumen del implementador.
-- Todo cambio de alcance vuelve a `borrador`; no se arregla silenciosamente en código.
-- Un test existente no se edita ni elimina para obtener verde sin una decisión explícita y una spec/ADR que lo justifique.
-- Ninguna prueba que requiera secretos muestra archivos `.env` ni credenciales en el handoff.
+Un archivo por entrega en docs/factory o referencia versionada de la spec. Solo coordinador actualiza estado/INDEX. Recuperar desde registro, refs, handoffs y procesos; nunca depender solo del historial de chat ni exigir clear en cada devolucion.

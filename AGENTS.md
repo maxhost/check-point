@@ -1,34 +1,15 @@
 # AGENTS.md
 
-Instrucciones para GPT/Codex en este repo. Claude lee `CLAUDE.md`; las reglas comunes están en un solo lugar.
+Codex: reglas comunes en `docs/TRABAJO-EN-PARALELO.md`, roles en `docs/AGENT-WORKFLOW.md` y checks en `docs/VERIFICACION.md` (ADR0144). Lee tu tarea/contrato y solo contexto pertinente. Coordinador lee el bloque vigente de `docs/estado/gpt.md`; workers no editan estados/indices comunes.
 
-## Lectura obligatoria antes de empezar
-
-1. **`docs/TRABAJO-EN-PARALELO.md`** — cómo trabajas en paralelo con Claude sobre `main`: rutina de inicio,
-   cómo pushear, reservar número de spec, zonas, rotura cruzada.
-2. **`docs/estado/gpt.md`** — tu estado. Lo escribes tú, y solo tú.
-
-## Lo indispensable
-
-- **Tu árbol:** `~/Documents/claude-workspace/check-point/` (checkout de `main`).
-- **Tu zona es la UI:** pantallas (`apps/*/src/app/**` fuera de `app/api/**`), CSS, `apps/*/public/**` y
-  `tests/e2e/**`. API, servidor, paquetes, migraciones y tooling son de Claude: lo que necesites de ahí se pide
-  en el contrato HTTP. **El kit (`apps/merchant/src/ui/**`, con `tokens.css`), `eslint.config.mjs` y
-  `tools/ui-guard*` también son de Claude** (ADR 0123): si falta una pieza, se pide; no se hace a mano.
-- **Guardia de UI del merchant:** `pnpm verify` corre `node tools/ui-guard.ts`; ningún archivo que cambies en
-  `apps/merchant/src` puede sumar nativos, `onX` en nativos, `style`, paleta cruda, `text-sm`/`font-*`/`leading-*`,
-  valores arbitrarios ni CSS (categorías en `docs/design-system.md` §Guardia). `--report` da los totales.
-- **Modulos (Stock, Recetas, y despues POS/Mesas):** leé `docs/MODULOS.md`. Sus pantallas van en
-  `apps/merchant/src/modules/<id>/ui/` (tu zona) con su linea en `modules/ui-registry.ts`; nunca en `app/` ni nombrando
-  el modulo en el menu u otra pantalla del core: eso lo dibujan los manifiestos (ADR 0139).
-- **Node 24:** corre `nvm use` (sin argumento; hay `.nvmrc`) antes de cualquier comando.
-- **Al empezar:** `git pull --ff-only` y `pnpm ci:status`. Si `main` está rojo en tu zona, eso va primero.
-- **Antes de pushear:** `git pull --rebase`. El hook `pre-push` corre `pnpm verify` y bloquea si da rojo.
-  `--no-verify` solo con OK del owner. Una sola vez por clon: `pnpm hooks:install`.
-- **Nunca uses `DATABASE_URL` para tests: es la base de PRODUCCIÓN.** Las suites `.neon.integration` van con
-  `tools/neon-test.sh [archivo]`.
-- **Copy:** `apps/merchant/COPY.md`. Se tutea (nada de voseo).
-- **Specs:** ninguna tarea toca código sin su spec cerrada en `docs/specs/`, escrita con `TEMPLATE-CHICA.md`
-  (un dominio, sin migraciones, sin decisión de producto abierta) o `TEMPLATE.md`. Reserva el número
-  pusheando la spec y su fila de `docs/INDEX.md` antes del código.
-- **Marca `hecho` solo con verificación real:** test que pasa, comando corrido, pantalla vista.
+- GPT puede implementar UI y backend dentro de los paths de su encargo. Kit/guardias/tooling/migraciones necesitan asignacion explicita; spec0225 autoriza el harness del piloto.
+- Dev es base/integracion. Worker usa worktree/ref local asignados; no cambia ramas del checkout principal. Main local recibe candidato tras QA; **cada push/operacionPROD requiere autorizacion explicita para ese caso**. Nunca push de feature/dev.
+- Dos implementadores que tambien corrigen, un coordinador y QA independiente. No subdelegar ni crear reviewers extra por defecto. Specs funcionales cerradas; L0/L1 sin spec universal.
+- Node24: `source ~/.nvm/nvm.sh && nvm use` antes de comandos.
+- Modulos: `docs/MODULOS.md`; UI en `modules/<id>/ui`, no rutas/nombres del modulo en core. Contratos HTTP escritos aunque un agente haga ambas capas.
+- Merchant usa kit; guardia UI sin nuevos nativos/handlers/style/paleta cruda/tipografia arbitraria/CSS. No editar kit/guard para evitar el rojo.
+- Copy: `apps/merchant/COPY.md`, tuteo.
+- Tests DB solo `tools/neon-test.sh`, nunca DATABASE_URL de PROD. Configuracion de worktrees seleccionada, no copiar env productivos.
+- Evidencia observable ligada al SHA/entorno; no afirmar PASS por skips/retries ni modificar tests para esconder fallos. QA de entrega y de combinacion son distintos.
+- `node tools/factory.ts`: reservas, entrega, aceptacion y cleanup. Retirar worktree limpio solo con entrega aceptada ancestro de main local, sin procesos ni pendientes. No force/discard de trabajo ajeno.
+- Indices/specs se reservan por commit local del coordinador antes del codigo, sin push de reserva. Hooks instalados y pre-push vigente sin bypass.

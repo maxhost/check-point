@@ -32,10 +32,12 @@ export async function panelRequest<T>(
     cache: "no-store",
     ...(body === undefined
       ? {}
-      : {
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(body),
-        }),
+      : body instanceof FormData
+        ? { body }
+        : {
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(body),
+          }),
   });
   const payload = await response.json().catch(() => null);
   if (!response.ok)

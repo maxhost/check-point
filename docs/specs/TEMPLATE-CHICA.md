@@ -2,79 +2,36 @@
 spec: NNNN
 fecha: YYYY-MM-DD
 estado: borrador | cerrada | implementada
-resumen: Una linea. Es lo que se lee en el INDEX sin abrir el archivo.
-disjunta: si | no
-archivos: rutas que esta spec va a tocar
+resumen: Resultado observable y motivo.
+disjunta: si | no; paths y dependencias semanticas
+archivos: ambitos previstos
 ---
 
 # NNNN — Titulo
 
-> **Plantilla CHICA (ADR 0071).** Se usa cuando las tres condiciones valen: **un solo dominio**,
-> **sin migraciones** y **sin decision de producto abierta**. Si falta alguna, va `TEMPLATE.md`.
->
-> **Nada de codigo empieza sin esta spec en `cerrada`.** Sigue siendo el gatillo medido del
-> exito fingido: en tareas bien definidas el reward hacking cae a 0%; en tareas vagas, ~50%.
->
-> **Las decisiones del owner se piden ANTES de escribir esto.** Una spec escrita dos veces
-> porque el alcance cambio despues es el costo que el ADR 0071 vino a cortar.
+ADR0144; politica docs/VERIFICACION.md. Para feature acotada sin decision de producto abierta; L0/L1 no necesitan esta plantilla.
 
 ## Problema
 
-Que esta mal hoy, **medido**, con `archivo:linea`. Dos o tres bullets. Si no se puede señalar el
-codigo que lo produce, no es un diagnostico.
+Comportamiento actual/esperado, evidencia pertinente.
 
-## Alcance
+## Alcance y diseño
 
-**Entra:** …
+Entra/fuera; contratos/entradas/salidas/errores, permisos y dependencias. Decisiones de producto cerradas; detalles rutinarios a cargo del implementador. Arquitectura/ADRs aplicables.
 
-**No entra:** … *(explicito — es lo que evita el scope creep del agente)*
+## Archivos y paralelismo
 
-## Diseño
-
-Lo necesario para implementar sin inventar decisiones durante el codigo: contratos, entradas,
-salidas, **todos** los codigos de error, autorizacion y aislamiento. Prohibido «a definir durante
-la implementacion» en una spec `cerrada`.
-
-## Archivos
-
-| Archivo | Accion |
-|---|---|
-| `src/…` | crear / editar |
-
-**Disjunta?** Si / No + con cual colisiona.
+Ambitos, consumidores y recursos comunes; responsable de cada pieza. Paths disjuntos no bastan si contrato/esquema/DBcompartidos. Base/worktree/puertos/reservas en la ficha operativa, no campos volatiles de esta spec.
 
 ## Definition of Done
 
-Cada criterio es **un comando o una asercion ejecutable**. **Los barridos `rg` se corren contra
-el arbol ANTES de cerrar la spec** — la 0067 cerro con cuatro criterios imposibles de cumplir.
+- [ ] Resultado observable de producto.
+- [ ] Aceptacion de tarea y de combinacion comprobadas segun riesgo.
 
-- [ ] …
-- [ ] `pnpm verify` en verde con Node 24, **una sola vez al final** (ADR 0113), con su tabla final
-      transcripta.
-- [ ] `rg -n MUTATION apps tools` → vacio.
+## Pruebas pertinentes
 
-## Mutaciones — presupuesto: N. Clase: los plausibles
+Casos/comandos/capa que detectan defecto plausible; aprovechar cobertura existente. Sin verify global, snapshots, mutaciones o revisor extra obligatorio por cada feature. Gatefinal segun riesgo del candidato/release. Mutaciones solo si justificadas y restauradas con protocolo.
 
-| # | Mutacion | Oraculo que tiene que ponerse ROJO |
-|---|---|---|
-| 1 | … | … |
+## Handoff y abierto
 
-**Protocolo:** `shasum` limpio antes de mutar → fila de bitacora **antes** de medir → etiqueta
-`MUTATION` → medir y **transcribir la salida ejecutada** → revertir con `diff` contra copia
-limpia. De a una. **Leer la asercion del rojo**: un rojo por el setup no prueba nada.
-
-**Condicion de corte:** si dos vueltas seguidas terminan en «el fix abrio la siguiente», se corta
-y va al owner. Lo que queda afuera se **declara**.
-
-## Declarado AFUERA (sin oraculo, a proposito)
-
-- …
-
-## Handoff
-
-**UN implementador para toda la spec, UN revisor independiente al final** (ADR 0071). El revisor
-produce un `PASS` con evidencia ejecutada antes de marcar `implementada`.
-
-## Abierto
-
-Si esta seccion bloquea, la spec **no** esta cerrada.
+SHA/base, criterios/evidencia, resultados y limites. Falla dentro del alcance vuelve a correccion sin specnueva; cambio material vuelve a acuerdo/spec. Nada bloqueante puede quedar en speccerrada. Coordinador marca implementada trasQA pertinente.
