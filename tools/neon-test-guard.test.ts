@@ -65,6 +65,11 @@ describe("neon-test.sh: candado contra el endpoint bloqueado", () => {
       DATABASE_URL: LOCAL,
     });
     expect(r.out).toContain("PNPM LLAMADO: db:migrate");
+    expect(r.out).toContain(
+      "PNPM LLAMADO: exec vitest run --exclude **/*migration*.neon.integration.test.ts",
+    );
+    expect(r.out).toContain("pos-migration-0079.neon.integration.test.ts");
+    expect(r.out).toContain("--no-file-parallelism");
     expect(r.code).toBe(0);
   });
 

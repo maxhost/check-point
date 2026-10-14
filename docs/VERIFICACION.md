@@ -22,3 +22,5 @@ Candidato de este primer piloto incluye backlogPOS/IA/esquema: conservar verify 
 Evidencia: SHA/base, archivos/checks, runtime/config/lockfile, DBesquema si aplica, resultado/skips. Una identidad incompatible invalida el check; repetir/ampliar por cambio/fallo/duda. Coordinator comprueba evidencia y reproduce señal decisiva cuando hace falta, sin refuerzo ritual de todas las mediciones.
 
 Fixtures no deben inventar estados imposibles. Ningun retry/skip/exit0 sin los casos requeridos sustituye cobertura. Limite de tiempo no rebaja aceptacion. Configuracion/proveedoresIAreal de test explicitamente asignados; ninguna escritura o test libre contraPROD.
+
+DB compartida: reservarla también durante teardown. Las pruebas que retroceden/aplican DDL se ejecutan sin suites concurrentes: `tools/neon-test.sh` separa las suites de migración en la corrida global. Para una selección focal/related con DDL, usar una invocación aislada y `--no-file-parallelism`; el coordinador controla que no haya otro writer.

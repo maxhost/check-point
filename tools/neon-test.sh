@@ -134,7 +134,20 @@ if [ "$RELATED" -eq 1 ]; then
   NEON_INTEGRATION_DATABASE_URL="$CI_POOLED" NEON_INTEGRATION_ISOLATED=true \
     pnpm --filter "@mi-pasaporte/$APP" exec vitest related --run "$@"
 elif [ "$#" -eq 0 ]; then
-  NEON_INTEGRATION_DATABASE_URL="$CI_POOLED" NEON_INTEGRATION_ISOLATED=true pnpm run test
+  # Las pruebas de migracion retroceden/aplican DDL dentro de transacciones.
+  # No pueden convivir con los teardowns que borran negocios: la 0079 causo
+  # deadlocks reales en POS. Mantener el resto paralelo y aislar solo estas.
+  migration_tests=()
+  while IFS= read -r migration_test; do
+    migration_tests+=("$migration_test")
+  done < <(git ls-files '*migration*.neon.integration.test.ts')
+  NEON_INTEGRATION_DATABASE_URL="$CI_POOLED" NEON_INTEGRATION_ISOLATED=true \
+    pnpm exec vitest run --exclude '**/*migration*.neon.integration.test.ts'
+  if [ "${#migration_tests[@]}" -gt 0 ]; then
+    echo "→ pruebas de migracion aisladas (sin otros writers de DB)"
+    NEON_INTEGRATION_DATABASE_URL="$CI_POOLED" NEON_INTEGRATION_ISOLATED=true \
+      pnpm exec vitest run "${migration_tests[@]}" --no-file-parallelism
+  fi
 else
   NEON_INTEGRATION_DATABASE_URL="$CI_POOLED" NEON_INTEGRATION_ISOLATED=true \
     pnpm --filter "@mi-pasaporte/$APP" exec vitest run "$@"

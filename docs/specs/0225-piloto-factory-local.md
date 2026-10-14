@@ -36,4 +36,6 @@ Vitesttools focal: reserva duplicada/solapada, escritura fuera de scope, entrega
 
 ## Handoff y abierto
 
+Hallazgo del gate del piloto: las pruebas DDL0079 concurrentes con teardownPOS causaron deadlocks aun con un solo proceso dueño de CI. Se amplía el alcance a `tools/neon-test.sh`: corrida global separa las suites `*migration*.neon.integration.test.ts` y las ejecuta secuencialmente al terminar las demás; antiPROD y modo focal/related se conservan. No se agregan pruebas de producto por este ajuste de ejecución.
+
 Handoff con SHAorigen/destino, comandos/resultados y pendientes. Nada bloqueante de producto. La prueba conIAreal anterior sigue declarada pendiente hasta ejecutarse o informarse con su limite; no se llamaPASS porHTTPsimulado.
