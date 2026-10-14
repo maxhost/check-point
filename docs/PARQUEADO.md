@@ -12,6 +12,29 @@ Regla al sacar algo de aca: **nada toca codigo sin su spec cerrada.** Varias de 
 explicitamente «necesita spec» — eso es literal.
 
 
+## PARQUEADO 2026-10-14 — Fase 2 de modulos (spec 0220, POS y Mesas): esperando la 2b de GPT
+
+Owner 2026-10-14: «bajemos lo pendiente entonces a parqued. vamos a trabajar en otra cosa mientras GPT acaba».
+**Donde quedo:** 2a (servidor y base) en `dev` — `52690f3`, `c5f2036`, `db48f51`, `a46be31` — con revisor adversarial
+PASS (tras un FAIL de tests de frontera, cerrado). Migracion 0079 aplicada y probada en la BASE LOCAL (datos iguales,
+cobro con y sin pase, 409 de apagado); NO en PROD ni en `ci-integration`. `main` local = `fab728e` (GPT, landing; trae
+los tipos `15be274`, inocuos), sin push; `origin/main` = `4208714`. GPT tiene el encargo
+`docs/encargo-gpt-2026-10-14-pos-mesas-modulos.md` (2b: pantallas, `PENDING_GPT*` a vacio).
+**Para retomar, en orden:**
+1. Verificar la entrega de GPT: listas `PENDING_GPT*` vacias (salvo las 3 filas de `posEnabled`), tests de frontera en
+   verde, y que Stock/Recetas ya no importen `posRequest` de la carpeta del POS.
+2. Claude: borrar `posEnabled` de la sesion (`session-view.ts`, `read-surfaces-leak.test.ts`, `session.neon`) y dejar
+   `PENDING_GPT` = `{}` (paso final de la 2a, DoD de la spec 0220).
+3. Revisor adversarial de TODO junto (acoplamiento, regresiones del POS con pantallas, migracion).
+4. Prueba en local con pantallas: orden en mesa, cobrar, imprimir, apagar Mesas con orden abierta (409), ingreso del
+   personal por `staff.`.
+5. Push unico (owner 2026-10-13) con OK: worktree limpio, snapshot de Neon, push, deploy `READY`, 0079 a PROD, SQL de
+   verificacion (spec 0220 §Migracion a PROD).
+**Decision del owner pendiente:** descripcion de la PWA (hoy «El punto de venta de tu negocio en CheckPass Club.»;
+Claude propone «Tu negocio en CheckPass Club.»). Siguen abiertas las de la 0218 (bloque ESTADO de Claude).
+**Mejora no bloqueante:** la frontera no ve una funcion de modulos importada con otro nombre
+(`import { isModuleEnabled as on }`), declarado en `modules-boundary-support.ts`.
+
 ## ~~PARQUEADO 2026-10-01 — spec 0118~~ → RETOMADA e implementada el mismo dia (`main` `ef22ffb`; ver TASKS). Solo queda la 0060 a PROD con OK del owner
 
 **Donde quedo:** implementada en la rama local `motor` (`b005721` codigo + `4b4991b` bitacora M1–M5 rojas; NO pusheada).
