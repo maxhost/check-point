@@ -3,7 +3,21 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — LANDING: PREPARACIÓN DE IMÁGENES, SPEC0221 (2026-10-13)
+## ESTADO — POS Y MESAS COMO MÓDULOS, SPEC0222 / 0220 PARTE 2b (2026-10-13)
+
+Encargo completo entregado en `dev`, sin push/merge/deploy. Reserva `549ae06`; helper HTTP `369da93`; traslado/enganches `1ff282f`; marcado visual de barra `c4ca538`; e2e `f779b80`. Evidencia y bitácora en [spec0222](../specs/0222-pantallas-pos-mesas-modulos.md). Spec cerrada, pendiente PASS independiente conjunto de Claude.
+
+POS, ticket y Mesas en modules/<id>/ui, páginas fijas borradas y registro UI conectado. URLs nuevas /api/modules/{pos,tables}; PosError adapta helper HTTP genérico del core sin dependencias entre módulos. Pantalla POS conserva locales activos leídos en servidor. Ajustes/Locales reciben paneles como slots React desde ui-registry en sus páginas servidor, sin importar la pantalla servidor en bundles cliente. Mesas conserva cierre bloqueado al guardar, reintento y remonta por instancia. Menú/barra/aviso usan manifiestos; acción checkpass:module-primary con moduleId y barra con marcado/estilos anteriores. Ajustes switches/errores409/paneles genéricos; toggle confirmado emite checkpass:modules-changed; navegación/Locales releen sesión con generaciones para evitar respuestas viejas. Equipo solo permisos del DTO, sin posEnabled; permisos apagados previos se conservan. POS sin Mesas ofrece nombre libre, no consulta mesas ni envía tableId.
+
+PENDING_GPT_DIRS/IMPORTS/SCREENS=[]; PENDING_GPT solo tres filas del servidor: session-view.ts=4, read-surfaces-leak.test.ts=1, session.neon.integration.test.ts=2. Solo se quitaron pendientes resueltos, sin modificar patrones/aserciones/excepciones. Claude debe quitar esas tres filas y posEnabled del servidor después de esta entrega.
+
+Node24.20.0: tipos6paquetes verdes (merchant ejecutado5,485s, otros5caché), merchant0 tras restaurar next-env generado; lint0; guardia --base origin/main115archivos sin aumentos; módulos215aprobados/122omitidos en28archivos aprobados/25omitidos,15,98s. E2e ocho suites afectadas165aprobados, sin fallos/reintentos,59s, workers2. Diez regresiones nuevas cubren Mesas apagado390/1280,409Mesas, montaje de ticket/eventos, Locales/permiso, acción móvil/moduleId/icono y aviso operación7/8días/subruta/core. Asunciones de cobro/cupón/UUID/impresión/versiones/dobles envíos/cierre permanecen. Prettier propio/diffcheck0. CapturasPOS390/1280,409móvil,configuración/ticketescritorio y barra móvil vistas; barra corregida y confirmada. M1 en copia aislada fuerza selector con Mesas apagado:2rojos correctos por nombre libre ausente, restauraciónSHA/bytes idénticos. Selectores nuevos informativo/SVG diferido corregidos tras rojos de selector, sin aflojar pruebas existentes.
+
+Cambios paralelos0223 inicialmente rompieron tipos y dos fronteras; preservados sin editar. Snapshot propio a790599+UI pasó tipos6paquetes,246pruebas y buildMerchantWebpack. Después árbol compartido final tipos/fronteras verdes. Turbopack adicional falló porEPERM de puerto interno incluso con escalación; Webpack snapshot pasó. Logs /tmp/checkpass-0222-*.log y capturas /tmp/checkpass-0222-results. No se habilitó DATABASE_URL ni suitesNeon de producción.
+
+AFUERA: servidor posEnabled (Claude), revisor adversarial conjunto, QAowner en base local/túnel y migración/deploy0079PROD. No se modificaron servidor/API/manifiestos/packages-db/kit/guardias/tooling/PWA/inicio. Cambios0223 y archivos/artefactos ajenos sin seguimiento preservados; next-env generado restaurado. Cierre documental se registra aparte.
+
+## HISTÓRICO — LANDING: PREPARACIÓN DE IMÁGENES, SPEC0221 (2026-10-13)
 
 Reserva58714dd; código2ea68ec; cierre fab728e. Owner autorizó merge local el13/10: main avanzó por fast-forward792d7ed→fab728e (snapshot verificado2ea68ec + cierre solo docs). Sin push. Se volvió a dev; los cinco commits posteriores de Claude0220 hasta a46be31 quedaron en dev porque requieren UI2b y nueva verificación. [Handoff](../handoff-0221-landing-imagenes.md). Sustituye warmUpHTTP del srcset (sin Accept navegador, sin consumo/validación, errores ocultos) por Chromium390/1440 con scroll, complete/naturalWidth/decode y diagnósticoURL/ruta. Sin producto/assets/API/servidor/kit ni aflojar aserciones. Diagnóstico original aislado1/1 en14.3s y17/17 en15.8s: intermitencia anterior no reproducida y no se afirma causa única.
 
