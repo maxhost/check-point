@@ -44,6 +44,10 @@ Antes del push: esa prueba real en local, `AI_PROVIDER` en Vercel (comparar huel
 'vite/package.json'» (`catalog-harness-server.ts:14`); se esquiva con
 `NODE_PATH=<repo>/node_modules/.pnpm/node_modules` e invocando Playwright con la ruta `/Users/maxi/Documents`. Sin
 arreglar; pasarlo a la skill `gotchas-del-repo` en el handoff.
+**Gotchas rescatados de la rama `motor` (borrada 2026-10-13), no estan en la skill:** `tools/` no tiene typecheck propio
+(ni `tsconfig`): el unico gate sobre sus tipos es `lint` — correr `pnpm exec eslint tools/` antes de cerrar (spec 0163:
+un `any` llego a `verify`); un test de `tools/` que recorre el arbol entero lleva timeout explicito (suelto ~1,5 s, con
+la Neon completa en paralelo 6,9 s, pasa el default de 5 s).
 **Decision del owner pendiente:** descripcion de la PWA (hoy «El punto de venta de tu negocio en CheckPass Club.»;
 Claude propone «Tu negocio en CheckPass Club.»). Siguen abiertas las de la 0218 (bloque ESTADO de Claude).
 **Mejora no bloqueante:** la frontera no ve una funcion de modulos importada con otro nombre
