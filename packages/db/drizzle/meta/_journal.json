@@ -589,6 +589,13 @@
       "when": 1791983775139,
       "tag": "0083_pos_local_bridge",
       "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "7",
+      "when": 1792004263886,
+      "tag": "0084_costo_promedio_y_datos_fiscales",
+      "breakpoints": true
     }
   ]
 }
