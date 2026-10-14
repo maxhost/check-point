@@ -32,6 +32,18 @@ los tipos `15be274`, inocuos), sin push; `origin/main` = `4208714`. GPT tiene el
    a hacer como dije todavia el push, lo vamos a hacer con el centralizador de ia tambien».
    Push unico (owner 2026-10-13) con OK: worktree limpio, snapshot de Neon, push, deploy `READY`, 0079 a PROD, SQL de
    verificacion (spec 0220 §Migracion a PROD).
+**QA en la app real antes del push:** Locales — crear y renombrar un local y abrir «Mesas» sin recargar (`c3c4ca1`;
+el e2e lo prueba en el harness, que simula `router.refresh()`).
+**Centralizador de IA (spec 0224) — implementado en `dev` (`bdd642b`, `cebbb46`), sin push.** Gates verdes
+(typecheck, lint, 2719 unit) y la suite Neon de la 0081 (copia y borrado) 2/2; las demas suites Neon corrieron antes del
+recorte de pruebas del owner. NO verificado (owner pidio recortar): mutaciones, revisor adversarial, e2e, y la prueba
+REAL con OpenAI en local (foto de ticket, nota de receta, dictado y menu — el prompt del menu ahora va como `system`).
+Antes del push: esa prueba real en local, `AI_PROVIDER` en Vercel (comparar huellas de `STOCK_DRAFT_PROVIDER` y
+`CATALOG_EXTRACTION_PROVIDER`), y el encargo a GPT de las pantallas de la foto (spec 0224 §Encargo a GPT).
+**Gotcha de e2e (revisor 2026-10-13):** las suites con harness pueden fallar al arrancar con «Cannot find module
+'vite/package.json'» (`catalog-harness-server.ts:14`); se esquiva con
+`NODE_PATH=<repo>/node_modules/.pnpm/node_modules` e invocando Playwright con la ruta `/Users/maxi/Documents`. Sin
+arreglar; pasarlo a la skill `gotchas-del-repo` en el handoff.
 **Decision del owner pendiente:** descripcion de la PWA (hoy «El punto de venta de tu negocio en CheckPass Club.»;
 Claude propone «Tu negocio en CheckPass Club.»). Siguen abiertas las de la 0218 (bloque ESTADO de Claude).
 **Mejora no bloqueante:** la frontera no ve una funcion de modulos importada con otro nombre
