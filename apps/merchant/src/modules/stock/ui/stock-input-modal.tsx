@@ -46,10 +46,12 @@ const message = (cause: unknown) =>
 
 export function StockInputModal({
   kind,
+  locationId,
   onClose,
   onSaved,
 }: {
   kind: "new" | "adjustment";
+  locationId: string;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -77,7 +79,9 @@ export function StockInputModal({
   }, []);
   useEffect(() => {
     let active = true;
-    void panelRequest<{ items: StockItem[] }>("/api/modules/stock/items")
+    void panelRequest<{ items: StockItem[] }>(
+      `/api/modules/stock/items?locationId=${encodeURIComponent(locationId)}`,
+    )
       .then((data) => {
         if (active)
           setItems(data.items.filter((item) => item.status === "active"));
@@ -88,7 +92,7 @@ export function StockInputModal({
     return () => {
       active = false;
     };
-  }, [attempt]);
+  }, [attempt, locationId]);
   const visibleLines = reviewing ? draftLines : lines;
   const updateLines = reviewing ? setDraftLines : setLines;
   function patch(key: string, patch: Partial<StockLine>) {
@@ -193,11 +197,13 @@ export function StockInputModal({
           `/api/modules/stock/items/${encodeURIComponent(line.itemId!)}/adjustments`,
           "POST",
           {
+            locationId,
             countedQuantity: countedQuantity(line.quantity, line.unit),
           },
         );
       } else {
         await panelRequest("/api/modules/stock/entries", "POST", {
+          locationId,
           lines: entryLines(visibleLines, items),
         });
       }

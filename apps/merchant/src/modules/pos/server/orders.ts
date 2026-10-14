@@ -125,7 +125,7 @@ async function whyNotUpdated(
 /**
  * `PUT /api/modules/pos/orders/:id` — la lista COMPLETA de lineas (`mergeLines`). Las existentes
  * CONSERVAN su snapshot (precio fijo al agregar): cambiar el local NO re-snapshotea. `locationId`
- * ausente conserva el local; `null`/`""` lo quita; un uuid lo cambia. `tableId` (spec 0182) igual:
+ * ausente conserva el local; `null`/`""` resuelve el único activo; un uuid lo cambia. `tableId` (spec 0182) igual:
  * ausente conserva la mesa, `null` vuelve a texto libre, un uuid la cambia; con mesa, el nombre se
  * refresca y el local es el de la mesa. `note` igual: ausente la conserva, `null`/`""` la borra.
  */
@@ -147,9 +147,14 @@ export async function updatePosOrder(
       : await parseTable(business.id, raw.tableId);
   const tableLabel = table ? table.name : normalizeTableLabel(raw.tableLabel);
   const locationId = table
-    ? await locationOfTable(business.id, table, raw.locationId)
+    ? await locationOfTable(
+        business.id,
+        table,
+        raw.locationId,
+        current.tableId === table.id,
+      )
     : raw.locationId === undefined
-      ? (current.location?.id ?? null)
+      ? (current.location?.id ?? (await parseLocation(business.id, undefined)))
       : await parseLocation(business.id, raw.locationId);
   // Las nuevas se snapshotean ANTES de la transaccion (lectura del catalogo); cuales son nuevas
   // no depende de la base: son las que vienen sin `lineId`.
@@ -266,6 +271,7 @@ export async function voidPosOrder(
 export async function linesForClose(tx: DbTransaction, id: string) {
   return tx
     .select({
+      sourceLineId: posOrderItems.id,
       productId: posOrderItems.productId,
       nameSnapshot: posOrderItems.nameSnapshot,
       unitPrice: posOrderItems.unitPriceSnapshot,

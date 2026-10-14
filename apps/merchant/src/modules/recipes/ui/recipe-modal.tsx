@@ -37,11 +37,13 @@ import {
 
 export function RecipeModal({
   products,
+  locationId,
   initialProduct,
   onClose,
   onSaved,
 }: {
   products: RecipeSummary[];
+  locationId: string;
   initialProduct: RecipeSummary | null;
   onClose: () => void;
   onSaved: () => void;
@@ -74,6 +76,7 @@ export function RecipeModal({
         <RecipeEditor
           key={product.productId}
           product={product}
+          locationId={locationId}
           onClose={close}
           onSaved={onSaved}
           onBusyChange={changeBusy}
@@ -131,11 +134,13 @@ export function RecipeModal({
 
 function RecipeEditor({
   product,
+  locationId,
   onClose,
   onSaved,
   onBusyChange,
 }: {
   product: RecipeSummary;
+  locationId: string;
   onClose: () => void;
   onSaved: () => void;
   onBusyChange: (busy: boolean) => void;
@@ -167,9 +172,11 @@ function RecipeEditor({
     let active = true;
     void Promise.all([
       panelRequest<{ items: StockItem[] }>(
-        "/api/modules/stock/items?status=all",
+        `/api/modules/stock/items?status=all&locationId=${encodeURIComponent(locationId)}`,
       ),
-      panelRequest<{ recipe: RecipeDetail }>(recipeUrl(product.productId)),
+      panelRequest<{ recipe: RecipeDetail }>(
+        `${recipeUrl(product.productId)}?locationId=${encodeURIComponent(locationId)}`,
+      ),
     ])
       .then(([stock, detail]) => {
         if (!active) return;
@@ -193,7 +200,7 @@ function RecipeEditor({
     return () => {
       active = false;
     };
-  }, [product.productId, attempt]);
+  }, [product.productId, attempt, locationId]);
   let validation = "";
   try {
     if (!items) throw new Error("Espera a que se carguen los insumos.");
@@ -256,6 +263,7 @@ function RecipeEditor({
     setError(null);
     try {
       await panelRequest(recipeUrl(product.productId), "PUT", {
+        locationId,
         lines: recipePayload(lines, items, retainedIds, existingRecipe),
       });
       if (mounted.current) onSaved();

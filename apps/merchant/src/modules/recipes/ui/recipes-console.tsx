@@ -10,10 +10,16 @@ import {
   Toast,
 } from "../../../app/components/ui";
 import { panelRequest } from "../../../app/backoffice/panel-request";
+import {
+  StockLocationField,
+  useStockLocations,
+} from "../../stock/ui/stock-locations";
+import { formatAmount } from "../../stock/ui/stock-types";
 import { RecipeModal } from "./recipe-modal";
 import { recipeError, type RecipeSummary } from "./recipe-types";
 
 export function RecipesConsole() {
+  const local = useStockLocations("/api/modules/recipes/locations");
   const [products, setProducts] = useState<RecipeSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -21,7 +27,10 @@ export function RecipesConsole() {
   const [notice, setNotice] = useState<string | null>(null);
   useEffect(() => {
     let active = true;
-    void panelRequest<{ recipes: RecipeSummary[] }>("/api/modules/recipes")
+    if (!local.locationId) return;
+    void panelRequest<{ recipes: RecipeSummary[] }>(
+      `/api/modules/recipes?locationId=${encodeURIComponent(local.locationId)}`,
+    )
       .then((data) => {
         if (active) setProducts(data.recipes);
       })
@@ -31,7 +40,7 @@ export function RecipesConsole() {
     return () => {
       active = false;
     };
-  }, [attempt]);
+  }, [attempt, local.locationId]);
   function reload() {
     setProducts(null);
     setError(null);
@@ -47,6 +56,29 @@ export function RecipesConsole() {
           description="Define los ingredientes de cada producto de tu catálogo."
           closeHref="/backoffice"
         />
+        {local.locations && (
+          <StockLocationField
+            locations={local.locations}
+            locationId={local.locationId}
+            onChange={(id) => {
+              setProducts(null);
+              setError(null);
+              local.setLocationId(id);
+            }}
+          />
+        )}
+        {local.error && (
+          <Alert kind="error" title={local.error}>
+            <Button variant="secondary" onPress={local.reload}>
+              Reintentar locales
+            </Button>
+          </Alert>
+        )}
+        {local.locations && !local.locationId && local.locations.length > 0 && (
+          <Text variant="muted">
+            Elige un local para consultar los costos de las recetas.
+          </Text>
+        )}
         <Toast message={notice} onDismiss={() => setNotice(null)} />
         <div className="flex flex-wrap justify-end gap-3">
           <Button
@@ -66,22 +98,25 @@ export function RecipesConsole() {
             </Button>
           </Alert>
         )}
-        {!products && !error && (
-          <SkeletonScreen label="Cargando recetas" className="grid gap-3">
-            {[0, 1, 2].map((row) => (
-              <div
-                key={row}
-                className="flex items-center justify-between gap-4 rounded-lg border border-border bg-surface p-4 md:p-6"
-              >
-                <div className="grid w-full gap-2">
-                  <Skeleton className="block h-6 w-full max-w-64" />
-                  <Skeleton className="block h-6 w-full max-w-40" />
+        {!products &&
+          !error &&
+          !local.error &&
+          (!local.locations || local.locationId) && (
+            <SkeletonScreen label="Cargando recetas" className="grid gap-3">
+              {[0, 1, 2].map((row) => (
+                <div
+                  key={row}
+                  className="flex items-center justify-between gap-4 rounded-lg border border-border bg-surface p-4 md:p-6"
+                >
+                  <div className="grid w-full gap-2">
+                    <Skeleton className="block h-6 w-full max-w-64" />
+                    <Skeleton className="block h-6 w-full max-w-40" />
+                  </div>
+                  <Skeleton className="block size-12 shrink-0" />
                 </div>
-                <Skeleton className="block size-12 shrink-0" />
-              </div>
-            ))}
-          </SkeletonScreen>
-        )}
+              ))}
+            </SkeletonScreen>
+          )}
         {products && !products.length && (
           <Text variant="muted">
             Añade productos a tu catálogo para crear sus recetas.
@@ -115,6 +150,15 @@ export function RecipesConsole() {
                     {product.lineCount === 1 ? "ingrediente" : "ingredientes"}{" "}
                     por unidad
                   </Text>
+                  <Text variant="small">
+                    Costo de ingredientes:{" "}
+                    {product.cost === null
+                      ? "Sin costo"
+                      : formatAmount(product.cost)}
+                    {!product.costComplete && product.cost !== null
+                      ? " · Faltan precios"
+                      : ""}
+                  </Text>
                 </div>
                 <Button
                   variant="secondary"
@@ -128,9 +172,10 @@ export function RecipesConsole() {
             ))}
           </div>
         )}
-        {editing && products && (
+        {editing && products && local.locationId && (
           <RecipeModal
             products={products}
+            locationId={local.locationId}
             initialProduct={editing === "new" ? null : editing}
             onClose={() => setEditing(null)}
             onSaved={() => {

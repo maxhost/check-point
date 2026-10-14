@@ -1,6 +1,6 @@
 import { and, asc, eq, ne } from "drizzle-orm";
 import { type DbTransaction, getDb } from "@mi-pasaporte/db";
-import { diningTables, posOrders } from "@mi-pasaporte/db/schema";
+import { diningTables, locations, posOrders } from "@mi-pasaporte/db/schema";
 import {
   CounterError,
   assertLocationInBusiness,
@@ -144,6 +144,7 @@ export async function locationOfTable(
   businessId: string,
   table: ResolvedTable,
   rawLocationId: unknown,
+  allowArchived = false,
 ): Promise<string> {
   if (
     rawLocationId !== undefined &&
@@ -157,7 +158,21 @@ export async function locationOfTable(
       "La mesa no pertenece a ese local.",
     );
   }
-  return assertLocationInBusiness(businessId, table.locationId);
+  if (!allowArchived)
+    return assertLocationInBusiness(businessId, table.locationId);
+  const [local] = await getDb()
+    .select({ id: locations.id })
+    .from(locations)
+    .where(
+      and(
+        eq(locations.id, table.locationId),
+        eq(locations.businessId, businessId),
+      ),
+    )
+    .limit(1);
+  if (!local)
+    throw new CounterError(404, "location_not_found", "Ese local no existe.");
+  return local.id;
 }
 
 /**

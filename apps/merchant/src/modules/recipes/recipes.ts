@@ -1,9 +1,15 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { withDbTransaction } from "@mi-pasaporte/db";
-import { recipeLines, stockItems } from "@mi-pasaporte/db/schema";
+import {
+  recipeLines,
+  recipeRevisions,
+  stockItems,
+} from "@mi-pasaporte/db/schema";
 import { isUuid, pgErrorCode } from "@mi-pasaporte/domain/server/counter/core";
 import { formatDecimal, parseDecimal } from "../decimal";
 import { ModuleError, invalidBody } from "../errors";
+import { setResourceVersion } from "../../server/module-events";
+import { resolveLocation } from "../stock/local";
 import { QUANTITY } from "../stock/numbers";
 import {
   MAX_RECIPE_LINES,
@@ -155,6 +161,7 @@ export async function saveRecipe(
   body: Record<string, unknown>,
 ): Promise<RecipeDTO> {
   const lines = parseRecipeLines(body);
+  const locationId = (await resolveLocation(businessId, body.locationId)).id;
   try {
     return await withDbTransaction(async (tx) => {
       const product = await ownProduct(tx, businessId, rawProductId, true);
@@ -243,14 +250,35 @@ export async function saveRecipe(
           })),
         );
       }
-      return toRecipe(product, await linesOf(tx, businessId, product.id));
+      const frozen = await linesOf(tx, businessId, product.id, locationId);
+      const [revision] = await tx
+        .insert(recipeRevisions)
+        .values({
+          businessId,
+          productId: product.id,
+          lines: frozen.map(({ itemId, unit, quantity }) => ({
+            itemId,
+            unit,
+            quantity,
+          })),
+        })
+        .returning({ id: recipeRevisions.id });
+      await setResourceVersion(tx, {
+        businessId,
+        resourceType: "product",
+        resourceId: product.id,
+        providerId: "recipes",
+        slot: "recipe",
+        versionId: revision.id,
+      });
+      return toRecipe(product, frozen, locationId);
     });
   } catch (error) {
     if (pgErrorCode(error) === "23505") {
       throw new ModuleError(
         409,
         "item_name_taken",
-        "Ya hay un insumo activo con ese nombre: elegilo de la lista.",
+        "Ya hay un insumo activo con ese nombre: selecciónalo de la lista.",
       );
     }
     throw error;

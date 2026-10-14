@@ -68,6 +68,7 @@ describe.skipIf(!modulesIntegrationEnabled)(
       expect(recipe).toEqual({
         productId: torta,
         productName: "Torta",
+        locationId: expect.any(String),
         unitPrice: "2.00",
         cost: "0.54",
         costComplete: true,
@@ -131,6 +132,7 @@ describe.skipIf(!modulesIntegrationEnabled)(
       expect(agua).toEqual({
         productId: sinReceta,
         productName: "Agua",
+        locationId: expect.any(String),
         unitPrice: null,
         cost: null,
         costComplete: false,

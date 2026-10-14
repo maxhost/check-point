@@ -29,11 +29,21 @@ export async function setupStockPhotos(page: Page) {
       },
     }),
   );
+  await page.route("**/api/modules/stock/locations", (route) =>
+    route.fulfill({
+      json: {
+        locations: [{ id: "local", name: "Local", status: "active" }],
+        defaultLocationId: "local",
+      },
+    }),
+  );
   await page.route("**/api/modules", (route) =>
     route.fulfill({ json: { modules: businessModules(true, true) } }),
   );
   await page.route("**/api/modules/stock/movements?*", (route) =>
-    route.fulfill({ json: { movements: [] } }),
+    route.fulfill({
+      json: { movements: [], pending: { count: 0, failed: 0 } },
+    }),
   );
   await page.route(/\/api\/modules\/stock\/items(?:\?|$)/, (route) =>
     route.fulfill({

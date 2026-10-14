@@ -1,3 +1,5 @@
+import { listLocations } from "../../stock/local";
+export { eventSubscriptions } from "./consumption";
 import { NextResponse } from "next/server";
 import { readModuleBody } from "../../errors";
 import type { ModuleRoute } from "../../route-table";
@@ -10,22 +12,38 @@ import { buildRecipeDraft, buildRecipePhotoDraft } from "../draft";
  * aplica antes el permiso `recipes` y el modulo encendido (que por dependencias implica Stock).
  */
 export const routes: readonly ModuleRoute[] = [
+  {
+    method: "GET",
+    path: "locations",
+    failure: "No pudimos leer los locales.",
+    handler: async ({ business }) =>
+      NextResponse.json(await listLocations(business.id)),
+  },
   /** Todos los productos con su costo y margen → `200 { recipes }`. */
   {
     method: "GET",
     path: "",
     failure: "No pudimos leer las recetas.",
-    handler: async ({ business }) =>
-      NextResponse.json({ recipes: await listRecipes(business.id) }),
+    handler: async ({ business, request }) =>
+      NextResponse.json({
+        recipes: await listRecipes(
+          business.id,
+          new URL(request.url).searchParams.get("locationId"),
+        ),
+      }),
   },
   /** La receta de un producto con sus lineas → `200 { recipe }`. */
   {
     method: "GET",
     path: ":productId",
     failure: "No pudimos leer la receta.",
-    handler: async ({ business, params }) =>
+    handler: async ({ business, params, request }) =>
       NextResponse.json({
-        recipe: await readRecipe(business.id, params.productId),
+        recipe: await readRecipe(
+          business.id,
+          params.productId,
+          new URL(request.url).searchParams.get("locationId"),
+        ),
       }),
   },
   /** `{ lines: [{ itemId, quantity }] }` reemplaza la receta → `200 { recipe }`. */
@@ -40,6 +58,18 @@ export const routes: readonly ModuleRoute[] = [
           params.productId,
           await readModuleBody(request),
         ),
+      }),
+  },
+  {
+    method: "DELETE",
+    path: ":productId",
+    failure: "No pudimos borrar la receta.",
+    handler: async ({ business, params, request }) =>
+      NextResponse.json({
+        recipe: await saveRecipe(business.id, params.productId, {
+          lines: [],
+          locationId: new URL(request.url).searchParams.get("locationId"),
+        }),
       }),
   },
   /** Spec 0214: el texto dictado → borrador de la receta por unidad. No guarda la receta. */

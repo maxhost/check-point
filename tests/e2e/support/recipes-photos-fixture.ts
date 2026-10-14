@@ -9,7 +9,13 @@ export const flour = {
   unit: "g",
   status: "active",
 };
-export const pizza = { productId: "pizza", productName: "Pizza", lineCount: 0 };
+export const pizza = {
+  productId: "pizza",
+  productName: "Pizza",
+  lineCount: 0,
+  cost: null,
+  costComplete: false,
+};
 export const photoDraft = {
   yield: 10,
   lines: [
@@ -47,16 +53,24 @@ export async function recipePhotoFixture(page: Page) {
       },
     }),
   );
+  await page.route("**/api/modules/recipes/locations", (route) =>
+    route.fulfill({
+      json: {
+        locations: [{ id: "local", name: "Local", status: "active" }],
+        defaultLocationId: "local",
+      },
+    }),
+  );
   await page.route("**/api/modules", (route) =>
     route.fulfill({ json: { modules: businessModules(true, true) } }),
   );
-  await page.route("**/api/modules/recipes", (route) =>
+  await page.route(/\/api\/modules\/recipes(?:\?|$)/, (route) =>
     route.fulfill({ json: { recipes: [pizza] } }),
   );
   await page.route(/\/api\/modules\/stock\/items(?:\?|$)/, (route) =>
     route.fulfill({ json: { items: [flour] } }),
   );
-  await page.route("**/api/modules/recipes/pizza", (route) => {
+  await page.route(/\/api\/modules\/recipes\/pizza(?:\?|$)/, (route) => {
     if (route.request().method() === "PUT")
       writes.push(route.request().postDataJSON());
     return route.fulfill({ json: { recipe: { ...pizza, lines: [] } } });

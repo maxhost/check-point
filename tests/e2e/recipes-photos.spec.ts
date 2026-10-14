@@ -109,6 +109,7 @@ for (const width of [390, 1280]) {
     await expect(dialog).toHaveCount(0);
     expect(writes).toEqual([
       {
+        locationId: "local",
         lines: [
           { itemId: "flour", quantity: "0.1", unit: "g" },
           { newItem: { name: "Sal" }, quantity: "2", unit: "g" },
