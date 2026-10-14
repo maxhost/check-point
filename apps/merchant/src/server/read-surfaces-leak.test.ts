@@ -170,8 +170,7 @@ const SURFACES: Surface[] = [
       "business.suspensionReason",
       "business.currencyCode",
       "business.timezone",
-      "business.enabledModules", // spec 0220: ids del registro (+ el booleano transitorio)
-      "business.posEnabled",
+      "business.enabledModules", // spec 0220: ids del registro (el booleano transitorio del POS ya no existe)
       "membership.role",
       "membership.status",
       // Spec 0086 §8: la CAPACIDAD del caller, para que la UI pinte la navegacion sin

@@ -199,7 +199,8 @@ describe.skipIf(!modulesIntegrationEnabled)(
       );
       const { business } = await r.json();
       expect(business.enabledModules).toEqual(["stock", "recipes"]);
-      expect(business.posEnabled).toBe(false);
+      // Spec 0220, paso final: el booleano transitorio del POS ya no viaja.
+      expect(business).not.toHaveProperty("posEnabled");
       await enableModules(world, ["pos"]);
       const again = await (
         await SESSION(conCookie("/api/merchant/session", "GET", world.cookie))
@@ -209,7 +210,7 @@ describe.skipIf(!modulesIntegrationEnabled)(
         "recipes",
         "pos",
       ]);
-      expect(again.business.posEnabled).toBe(true);
+      expect(again.business).not.toHaveProperty("posEnabled");
     }, 120_000);
 
     it("404 module_not_found, 404 route_not_found, 405 por metodo y en la base sin ruta", async () => {

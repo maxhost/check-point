@@ -168,10 +168,9 @@ describe.skipIf(!integrationEnabled)(
           suspensionReason: null,
           currencyCode: "USD",
           timezone: "America/Guayaquil",
-          // Spec 0220: ningun modulo encendido (el POS tambien nace apagado); `posEnabled` es el
-          // paso transitorio hasta la 2b.
+          // Spec 0220: ningun modulo encendido (el POS tambien nace apagado). El booleano
+          // transitorio del POS ya no existe: el `toEqual` exacto lo prueba.
           enabledModules: [],
-          posEnabled: false,
         },
         // Spec 0086 §8 / contrato §6: para un OWNER son **los SIETE**, aunque su fila en la
         // base los tenga en `'{}'` (el `CHECK 2` lo exige). La API no expone la columna,

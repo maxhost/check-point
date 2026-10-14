@@ -48,9 +48,6 @@ export type SessionBusiness = {
   /** Spec 0220 / ADR 0141: los ids de los modulos ENCENDIDOS, en el orden del registro. La UI
    * decide con esto (y los manifiestos) que dibuja, sin nombrar modulos. */
   enabledModules: string[];
-  /** PASO TRANSITORIO (spec 0220): el POS encendido, derivado de `enabledModules`, hasta que las
-   * pantallas de la 2b lo dejen de leer; se borra en el paso final de la 2a. */
-  posEnabled: boolean;
 };
 
 export type SessionMembership = {
@@ -159,7 +156,6 @@ export function toSessionView(
       currencyCode: row.currencyCode,
       timezone: row.timezone,
       enabledModules: [...enabledModules],
-      posEnabled: enabledModules.includes("pos"),
     },
     membership: {
       role: row.role,

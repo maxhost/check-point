@@ -39,17 +39,12 @@ import { modulePermissionIds } from "./permissions";
  * No se ve un id armado, uno guardado antes en una variable ni uno dentro de un texto mas largo. El trabajo lo hacen esos
  * patrones; el piso de archivos y los controles prueban que el barrido mira.
  *
- * `PENDING_GPT` (Fase 2, spec 0220): las pantallas que todavia nombran el POS hasta que GPT las mude
- * en la 2b, mas el paso transitorio `posEnabled` de la sesion (se borra en el paso final de la 2a).
- * Cuenta EXACTA por archivo: suma los patrones de arriba y `LEGACY_POS` (los nombres del POS de
- * antes de ser modulo, el barrido del DoD de la 0220). La 2b la baja a `{}`.
+ * `PENDING_GPT` quedo vacia al cerrar la Fase 2 (spec 0220: 2b de GPT y el paso final que borro
+ * `posEnabled` de la sesion). Se conserva como cuenta EXACTA por archivo (suma los patrones de arriba
+ * y `LEGACY_POS`, los nombres del POS de antes de ser modulo): si una migracion futura necesita
+ * convivir con literales viejos, se anotan aca y el test obliga a bajarlos a `{}`.
  */
-const PENDING_GPT: Readonly<Record<string, number>> = {
-  // Paso transitorio de la sesion (`business.posEnabled`): se borra con su lectura en la 2b.
-  "server/session-view.ts": 4,
-  "server/read-surfaces-leak.test.ts": 1,
-  "app/api/merchant/session/session.neon.integration.test.ts": 2,
-};
+const PENDING_GPT: Readonly<Record<string, number>> = {};
 
 /**
  * FALSOS POSITIVOS MEDIDOS del literal exacto (revision de la 2a, 2026-10-13), nombrados aca y en el
