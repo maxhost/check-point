@@ -602,6 +602,16 @@ run("0227 durable consumption and count cut", { timeout: 60000 }, () => {
       resetHandler();
     }
   });
+  it("empty pending queue accepts a 70000-event count cut with one array bind", async () => {
+    const result = await retryModuleEvents({
+      businessId: world.businessId,
+      locationId: world.locationId,
+      eventIds: Array.from({ length: 70000 }, () => randomUUID()),
+      force: true,
+      budgetMs: 2000,
+    });
+    expect(result).toEqual({ claimed: 0, applied: 0, pending: 0, failed: 0 });
+  });
   it("slow DB applicator is canceled within retry budget and never applied partially", async () => {
     const version = await getDb().execute(sql`show server_version_num`);
     expect(Number(version.rows[0].server_version_num)).toBeGreaterThanOrEqual(

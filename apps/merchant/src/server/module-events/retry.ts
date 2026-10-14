@@ -41,10 +41,7 @@ export async function retryModuleEvents(options: RetryOptions = {}) {
    ${options.locationId ? sql`and e.location_id=${options.locationId}::uuid` : sql``}
    ${
      options.eventIds
-       ? sql`and e.id in (${sql.join(
-           options.eventIds.map((id) => sql`${id}::uuid`),
-           sql`,`,
-         )})`
+       ? sql`and e.id = any(${sql.param(options.eventIds)}::uuid[])`
        : sql``
    }
    ${
