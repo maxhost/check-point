@@ -7,6 +7,7 @@ import {
   moduleEvents,
   moduleEventDeliveries,
   stockMovements,
+  stockItems,
 } from "@mi-pasaporte/db/schema";
 import { SERVER_MODULES } from "../server-registry";
 import type { ModuleServer } from "../route-table";
@@ -401,6 +402,206 @@ run("0227 durable consumption and count cut", { timeout: 60000 }, () => {
     }
   });
 
+  it("valid 200 sale lines by 50 ingredients applies 10000 movements within unchanged 20s budget", async () => {
+    const ingredients = await getDb()
+      .insert(stockItems)
+      .values(
+        Array.from({ length: 50 }, (_, i) => ({
+          businessId: world.businessId,
+          name: `Batch ingredient ${i}`,
+          unit: "g",
+        })),
+      )
+      .returning({ id: stockItems.id });
+    const order = randomUUID(),
+      productId = randomUUID();
+    const event = await withDbTransaction((tx) =>
+      publishSaleClosed(tx, {
+        businessId: world.businessId,
+        sourceOrderId: order,
+        locationId: world.locationId,
+        closedAt: new Date(),
+        userId: world.ownerId,
+        lines: Array.from({ length: 200 }, () => ({
+          sourceLineId: randomUUID(),
+          productId,
+          quantity: 1,
+        })),
+      }),
+    );
+    handler = async (tx, event) =>
+      applyConsumption(tx, {
+        businessId: event.businessId,
+        locationId: event.payload.locationId,
+        sourceOrderId: event.payload.sourceOrderId,
+        closedAt: new Date(event.payload.closedAt),
+        userId: event.payload.userId,
+        lines: event.payload.lines.flatMap((line) =>
+          ingredients.map((ingredient) => ({
+            sourceLineId: line.sourceLineId,
+            productId: line.productId!,
+            itemId: ingredient.id,
+            quantity: "1.000",
+          })),
+        ),
+      });
+    try {
+      const started = Date.now();
+      const result = await retryModuleEvents({
+        businessId: world.businessId,
+        eventIds: [event!.eventId],
+        budgetMs: 20000,
+        force: true,
+      });
+      const elapsed = Date.now() - started;
+      const [ledger] = await getDb()
+        .select({
+          count: sql<number>`count(*)::int`,
+          quantity: sql<string>`sum(${stockMovements.quantity})::text`,
+        })
+        .from(stockMovements)
+        .where(eq(stockMovements.sourceOrderId, order));
+      expect(result).toMatchObject({
+        claimed: 1,
+        applied: 1,
+        failed: 0,
+        pending: 0,
+      });
+      console.info("stock-batch-budget", {
+        elapsedMs: elapsed,
+        movements: ledger.count,
+      });
+      expect(elapsed).toBeLessThan(20000);
+      expect(ledger).toEqual({ count: 10000, quantity: "-10000.000" });
+      const [delivery] = await getDb()
+        .select()
+        .from(moduleEventDeliveries)
+        .where(
+          and(
+            eq(moduleEventDeliveries.eventId, event!.eventId),
+            eq(moduleEventDeliveries.subscriberId, subscriber),
+          ),
+        );
+      expect(delivery.state).toBe("applied");
+      expect(
+        (
+          await retryModuleEvents({
+            businessId: world.businessId,
+            eventIds: [event!.eventId],
+            force: true,
+          })
+        ).claimed,
+      ).toBe(0);
+    } finally {
+      resetHandler();
+    }
+  });
+  it("failure after multiple bulk chunks rolls back every movement and leaves durable retry", async () => {
+    const order = randomUUID(),
+      productId = randomUUID(),
+      lines = Array.from({ length: 200 }, () => ({
+        sourceLineId: randomUUID(),
+        productId,
+        quantity: 1,
+      }));
+    const event = await withDbTransaction((tx) =>
+      publishSaleClosed(tx, {
+        businessId: world.businessId,
+        sourceOrderId: order,
+        locationId: world.locationId,
+        closedAt: new Date(),
+        userId: world.ownerId,
+        lines,
+      }),
+    );
+    const ingredients = await getDb()
+      .insert(stockItems)
+      .values(
+        Array.from({ length: 10 }, (_, i) => ({
+          businessId: world.businessId,
+          name: `Rollback batch ingredient ${i}`,
+          unit: "g",
+        })),
+      )
+      .returning({ id: stockItems.id });
+    const applyBatch: typeof handler = async (tx, event) =>
+      applyConsumption(tx, {
+        businessId: event.businessId,
+        locationId: event.payload.locationId,
+        sourceOrderId: event.payload.sourceOrderId,
+        closedAt: new Date(event.payload.closedAt),
+        userId: event.payload.userId,
+        lines: event.payload.lines.flatMap((line) =>
+          ingredients.map((ingredient) => ({
+            sourceLineId: line.sourceLineId,
+            productId: line.productId!,
+            itemId: ingredient.id,
+            quantity: "1.000",
+          })),
+        ),
+      });
+    handler = async (tx, event) => {
+      await applyBatch(tx, event);
+      throw new Error("Failure after bulk insert");
+    };
+    try {
+      const result = await retryModuleEvents({
+        businessId: world.businessId,
+        eventIds: [event!.eventId],
+        force: true,
+      });
+      expect(result.failed).toBe(1);
+      expect(result.applied).toBe(0);
+      const [ledger] = await getDb()
+        .select({ count: sql<number>`count(*)::int` })
+        .from(stockMovements)
+        .where(eq(stockMovements.sourceOrderId, order));
+      expect(ledger.count).toBe(0);
+      const [delivery] = await getDb()
+        .select()
+        .from(moduleEventDeliveries)
+        .where(
+          and(
+            eq(moduleEventDeliveries.eventId, event!.eventId),
+            eq(moduleEventDeliveries.subscriberId, subscriber),
+          ),
+        );
+      expect(delivery.state).toBe("pending");
+      handler = applyBatch;
+      expect(
+        (
+          await retryModuleEvents({
+            businessId: world.businessId,
+            eventIds: [event!.eventId],
+            force: true,
+          })
+        ).applied,
+      ).toBe(1);
+      const [stored] = await getDb()
+        .select()
+        .from(moduleEvents)
+        .where(eq(moduleEvents.id, event!.eventId));
+      const captured: CapturedModuleEvent = {
+        id: stored.id,
+        businessId: stored.businessId,
+        payload: stored.payload as CapturedModuleEvent["payload"],
+      };
+      await Promise.all([
+        withDbTransaction((tx) => applyBatch(tx, captured)),
+        withDbTransaction((tx) => applyBatch(tx, captured)),
+      ]);
+      const [after] = await getDb()
+        .select({
+          count: sql<number>`count(*)::int`,
+          quantity: sql<string>`sum(${stockMovements.quantity})::text`,
+        })
+        .from(stockMovements)
+        .where(eq(stockMovements.sourceOrderId, order));
+      expect(after).toEqual({ count: 2000, quantity: "-2000.000" });
+    } finally {
+      resetHandler();
+    }
+  });
   it("slow DB applicator is canceled within retry budget and never applied partially", async () => {
     const version = await getDb().execute(sql`show server_version_num`);
     expect(Number(version.rows[0].server_version_num)).toBeGreaterThanOrEqual(
