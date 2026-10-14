@@ -302,6 +302,83 @@ test("Locales: crear, renombrar y quitar guarda inmediatamente; Editar y cerrar 
   expect(state.writes).toHaveLength(3);
 });
 
+/** Hace de `GET/POST /api/locations` y `PATCH /api/locations/:id`: el `router.refresh()` del
+ * harness relee esta lista y rearma los paneles, como `page.tsx` en el servidor. */
+async function locationsServer(page: Page) {
+  await setup(page);
+  const server = [
+    {
+      id: localId,
+      name: "Centro",
+      addressLabel: "Av. Central",
+      status: "active",
+    },
+    { id: northId, name: "Norte", addressLabel: "Av. Norte", status: "active" },
+  ];
+  await page.route("**/api/locations", async (route) => {
+    const request = route.request();
+    if (request.method() === "GET")
+      return route.fulfill({ json: { locations: server } });
+    const body = request.postDataJSON();
+    const location = {
+      id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb3",
+      name: body.name,
+      addressLabel: body.address.label,
+      status: "active",
+    };
+    server.push(location);
+    return route.fulfill({ status: 201, json: { location } });
+  });
+  await page.route("**/api/locations/*", async (route) => {
+    const id = new URL(route.request().url()).pathname.split("/")[3];
+    const location = server.find((item) => item.id === id)!;
+    location.name = route.request().postDataJSON().name;
+    return route.fulfill({ json: { location } });
+  });
+  await page.goto(`${harness.url}?mode=locations`);
+  const mesas = page.getByRole("button", { name: "Mesas", exact: true });
+  await expect(mesas).toHaveCount(2);
+  return mesas;
+}
+
+test("Locales: un local recién creado abre su Mesas sin recargar", async ({
+  page,
+}) => {
+  const mesas = await locationsServer(page);
+  await page.getByRole("button", { name: "Añadir local" }).click();
+  await page.getByRole("textbox", { name: "Nombre del local" }).fill("Sur");
+  await page
+    .getByRole("textbox", { name: "Dirección escrita" })
+    .fill("Av. Sur 1");
+  await page.getByRole("button", { name: "Crear local", exact: true }).click();
+  await expect(page.getByText("Local añadido.", { exact: true })).toBeVisible();
+  await mesas.nth(2).click();
+  await expect(page.getByRole("dialog", { name: "Mesas · Sur" })).toBeVisible();
+});
+
+test("Locales: un local renombrado abre Mesas con el nombre nuevo sin recargar", async ({
+  page,
+}) => {
+  const mesas = await locationsServer(page);
+  await page
+    .getByRole("button", { name: "Editar", exact: true })
+    .nth(1)
+    .click();
+  await page
+    .getByRole("textbox", { name: "Nombre del local" })
+    .fill("Norte Plaza");
+  await page
+    .getByRole("button", { name: "Guardar cambios", exact: true })
+    .click();
+  await expect(
+    page.getByText("Local actualizado.", { exact: true }),
+  ).toBeVisible();
+  await mesas.nth(1).click();
+  await expect(
+    page.getByRole("dialog", { name: "Mesas · Norte Plaza" }),
+  ).toBeVisible();
+});
+
 test("Locales: duplicado y mesa ocupada muestran error literal y conservan entrada/lista; POSoff oculta Mesas", async ({
   page,
 }) => {

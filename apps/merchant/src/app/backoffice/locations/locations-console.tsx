@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "../../../ui";
 import { panelRequest, type PanelSession } from "../panel-request";
 import { MODULES } from "../../../modules/registry";
@@ -43,6 +44,9 @@ export function LocationsConsole({
   activeLimit: number;
   modulePanels?: { moduleId: string; locationId: string; content: ReactNode }[];
 }) {
+  const router = useRouter();
+  // `router.refresh()` conserva este estado (doc de `useRouter`): la lista la lleva el cliente
+  // con `apply()`; el refresh solo rearma en el servidor `modulePanels` (local nuevo, nombre nuevo).
   const [locations, setLocations] = useState(initialLocations);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
@@ -141,6 +145,7 @@ export function LocationsConsole({
         ? prev.map((l) => (l.id === location.id ? location : l))
         : [...prev, location],
     );
+    router.refresh();
   }
 
   async function send(url: string, method: string, body: unknown) {
