@@ -1,13 +1,19 @@
-import { and, desc, eq, isNotNull, max } from "drizzle-orm";
+import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
 import { type DbTransaction, getDb, withDbTransaction } from "@mi-pasaporte/db";
-import { stockItems, stockMovements } from "@mi-pasaporte/db/schema";
-import { isUuid } from "@mi-pasaporte/domain/server/counter/core";
+import {
+  stockItems,
+  stockMovements,
+  stockItemLocations,
+} from "@mi-pasaporte/db/schema";
+import { isUuid, pgErrorCode } from "@mi-pasaporte/domain/server/counter/core";
 import { formatDecimal, fromDb, parseDecimal } from "../decimal";
+import { resolveLocation, lockItemLocation } from "./local";
+import { captureCountCut, validateCountCut } from "./count";
+import { retryModuleEvents } from "../../server/module-events";
 import { ModuleError } from "../errors";
 import {
   type ItemDTO,
   type ItemRow,
-  itemColumns,
   itemNotFound,
   lockItem,
   onHandOf,
@@ -30,7 +36,11 @@ import {
 
 export type MovementDTO = {
   id: string;
-  kind: "purchase" | "adjustment";
+  kind: "purchase" | "adjustment" | "consumption";
+  locationId: string | null;
+  sourceOrderId: string | null;
+  sourceLineId: string | null;
+  productId: string | null;
   quantity: string;
   totalCost: string | null;
   countedQuantity: string | null;
@@ -48,6 +58,10 @@ export const MAX_MOVEMENTS_LIMIT = 200;
 
 export const movementColumns = {
   id: stockMovements.id,
+  locationId: stockMovements.locationId,
+  sourceOrderId: stockMovements.sourceOrderId,
+  sourceLineId: stockMovements.sourceLineId,
+  productId: stockMovements.productId,
   kind: stockMovements.kind,
   quantity: stockMovements.quantity,
   totalCost: stockMovements.totalCost,
@@ -60,6 +74,10 @@ export const movementColumns = {
 
 export function toMovementDTO(row: {
   id: string;
+  locationId: string | null;
+  sourceOrderId: string | null;
+  sourceLineId: string | null;
+  productId: string | null;
   kind: string;
   quantity: string;
   totalCost: string | null;
@@ -73,7 +91,11 @@ export function toMovementDTO(row: {
     value === null ? null : formatDecimal(fromDb(value, scale), scale);
   return {
     id: row.id,
-    kind: row.kind === "adjustment" ? "adjustment" : "purchase",
+    kind: row.kind as MovementDTO["kind"],
+    locationId: row.locationId,
+    sourceOrderId: row.sourceOrderId,
+    sourceLineId: row.sourceLineId,
+    productId: row.productId,
     quantity: formatDecimal(fromDb(row.quantity, 3), 3),
     totalCost: fmt(row.totalCost, 2),
     countedQuantity: fmt(row.countedQuantity, 3),
@@ -127,6 +149,7 @@ export async function applyPurchase(
   tx: DbTransaction,
   args: {
     businessId: string;
+    locationId: string;
     userId: string;
     item: ItemRow;
     quantity: bigint;
@@ -138,22 +161,17 @@ export async function applyPurchase(
 ): Promise<{ movement: MovementDTO; item: ItemRow }> {
   const { item, cost } = args;
   if (item.status === "archived") throw archived();
-  const [latest] = cost
-    ? await tx
-        .select({ at: max(stockMovements.occurredAt) })
-        .from(stockMovements)
-        .where(
-          and(
-            eq(stockMovements.itemId, item.id),
-            eq(stockMovements.kind, "purchase"),
-            isNotNull(stockMovements.totalCost),
-          ),
-        )
-    : [];
+  const pair = await lockItemLocation(
+    tx,
+    args.businessId,
+    item.id,
+    args.locationId,
+  );
   const [movement] = await tx
     .insert(stockMovements)
     .values({
       businessId: args.businessId,
+      locationId: args.locationId,
       itemId: item.id,
       kind: "purchase",
       quantity: formatDecimal(args.quantity, QUANTITY.scale),
@@ -164,22 +182,46 @@ export async function applyPurchase(
       createdByUserId: args.userId,
     })
     .returning(movementColumns);
-  let row = item;
-  const latestAt = latest?.at ? new Date(latest.at) : null;
-  if (
-    cost &&
-    (latestAt === null || args.occurredAt.getTime() >= latestAt.getTime())
-  ) {
-    [row] = await tx
-      .update(stockItems)
-      .set({
-        lastUnitCost: formatDecimal(cost.unitCost, UNIT_COST_SCALE),
-        updatedAt: new Date(),
+  // Deterministic tie-breakers; a purchase without price never changes cost.
+  let lastUnitCost = pair.lastUnitCost;
+  if (cost) {
+    const [latest] = await tx
+      .select({
+        quantity: stockMovements.quantity,
+        totalCost: stockMovements.totalCost,
       })
-      .where(eq(stockItems.id, item.id))
-      .returning(itemColumns);
+      .from(stockMovements)
+      .where(
+        and(
+          eq(stockMovements.businessId, args.businessId),
+          eq(stockMovements.locationId, args.locationId),
+          eq(stockMovements.itemId, item.id),
+          eq(stockMovements.kind, "purchase"),
+          isNotNull(stockMovements.totalCost),
+        ),
+      )
+      .orderBy(
+        desc(stockMovements.occurredAt),
+        desc(stockMovements.createdAt),
+        desc(stockMovements.id),
+      )
+      .limit(1);
+    lastUnitCost = formatDecimal(
+      parsePurchaseCost(latest.totalCost, fromDb(latest.quantity, 3))!.unitCost,
+      UNIT_COST_SCALE,
+    );
+    await tx
+      .update(stockItemLocations)
+      .set({ lastUnitCost, updatedAt: new Date() })
+      .where(
+        and(
+          eq(stockItemLocations.businessId, args.businessId),
+          eq(stockItemLocations.locationId, args.locationId),
+          eq(stockItemLocations.itemId, item.id),
+        ),
+      );
   }
-  return { movement: toMovementDTO(movement), item: row };
+  return { movement: toMovementDTO(movement), item: { ...item, lastUnitCost } };
 }
 
 /** `POST /api/modules/stock/items/:itemId/purchases` — `{ quantity, totalCost?, occurredAt?, note? }`. */
@@ -189,6 +231,9 @@ export async function recordPurchase(
   rawItemId: unknown,
   body: Record<string, unknown>,
 ): Promise<{ movement: MovementDTO; item: ItemDTO }> {
+  const location = await resolveLocation(businessId, body.locationId, {
+    purchase: true,
+  });
   const quantity = parsePurchaseQuantity(body.quantity);
   const cost = parsePurchaseCost(body.totalCost, quantity);
   const occurredAt = parseOccurredAt(body.occurredAt, new Date());
@@ -197,6 +242,7 @@ export async function recordPurchase(
     const locked = await lockItem(tx, businessId, rawItemId);
     const { movement, item } = await applyPurchase(tx, {
       businessId,
+      locationId: location.id,
       userId,
       item: locked,
       quantity,
@@ -205,7 +251,14 @@ export async function recordPurchase(
       note,
       entryId: null,
     });
-    return { movement, item: toItemDTO(item, await onHandOf(tx, item.id)) };
+    return {
+      movement,
+      item: toItemDTO(
+        item,
+        await onHandOf(tx, item.id, location.id),
+        location.id,
+      ),
+    };
   });
 }
 
@@ -216,6 +269,7 @@ export async function recordAdjustment(
   rawItemId: unknown,
   body: Record<string, unknown>,
 ): Promise<{ movement: MovementDTO; item: ItemDTO }> {
+  const location = await resolveLocation(businessId, body.locationId);
   const counted = parseDecimal(body.countedQuantity, COUNTED);
   if (counted < 0n) {
     throw new ModuleError(
@@ -225,28 +279,63 @@ export async function recordAdjustment(
     );
   }
   const note = parseNote(body.note);
-  return withDbTransaction(async (tx) => {
-    // El lock ANTES de leer el saldo: un segundo ajuste espera aca y lee el saldo ya ajustado.
-    const item = await lockItem(tx, businessId, rawItemId);
-    if (item.status === "archived") throw archived();
-    const onHand = fromDb(await onHandOf(tx, item.id), QUANTITY.scale);
-    const [movement] = await tx
-      .insert(stockMovements)
-      .values({
-        businessId,
-        itemId: item.id,
-        kind: "adjustment",
-        quantity: formatDecimal(counted - onHand, QUANTITY.scale),
-        countedQuantity: formatDecimal(counted, COUNTED.scale),
-        note,
-        createdByUserId: userId,
-      })
-      .returning(movementColumns);
-    return {
-      movement: toMovementDTO(movement),
-      item: toItemDTO(item, formatDecimal(counted, QUANTITY.scale)),
-    };
+  const cut = await captureCountCut(businessId, location.id);
+  await retryModuleEvents({
+    businessId,
+    locationId: location.id,
+    eventIds: cut,
+    budgetMs: 2000,
+    force: true,
+  }).catch(() => {
+    throw new ModuleError(
+      409,
+      "consumption_pending",
+      "No pudimos aplicar los consumos pendientes. Intenta el conteo otra vez.",
+    );
   });
+  try {
+    return await withDbTransaction(async (tx) => {
+      await tx.execute(sql`set transaction isolation level serializable`);
+      await validateCountCut(tx, businessId, location.id, cut);
+      // El lock ANTES de leer el saldo: un segundo ajuste espera aca y lee el saldo ya ajustado.
+      const item = await lockItem(tx, businessId, rawItemId);
+      if (item.status === "archived") throw archived();
+      const pair = await lockItemLocation(tx, businessId, item.id, location.id);
+      const onHand = fromDb(
+        await onHandOf(tx, item.id, location.id),
+        QUANTITY.scale,
+      );
+      const [movement] = await tx
+        .insert(stockMovements)
+        .values({
+          businessId,
+          locationId: location.id,
+          itemId: item.id,
+          kind: "adjustment",
+          quantity: formatDecimal(counted - onHand, QUANTITY.scale),
+          countedQuantity: formatDecimal(counted, COUNTED.scale),
+          note,
+          createdByUserId: userId,
+        })
+        .returning(movementColumns);
+      return {
+        movement: toMovementDTO(movement),
+        item: toItemDTO(
+          { ...item, lastUnitCost: pair.lastUnitCost },
+          formatDecimal(counted, QUANTITY.scale),
+          location.id,
+        ),
+      };
+    });
+  } catch (error) {
+    if (pgErrorCode(error) === "40001")
+      throw new ModuleError(
+        409,
+        "count_changed",
+        "Cambió el stock mientras contabas. Actualiza e intenta otra vez.",
+      );
+    throw error;
+  }
 }
 
 /** `limit` del query: default 50, tope 200; lo que no es un entero positivo vuelve al default. */
@@ -262,7 +351,9 @@ export async function listMovements(
   businessId: string,
   rawItemId: unknown,
   rawLimit: string | null,
+  rawLocationId?: unknown,
 ): Promise<MovementDTO[]> {
+  const location = await resolveLocation(businessId, rawLocationId);
   if (!isUuid(rawItemId)) throw itemNotFound();
   const db = getDb();
   const [item] = await db
@@ -283,6 +374,7 @@ export async function listMovements(
       and(
         eq(stockMovements.itemId, item.id),
         eq(stockMovements.businessId, businessId),
+        eq(stockMovements.locationId, location.id),
       ),
     )
     .orderBy(desc(stockMovements.occurredAt), desc(stockMovements.createdAt))

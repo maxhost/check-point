@@ -22,6 +22,7 @@ import {
   parseOccurredAt,
   toMovementDTO,
 } from "./movements";
+import { resolveLocation, lockItemLocation } from "./local";
 import { parsePurchaseCost, parsePurchaseQuantity } from "./numbers";
 
 /**
@@ -127,6 +128,9 @@ export async function recordEntry(
   userId: string,
   body: Record<string, unknown>,
 ): Promise<{ entryId: string; movements: LogMovementDTO[]; items: ItemDTO[] }> {
+  const location = await resolveLocation(businessId, body.locationId, {
+    purchase: true,
+  });
   if (!Array.isArray(body.lines) || body.lines.length === 0) {
     throw invalidBody("La entrada tiene que traer al menos una línea.");
   }
@@ -152,6 +156,8 @@ export async function recordEntry(
         const row = await lockItem(tx, businessId, id);
         rows.set(id, row);
       }
+      for (const id of existing)
+        await lockItemLocation(tx, businessId, id, location.id);
       // Un nombre nuevo repetido dentro de la misma entrada crea UN insumo (sin distinguir mayusculas).
       const created = new Map<string, string>();
       const movements: LogMovementDTO[] = [];
@@ -181,6 +187,7 @@ export async function recordEntry(
         }
         const applied = await applyPurchase(tx, {
           businessId,
+          locationId: location.id,
           userId,
           item,
           quantity: line.quantity,
@@ -199,7 +206,13 @@ export async function recordEntry(
       }
       const items: ItemDTO[] = [];
       for (const id of new Set(movements.map((m) => m.itemId))) {
-        items.push(toItemDTO(rows.get(id) as ItemRow, await onHandOf(tx, id)));
+        items.push(
+          toItemDTO(
+            rows.get(id) as ItemRow,
+            await onHandOf(tx, id, location.id),
+            location.id,
+          ),
+        );
       }
       return { entryId, movements, items };
     });
@@ -220,7 +233,9 @@ export async function recordEntry(
 export async function listLog(
   businessId: string,
   rawLimit: string | null,
+  rawLocationId?: unknown,
 ): Promise<LogMovementDTO[]> {
+  const location = await resolveLocation(businessId, rawLocationId);
   const rows = await getDb()
     .select({
       ...movementColumns,
@@ -236,7 +251,12 @@ export async function listLog(
         eq(stockItems.businessId, businessId),
       ),
     )
-    .where(eq(stockMovements.businessId, businessId))
+    .where(
+      and(
+        eq(stockMovements.businessId, businessId),
+        eq(stockMovements.locationId, location.id),
+      ),
+    )
     .orderBy(desc(stockMovements.occurredAt), desc(stockMovements.createdAt))
     .limit(parseLimit(rawLimit));
   return rows.map((row) => ({

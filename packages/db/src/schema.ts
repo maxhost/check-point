@@ -36,3 +36,5 @@ export * from "./schema/modules/stock";
 export * from "./schema/modules/recipes";
 // Spec 0220 / ADR 0141 §6: el POS y Mesas.
 export * from "./schema/modules/pos";
+
+export * from "./schema/module-event";

@@ -27,21 +27,51 @@ if (!neonConfig.webSocketConstructor && typeof WebSocket !== "undefined")
 // invocations. Opening (and ending) a Pool per call added a socket handshake to every
 // request — and a single request may run several transactions.
 const pools = new Map<string, Pool>();
-function poolFor(connectionString: string): Pool {
-  let pool = pools.get(connectionString);
+function poolFor(connectionString: string, connectionTimeoutMs?: number): Pool {
+  if (connectionTimeoutMs !== undefined) {
+    const remaining = connectionTimeoutMs;
+    connectionTimeoutMs =
+      [1, 50, 100, 250, 500, 1000].filter((n) => n <= remaining).at(-1) ?? 1;
+  }
+  const key =
+    connectionString +
+    (connectionTimeoutMs ? `:timeout-${connectionTimeoutMs}` : "");
+  let pool = pools.get(key);
   if (!pool) {
-    pool = new Pool({ connectionString });
-    pools.set(connectionString, pool);
+    pool = new Pool({
+      connectionString,
+      connectionTimeoutMillis: connectionTimeoutMs,
+    });
+    // The deadline may terminate a backend. Bounded callers retire failed clients;
+    // pool error events from an already idle/disconnected client must not crash the process.
+    if (connectionTimeoutMs) pool.on("error", () => {});
+    pools.set(key, pool);
   }
   return pool;
 }
 
 export async function withDbTransaction<T>(
   work: (tx: DbTransaction) => Promise<T>,
+  options?: { connectionTimeoutMs?: number },
 ): Promise<T> {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) throw new Error("DATABASE_URL no está configurada.");
   assertNotProdOutsideProduction(connectionString);
   configureNeonForLocal(connectionString);
-  return drizzleWs(poolFor(connectionString), { schema }).transaction(work);
+  const pool = poolFor(connectionString, options?.connectionTimeoutMs);
+  if (!options?.connectionTimeoutMs)
+    return drizzleWs(pool, { schema }).transaction(work);
+  const client = await pool.connect();
+  const onError = () => {};
+  client.on("error", onError);
+  let failed = false;
+  try {
+    return await drizzleWs(client, { schema }).transaction(work);
+  } catch (error) {
+    failed = true;
+    throw error;
+  } finally {
+    client.release(failed);
+    client.removeListener("error", onError);
+  }
 }

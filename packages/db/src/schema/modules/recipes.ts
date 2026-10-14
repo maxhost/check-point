@@ -1,6 +1,9 @@
 import {
   check,
+  foreignKey,
   integer,
+  jsonb,
+  timestamp,
   numeric,
   pgSchema,
   uniqueIndex,
@@ -36,6 +39,16 @@ export const recipeLines = recipesSchema.table(
     position: integer("position").notNull().default(0),
   },
   (table) => [
+    foreignKey({
+      name: "recipes_line_business_item_fk",
+      columns: [table.businessId, table.itemId],
+      foreignColumns: [stockItems.businessId, stockItems.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "recipes_line_business_product_fk",
+      columns: [table.businessId, table.productId],
+      foreignColumns: [products.businessId, products.id],
+    }).onDelete("cascade"),
     check("recipes_line_quantity_check", sql`${table.quantity} > 0`),
     uniqueIndex("recipes_line_product_item_unique").on(
       table.productId,
@@ -43,3 +56,18 @@ export const recipeLines = recipesSchema.table(
     ),
   ],
 );
+
+/** Append-only snapshots; product identity deliberately survives product deletion. */
+export const recipeRevisions = recipesSchema.table("revision", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  businessId: uuid("business_id")
+    .notNull()
+    .references(() => businesses.id, { onDelete: "cascade" }),
+  productId: uuid("product_id").notNull(),
+  lines: jsonb("lines")
+    .$type<{ itemId: string; unit: string; quantity: string }[]>()
+    .notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});

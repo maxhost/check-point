@@ -1,5 +1,7 @@
 import {
   check,
+  foreignKey,
+  primaryKey,
   index,
   numeric,
   pgSchema,
@@ -9,7 +11,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
-import { businesses } from "../business";
+import { businesses, locations } from "../business";
 
 /**
  * Spec 0210 / ADR 0138 — EL MODULO STOCK, en su propio esquema Postgres. Claves foraneas solo
@@ -51,6 +53,7 @@ export const stockItems = stockSchema.table(
       "stock_item_last_unit_cost_check",
       sql`${table.lastUnitCost} is null or ${table.lastUnitCost} >= 0`,
     ),
+    uniqueIndex("stock_item_business_id_unique").on(table.businessId, table.id),
     uniqueIndex("stock_item_active_name_unique")
       .on(table.businessId, sql`lower(${table.name})`)
       .where(sql`${table.status} = 'active'`),
@@ -70,6 +73,10 @@ export const stockMovements = stockSchema.table(
     itemId: uuid("item_id")
       .notNull()
       .references(() => stockItems.id, { onDelete: "cascade" }),
+    locationId: uuid("location_id"),
+    sourceOrderId: uuid("source_order_id"),
+    sourceLineId: uuid("source_line_id"),
+    productId: uuid("product_id"),
     kind: text("kind").notNull(),
     quantity: numeric("quantity", { precision: 14, scale: 3 }).notNull(),
     totalCost: numeric("total_cost", { precision: 12, scale: 2 }),
@@ -87,7 +94,7 @@ export const stockMovements = stockSchema.table(
   (table) => [
     check(
       "stock_movement_kind_check",
-      sql`${table.kind} in ('purchase', 'adjustment')`,
+      sql`${table.kind} in ('purchase', 'adjustment', 'consumption')`,
     ),
     check(
       "stock_movement_purchase_check",
@@ -101,6 +108,33 @@ export const stockMovements = stockSchema.table(
       "stock_movement_note_check",
       sql`${table.note} is null or char_length(${table.note}) between 1 and 200`,
     ),
+    foreignKey({
+      name: "stock_movement_business_item_fk",
+      columns: [table.businessId, table.itemId],
+      foreignColumns: [stockItems.businessId, stockItems.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "stock_movement_business_location_fk",
+      columns: [table.businessId, table.locationId],
+      foreignColumns: [locations.businessId, locations.id],
+    }).onDelete("cascade"),
+    check(
+      "stock_movement_consumption_check",
+      sql`${table.kind} <> 'consumption' or (${table.quantity}<0 and ${table.totalCost} is null and ${table.countedQuantity} is null and ${table.sourceOrderId} is not null and ${table.sourceLineId} is not null and ${table.productId} is not null)`,
+    ),
+    uniqueIndex("stock_movement_consumption_unique")
+      .on(
+        table.businessId,
+        table.sourceOrderId,
+        table.sourceLineId,
+        table.itemId,
+      )
+      .where(sql`${table.kind}='consumption'`),
+    index("stock_movement_local_idx").on(
+      table.businessId,
+      table.locationId,
+      table.itemId,
+    ),
     index("stock_movement_item_occurred_idx").on(
       table.itemId,
       table.occurredAt,
@@ -108,6 +142,36 @@ export const stockMovements = stockSchema.table(
     index("stock_movement_business_occurred_idx").on(
       table.businessId,
       table.occurredAt,
+    ),
+  ],
+);
+
+export const stockItemLocations = stockSchema.table(
+  "item_location",
+  {
+    businessId: uuid("business_id").notNull(),
+    itemId: uuid("item_id").notNull(),
+    locationId: uuid("location_id").notNull(),
+    lastUnitCost: numeric("last_unit_cost", { precision: 14, scale: 6 }),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.businessId, t.itemId, t.locationId] }),
+    foreignKey({
+      name: "stock_item_location_item_fk",
+      columns: [t.businessId, t.itemId],
+      foreignColumns: [stockItems.businessId, stockItems.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "stock_item_location_location_fk",
+      columns: [t.businessId, t.locationId],
+      foreignColumns: [locations.businessId, locations.id],
+    }).onDelete("cascade"),
+    check(
+      "stock_item_location_cost_check",
+      sql`${t.lastUnitCost} is null or ${t.lastUnitCost}>=0`,
     ),
   ],
 );
