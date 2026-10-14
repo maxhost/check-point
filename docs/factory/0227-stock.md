@@ -25,3 +25,7 @@ Corridas iniciales detectaron y corrigieron item archivado admitiendo conteo, DT
 ## Siguiente paso
 
 A libera DB tras entregar; root transfiere reserva a B. Integrar A-final en B preservando commits propios; probar POS/Recetas reales/UI/snapshot+retry con export registrado y después QA independiente del candidato congelado. Owner configura cron-job.org0/30 24h Guayaquil y autoriza cualquier push/migración PROD por separado. No procesos propios pendientes; conservar árbol hasta aceptación e integración main local para cleanup factory. No declarar feature implementada/QA combinación por esta entrega individual.
+
+## Corrección tras QA de combinación
+
+QA sobre candidato `d268` detectó 12 PASS / 1 FAIL en suite combinada: el fixture de claim expirado actualizaba todas las deliveries del evento, convirtiendo también la delivery Recetas terminal `skipped` en `processing`. En árbol A aislado no existía ese suscriptor, por lo que el defecto del fixture sólo apareció al combinar. Se restringen únicamente las dos actualizaciones del caso a `subscriberId = integration-consumer`; se conserva `expect(applied).toBe(1)` y el código de producto permanece idéntico. No reescribir entregas previas. Lint/formato focales verificados en esta corrección; DB reservada a QA, quien reproducirá el caso afectado en candidato nuevo. No atribuir aquí PASS DB de la revisión corregida.

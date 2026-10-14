@@ -259,7 +259,12 @@ run("0227 durable consumption and count cut", { timeout: 60000 }, () => {
         claimToken: randomUUID(),
         claimUntil: new Date(Date.now() + 60000),
       })
-      .where(eq(moduleEventDeliveries.eventId, e.eventId));
+      .where(
+        and(
+          eq(moduleEventDeliveries.eventId, e.eventId),
+          eq(moduleEventDeliveries.subscriberId, subscriber),
+        ),
+      );
     await expect(
       recordAdjustment(world.businessId, world.ownerId, itemId, {
         countedQuantity: "10",
@@ -268,7 +273,12 @@ run("0227 durable consumption and count cut", { timeout: 60000 }, () => {
     await getDb()
       .update(moduleEventDeliveries)
       .set({ claimUntil: new Date(0) })
-      .where(eq(moduleEventDeliveries.eventId, e.eventId));
+      .where(
+        and(
+          eq(moduleEventDeliveries.eventId, e.eventId),
+          eq(moduleEventDeliveries.subscriberId, subscriber),
+        ),
+      );
     expect(
       (
         await retryModuleEvents({
