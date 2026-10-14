@@ -7,6 +7,7 @@ import {
   Button,
   CheckboxField,
   Form,
+  FileButton,
   FormActions,
   Text,
   TextAreaField,
@@ -14,6 +15,7 @@ import {
 } from "../../../ui";
 import { Skeleton, SkeletonScreen } from "../../../app/components/ui";
 import { StaffFormModal } from "../../../app/backoffice/staff/staff-form-modal";
+import { requestPhotoDraft } from "../../../app/backoffice/draft-photos";
 import { panelRequest } from "../../../app/backoffice/panel-request";
 import {
   editableAmount,
@@ -47,6 +49,14 @@ export function RecipeModal({
   const [product, setProduct] = useState(initialProduct);
   const [search, setSearch] = useState("");
   const [operating, setOperating] = useState(false);
+  const operatingLock = useRef(false);
+  function close() {
+    if (!operatingLock.current) onClose();
+  }
+  function changeBusy(value: boolean) {
+    operatingLock.current = value;
+    setOperating(value);
+  }
   return (
     <StaffFormModal
       open
@@ -57,16 +67,16 @@ export function RecipeModal({
           ? "Define los ingredientes necesarios para una unidad de este producto."
           : "Busca el producto del catálogo al que pertenece la receta."
       }
-      onClose={onClose}
+      onClose={close}
       dismissible={!operating}
     >
       {product ? (
         <RecipeEditor
           key={product.productId}
           product={product}
-          onClose={onClose}
+          onClose={close}
           onSaved={onSaved}
-          onBusyChange={setOperating}
+          onBusyChange={changeBusy}
         />
       ) : (
         <div className="grid gap-4">
@@ -136,6 +146,8 @@ function RecipeEditor({
   const [lines, setLines] = useState<RecipeLine[]>([]);
   const [stage, setStage] = useState<"dictate" | "review">("dictate");
   const [text, setText] = useState("");
+  const [source, setSource] = useState<"text" | "photo">("text");
+  const [photos, setPhotos] = useState<File[]>([]);
   const [yieldCount, setYieldCount] = useState(1);
   const [unparsed, setUnparsed] = useState<string[]>([]);
   const [acknowledged, setAcknowledged] = useState(false);
@@ -143,9 +155,6 @@ function RecipeEditor({
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [busy, setBusy] = useState<"analyze" | "save" | null>(null);
-  useEffect(() => {
-    onBusyChange(!!busy);
-  }, [busy, onBusyChange]);
   const lock = useRef(false);
   const mounted = useRef(false);
   useEffect(() => {
@@ -157,7 +166,9 @@ function RecipeEditor({
   useEffect(() => {
     let active = true;
     void Promise.all([
-      panelRequest<{ items: StockItem[] }>("/api/modules/stock/items?status=all"),
+      panelRequest<{ items: StockItem[] }>(
+        "/api/modules/stock/items?status=all",
+      ),
       panelRequest<{ recipe: RecipeDetail }>(recipeUrl(product.productId)),
     ])
       .then(([stock, detail]) => {
@@ -193,17 +204,30 @@ function RecipeEditor({
     validation = recipeError(cause);
   }
   async function analyze() {
-    if (lock.current || !items || !text.trim() || text.trim().length > 2000)
+    if (
+      lock.current ||
+      !items ||
+      (source === "photo"
+        ? !photos.length
+        : !text.trim() || text.trim().length > 2000)
+    )
       return;
     lock.current = true;
+    onBusyChange(true);
     setBusy("analyze");
     setError(null);
     try {
-      const { draft } = await panelRequest<{ draft: RecipeDraft }>(
-        `${recipeUrl(product.productId)}/draft`,
-        "POST",
-        { text: text.trim() },
-      );
+      const { draft } =
+        source === "photo"
+          ? await requestPhotoDraft<{ draft: RecipeDraft }>(
+              `${recipeUrl(product.productId)}/draft-photo`,
+              photos,
+            )
+          : await panelRequest<{ draft: RecipeDraft }>(
+              `${recipeUrl(product.productId)}/draft`,
+              "POST",
+              { text: text.trim() },
+            );
       if (!mounted.current) return;
       setLines(
         draft.lines.length
@@ -218,12 +242,16 @@ function RecipeEditor({
       if (mounted.current) setError(recipeError(cause));
     } finally {
       lock.current = false;
-      if (mounted.current) setBusy(null);
+      if (mounted.current) {
+        setBusy(null);
+        onBusyChange(false);
+      }
     }
   }
   async function save() {
     if (lock.current || validation || !items) return;
     lock.current = true;
+    onBusyChange(true);
     setBusy("save");
     setError(null);
     try {
@@ -235,7 +263,10 @@ function RecipeEditor({
       if (mounted.current) setError(recipeError(cause));
     } finally {
       lock.current = false;
-      if (mounted.current) setBusy(null);
+      if (mounted.current) {
+        setBusy(null);
+        onBusyChange(false);
+      }
     }
   }
   return (
@@ -277,19 +308,124 @@ function RecipeEditor({
               guardar la receta.
             </Text>
           </div>
-          <TextAreaField
-            label="Describe tu receta"
-            description="Usa el micrófono en tu teclado. Menciona los ingredientes, sus cantidades y cuántas unidades del producto salen. La transcripción aparecerá aquí."
-            placeholder="Para 10 pizzas uso 1 kg de harina, 600 ml de agua, 20 g de sal y 10 g de levadura."
-            value={text}
-            onChange={setText}
-            maxLength={2000}
-            isDisabled={!!busy}
-          />
-          <Text variant="small">
-            {text.length} / 2000 caracteres. Puedes corregir el texto antes de
-            analizar.
-          </Text>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant={source === "text" ? "primary" : "secondary"}
+              aria-pressed={source === "text"}
+              isDisabled={!!busy}
+              onPress={() => {
+                setSource("text");
+                setError(null);
+              }}
+            >
+              Dictado
+            </Button>
+            <Button
+              variant={source === "photo" ? "primary" : "secondary"}
+              aria-pressed={source === "photo"}
+              isDisabled={!!busy}
+              onPress={() => {
+                setSource("photo");
+                setError(null);
+              }}
+            >
+              Foto
+            </Button>
+          </div>
+          {source === "photo" ? (
+            <div className="grid gap-3">
+              <Text variant="muted">
+                Elige entre 1 y 3 fotos de la receta de {product.productName}.
+                Puedes usar la cámara o elegirlas de tu galería.
+              </Text>
+              <div className="flex flex-wrap gap-2">
+                <FileButton
+                  accept="image/*"
+                  multiple
+                  inputLabel="Fotos de la receta"
+                  isDisabled={!!busy}
+                  onSelect={(files) => {
+                    if (lock.current) return;
+                    if (files.length > 3) {
+                      setError("Elige entre 1 y 3 fotos.");
+                      return;
+                    }
+                    setPhotos(files);
+                    setError(null);
+                  }}
+                >
+                  {photos.length ? "Cambiar fotos" : "Elegir fotos"}
+                </FileButton>
+                <FileButton
+                  accept="image/*"
+                  camera
+                  inputLabel="Cámara para receta"
+                  isDisabled={!!busy}
+                  onSelect={(files) => {
+                    if (lock.current) return;
+                    if (photos.length + files.length > 3) {
+                      setError(
+                        "Puedes añadir hasta 3 fotos. Quita una antes de tomar otra.",
+                      );
+                      return;
+                    }
+                    setPhotos((previous) => [...previous, ...files]);
+                    setError(null);
+                  }}
+                >
+                  Tomar foto
+                </FileButton>
+              </div>
+              {photos.map((file, index) => (
+                <div key={index} className="flex min-w-0 items-center gap-2">
+                  <Text className="min-w-0 flex-1 break-words">
+                    {file.name}
+                  </Text>
+                  <Button
+                    variant="quiet"
+                    aria-label={`Quitar foto ${index + 1}`}
+                    isDisabled={!!busy}
+                    onPress={() => {
+                      setPhotos((previous) =>
+                        previous.filter((_, entry) => entry !== index),
+                      );
+                      setError(null);
+                    }}
+                  >
+                    Quitar
+                  </Button>
+                </div>
+              ))}
+              <Text variant="small">
+                Máximo 4 MiB por foto y 4,4 MiB en total después de preparar las
+                imágenes.
+              </Text>
+            </div>
+          ) : (
+            <>
+              <TextAreaField
+                label="Describe tu receta"
+                description="Usa el micrófono en tu teclado. Menciona los ingredientes, sus cantidades y cuántas unidades del producto salen. La transcripción aparecerá aquí."
+                placeholder="Para 10 pizzas uso 1 kg de harina, 600 ml de agua, 20 g de sal y 10 g de levadura."
+                value={text}
+                onChange={setText}
+                maxLength={2000}
+                isDisabled={!!busy}
+              />
+              <Text variant="small">
+                {text.length} / 2000 caracteres. Puedes corregir el texto antes
+                de analizar.
+              </Text>
+            </>
+          )}
+          {busy === "analyze" && (
+            <div role="status">
+              <Text>
+                Analizando {source === "photo" ? "las fotos" : "el texto"}…
+                Puede tardar hasta 45 segundos.
+              </Text>
+            </div>
+          )}
           {existingRecipe && (
             <Text variant="small">
               El borrador analizado reemplazará los ingredientes actuales al
@@ -303,7 +439,9 @@ function RecipeEditor({
             <Button
               type="submit"
               isLoading={busy === "analyze"}
-              isDisabled={!!busy || !text.trim()}
+              isDisabled={
+                !!busy || (source === "photo" ? !photos.length : !text.trim())
+              }
             >
               Analizar
             </Button>
@@ -376,7 +514,7 @@ function RecipeEditor({
                 setError(null);
               }}
             >
-              Volver al texto
+              Volver al dictado o las fotos
             </Button>
           </div>
           {validation && <Text variant="small">{validation}</Text>}
