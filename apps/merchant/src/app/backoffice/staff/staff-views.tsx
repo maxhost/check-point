@@ -60,7 +60,6 @@ export function CreateStaffPanel({
   name,
   permissions,
   isOwner,
-  posEnabled,
   modules,
   modulesUnavailable,
   busy,
@@ -73,7 +72,6 @@ export function CreateStaffPanel({
   name: string;
   permissions: string[];
   isOwner: boolean;
-  posEnabled?: boolean;
   modules?: BusinessModule[];
   modulesUnavailable?: boolean;
   busy: boolean;
@@ -108,7 +106,6 @@ export function CreateStaffPanel({
         isOwner={isOwner}
         modules={modules}
         modulesUnavailable={modulesUnavailable}
-        posEnabled={posEnabled}
         disabled={busy}
       />
       <button
@@ -187,7 +184,6 @@ export function StaffEditor({
   draft,
   busy,
   isOwner,
-  posEnabled,
   modules,
   modulesUnavailable,
   ownId,
@@ -199,7 +195,6 @@ export function StaffEditor({
   draft: StaffDraft;
   busy: boolean;
   isOwner: boolean;
-  posEnabled?: boolean;
   modules?: BusinessModule[];
   modulesUnavailable?: boolean;
   ownId?: string;
@@ -250,7 +245,6 @@ export function StaffEditor({
           isOwner={isOwner}
           modules={modules}
           modulesUnavailable={modulesUnavailable}
-          posEnabled={posEnabled}
           disabled={busy || own || protectedAdministrator}
         />
       </div>

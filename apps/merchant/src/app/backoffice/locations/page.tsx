@@ -7,6 +7,8 @@ import {
   effectiveLocationLimit,
   listLocations,
 } from "../../../server/locations";
+import { MODULES } from "../../../modules/registry";
+import { UI_SCREENS } from "../../../modules/ui-registry";
 import { LocationsConsole } from "./locations-console";
 
 export const dynamic = "force-dynamic";
@@ -40,9 +42,22 @@ export default async function LocationsPage() {
     .where(eq(businesses.id, business.id))
     .limit(1);
 
+  const locations = await listLocations(business.id);
   return (
     <LocationsConsole
-      initialLocations={await listLocations(business.id)}
+      initialLocations={locations}
+      modulePanels={MODULES.flatMap((module) => {
+        const Panel = UI_SCREENS[module.id]?.locationPanel;
+        return module.locationAction && Panel
+          ? locations.map((location) => ({
+              moduleId: module.id,
+              locationId: location.id,
+              content: (
+                <Panel location={{ id: location.id, name: location.name }} />
+              ),
+            }))
+          : [];
+      })}
       countryCode={row?.countryCode ?? "EC"}
       // Advisory only: it decides whether the "add" button is rendered. The cap that
       // holds is `createLocation`'s, under the business row lock. Spec 0189 §D2: el tope

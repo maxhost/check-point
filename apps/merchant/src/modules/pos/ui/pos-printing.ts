@@ -10,8 +10,8 @@ import {
   printTicket,
   type PrintResult,
   type TicketDoc,
-} from "../../../modules/pos/ui/printing/index";
-import type { TicketSettings } from "../settings/ticket-settings-types";
+} from "./printing/index";
+import type { TicketSettings } from "./ticket-settings-types";
 import { PosError, posRequest, type PosOrder } from "./pos-types";
 
 type Failure = Extract<PrintResult, { ok: false }>;
@@ -51,7 +51,7 @@ export function usePosPrinting({
     let active = true;
     setConfiguration({ context, settings: null, error: null });
     if (!context) return;
-    void posRequest<TicketSettings>("/api/pos/ticket")
+    void posRequest<TicketSettings>("/api/modules/pos/ticket")
       .then((settings) => {
         if (
           typeof settings?.printingEnabled !== "boolean" ||

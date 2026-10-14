@@ -1,7 +1,7 @@
 "use client";
 import { Xmark } from "iconoir-react";
 import { Alert, Button, Dialog, Heading, NumberField, Text } from "../../../ui";
-import { formatMoney, unitLabel } from "../counter/types";
+import { formatMoney, unitLabel } from "../../../app/backoffice/counter/types";
 import { PosCoupon } from "./pos-coupon";
 import type { PosPayment } from "./pos-payment";
 import type { PosOrder } from "./pos-types";

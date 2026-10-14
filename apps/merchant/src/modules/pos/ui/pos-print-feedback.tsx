@@ -1,7 +1,7 @@
 "use client";
 
 import { Alert, Button, Dialog } from "../../../ui";
-import { ConfirmationToast } from "../../components/confirmation-toast";
+import { ConfirmationToast } from "../../../app/components/confirmation-toast";
 import type { PosPrinting } from "./pos-printing";
 
 export function PosPrintFeedback({ printing }: { printing: PosPrinting }) {

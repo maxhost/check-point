@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { PosOrder } from "../../../../../app/backoffice/pos/pos-types";
+import type { PosOrder } from "../../pos-types";
 import type { TicketSettings as ServerSettings } from "../../../server/ticket-settings";
 import { buildTicket } from "./build";
 import type { TicketOrder, TicketSettings } from "./types";

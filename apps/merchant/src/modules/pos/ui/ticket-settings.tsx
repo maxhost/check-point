@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Alert, Button, Card, Heading, Switch, Text } from "../../../ui";
 import type { TicketSettings as Settings } from "./ticket-settings-types";
-import { ConfirmationToast } from "../../components/confirmation-toast";
-import { posRequest } from "../pos/pos-types";
+import { ConfirmationToast } from "../../../app/components/confirmation-toast";
+import { posRequest } from "./pos-types";
 
 function validate(settings: Settings) {
   if (
@@ -34,7 +34,7 @@ export function TicketSettings() {
   useEffect(() => {
     let active = true;
     setError(null);
-    void posRequest<Settings>("/api/merchant/business/ticket")
+    void posRequest<Settings>("/api/modules/pos/ticket-settings")
       .then(validate)
       .then((data) => {
         if (active) setSettings(data);
@@ -60,7 +60,7 @@ export function TicketSettings() {
     setNotice(null);
     try {
       const saved = validate(
-        await posRequest<Settings>("/api/merchant/business/ticket", "PUT", {
+        await posRequest<Settings>("/api/modules/pos/ticket-settings", "PUT", {
           printingEnabled: settings.printingEnabled,
           showBusinessName: settings.showBusinessName,
           showTable: settings.showTable,

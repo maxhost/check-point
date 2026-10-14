@@ -45,24 +45,6 @@ import { modulePermissionIds } from "./permissions";
  * antes de ser modulo, el barrido del DoD de la 0220). La 2b la baja a `{}`.
  */
 const PENDING_GPT: Readonly<Record<string, number>> = {
-  // Pantallas (zona GPT, 2b): menu y barra movil, Locales, POS, Ajustes, Equipo, aviso de prueba.
-  "app/backoffice/backoffice-navigation.tsx": 26,
-  "app/backoffice/locations/location-tables.tsx": 2,
-  "app/backoffice/locations/locations-console.tsx": 5,
-  "app/backoffice/pos/page.tsx": 2,
-  "app/backoffice/pos/pos-cache.ts": 2,
-  "app/backoffice/pos/pos-console.tsx": 4,
-  "app/backoffice/pos/pos-payment.ts": 2,
-  "app/backoffice/pos/pos-printing.ts": 1,
-  "app/backoffice/pos/pos-tables.tsx": 1,
-  "app/backoffice/pos/pos-types.ts": 2,
-  "app/backoffice/settings/pos-settings.tsx": 3,
-  "app/backoffice/settings/ticket-settings.tsx": 3,
-  "app/backoffice/staff/permission-picker.tsx": 5,
-  "app/backoffice/staff/staff-api.ts": 1,
-  "app/backoffice/staff/staff-console.tsx": 10,
-  "app/backoffice/staff/staff-views.tsx": 8,
-  "app/backoffice/subscription/trial-notice.tsx": 2,
   // Paso transitorio de la sesion (`business.posEnabled`): se borra con su lectura en la 2b.
   "server/session-view.ts": 4,
   "server/read-surfaces-leak.test.ts": 1,

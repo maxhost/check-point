@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import { MODULES } from "../../../modules/registry";
 import { Alert, Link } from "../../../ui";
 
 /** Usa el número de días del contrato de sesión; no recalcula fechas. */
@@ -26,12 +27,16 @@ export function TrialNotice() {
       .catch(() => {});
     return () => controller.abort();
   }, []);
-  const isPos =
-    pathname === "/backoffice/pos" || pathname.startsWith("/backoffice/pos/");
+  const isOperation = MODULES.some(
+    (module) =>
+      module.operation &&
+      (pathname === `/backoffice/${module.id}` ||
+        pathname.startsWith(`/backoffice/${module.id}/`)),
+  );
   if (
     days === null ||
     pathname === "/backoffice/subscription" ||
-    (isPos && days > 7)
+    (isOperation && days > 7)
   )
     return null;
   return (

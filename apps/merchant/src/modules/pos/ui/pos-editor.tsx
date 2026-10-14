@@ -22,9 +22,9 @@ import {
   TextAreaField,
 } from "../../../ui";
 import { catalogKey, DiscardedPosRead, PosCache } from "./pos-cache";
-import { ConfirmationToast } from "../../components/confirmation-toast";
-import { DetailedSale } from "../counter/sale-forms";
-import { formatMoney } from "../counter/types";
+import { ConfirmationToast } from "../../../app/components/confirmation-toast";
+import { DetailedSale } from "../../../app/backoffice/counter/sale-forms";
+import { formatMoney } from "../../../app/backoffice/counter/types";
 import { PosTablePicker, tableUnavailable, usePosTables } from "./pos-tables";
 import { PosCoupon } from "./pos-coupon";
 import type { PosPayment } from "./pos-payment";
@@ -66,6 +66,7 @@ export function PosEditor({
   cache,
   catalogRevision,
   tablesRevision,
+  tablesEnabled,
   locations,
   currencyCode,
   busy,
@@ -84,6 +85,7 @@ export function PosEditor({
   cache: PosCache;
   catalogRevision: number;
   tablesRevision: number;
+  tablesEnabled: boolean;
   locations: PosLocation[];
   currencyCode: string;
   busy: boolean;
@@ -195,7 +197,12 @@ export function PosEditor({
   const [contextTableId, setContextTableId] = useState(tableId);
   const [contextAttempted, setContextAttempted] = useState(false);
   const contextSaving = useRef(false);
-  const tableOptions = usePosTables(locationId, tablesRevision, onError);
+  const tableOptions = usePosTables(
+    locationId,
+    tablesRevision,
+    onError,
+    tablesEnabled,
+  );
   const [actionsOpen, setActionsOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const allowExit = useRef(false);

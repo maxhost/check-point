@@ -6,6 +6,8 @@ export class ModuleRequestError extends Error {
     readonly code?: string,
     readonly missing: string[] = [],
     readonly dependents: string[] = [],
+    readonly openCount?: number,
+    readonly status?: number,
   ) {
     super(message);
   }
@@ -32,6 +34,8 @@ export async function moduleRequest<T>(
       payload?.code,
       Array.isArray(payload?.missing) ? payload.missing : [],
       Array.isArray(payload?.dependents) ? payload.dependents : [],
+      payload?.openCount,
+      response.status,
     );
   if (!payload)
     throw new Error("No pudimos leer la respuesta. Intenta otra vez.");

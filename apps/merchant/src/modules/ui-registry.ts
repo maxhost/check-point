@@ -1,5 +1,8 @@
 import type { ComponentType } from "react";
 import { StockLog } from "./stock/ui/stock-log";
+import { PosScreen } from "./pos/ui/pos-screen";
+import { TicketSettings } from "./pos/ui/ticket-settings";
+import { LocationTables } from "./tables/ui/location-tables";
 import { RecipesConsole } from "./recipes/ui/recipes-console";
 
 /**
@@ -24,8 +27,6 @@ export type ModuleScreens = {
 export const UI_SCREENS: Readonly<Record<string, ModuleScreens>> = {
   stock: { screens: { "": StockLog } },
   recipes: { screens: { "": RecipesConsole } },
-  // Spec 0220: las pantallas del POS y el panel de Mesas los pone GPT en la 2b
-  // (`modules-boundary.test.ts`, `PENDING_GPT_SCREENS`).
-  pos: { screens: {} },
-  tables: { screens: {} },
+  pos: { screens: { "": PosScreen }, settingsPanel: TicketSettings },
+  tables: { screens: {}, locationPanel: LocationTables },
 };

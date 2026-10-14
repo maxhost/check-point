@@ -9,6 +9,7 @@ export function usePosTables(
   locationId: string,
   revision: number,
   onError: (cause: unknown) => void,
+  enabled = true,
 ) {
   const [attempt, setAttempt] = useState(0);
   const [snapshot, setSnapshot] = useState<{
@@ -19,9 +20,9 @@ export function usePosTables(
   useEffect(() => {
     let active = true;
     setSnapshot({ location: locationId, tables: null, error: null });
-    if (!locationId) return;
+    if (!locationId || !enabled) return;
     void posRequest<{ tables: PosTable[] }>(
-      `/api/pos/tables?locationId=${encodeURIComponent(locationId)}`,
+      `/api/modules/pos/tables?locationId=${encodeURIComponent(locationId)}`,
     )
       .then((data) => {
         if (active)
@@ -47,10 +48,15 @@ export function usePosTables(
     return () => {
       active = false;
     };
-  }, [locationId, revision, attempt, onError]);
+  }, [locationId, revision, attempt, onError, enabled]);
   return {
-    tables: snapshot.location === locationId ? snapshot.tables : null,
-    error: snapshot.location === locationId ? snapshot.error : null,
+    enabled,
+    tables: !enabled
+      ? []
+      : snapshot.location === locationId
+        ? snapshot.tables
+        : null,
+    error: enabled && snapshot.location === locationId ? snapshot.error : null,
     retry: () => setAttempt((value) => value + 1),
   };
 }
@@ -74,6 +80,7 @@ export function PosTablePicker({
   tables,
   error,
   retry,
+  enabled,
   hideOccupied = false,
 }: {
   tableId: string | null;
@@ -85,60 +92,61 @@ export function PosTablePicker({
 } & ReturnType<typeof usePosTables>) {
   return (
     <div className="grid gap-3">
-      {error ? (
-        <Alert kind="error" title={error}>
-          <Button variant="secondary" isDisabled={disabled} onPress={retry}>
-            Reintentar mesas
-          </Button>
-        </Alert>
-      ) : tables === null ? (
-        <Text>Cargando mesas…</Text>
-      ) : tables.length ? (
-        <>
-          <Text variant="label">Mesas del local</Text>
-          <div className="flex max-h-64 flex-wrap items-start gap-2 overflow-y-auto p-1">
-            {tables
-              .filter(
-                (table) =>
-                  !hideOccupied ||
-                  !table.openOrderId ||
-                  table.openOrderId === orderId,
-              )
-              .map((table) => {
-                const occupied = !!(
-                  table.openOrderId && table.openOrderId !== orderId
-                );
-                const status = occupied
-                  ? "Ocupada"
-                  : table.openOrderId
-                    ? "En esta orden"
-                    : "Libre";
-                return (
-                  <Button
-                    key={table.id}
-                    variant="secondary"
-                    className={`max-w-full rounded-full! px-4! py-2! ${tableId === table.id ? "border-accent! bg-accent-soft!" : ""}`}
-                    aria-pressed={tableId === table.id}
-                    aria-label={`${table.name} · ${status}`}
-                    isDisabled={disabled || occupied}
-                    onPress={() => onChange(table.id, table.name)}
-                  >
-                    <Text variant="label" className="min-w-0 break-words">
-                      {table.name}
-                    </Text>
-                    <Text variant="small" className="shrink-0">
-                      · {status}
-                    </Text>
-                  </Button>
-                );
-              })}
-          </div>
-        </>
-      ) : (
-        <Text>
-          No hay mesas añadidas en este local. Puedes escribir un nombre.
-        </Text>
-      )}
+      {enabled &&
+        (error ? (
+          <Alert kind="error" title={error}>
+            <Button variant="secondary" isDisabled={disabled} onPress={retry}>
+              Reintentar mesas
+            </Button>
+          </Alert>
+        ) : tables === null ? (
+          <Text>Cargando mesas…</Text>
+        ) : tables.length ? (
+          <>
+            <Text variant="label">Mesas del local</Text>
+            <div className="flex max-h-64 flex-wrap items-start gap-2 overflow-y-auto p-1">
+              {tables
+                .filter(
+                  (table) =>
+                    !hideOccupied ||
+                    !table.openOrderId ||
+                    table.openOrderId === orderId,
+                )
+                .map((table) => {
+                  const occupied = !!(
+                    table.openOrderId && table.openOrderId !== orderId
+                  );
+                  const status = occupied
+                    ? "Ocupada"
+                    : table.openOrderId
+                      ? "En esta orden"
+                      : "Libre";
+                  return (
+                    <Button
+                      key={table.id}
+                      variant="secondary"
+                      className={`max-w-full rounded-full! px-4! py-2! ${tableId === table.id ? "border-accent! bg-accent-soft!" : ""}`}
+                      aria-pressed={tableId === table.id}
+                      aria-label={`${table.name} · ${status}`}
+                      isDisabled={disabled || occupied}
+                      onPress={() => onChange(table.id, table.name)}
+                    >
+                      <Text variant="label" className="min-w-0 break-words">
+                        {table.name}
+                      </Text>
+                      <Text variant="small" className="shrink-0">
+                        · {status}
+                      </Text>
+                    </Button>
+                  );
+                })}
+            </div>
+          </>
+        ) : (
+          <Text>
+            No hay mesas añadidas en este local. Puedes escribir un nombre.
+          </Text>
+        ))}
       {tableUnavailable(tables, tableId, orderId) && (
         <Alert
           kind="error"

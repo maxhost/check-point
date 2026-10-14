@@ -13,9 +13,8 @@ import {
   PageHeader,
   Text,
 } from "../../../ui";
-import { formatMoney } from "../counter/types";
+import { formatMoney } from "../../../app/backoffice/counter/types";
 import { DiscardedPosRead, historyKey, detailKey, PosCache } from "./pos-cache";
-import { POS_NEW_ORDER_EVENT } from "./pos-navigation";
 import { PosEditor } from "./pos-editor";
 import { PosCheckout } from "./pos-checkout";
 import { PosScan } from "./pos-scan";
@@ -199,7 +198,7 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
           !context.business?.id ||
           context.business.status !== "active" ||
           context.membership?.status !== "active" ||
-          !context.business.posEnabled ||
+          !context.business.enabledModules.includes("pos") ||
           !context.membership.permissions.includes("pos")
         ) {
           cache.clear();
@@ -263,8 +262,15 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
     setError(null);
   }, [busy, refreshing, unavailable, session, cache, setOrder, setView]);
   useEffect(() => {
-    window.addEventListener(POS_NEW_ORDER_EVENT, startNewOrder);
-    return () => window.removeEventListener(POS_NEW_ORDER_EVENT, startNewOrder);
+    const onPrimary = (event: Event) => {
+      if (
+        (event as CustomEvent<{ moduleId: string }>).detail?.moduleId === "pos"
+      )
+        startNewOrder();
+    };
+    window.addEventListener("checkpass:module-primary", onPrimary);
+    return () =>
+      window.removeEventListener("checkpass:module-primary", onPrimary);
   }, [startNewOrder]);
   function publish(result: PosOrder, reconcile = false) {
     if (!cache.context) return;
@@ -621,6 +627,9 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
                 catalogRevision={catalogRevision}
                 locations={locations}
                 tablesRevision={tablesRevision}
+                tablesEnabled={
+                  session?.business?.enabledModules.includes("tables") === true
+                }
                 currencyCode={session.business?.currencyCode ?? "USD"}
                 busy={busy || refreshing || paymentBusy}
                 saveError={error}
@@ -636,7 +645,7 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
                   run(
                     () =>
                       posRequest<PosOrder>(
-                        order ? orderUrl(order.id) : "/api/pos/orders",
+                        order ? orderUrl(order.id) : "/api/modules/pos/orders",
                         order ? "PUT" : "POST",
                         body,
                       ),

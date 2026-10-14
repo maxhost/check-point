@@ -1,5 +1,5 @@
 import { Alert, Button, SelectField, Text } from "../../../ui";
-import type { CounterCouponState } from "../counter/types";
+import type { CounterCouponState } from "../../../app/backoffice/counter/types";
 import type { PosOrder } from "./pos-types";
 export function PosCoupon({
   state,

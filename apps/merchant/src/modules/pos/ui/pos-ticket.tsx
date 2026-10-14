@@ -1,5 +1,5 @@
 import { Heading, Text } from "../../../ui";
-import { formatMoney, unitLabel } from "../counter/types";
+import { formatMoney, unitLabel } from "../../../app/backoffice/counter/types";
 import type { PosOrder } from "./pos-types";
 export function PosTicket({
   order,

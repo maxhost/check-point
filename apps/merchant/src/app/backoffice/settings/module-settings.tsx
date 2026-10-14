@@ -2,7 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Alert, Button, Heading, Switch, Text } from "../../../ui";
+import {
+  Alert,
+  Button,
+  Card,
+  Dialog,
+  Heading,
+  Switch,
+  Text,
+} from "../../../ui";
 import {
   ModuleRequestError,
   moduleRequest,
@@ -15,13 +23,19 @@ import {
   type BusinessModule as Module,
 } from "./module-navigation";
 
-export function ModuleSettings() {
+import type { SettingsPanel } from "./module-configuration";
+
+export function ModuleSettings({ panels = [] }: { panels?: SettingsPanel[] }) {
   const router = useRouter();
   const [modules, setModules] = useState<Module[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const [blocked, setBlocked] = useState<{
+    title: string;
+    description: string;
+  } | null>(null);
   const lock = useRef(false);
   const mounted = useRef(false);
 
@@ -86,6 +100,7 @@ export function ModuleSettings() {
         ) ?? null;
       setModules(next);
       if (next) publishModules(next);
+      window.dispatchEvent(new CustomEvent("checkpass:modules-changed"));
       router.refresh();
     } catch (cause) {
       if (!mounted.current) return;
@@ -102,6 +117,15 @@ export function ModuleSettings() {
             ? `Activa ${moduleNames(cause.missing, modules ?? []) || "los módulos requeridos"} para usar ${module.name}.`
             : `Desactiva ${moduleNames(cause.dependents, modules ?? []) || "los módulos dependientes"} antes de desactivar ${module.name}.`,
         );
+      } else if (
+        cause instanceof ModuleRequestError &&
+        cause.status === 409 &&
+        typeof cause.openCount === "number"
+      ) {
+        setBlocked({
+          title: cause.message.split(" con órdenes")[0],
+          description: `Hay ${cause.openCount} órdenes abiertas. Cierra o anula esas órdenes antes de desactivar el módulo.`,
+        });
       } else
         setError(
           cause instanceof Error
@@ -126,46 +150,67 @@ export function ModuleSettings() {
         </Alert>
       )}
       {loading && <Text>Cargando configuración…</Text>}
-      {modules?.map((module) => {
-        const dependency = moduleDependency(module, modules);
-        return (
-          <div
-            key={module.id}
-            className="flex flex-col gap-3 border-t border-border pt-5 md:flex-row md:items-start md:gap-6"
-          >
-            <div className="min-w-0 flex-1 space-y-2">
-              <Heading level={2}>{module.name}</Heading>
-              <Text>{module.description}</Text>
-              {module.suggested && (
-                <Text variant="label">Sugerido para tu negocio</Text>
-              )}
-              {dependency && <Text>{dependency}</Text>}
+      <Card className="grid gap-5">
+        {modules?.map((module) => {
+          const dependency = moduleDependency(module, modules);
+          return (
+            <div
+              key={module.id}
+              className="flex flex-col gap-3 border-t border-border pt-5 md:flex-row md:items-start md:gap-6"
+            >
+              <div className="min-w-0 flex-1 space-y-2">
+                <Heading level={2}>{module.name}</Heading>
+                <Text>{module.description}</Text>
+                {module.suggested && (
+                  <Text variant="label">Sugerido para tu negocio</Text>
+                )}
+                {dependency && <Text>{dependency}</Text>}
+              </div>
+              <div className="flex shrink-0 items-center justify-end gap-3">
+                <Text variant="label">
+                  {loading
+                    ? "Cargando configuración…"
+                    : !module
+                      ? "Estado no disponible"
+                      : busy === module.id
+                        ? "Guardando…"
+                        : module.enabled
+                          ? "Activado"
+                          : "Desactivado"}
+                </Text>
+                <Switch
+                  aria-label={module.name}
+                  aria-busy={busy === module.id || undefined}
+                  isSelected={module?.enabled ?? false}
+                  isDisabled={
+                    loading || !module || busy !== null || !!dependency
+                  }
+                  onChange={() => {
+                    if (module) void toggle(module);
+                  }}
+                />
+              </div>
             </div>
-            <div className="flex shrink-0 items-center justify-end gap-3">
-              <Text variant="label">
-                {loading
-                  ? "Cargando configuración…"
-                  : !module
-                    ? "Estado no disponible"
-                    : busy === module.id
-                      ? "Guardando…"
-                      : module.enabled
-                        ? "Activado"
-                        : "Desactivado"}
-              </Text>
-              <Switch
-                aria-label={module.name}
-                aria-busy={busy === module.id || undefined}
-                isSelected={module?.enabled ?? false}
-                isDisabled={loading || !module || busy !== null || !!dependency}
-                onChange={() => {
-                  if (module) void toggle(module);
-                }}
-              />
-            </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </Card>
+      {modules
+        ?.filter((module) => module.enabled)
+        .map((module) => {
+          const panel = panels.find((entry) => entry.moduleId === module.id);
+          return panel ? <div key={module.id}>{panel.content}</div> : null;
+        })}
+      <Dialog
+        isOpen={blocked !== null}
+        onOpenChange={(open) => {
+          if (!open) setBlocked(null);
+        }}
+        title={blocked?.title ?? "No puedes desactivar el módulo"}
+        description={blocked?.description}
+        role="alertdialog"
+      >
+        <Button onPress={() => setBlocked(null)}>Entendido</Button>
+      </Dialog>
     </>
   );
 }

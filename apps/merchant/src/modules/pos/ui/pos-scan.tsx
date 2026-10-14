@@ -2,8 +2,8 @@
 import { useState } from "react";
 import { Xmark } from "iconoir-react";
 import { Alert, Button, Dialog } from "../../../ui";
-import { ConfirmationToast } from "../../components/confirmation-toast";
-import { QrScanner } from "../counter/qr-scanner";
+import { ConfirmationToast } from "../../../app/components/confirmation-toast";
+import { QrScanner } from "../../../app/backoffice/counter/qr-scanner";
 import type { PosPayment } from "./pos-payment";
 export function PosScan({ payment }: { payment: PosPayment }) {
   const [cameraKey, setCameraKey] = useState(0);

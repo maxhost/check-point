@@ -1,7 +1,10 @@
 "use client";
 import { Button, Text } from "../../../ui";
-import type { CartLine, CounterProduct } from "../counter/types";
-import { formatMoney } from "../counter/types";
+import type {
+  CartLine,
+  CounterProduct,
+} from "../../../app/backoffice/counter/types";
+import { formatMoney } from "../../../app/backoffice/counter/types";
 import type { DraftLine } from "./pos-types";
 
 /** Display quantities by product; writing always keeps each snapshot separate. */

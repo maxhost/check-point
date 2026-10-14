@@ -1,6 +1,9 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import type { CounterCouponState, ResolveResponse } from "../counter/types";
+import type {
+  CounterCouponState,
+  ResolveResponse,
+} from "../../../app/backoffice/counter/types";
 import { paymentPreview } from "./pos-payment-preview";
 import { orderUrl, PosError, posRequest, type PosOrder } from "./pos-types";
 
@@ -258,7 +261,7 @@ export function usePosPayment({
     update({ phase: "resolving", error: null });
     try {
       const data = await posRequest<ResolveResponse>(
-        "/api/pos/resolve",
+        "/api/modules/pos/resolve",
         "POST",
         {
           qrToken,
@@ -301,7 +304,7 @@ export function usePosPayment({
       }
       if (resolved) {
         const result = await posRequest<{ couponState: CounterCouponState }>(
-          `/api/pos/coupon-state?membershipId=${encodeURIComponent(resolved.membership.id)}`,
+          `/api/modules/pos/coupon-state?membershipId=${encodeURIComponent(resolved.membership.id)}`,
         );
         if (!live(value)) return;
         const changed =

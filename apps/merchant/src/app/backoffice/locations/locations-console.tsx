@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "../../../ui";
-import { posRequest, type PosSession } from "../pos/pos-types";
-import { LocationTables } from "./location-tables";
+import { panelRequest, type PanelSession } from "../panel-request";
+import { MODULES } from "../../../modules/registry";
+import { moduleIcon } from "../module-icon";
 import {
   Archive,
   EditPencil,
@@ -35,10 +36,12 @@ type LocationToast = {
 export function LocationsConsole({
   initialLocations,
   activeLimit,
+  modulePanels = [],
 }: {
   initialLocations: LocationView[];
   countryCode: string;
   activeLimit: number;
+  modulePanels?: { moduleId: string; locationId: string; content: ReactNode }[];
 }) {
   const [locations, setLocations] = useState(initialLocations);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -46,36 +49,88 @@ export function LocationsConsole({
   const [toast, setToast] = useState<LocationToast | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<LocationView | null>(null);
-  const [tablesTarget, setTablesTarget] = useState<LocationView | null>(null);
-  const [posEnabled, setPosEnabled] = useState(false);
+  const [panelTarget, setPanelTarget] = useState<{
+    moduleId: string;
+    location: LocationView;
+    instance: number;
+  } | null>(null);
+  const [session, setSession] = useState<PanelSession | null>(null);
   useEffect(() => {
     let active = true;
     let generation = 0;
     function load() {
       const current = ++generation;
-      void posRequest<PosSession>("/api/merchant/session")
+      void panelRequest<PanelSession>("/api/merchant/session")
         .then((session) => {
           if (active && current === generation) {
-            const enabled = session.business?.posEnabled === true;
-            setPosEnabled(enabled);
-            if (!enabled) setTablesTarget(null);
+            setSession(session);
+            setPanelTarget((target) =>
+              target &&
+              session.business?.enabledModules.includes(target.moduleId) &&
+              (session.membership?.role === "owner" ||
+                session.membership?.permissions.includes(
+                  MODULES.find((module) => module.id === target.moduleId)
+                    ?.locationAction?.permission ?? "",
+                ))
+                ? target
+                : null,
+            );
           }
         })
         .catch(() => {
           if (active && current === generation) {
-            setPosEnabled(false);
-            setTablesTarget(null);
+            setSession(null);
+            setPanelTarget(null);
           }
         });
     }
     load();
-    window.addEventListener("pos-module-changed", load);
+    window.addEventListener("checkpass:modules-changed", load);
     return () => {
       active = false;
-      window.removeEventListener("pos-module-changed", load);
+      window.removeEventListener("checkpass:modules-changed", load);
     };
   }, []);
 
+  const actions = MODULES.filter(
+    (module) =>
+      module.locationAction &&
+      session?.business?.enabledModules.includes(module.id) &&
+      (session.membership?.role === "owner" ||
+        session.membership?.permissions.includes(
+          module.locationAction.permission,
+        )),
+  );
+  const panel =
+    panelTarget &&
+    modulePanels.find(
+      (entry) =>
+        entry.moduleId === panelTarget.moduleId &&
+        entry.locationId === panelTarget.location.id,
+    );
+  function locationActions(location: LocationView) {
+    return actions.map((module) => {
+      const action = module.locationAction!;
+      const Icon = action.icon ? moduleIcon(action.icon) : null;
+      return (
+        <Button
+          key={module.id}
+          variant="secondary"
+          isDisabled={busy}
+          onPress={() =>
+            setPanelTarget((current) => ({
+              moduleId: module.id,
+              location,
+              instance: (current?.instance ?? 0) + 1,
+            }))
+          }
+        >
+          {Icon && <Icon aria-hidden="true" className="size-5" />}
+          {action.label}
+        </Button>
+      );
+    });
+  }
   const active = locations.filter((l) => l.status === "active");
   const archived = locations.filter((l) => l.status === "archived");
   const canAdd = active.length < activeLimit;
@@ -261,15 +316,7 @@ export function LocationsConsole({
                 >
                   <EditPencil aria-hidden="true" /> Editar
                 </button>
-                {posEnabled && (
-                  <Button
-                    variant="secondary"
-                    isDisabled={busy}
-                    onPress={() => setTablesTarget(location)}
-                  >
-                    Mesas
-                  </Button>
-                )}
+                {locationActions(location)}
                 <button
                   className="archive-button"
                   data-tour="location-archive"
@@ -302,15 +349,7 @@ export function LocationsConsole({
                   <small>Archivado</small>
                 </div>
                 <div className="location-card-actions">
-                  {posEnabled && (
-                    <Button
-                      variant="secondary"
-                      isDisabled={busy}
-                      onPress={() => setTablesTarget(location)}
-                    >
-                      Mesas
-                    </Button>
-                  )}
+                  {locationActions(location)}
                   <button
                     className="small-button"
                     disabled={busy}
@@ -336,12 +375,12 @@ export function LocationsConsole({
           }}
         />
         <LocationErrorDialog message={error} onClose={() => setError(null)} />
-        {tablesTarget && (
-          <LocationTables
-            key={tablesTarget.id}
-            location={tablesTarget}
-            onClose={() => setTablesTarget(null)}
-          />
+        {panelTarget && panel && (
+          <div
+            key={`${panelTarget.moduleId}:${panelTarget.location.id}:${panelTarget.instance}`}
+          >
+            {panel.content}
+          </div>
         )}
       </div>
     </main>

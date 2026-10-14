@@ -3,20 +3,19 @@
 import { useEffect, useRef, useState } from "react";
 import { EditPencil, Plus, Trash } from "iconoir-react";
 import { Alert, Button, Dialog, Text, TextField } from "../../../ui";
-import { ConfirmationToast } from "../../components/confirmation-toast";
-import { posRequest } from "../pos/pos-types";
-import type { LocationView } from "./location-form";
+import { ConfirmationToast } from "../../../app/components/confirmation-toast";
+import { panelRequest } from "../../../app/backoffice/panel-request";
 
 type Table = { id: string; name: string; status: "active" | "archived" };
 
 export function LocationTables({
   location,
-  onClose,
 }: {
-  location: LocationView;
-  onClose: () => void;
+  location: { id: string; name: string };
 }) {
-  const url = `/api/locations/${encodeURIComponent(location.id)}/tables`;
+  const [isOpen, setIsOpen] = useState(true);
+  const onClose = () => setIsOpen(false);
+  const url = `/api/modules/tables/locations/${encodeURIComponent(location.id)}`;
   const [tables, setTables] = useState<Table[] | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +37,7 @@ export function LocationTables({
   useEffect(() => {
     let active = true;
     setError(null);
-    void posRequest<{ tables: Table[] }>(url)
+    void panelRequest<{ tables: Table[] }>(url)
       .then((data) => {
         if (active)
           setTables(data.tables.filter((table) => table.status === "active"));
@@ -68,7 +67,7 @@ export function LocationTables({
     setError(null);
     setNotice(null);
     try {
-      const { table } = await posRequest<{ table: Table }>(
+      const { table } = await panelRequest<{ table: Table }>(
         archive
           ? `${url}/${encodeURIComponent(removing!.id)}/status`
           : draft!.id
@@ -108,7 +107,7 @@ export function LocationTables({
   return (
     <>
       <Dialog
-        isOpen
+        isOpen={isOpen}
         onOpenChange={(open) => {
           if (!open && !locked.current) onClose();
         }}

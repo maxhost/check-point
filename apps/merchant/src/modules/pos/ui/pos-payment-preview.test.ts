@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { ResolveResponse, CounterCoupon } from "../counter/types";
+import type {
+  ResolveResponse,
+  CounterCoupon,
+} from "../../../app/backoffice/counter/types";
 import type { PosOrder } from "./pos-types";
 import { paymentPreview } from "./pos-payment-preview";
 const order: PosOrder = {

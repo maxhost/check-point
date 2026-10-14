@@ -4,7 +4,7 @@ import {
   unitLabel,
   type ResolveResponse,
   type CounterCoupon,
-} from "../counter/types";
+} from "../../../app/backoffice/counter/types";
 import type { PosOrder } from "./pos-types";
 
 export type PaymentPreview = {

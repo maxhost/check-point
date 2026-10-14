@@ -1,4 +1,8 @@
-import type { CounterProduct } from "../counter/types";
+import {
+  panelRequest,
+  PanelRequestError,
+} from "../../../app/backoffice/panel-request";
+import type { CounterProduct } from "../../../app/backoffice/counter/types";
 export type PosLocation = { id: string; name: string };
 export type PosSale = {
   consumer: string;
@@ -56,18 +60,7 @@ export type PosCatalog = {
   products: CounterProduct[];
   categories: { id: string; name: string }[];
 };
-export type PosSession = {
-  authenticated: boolean;
-  user?: { id: string };
-  business?: {
-    id: string;
-    status: string;
-    timezone: string;
-    posEnabled: boolean;
-    currencyCode: string;
-  } | null;
-  membership?: { role: string; status: string; permissions: string[] } | null;
-};
+export type { PanelSession as PosSession } from "../../../app/backoffice/panel-request";
 export type DraftLine = {
   key: string;
   lineId?: string;
@@ -93,31 +86,22 @@ export async function posRequest<T>(
   method = "GET",
   body?: unknown,
 ): Promise<T> {
-  const response = await fetch(url, {
-    method,
-    cache: "no-store",
-    ...(body === undefined
-      ? {}
-      : {
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(body),
-        }),
-  });
-  const payload = await response.json().catch(() => null);
-  if (!response.ok)
-    throw new PosError(
-      payload?.error ?? "No pudimos completar la acción. Intenta otra vez.",
-      payload?.code,
-      payload?.order,
-      payload?.openCount,
-      response.status,
-    );
-  if (!payload)
-    throw new Error("No pudimos leer la respuesta. Intenta otra vez.");
-  return payload as T;
+  try {
+    return await panelRequest<T>(url, method, body);
+  } catch (cause) {
+    if (cause instanceof PanelRequestError)
+      throw new PosError(
+        cause.message,
+        cause.code,
+        cause.payload.order as PosOrder | undefined,
+        cause.payload.openCount as number | undefined,
+        cause.status,
+      );
+    throw cause;
+  }
 }
 export const orderUrl = (id: string) =>
-  `/api/pos/orders/${encodeURIComponent(id)}`;
+  `/api/modules/pos/orders/${encodeURIComponent(id)}`;
 export function draftItems(order: PosOrder): DraftLine[] {
   return order.items.map((item) => ({
     key: item.lineId,

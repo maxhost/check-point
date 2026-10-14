@@ -12,7 +12,6 @@ import {
   MoreHoriz,
   Package,
   Palette,
-  Plus,
   QrCode,
   Shop,
   Xmark,
@@ -21,7 +20,8 @@ import { useSelectedLayoutSegment } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { SignOutButton } from "../components/sign-out-button";
 import { Button, Text } from "../../ui";
-import { POS_NEW_ORDER_EVENT } from "./pos/pos-navigation";
+import { MODULES } from "../../modules/registry";
+import { panelRequest, type PanelSession } from "./panel-request";
 import { openOnboardingChecklist } from "./onboarding/onboarding-checklist-visibility";
 import {
   MODULES_CHANGED_EVENT,
@@ -108,14 +108,6 @@ export function delegatedLinks(permissions: string[]) {
   ].filter((item) => item.delegado && permissions.includes(item.permission));
 }
 
-const posLink = {
-  href: "/backoffice/pos",
-  label: "POS",
-  icon: Shop,
-  segment: "pos",
-  permission: "pos",
-  delegado: true,
-};
 const settingsLink = {
   href: "/backoffice/settings",
   label: "Configuración",
@@ -220,21 +212,21 @@ export function BackofficeNavigation({
   businessName,
   isOwner,
   permissions,
-  posEnabled: initialPosEnabled = false,
 }: {
   businessName: string;
   isOwner: boolean;
   permissions: string[];
-  posEnabled?: boolean;
 }) {
   const segment = useSelectedLayoutSegment();
-  const [posEnabled, setPosEnabled] = useState(initialPosEnabled);
+  const [enabledModules, setEnabledModules] = useState<string[]>([]);
+  const confirmedModules = useRef(0);
   const [modules, setModules] = useState<BusinessModule[]>([]);
   useEffect(() => {
     let active = true;
     let changed = false;
     const onModulesChanged = (event: Event) => {
       changed = true;
+      confirmedModules.current += 1;
       setModules((event as CustomEvent<BusinessModule[]>).detail);
     };
     window.addEventListener(MODULES_CHANGED_EVENT, onModulesChanged);
@@ -253,43 +245,64 @@ export function BackofficeNavigation({
   }, []);
   useEffect(() => {
     let active = true;
+    let generation = 0;
     const refresh = () => {
-      void fetch("/api/merchant/session", { cache: "no-store" })
-        .then((response) => response.json())
+      const current = ++generation;
+      const revision = confirmedModules.current;
+      void readModules()
         .then((data) => {
-          if (active) setPosEnabled(data.business?.posEnabled === true);
+          if (
+            active &&
+            current === generation &&
+            revision === confirmedModules.current
+          )
+            setModules(data);
+        })
+        .catch(() => {});
+      void panelRequest<PanelSession>("/api/merchant/session")
+        .then((data) => {
+          if (active && current === generation)
+            setEnabledModules(data.business?.enabledModules ?? []);
         })
         .catch(() => {
-          if (active) setPosEnabled(false);
+          if (active && current === generation) setEnabledModules([]);
         });
     };
     refresh();
-    window.addEventListener("pos-module-changed", refresh);
+    window.addEventListener("checkpass:modules-changed", refresh);
     return () => {
       active = false;
-      window.removeEventListener("pos-module-changed", refresh);
+      window.removeEventListener("checkpass:modules-changed", refresh);
     };
   }, []);
-  const moduleLinks = moduleNavigation(modules, { isOwner, permissions }).map(
-    (entry) => ({
-      ...entry,
-      segment: entry.moduleId,
-      icon: moduleIcon(entry.icon),
-    }),
+  const moduleLinks = moduleNavigation(
+    modules.map((module) => ({
+      ...module,
+      enabled: module.enabled && enabledModules.includes(module.id),
+    })),
+    { isOwner, permissions },
+  ).map((entry) => ({
+    ...entry,
+    segment: entry.moduleId,
+    icon: moduleIcon(entry.icon),
+  }));
+  const links = [...businessLinks, ...moduleLinks];
+  const delegados = [...delegatedLinks(permissions), ...moduleLinks];
+  const operationModule = MODULES.find(
+    (module) =>
+      module.id === segment &&
+      enabledModules.includes(module.id) &&
+      module.operation,
   );
-  const visibleBusinessLinks = [...businessLinks, ...moduleLinks];
-  const links =
-    posEnabled && permissions.includes("pos")
-      ? [...visibleBusinessLinks, posLink]
-      : visibleBusinessLinks;
-  const visibleDelegatedLinks = [
-    ...delegatedLinks(permissions),
-    ...moduleLinks,
-  ];
-  const delegados =
-    posEnabled && permissions.includes("pos")
-      ? [...visibleDelegatedLinks, posLink]
-      : visibleDelegatedLinks;
+  const operationLinks = operationModule
+    ? moduleLinks.filter((entry) => entry.moduleId === operationModule.id)
+    : [];
+  const operation = operationLinks.length
+    ? operationModule?.operation
+    : undefined;
+  const PrimaryIcon = operation
+    ? moduleIcon(operation.primaryAction.icon)
+    : null;
   const [openMenu, setOpenMenu] = useState<MenuName | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const closeMenu = () => setOpenMenu(null);
@@ -405,40 +418,37 @@ export function BackofficeNavigation({
 
       <nav
         aria-label="Navegación principal"
-        className={`backoffice-mobile-nav print:hidden ${segment === "pos" ? "grid-cols-3" : ""}`}
+        className={`backoffice-mobile-nav print:hidden ${operation ? "grid-cols-3" : ""}`}
         data-owner={isOwner || undefined}
       >
-        {segment === "pos" ? (
+        {operation ? (
           <>
-            {permissions.includes("pos") && (
+            {operationLinks.map((entry) => (
               <NavLink
-                {...posLink}
+                {...entry}
+                key={entry.href}
                 selectedSegment={segment}
                 onNavigate={closeMenu}
               />
-            )}
-            {permissions.includes("pos") && posEnabled && (
-              <Link
-                href="/backoffice/pos"
-                role="button"
+            ))}
+            {PrimaryIcon && operationModule && (
+              <Button
+                variant="quiet"
                 className="mobile-counter-access col-start-2"
-                onKeyDown={(event) => {
-                  if (event.key === " ") {
-                    event.preventDefault();
-                    event.currentTarget.click();
-                  }
-                }}
-                onClick={(event) => {
-                  event.preventDefault();
+                onPress={() => {
                   closeMenu();
-                  window.dispatchEvent(new Event(POS_NEW_ORDER_EVENT));
+                  window.dispatchEvent(
+                    new CustomEvent("checkpass:module-primary", {
+                      detail: { moduleId: operationModule.id },
+                    }),
+                  );
                 }}
               >
                 <span>
-                  <Plus aria-hidden="true" width={24} height={24} />
+                  <PrimaryIcon aria-hidden="true" width={24} height={24} />
                 </span>
-                Nueva orden
-              </Link>
+                {operation.primaryAction.label}
+              </Button>
             )}
             {permissions.includes("counter") && (
               <NavLink

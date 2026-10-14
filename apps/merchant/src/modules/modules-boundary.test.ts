@@ -70,23 +70,20 @@ const CORE_OF_MODULES = [
  * Spec 0220 (2a): las pantallas del POS siguen en `app/backoffice/pos/` hasta que GPT las mude a
  * `modules/pos/ui/` en la 2b, que baja esta lista a `[]`.
  */
-const PENDING_GPT_DIRS: string[] = ["app/backoffice/pos"];
+const PENDING_GPT_DIRS: string[] = [];
 
 /**
  * REGLA 1 — los imports del core a la carpeta de un modulo que quedan para la 2b (spec 0220): las
  * pantallas del POS, todavia en el core, importan la impresion que ya se mudo a
  * `modules/pos/ui/printing/`. Cuenta EXACTA; GPT la baja a `[]` al mudar las pantallas.
  */
-const PENDING_GPT_IMPORTS: string[] = [
-  "app/backoffice/pos/pos-print-ticket.tsx → modules/pos/ui/printing/index.ts",
-  "app/backoffice/pos/pos-printing.ts → modules/pos/ui/printing/index.ts",
-];
+const PENDING_GPT_IMPORTS: string[] = [];
 
 /**
  * REGLA 6 — entradas de menu sin pantalla que quedan para la 2b (spec 0220): la del POS, que GPT
  * agrega a `ui-registry.ts` al mudar sus pantallas. Lista EXACTA, baja a `[]`.
  */
-const PENDING_GPT_SCREENS: string[] = ["pos /"];
+const PENDING_GPT_SCREENS: string[] = [];
 
 const isDir = (path: string) =>
   existsSync(path) && statSync(path).isDirectory();

@@ -85,7 +85,7 @@ export class PosCache {
   history(force = false) {
     return this.read(
       historyKey,
-      () => posRequest<PosHistory>("/api/pos/orders"),
+      () => posRequest<PosHistory>("/api/modules/pos/orders"),
       force,
     );
   }
@@ -99,7 +99,7 @@ export class PosCache {
   catalog(locationId: string) {
     return this.read(catalogKey(locationId), () =>
       posRequest<PosCatalog>(
-        `/api/pos/catalog${locationId ? `?locationId=${encodeURIComponent(locationId)}` : ""}`,
+        `/api/modules/pos/catalog${locationId ? `?locationId=${encodeURIComponent(locationId)}` : ""}`,
       ),
     );
   }

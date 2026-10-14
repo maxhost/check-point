@@ -2,7 +2,6 @@ import { errorCopy, type ApiFailure, type StaffMember } from "./staff-contract";
 
 export type StaffSession = {
   authenticated: boolean;
-  business?: { posEnabled: boolean };
   user?: { id: string };
   membership?: { role: string; permissions: string[] } | null;
 };

@@ -83,9 +83,7 @@ export function StaffConsole() {
     try {
       const payload = await createStaff(
         createName.trim(),
-        session?.business?.posEnabled
-          ? createPermissions
-          : createPermissions.filter((permission) => permission !== "pos"),
+        createPermissions,
       );
       setMembers((current) => [...current, payload.staff]);
       setCredential({
@@ -142,9 +140,7 @@ export function StaffConsole() {
       try {
         const payload = await savePermissions(
           draft.member,
-          session?.business?.posEnabled
-            ? draft.permissions
-            : draft.permissions.filter((permission) => permission !== "pos"),
+          draft.permissions,
         );
         apply(payload.staff);
         setPermissionResult({ kind: "success", text: "Permisos guardados." });
@@ -225,7 +221,6 @@ export function StaffConsole() {
               isOwner={Boolean(isOwner)}
               modules={moduleState.modules}
               modulesUnavailable={modulesUnavailable}
-              posEnabled={session?.business?.posEnabled === true}
               busy={busy}
               onName={setCreateName}
               onPermissions={setCreatePermissions}
@@ -255,7 +250,6 @@ export function StaffConsole() {
             isOwner={Boolean(isOwner)}
             modules={moduleState.modules}
             modulesUnavailable={modulesUnavailable}
-            posEnabled={session?.business?.posEnabled === true}
             ownId={ownId}
             onDraft={setDraft}
             onClose={() => setDraft(null)}
