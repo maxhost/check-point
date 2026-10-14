@@ -28,7 +28,7 @@ Verificacion focal por tarea; scope de modulos reconocido por selector. Stop con
 - [x] Identidad de tarea, version de entrega y evidence/handoff preservadas; limpieza rechaza tarea pendiente, worktree sucio o entrega fuera de main.
 - [x] Casos decisivos de registro/scope/cleanup y selector pasan; formato/lint herramientas nuevas y checks de paquete pertinentes.
 - [x] Dos tareas0226 ejecutadas en paralelo conQAindependiente e integradas; main local recibe solo candidato verificado, sin push/PROD.
-- [ ] Worktrees del piloto retirados tras incorporacion; estado y límites reales documentados.
+- [x] Worktrees del piloto retirados tras incorporacion; estado y límites reales documentados.
 
 ## Pruebas
 
@@ -42,4 +42,4 @@ Handoff con SHAorigen/destino, comandos/resultados y pendientes. Nada bloqueante
 
 ## Evidencia del piloto
 
-QA2b7ae272 PASS;44/44tools,19/19runner/antiPROD, dos entregas de UI con9/9browser y smokeIAreal local2/2. Informe docs/factory/0225-qa.md. La corrida global inicial falló y se recuperaron checks afectados; no se certifica verifyEXIT0. Mainlocal usa QA/comprobaciones focales; gates de publicación reservados para push autorizado. Retiro final se registra después de los comandos reales.
+QA2b7ae272 PASS;44/44tools,19/19runner/antiPROD, dos entregas de UI con9/9browser y smokeIAreal local2/2. Informe docs/factory/0225-qa.md. La corrida global inicial falló y se recuperaron checks afectados; no se certifica verifyEXIT0. Mainlocal usa QA/comprobaciones focales; gates de publicación reservados para push autorizado. Main local avanzó por fast-forward fab728e→9ed5ccc2; los tres worktrees y ramas factory-stock/factory-recipes/factory-qa fueron retirados sin force. Registro local conserva las tres tareas retired; git worktree list muestra solo checkout raíz en dev. Cierre documental posterior también se incorpora a main local. Sin push/PROD.
