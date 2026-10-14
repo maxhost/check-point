@@ -12,9 +12,9 @@ Regla al sacar algo de aca: **nada toca codigo sin su spec cerrada.** Varias de 
 explicitamente «necesita spec» — eso es literal.
 
 
-## PARQUEADO 2026-10-14 — Fase 2 de modulos (spec 0220, POS y Mesas): esperando la 2b de GPT
+## PARQUEADO 2026-10-13 — Fase 2 de modulos (spec 0220, POS y Mesas): esperando la 2b de GPT
 
-Owner 2026-10-14: «bajemos lo pendiente entonces a parqued. vamos a trabajar en otra cosa mientras GPT acaba».
+Owner 2026-10-13: «bajemos lo pendiente entonces a parqued. vamos a trabajar en otra cosa mientras GPT acaba».
 **Donde quedo:** 2a (servidor y base) en `dev` — `52690f3`, `c5f2036`, `db48f51`, `a46be31` — con revisor adversarial
 PASS (tras un FAIL de tests de frontera, cerrado). Migracion 0079 aplicada y probada en la BASE LOCAL (datos iguales,
 cobro con y sin pase, 409 de apagado); NO en PROD ni en `ci-integration`. `main` local = `fab728e` (GPT, landing; trae
@@ -28,7 +28,9 @@ los tipos `15be274`, inocuos), sin push; `origin/main` = `4208714`. GPT tiene el
 3. Revisor adversarial de TODO junto (acoplamiento, regresiones del POS con pantallas, migracion).
 4. Prueba en local con pantallas: orden en mesa, cobrar, imprimir, apagar Mesas con orden abierta (409), ingreso del
    personal por `staff.`.
-5. Push unico (owner 2026-10-13) con OK: worktree limpio, snapshot de Neon, push, deploy `READY`, 0079 a PROD, SQL de
+5. **Owner 2026-10-13 (tarde): el push unico espera TAMBIEN al centralizador de IA (spec 0224, ADR 0143)**: «no vamos
+   a hacer como dije todavia el push, lo vamos a hacer con el centralizador de ia tambien».
+   Push unico (owner 2026-10-13) con OK: worktree limpio, snapshot de Neon, push, deploy `READY`, 0079 a PROD, SQL de
    verificacion (spec 0220 §Migracion a PROD).
 **Decision del owner pendiente:** descripcion de la PWA (hoy «El punto de venta de tu negocio en CheckPass Club.»;
 Claude propone «Tu negocio en CheckPass Club.»). Siguen abiertas las de la 0218 (bloque ESTADO de Claude).
