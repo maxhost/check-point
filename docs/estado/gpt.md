@@ -3,7 +3,23 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — PILOTO FACTORY IMPLEMENTADO, QA ACEPTADO; SIN PUBLICACIÓN (2026-10-13)
+## ESTADO — SPEC0227 CERRADA; IMPLEMENTACIÓN AUTORIZADA TRAS CLEAR (2026-10-13)
+
+[Handoff de arranque](../handoff-0227-etapa0-stock-local.md) preparado para clear solicitado owner. Spec0227 cerrada y ADR0145 aceptada, entrega2e7a0191; revisionesinmutables/punteroscore, POSclosed+mesalibre antefallosStock, conteoscorte/drain, localobligatorioyselectorPOSexistente, cron30min24h aprobados. Owner autorizó implementar cuando cierre, pero pidió aviso del handoff para clear antesdelanzar. **No hay agentes escribiendo código aún**. Alretomar lanzar dosimplementadores+QAindependiente con writerúnicoschema/core/registros; sin otra confirmación local. INDEX no editado porencargo solo spec: reservarfilas antesdelcódigo. Implementación NOautoriza push ni DBPROD. Main local solo cierre documental/huella; origenpublicado54dbff34+DB0081 verificadas. No reabrir decisiones ni repetir batería porcadaworker.
+
+## HISTÓRICO — PUBLICACIÓN Y VERIFICACIÓN PROD COMPLETADAS (2026-10-13)
+
+Owner aplicó personalmente las migraciones de producción. Verificación posterior READ ONLY: journal/hash0079/0080/0081 coinciden con SQL local, tablasPOS en esquema pos, core.ai_request existe, tablas/columnas antiguas retiradas, cero pendingAI huérfanos. Se regeneró huellas-prod.txt local y compare.sh PASS19categorías. Health Merchant y ConsumerHTTP200. Cuatro deploysVercel completados para54dbff34 confirmados por statusesGitHub. No se ejecutó otra migración ni hubo otro push. Logs /private/tmp/checkpass-post-migration-readonly.log y /private/tmp/checkpass-release-prepush.log; sin baseline de conteos anterior aportada en este cierre, no certificar conservación de filas por comparación pre/post.
+
+Agente documentación terminó en bdd07785, rama factory-stock-spec/worktree /private/tmp/checkpass-stock-spec. Dos archivos: docs/specs/0227-stock-por-local-y-consumo-por-receta.md y docs/adr/0145-consumo-stock-al-cobrar.md. Borrador/propuesta por hallazgos: corte de conteos vs pendientes, POSmulti-local antes del selector futuro, rollout y captura del snapshot frente a fallaDB. Cronpropuesto cada30min24h conCRON_SECRET, aparte delwallet; owner configura/aprueba horario. Solo docs, formatter/diffcheck; sin código/migraciones/tests/push niINDEX/TASKS/estado por ese agente. Se conserva árbol limpio de documentación para revisar; no incluido en publicación54dbff34.
+
+## HISTÓRICO — PUSH COMPLETADO, ANTES DE MIGRACIÓN
+
+Owner confirmó QA real completo (incluido Mesas y centralizador de IA), AI_PROVIDER y snapshot; autorizó push, NO migración todavía: «te aviso cuando esté listo para aplicar la migración». Main remoto confirmado54dbff34 por ls-remote. Push desde copia limpia exacta54dbff34, pre-push obligatorio EXIT0: tipos10,2s/lint7,7/guardia1,9/formato8,7/unit2726/build4Turbopack29,7s/e2e390PASS62skip299,5s/Neon3674PASS282skip514,5s (3660+14, migraciones aisladas5/5). Log /private/tmp/checkpass-release-prepush.log. Ninguna migración de PRODUCCIÓN ejecutada. La anterior limitaciónTurbopack y los deadlocks no se reprodujeron en esta corrida final. Antes de migrar0079→0080→0081 confirmar READY del commit y aviso explícito owner; cotejar copia según0224.
+
+Worktree hotfix Mesas retirado tras QA owner. Spec nueva etapa0Stocklocal/consumo solo documentación por otro agente; respuestas1–11 recibidas, redacta0227 y ADR0145 en /private/tmp/checkpass-stock-spec, sin INDEX/TASKS/estado/código/migraciones/push. No incluida en publicación54dbff34. Mantener separado el encargo de documentación de la operación de publicación/migración actual.
+
+## HISTÓRICO — PILOTO FACTORY IMPLEMENTADO, QA ACEPTADO (2026-10-13)
 
 Hotfix Mesas durante QA owner: `0b9d467b` en main/dev locales, túnel activo desde main. Un agente añadió autoscroll del listado al crear para revelar la nueva fila; root revisó diff. POST201/duplicado409 y cinco mesas activas confirmados en logs/DB local. Causa scroll plausible, no confirmada por browser: owner cortó probes/pruebas y hace QA visual. Sin pruebas nuevas ejecutadas; probe del agente quedó esperando permiso sandbox y se canceló. Worktree `factory-tables-fix` integrado, conservado hasta resultado QA/corrección. Sin push/PROD.
 
