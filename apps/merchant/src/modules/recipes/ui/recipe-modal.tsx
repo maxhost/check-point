@@ -14,7 +14,7 @@ import {
 } from "../../../ui";
 import { Skeleton, SkeletonScreen } from "../../../app/components/ui";
 import { StaffFormModal } from "../../../app/backoffice/staff/staff-form-modal";
-import { posRequest } from "../../../app/backoffice/pos/pos-types";
+import { panelRequest } from "../../../app/backoffice/panel-request";
 import {
   editableAmount,
   formatAmount,
@@ -157,8 +157,8 @@ function RecipeEditor({
   useEffect(() => {
     let active = true;
     void Promise.all([
-      posRequest<{ items: StockItem[] }>("/api/modules/stock/items?status=all"),
-      posRequest<{ recipe: RecipeDetail }>(recipeUrl(product.productId)),
+      panelRequest<{ items: StockItem[] }>("/api/modules/stock/items?status=all"),
+      panelRequest<{ recipe: RecipeDetail }>(recipeUrl(product.productId)),
     ])
       .then(([stock, detail]) => {
         if (!active) return;
@@ -199,7 +199,7 @@ function RecipeEditor({
     setBusy("analyze");
     setError(null);
     try {
-      const { draft } = await posRequest<{ draft: RecipeDraft }>(
+      const { draft } = await panelRequest<{ draft: RecipeDraft }>(
         `${recipeUrl(product.productId)}/draft`,
         "POST",
         { text: text.trim() },
@@ -227,7 +227,7 @@ function RecipeEditor({
     setBusy("save");
     setError(null);
     try {
-      await posRequest(recipeUrl(product.productId), "PUT", {
+      await panelRequest(recipeUrl(product.productId), "PUT", {
         lines: recipePayload(lines, items, retainedIds, existingRecipe),
       });
       if (mounted.current) onSaved();

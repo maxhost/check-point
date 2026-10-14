@@ -9,7 +9,7 @@ import {
   SkeletonScreen,
   Toast,
 } from "../../../app/components/ui";
-import { posRequest } from "../../../app/backoffice/pos/pos-types";
+import { panelRequest } from "../../../app/backoffice/panel-request";
 import { RecipeModal } from "./recipe-modal";
 import { recipeError, type RecipeSummary } from "./recipe-types";
 
@@ -21,7 +21,7 @@ export function RecipesConsole() {
   const [notice, setNotice] = useState<string | null>(null);
   useEffect(() => {
     let active = true;
-    void posRequest<{ recipes: RecipeSummary[] }>("/api/modules/recipes")
+    void panelRequest<{ recipes: RecipeSummary[] }>("/api/modules/recipes")
       .then((data) => {
         if (active) setProducts(data.recipes);
       })

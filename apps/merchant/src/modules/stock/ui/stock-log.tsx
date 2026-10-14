@@ -7,9 +7,9 @@ import { ModuleHeader } from "../../../app/components/ui";
 import { StockInputModal } from "./stock-input-modal";
 import { StockLogSkeleton } from "./stock-skeleton";
 import {
-  posRequest,
-  type PosSession,
-} from "../../../app/backoffice/pos/pos-types";
+  panelRequest,
+  type PanelSession,
+} from "../../../app/backoffice/panel-request";
 import { formatAmount, type StockMovement } from "./stock-types";
 
 export function StockLog() {
@@ -20,7 +20,7 @@ export function StockLog() {
   const [currency, setCurrency] = useState<string | undefined>();
   useEffect(() => {
     let active = true;
-    void posRequest<PosSession>("/api/merchant/session")
+    void panelRequest<PanelSession>("/api/merchant/session")
       .then((session) => {
         if (active) {
           setTimezone(session.business?.timezone);
@@ -34,7 +34,7 @@ export function StockLog() {
   }, []);
   useEffect(() => {
     let active = true;
-    void posRequest<{ movements: StockMovement[] }>(
+    void panelRequest<{ movements: StockMovement[] }>(
       "/api/modules/stock/movements?limit=200",
     )
       .then((data) => {

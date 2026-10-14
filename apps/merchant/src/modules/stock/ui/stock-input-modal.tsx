@@ -15,7 +15,7 @@ import {
   TextField,
 } from "../../../ui";
 import { StaffFormModal } from "../../../app/backoffice/staff/staff-form-modal";
-import { posRequest } from "../../../app/backoffice/pos/pos-types";
+import { panelRequest } from "../../../app/backoffice/panel-request";
 import {
   baseUnit,
   blankLine,
@@ -67,7 +67,7 @@ export function StockInputModal({
   }, []);
   useEffect(() => {
     let active = true;
-    void posRequest<{ items: StockItem[] }>("/api/modules/stock/items")
+    void panelRequest<{ items: StockItem[] }>("/api/modules/stock/items")
       .then((data) => {
         if (active)
           setItems(data.items.filter((item) => item.status === "active"));
@@ -118,7 +118,7 @@ export function StockInputModal({
     setBusy("analyze");
     setError(null);
     try {
-      const result = await posRequest<{ draft: StockDraft }>(
+      const result = await panelRequest<{ draft: StockDraft }>(
         "/api/modules/stock/entries/draft",
         "POST",
         { text },
@@ -155,7 +155,7 @@ export function StockInputModal({
     try {
       if (adjusting) {
         const line = lines[0];
-        await posRequest(
+        await panelRequest(
           `/api/modules/stock/items/${encodeURIComponent(line.itemId!)}/adjustments`,
           "POST",
           {
@@ -163,7 +163,7 @@ export function StockInputModal({
           },
         );
       } else {
-        await posRequest("/api/modules/stock/entries", "POST", {
+        await panelRequest("/api/modules/stock/entries", "POST", {
           lines: entryLines(visibleLines, items),
         });
       }
