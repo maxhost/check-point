@@ -2233,3 +2233,19 @@ esta en la skill `gotchas-del-repo`.** Cargala antes de tocar esos dominios.
 - **`git add docs/INDEX.md` commiteo una fila de GPT sin commitear** (`9204c30`, fila 0217). Inocuo esa vez, pero es el
   mismo mecanismo que mezclaria trabajo ajeno a medias. Regla en `gotchas-del-repo`: `git diff` antes y `git add -p`.
 
+
+## 2026-10-13 (noche) — fechas, reemplazos globales y afirmaciones sin escribir
+
+- **Fecha inventada.** Claude feco ADR 0142, specs 0223/0224, `PARQUEADO.md` y el encargo a GPT como 2026-10-14
+  (el dia era 13; `date` lo decia). GPT copio la fecha en su spec 0222. **Regla:** la fecha de un doc sale de `date`,
+  no se deduce.
+- **Reemplazo global que rompio referencias.** Al corregir esas fechas con `sed 's/2026-10-14/2026-10-13/g'` se cambio
+  tambien el NOMBRE de un archivo citado (`encargo-gpt-2026-10-14-…`) en `INDEX.md` y `PARQUEADO.md`: links rotos,
+  restaurados a mano. **Regla:** antes de un reemplazo global, `grep` del patron y mirar cada aparicion; nombres de
+  archivo citados no se tocan.
+- **«Queda anotado» sin escribirlo.** Claude le dijo al owner que el gotcha de `vite` y la QA de Locales ya estaban en
+  `PARQUEADO.md`; no lo estaban (se corrigio en el turno siguiente). Es la regla de siempre (`hecho` solo con
+  verificacion real) aplicada a los docs: **antes de decir «anotado», el `grep` que lo muestra.**
+- **Hook que se contradice.** `foreign-staged.sh` recomienda `git commit -- <paths>` pero bloquea tambien esa forma
+  cuando otro agente tiene archivos staged; el arreglo (permitir commits con pathspec) fue denegado como
+  auto-modificacion del harness. Queda para quien mantenga el harness.

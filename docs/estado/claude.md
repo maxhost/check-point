@@ -11,45 +11,54 @@
 
 
 
-## ⇥ ESTADO (2026-10-13, tarde) — SIGUE LA FASE 2 (POS Y MESAS COMO MODULOS); UN UNICO PUSH AL TERMINARLA
+## ⇥ ESTADO (2026-10-13, noche) — FASE 2 (POS Y MESAS) + CENTRALIZADOR DE IA EN `dev`; GPT TOMA TODO EL TRABAJO; PUSH UNICO PENDIENTE
 
-**Decision del owner (2026-10-13, no volver a preguntar): «hacemos clear y vas vos con la fase 2. cuando acabemos pos y
-mesas recien hacemos un unico push para todo».** No se pushea a `main` antes de terminar POS y Mesas.
+**Decision del owner (2026-10-13 noche):** GPT pasa a encargarse de TODO (UI y backend) y actualiza el harness y la
+documentacion para eso. Este es el ultimo bloque de Claude: punto de partida para GPT = **`dev` en la etiqueta local
+`handoff-claude-2026-10-13`** (`bca17ec`; el commit de este handoff va encima). `main` local = `fab728e` (merge de GPT de la
+landing, sin push). `origin/main` = PROD = `4208714`. **Nada pusheado.** Owner: «no vamos a hacer como dije todavia el push,
+lo vamos a hacer con el centralizador de ia tambien» → UN push unico con Fase 2 + centralizador.
 
-**En PROD:** codigo `origin/main` = `4208714` (Stock, Recetas, dictado, pantallas de GPT del 12/10). **Base PROD hasta la
-0078** (79 migraciones): 0074-0077 el 13/10 madrugada, **0078 el 13/10 tarde** (snapshot `snap-soft-sound-ax72gkfp`; CHECK
-de permisos de forma; 4 membresias = 4 owners sin permisos). Todo compatible con el codigo de PROD.
+**Hecho y verificado (gate al cerrar sobre `bca17ec`: typecheck exit 0, lint exit 0, `pnpm run test` 283 archivos / 2720
+tests verdes):**
+- **Fase 2 — POS y Mesas como modulos** (spec 0220 + 0222 GPT, ADR 0141). 2a servidor/base `52690f3`…`a46be31`, 2b
+  pantallas GPT `369da93`…`78ba729`, paso final `posEnabled` fuera de la sesion `3dd195c`, frontera H2 `8ee3c02`, Locales
+  H1 `c3c4ca1`. **Revisor adversarial final PASS** (tras FAIL por H1, arreglado). Migracion **0079** (tablas al esquema
+  `pos`, `pos_enabled` → `core.business_module`) aplicada y probada en la base LOCAL (datos iguales, cobro con y sin pase,
+  409 de apagado).
+- **Centralizador de IA** (spec 0224, ADR 0143; absorbe 0142/0223 foto de ticket): `server/ai/`, cada funcion declara su
+  tarea (menu en el core, Stock y Recetas en su carpeta), registro unico `core.ai_request`, **sin `AI_PROVIDER` → error,
+  nunca falso**. `bdd642b` + `cebbb46`. Migraciones **0080** (crea `core.ai_request`) y **0081** (copia el historial y borra
+  `stock.draft_request`, las columnas de uso de `core.catalog_import` y `draft_version`). Suite Neon de la 0081 2/2 en base
+  descartable; las demas suites Neon corrieron en verde antes de que el owner recortara pruebas. 0080/0081 aplicadas en la
+  base LOCAL (82 migraciones; historial copiado: 6 filas). **NO verificado (owner pidio recortar):** mutaciones, revisor
+  adversarial, e2e y la **prueba real con OpenAI** (foto, receta, dictado, menu: el prompt del menu ahora va como `system`).
+- Arreglo de Google Places traido de la rama `sin-gate-email` (`bb87e25`, 0155 H4; 75 tests verdes). Ramas/worktrees
+  viejos borrados (`motor`, `spec-0190`, `glados/*`, `sin-gate-email`, dos en `/private/tmp`); gotchas de `motor`
+  rescatados en `PARQUEADO.md`.
 
-**`main` local = `792d7ed`; `dev` = `main` + docs.** Sin pushear, esperando el unico push: Fase 1 de modulos (ADR 0139,
-specs 0216 Claude + 0217 GPT, **revisor adversarial PASS**, regla 1b agregada `9204c30`), ingreso del equipo (spec 0218,
-`f534604`, servidor solo), iconos de modulo de GPT (`3e33436`). Gate al cerrar: typecheck 6/6, lint 0, `pnpm run test`
-275 archivos / 2677 tests verdes. El ultimo pre-push (`792d7ed`) dio todo verde (Neon completa incluida) salvo
-`landing.spec.ts` en frio (1/371): **GPT tiene el prompt para arreglarlo** (no depender de que cargue la imagen del hero en
-`next dev` frio). El owner eligio esperar ese arreglo, sin `--no-verify`.
+**Que sigue (para GPT; detalle en `docs/PARQUEADO.md` §«PARQUEADO 2026-10-13 — Fase 2 de modulos»):**
+1. Pantallas de la foto (boton «Foto» en Stock y en la receta): contrato en spec 0224 §Encargo a GPT. Sin eso la foto
+   solo existe por API.
+2. QA local con `pnpm dev:local` (owner, en su terminal): POS y Mesas, Locales (crear/renombrar local y abrir «Mesas»
+   sin recargar — el e2e usa un harness que simula `router.refresh()`), dictado y menu con OpenAI real.
+3. Antes del push: `AI_PROVIDER` en Vercel Production/Preview (comparar por HUELLA `STOCK_DRAFT_PROVIDER` vs
+   `CATALOG_EXTRACTION_PROVIDER`; si difieren, decide el owner); dominio `staff.` + DNS + `STAFF_ORIGIN` (spec 0218).
+4. Push unico con OK del owner: `main` ← `merge --ff-only dev`, probar `main` en local, snapshot de Neon, push, deploy
+   `READY`, **0079 → 0080 → 0081 en la misma ventana**, SQL de verificacion (spec 0220 y 0224 §Migracion a PROD; runbook
+   `docs/runbooks/migrar-prod.md`). Rollback = snapshot de Neon + rollback de Vercel juntos.
+5. Decisiones del owner abiertas: descripcion de la PWA (hoy «El punto de venta de tu negocio en CheckPass Club.»; Claude
+   propuso «Tu negocio en CheckPass Club.»); las tres de la 0218.
 
-**Documentos de referencia:** `docs/MODULOS.md` (como se trabaja un modulo), ADR 0138/0139, plan
-`docs/plan-modulos-plugin-2026-10-13.md` (decisiones del owner de la Fase 2: tablas del POS al esquema `pos`, permisos
-declarados por modulo, rutas bajo `/api/modules`, pantallas por GPT con encargo, Mesas modulo propio `requires: ["pos"]`),
-ADR 0140 + spec 0218 (ingreso del equipo por `staff.`).
-
-**QUE SIGUE (Claude):**
-1. **Fase 2, spec + ADR** (L3): ampliar el contrato con los puntos de enganche que pide el POS (pantalla completa,
-   `startPage` de la PWA, `locationActions` para el boton Mesas en Locales, `canDisable` «no se apaga con ordenes
-   abiertas», aviso de la prueba gratis) — cada uno generico, por ADR. Inventario medido de los 26 archivos del core que
-   nombran al POS: en el plan. Despues implementador + encargo a GPT + revisor adversarial (acoplamiento, regresiones del
-   POS, migracion de datos). La migracion de mudar tablas va JUNTO con el deploy (rompe al codigo viejo).
-2. Decisiones del owner pendientes de la 0218: integrante sin permisos efectivos (hoy → `/backoffice`); bloquear
-   `GET /api/onboarding/state` con PIN temporal (Claude recomienda si); `mustChangePin` en `GET /api/merchant/session`
-   (Claude recomienda si).
-3. Antes del push unico: `/acceso-equipo` (GPT, prompt dado), landing estable (GPT), dominio `staff.checkpass.club` +
-   DNS + `STAFF_ORIGIN` + `BETTER_AUTH_TRUSTED_ORIGINS` (owner, o Claude con OK). Push desde worktree limpio
-   (`tools/worktree-new.sh`): `.impeccable/` sin rastrear de GPT rompe el format:check del pre-push en la carpeta.
-
-**Gotchas de esta sesion (ya en skills/lecciones):** 8 suites Neon a la vez dan falsos rojos (correr de a 1-2); un
-`git add` de un doc compartido (`INDEX.md`) arrastra cambios sin commitear de GPT (pasó en `9204c30`, inocuo).
+**Gotchas de esta sesion:** e2e con harness fallan al arrancar con «Cannot find module 'vite/package.json'» → `NODE_PATH`
+a `node_modules/.pnpm/node_modules` (en `PARQUEADO.md`); el hook `foreign-staged.sh` bloquea tambien `git commit -- <paths>`
+cuando otro agente tiene archivos staged (su mensaje recomienda justo eso; arreglo denegado por auto-modificacion del
+harness: queda para quien actualice el harness); las suites Neon se corren en una base DESCARTABLE de la rama de CI, nunca
+en `neondb` (la usa la CI del codigo de PROD).
 
 | Descartado | Por que |
 |---|---|
-| Refactor de modulos antes del push del 12/10 | ~1-2 dias; el owner priorizo la prueba con el comercio real |
-| `--no-verify` en el push del 13/10 tarde | owner: esperar el arreglo de la landing |
-| Analisis de tickets/fotos para Stock | owner: el dictado lo reemplaza |
+| Foto de ticket como spec suelta (0223 commiteada tal cual) | owner: se rehace como primer uso del centralizador (0224) |
+| Segundo push para la 0081 | owner: un solo push; separarla solo servia para el rollback de Vercel, que la 0079 ya impide |
+| Falso por defecto sin `AI_PROVIDER` | owner: error, nunca falso |
+| Mutaciones + todas las suites + entorno local en cada entrega | owner: «excesivo»; verificacion minima y enfocada |
