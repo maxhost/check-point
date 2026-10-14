@@ -81,10 +81,7 @@ export function StaffConsole() {
     setBusy(true);
     setError(null);
     try {
-      const payload = await createStaff(
-        createName.trim(),
-        createPermissions,
-      );
+      const payload = await createStaff(createName.trim(), createPermissions);
       setMembers((current) => [...current, payload.staff]);
       setCredential({
         member: payload.staff,
@@ -138,10 +135,7 @@ export function StaffConsole() {
     }
     if (permissionsChanged) {
       try {
-        const payload = await savePermissions(
-          draft.member,
-          draft.permissions,
-        );
+        const payload = await savePermissions(draft.member, draft.permissions);
         apply(payload.staff);
         setPermissionResult({ kind: "success", text: "Permisos guardados." });
       } catch (reason) {
