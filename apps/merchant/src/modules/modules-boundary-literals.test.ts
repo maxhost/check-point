@@ -78,6 +78,9 @@ const NAMED_EXCEPTIONS: Readonly<Record<string, number>> = {
 const LEGACY_POS = new RegExp(
   [
     "posEnabled|pos_enabled|requirePosOperator|assertPosGrantable",
+    // Revision final de la Fase 2 (H2): los eventos con nombre del POS que reemplazaron
+    // `checkpass:modules-changed` y `checkpass:module-primary`.
+    "pos-module-changed|POS_NEW_ORDER",
     String.raw`/api/pos\b|server/pos\b|server/tables\b`,
     String.raw`/api/merchant/business/(?:pos|ticket)\b`,
     String.raw`/api/locations/[^"'\x60\n]*/tables\b`,
@@ -166,6 +169,8 @@ describe("regla 2: el core no nombra modulos ni sus permisos (ADR 0139 §7, ADR 
       'fetch("/api/merchant/business/ticket")',
       "`/api/locations/${encodeURIComponent(id)}/tables`",
       'import { posRequest } from "../pos/pos-types";',
+      'window.addEventListener("pos-module-changed", load);',
+      "window.dispatchEvent(new Event(POS_NEW_ORDER_EVENT));",
     ]) {
       expect(count(source), source).toBe(1);
     }
