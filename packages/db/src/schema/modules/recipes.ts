@@ -1,6 +1,8 @@
 import {
   check,
   integer,
+  jsonb,
+  timestamp,
   numeric,
   pgSchema,
   uniqueIndex,
@@ -43,3 +45,18 @@ export const recipeLines = recipesSchema.table(
     ),
   ],
 );
+
+/** Append-only snapshots; product identity deliberately survives product deletion. */
+export const recipeRevisions = recipesSchema.table("revision", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  businessId: uuid("business_id")
+    .notNull()
+    .references(() => businesses.id, { onDelete: "cascade" }),
+  productId: uuid("product_id").notNull(),
+  lines: jsonb("lines")
+    .$type<{ itemId: string; unit: string; quantity: string }[]>()
+    .notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});

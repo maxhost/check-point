@@ -3,6 +3,7 @@
  * Puro: lo usan `modules/<id>/server/routes.ts` (que declaran la tabla), el despachador y los tests.
  */
 import type { DbTransaction } from "@mi-pasaporte/db";
+import type { EventSubscription } from "../server/module-events/types";
 import type { ModuleError } from "./errors";
 
 export type ModuleMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -43,6 +44,7 @@ export type BeforeDisable = (
 export type ModuleServer = {
   routes: readonly ModuleRoute[];
   beforeDisable?: BeforeDisable;
+  eventSubscriptions?: readonly EventSubscription[];
 };
 
 export type RouteMatch =

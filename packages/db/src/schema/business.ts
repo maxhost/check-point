@@ -216,6 +216,10 @@ export const locations = core.table(
       .defaultNow(),
   },
   (table) => [
+    uniqueIndex("core_location_business_id_unique").on(
+      table.businessId,
+      table.id,
+    ),
     check(
       "location_status_check",
       sql`${table.status} in ('active', 'archived')`,
