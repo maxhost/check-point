@@ -3,9 +3,13 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — SPEC0227 CERRADA; IMPLEMENTACIÓN AUTORIZADA TRAS CLEAR (2026-10-13)
+## ESTADO — SPEC0227 IMPLEMENTADA; QA PASS, MERGE MAIN LOCAL PENDIENTE (2026-10-14)
 
-[Handoff de arranque](../handoff-0227-etapa0-stock-local.md) preparado para clear solicitado owner. Spec0227 cerrada y ADR0145 aceptada, entrega2e7a0191; revisionesinmutables/punteroscore, POSclosed+mesalibre antefallosStock, conteoscorte/drain, localobligatorioyselectorPOSexistente, cron30min24h aprobados. Owner autorizó implementar cuando cierre, pero pidió aviso del handoff para clear antesdelanzar. **No hay agentes escribiendo código aún**. Alretomar lanzar dosimplementadores+QAindependiente con writerúnicoschema/core/registros; sin otra confirmación local. INDEX no editado porencargo solo spec: reservarfilas antesdelcódigo. Implementación NOautoriza push ni DBPROD. Main local solo cierre documental/huella; origenpublicado54dbff34+DB0081 verificadas. No reabrir decisiones ni repetir batería porcadaworker.
+[Informe QA independiente](../factory/0227-qa.md). Candidato de producto verificado `2c58a61fe600a4b20d504b9f99fa085368c2ade1`: A `87deae34` (esquema/core/Stock/rollout) + B `4a07b7e1` (POS/Recetas/UI) y mejoras locales del registro factory. Dos implementadores y QA independiente, tres worktrees en `/private/tmp/checkpass-0227-{stock,integration,qa}`; reservas y revisiones en `.factory/registry.json`. Las entregas se conservan hasta autorización de merge y limpieza posterior conforme factory.
+
+Stock por local, revisión inmutable y outbox/consumo después del cierre implementados. QA detectó y cerró consumo grande que agotaba20s: batching aplica10000 movimientos y delivery atómicamente en6136ms medidos en CI; corte70000 IDs usa un solo array bind. No se ampliaron presupuestos ni límites. QA final17/17DB +1probe real,25/25unit, tipos/lint/formato/buildMerchant PASS; UI6 y visual390/1280, DDL8 y evidencia de autores reutilizados por identidad explícita. Sin skips/retries usados como PASS. [Entrega A](../factory/0227-stock.md), [entrega B](../factory/0227-integration.md).
+
+Owner pidió única pregunta tras QA completo: autorizar merge a main local. **Todavía no hay merge a main local, push ni operación PROD.** `dev` y `main` siguen `402f38b2`; artefactos/skills ajenos y servidores originales preservados. CI protegida recibió expand0082/0083; contract sólo probado con rollback. Schema entregado representa expand, flag `MODULE_EVENTS_ENABLED` OFF por defecto y sin reconstrucción histórica. Rollout/contract revisables en `tools/stock-local/README.md`; cada push/operación PROD requiere autorización propia. Owner configura cron-job.org0/30,24h Guayaquil. No aplicar schema/contract ni tocar DB de desarrollo original por descartar un candidato aislado.
 
 ## HISTÓRICO — PUBLICACIÓN Y VERIFICACIÓN PROD COMPLETADAS (2026-10-13)
 

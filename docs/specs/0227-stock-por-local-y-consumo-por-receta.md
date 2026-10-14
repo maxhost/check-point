@@ -1,7 +1,7 @@
 ---
 spec: 0227
 fecha: 2026-10-13
-estado: cerrada
+estado: implementada
 resumen: Stock por local y consumo idempotente de la receta al cerrar órdenes POS, sin bloquear ventas ni incorporar costos futuros.
 disjunta: no; comparte esquemas, cierre POS, contratos Stock/Recetas y enganche genérico de módulos
 archivos: packages/db/src/schema/{business,modules/stock,modules/recipes,modules/pos}.ts, packages/db/drizzle/**, apps/merchant/src/modules/{stock,recipes,pos}/**, apps/merchant/src/modules/{contract,route-table,server-registry}.ts, apps/merchant/src/server/**, apps/merchant/src/app/api/internal/**, tests/e2e/**
@@ -9,7 +9,7 @@ archivos: packages/db/src/schema/{business,modules/stock,modules/recipes,modules
 
 # 0227 — Etapa 0: stock por local y consumo por receta al cobrar
 
-Piso **L2**: migración de datos reales y cierre de ventas. Usa `TEMPLATE-CHICA.md`, ADR0139/0141/0144 y ADR0145. **Este encargo entrega documentos; no autoriza implementación, migraciones ni publicación.** Las decisiones de producto y el diseño técnico están cerrados. Cerrar estos documentos no autoriza por sí mismo push ni operaciones PROD.
+Piso **L2**: migración de datos reales y cierre de ventas. Usa `TEMPLATE-CHICA.md`, ADR0139/0141/0144 y ADR0145. **El encargo documental original no autorizaba implementación, migraciones ni publicación. La implementación local fue autorizada posteriormente en el handoff y por el owner; su cierre está registrado abajo.** Las decisiones de producto y el diseño técnico están cerrados. Cerrar estos documentos no autoriza por sí mismo push ni operaciones PROD.
 
 ## Problema
 
@@ -133,3 +133,9 @@ Diseño cerrado: revisión inmutable + puntero genérico resuelve snapshot sin e
 
 Pendientes de ejecución, **no permisos pedidos ni trabajo hecho**: medir preflight real; resolver mapa si aparecen datos ambiguos; generar SQL/journal serialmente; owner configura cron y autoriza cada push/migración PROD. «Sin migrar de nuevo» se cumple evitando volver a repartir stock/reinterpretar historial: costos futuros pueden añadir campos/tablas sin cambiar esta base; no se implementan ahora.
 Fuera: transferencias, promedio ponderado, costo congelado en venta, IVA, costos fijos, punto de equilibrio, ingeniería de menú, devoluciones/reapertura/compensaciones de ventas, stock visible en POS, permisos nuevos por local, selector multi-local nuevo del POS, reconstrucción de cierres anteriores, implementación y operaciones PROD de este encargo.
+
+## Cierre de implementación local (2026-10-14)
+
+Implementación autorizada ejecutada en worktrees separados con dos implementadores y QA independiente. Producto combinado `2c58a61fe600a4b20d504b9f99fa085368c2ade1`, entregas A `87deae34` y B `4a07b7e1`; [informe de aceptación y combinación](../factory/0227-qa.md). QA final PASS:17 casos DB, probe real10000 consumos/6136ms dentro20s,25 unitarios, tipos/lint/formato y buildMerchant; UI/visual y migraciones acreditadas con identidad de evidencia explícita.
+
+Se corrigieron aplicación secuencial que no completaba eventos válidos grandes y fixture que alteraba suscriptores terminales. Batching mantiene toda/nada, snapshot/unicidad y presupuestos; cortes históricos usan un array bind. SQL expand0082/0083 aplicado sólo a CI protegida, contract probado con rollback y entregado como fase operativa revisable; flag inicialmente OFF. No push, operación PROD ni configuración de cron. Main local espera la única autorización final solicitada por el owner; esta aceptación no autoriza publicación ni migración PROD.
