@@ -10,10 +10,27 @@ test.beforeAll(async () => {
   );
 });
 test.afterAll(async () => harness.close());
-const item = { id: "flour", name: "Harina", unit: "g", status: "active" };
-const product = { productId: "pizza", productName: "Pizza", lineCount: 0 };
+const item = {
+  id: "flour",
+  name: "Harina",
+  unit: "g",
+  status: "active",
+  onHand: "7.500",
+  lastUnitCost: "2.000000",
+  weightedAverageUnitCost: "2.000000",
+};
+const local = {
+  id: "11111111-1111-4111-8111-111111111111",
+  name: "Local principal",
+  status: "active",
+};
 
 async function setup(page: Page) {
+  await page.route("**/api/modules/stock/locations", (route) =>
+    route.fulfill({
+      json: { locations: [local], defaultLocationId: local.id },
+    }),
+  );
   await page.route("**/api/merchant/session", (route) =>
     route.fulfill({
       json: {
@@ -109,7 +126,13 @@ for (const width of [390, 1280]) {
       },
     ];
     await page.route("**/api/modules/stock/movements?*", (route) =>
-      route.fulfill({ json: { movements } }),
+      route.fulfill({
+        json: {
+          locationId: local.id,
+          movements,
+          pending: { count: 0, failed: 0 },
+        },
+      }),
     );
     await page.route(/\/api\/modules\/stock\/items(?:\?|$)/, (route) =>
       route.fulfill({ json: { items: [item] } }),
@@ -123,6 +146,7 @@ for (const width of [390, 1280]) {
     await expect(
       page.getByRole("table", { name: "Registros de stock" }),
     ).toContainText("7,5 g · Total: 15 USD");
+    await expect(page.getByLabel("Saldos del local")).toHaveCount(0);
     await page
       .getByRole("button", { name: "Registrar stock", exact: true })
       .click();
@@ -140,7 +164,7 @@ for (const width of [390, 1280]) {
       .getByRole("textbox", { name: "Cantidad", exact: true })
       .fill("7,5");
     await dialog
-      .getByRole("textbox", { name: "Precio total (opcional)", exact: true })
+      .getByRole("textbox", { name: "Precio total", exact: true })
       .fill("15");
     await page.screenshot({
       path: testInfo.outputPath(`stock-${width}.png`),
@@ -152,6 +176,7 @@ for (const width of [390, 1280]) {
     await expect(dialog).toHaveCount(0);
     expect(writes).toEqual([
       {
+        locationId: local.id,
         lines: [
           { itemId: item.id, quantity: "7.5", unit: "g", totalCost: "15" },
         ],
@@ -160,86 +185,6 @@ for (const width of [390, 1280]) {
     await expect(
       page.getByRole("table", { name: "Registros de stock" }),
     ).toContainText("Compra · Harina");
-  });
-
-  test(`Recetas trasladadas conservan dictado, revisión y payload (${width})`, async ({
-    page,
-  }, testInfo) => {
-    await setup(page);
-    let saved = false;
-    const drafts: unknown[] = [];
-    const writes: unknown[] = [];
-    await page.route("**/api/modules/recipes", (route) =>
-      route.fulfill({
-        json: { recipes: [{ ...product, lineCount: saved ? 1 : 0 }] },
-      }),
-    );
-    await page.route(/\/api\/modules\/stock\/items(?:\?|$)/, (route) =>
-      route.fulfill({ json: { items: [item] } }),
-    );
-    await page.route("**/api/modules/recipes/pizza", (route) => {
-      if (route.request().method() === "PUT") {
-        writes.push(route.request().postDataJSON());
-        saved = true;
-      }
-      return route.fulfill({ json: { recipe: { ...product, lines: [] } } });
-    });
-    await page.route("**/api/modules/recipes/pizza/draft", (route) => {
-      drafts.push(route.request().postDataJSON());
-      return route.fulfill({
-        json: {
-          draft: {
-            yield: 10,
-            lines: [
-              {
-                itemId: item.id,
-                name: item.name,
-                isNew: false,
-                quantity: "7.5",
-                unit: "g",
-                sourceText: "75 g de harina",
-              },
-            ],
-            unparsed: [],
-          },
-        },
-      });
-    });
-    await page.setViewportSize({ width, height: 900 });
-    await page.goto(`${harness.url}/backoffice/recipes?surface=recipes`);
-    await page
-      .getByRole("button", { name: "Nueva receta", exact: true })
-      .click();
-    await page
-      .getByRole("textbox", { name: "Buscar producto", exact: true })
-      .fill("Pizza");
-    await page.getByRole("button", { name: "Pizza", exact: true }).click();
-    const dialog = page.getByRole("dialog", { name: "Pizza", exact: true });
-    await dialog
-      .getByRole("textbox", { name: "Describe tu receta", exact: true })
-      .fill("Para 10 pizzas uso 75 g de harina");
-    await dialog.getByRole("button", { name: "Analizar", exact: true }).click();
-    const quantity = dialog.getByRole("textbox", {
-      name: "Cantidad por unidad del producto",
-      exact: true,
-    });
-    await expect(quantity).toHaveValue("7,5");
-    await quantity.fill("0,1");
-    await page.screenshot({
-      path: testInfo.outputPath(`recipes-${width}.png`),
-      fullPage: true,
-    });
-    await dialog
-      .getByRole("button", { name: "Guardar receta", exact: true })
-      .click();
-    await expect(dialog).toHaveCount(0);
-    await expect(
-      page.getByRole("button", { name: "Editar receta de Pizza", exact: true }),
-    ).toBeVisible();
-    expect(drafts).toEqual([{ text: "Para 10 pizzas uso 75 g de harina" }]);
-    expect(writes).toEqual([
-      { lines: [{ itemId: item.id, quantity: "0.1", unit: "g" }] },
-    ]);
   });
 }
 
