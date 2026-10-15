@@ -27,11 +27,12 @@ async function readLocal(businessId: string, request: Request) {
     businessId,
     query(request, "locationId"),
   );
+  // Reads remain available while durable consumption retries are pending or fail.
   await retryModuleEvents({
     businessId,
     locationId: location.id,
     budgetMs: 1000,
-  });
+  }).catch(() => {});
   return {
     locationId: location.id,
     pending: await pendingSummary(businessId, location.id),

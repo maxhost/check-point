@@ -93,7 +93,7 @@ describe.skipIf(!modulesIntegrationEnabled)(
       expect(await lastUnitCost(byName.Tomate.id)).toBe("0.003500");
     }, 120_000);
 
-    it("sin precio suma stock y NO toca el costo; tampoco tapa una compra con precio mas vieja que llega despues", async () => {
+    it("sin precio rechaza compras públicas sin cambiar stock ni costo; una compra posterior con precio sigue válida", async () => {
       const item = await newItem(world, "Queso");
       await buy(world, item.id, {
         quantity: 1000,
@@ -103,15 +103,18 @@ describe.skipIf(!modulesIntegrationEnabled)(
       const r = await api.entry(world.cookie, {
         lines: [{ itemId: item.id, quantity: 500, unit: "g" }],
       });
-      expect(r.status).toBe(201);
-      expect((await r.json()).movements[0].totalCost).toBeNull();
-      expect(await onHandSql(item.id)).toBe("1500.000");
+      expect(r.status).toBe(422);
+      expect((await r.json()).code).toBe("price_required");
+      expect(await onHandSql(item.id)).toBe("1000.000");
       expect(await lastUnitCost(item.id)).toBe("0.010000");
 
-      // Compra suelta tambien sin precio.
-      expect(
-        (await api.purchase(world.cookie, item.id, { quantity: 100 })).status,
-      ).toBe(201);
+      // La ruta de compra suelta tiene la misma validación pública.
+      const purchase = await api.purchase(world.cookie, item.id, {
+        quantity: 100,
+      });
+      expect(purchase.status).toBe(422);
+      expect((await purchase.json()).code).toBe("price_required");
+      expect(await onHandSql(item.id)).toBe("1000.000");
       expect(await lastUnitCost(item.id)).toBe("0.010000");
 
       await buy(world, item.id, {
@@ -119,6 +122,7 @@ describe.skipIf(!modulesIntegrationEnabled)(
         totalCost: 20,
         occurredAt: new Date(Date.now() - 864e5).toISOString(),
       });
+      expect(await onHandSql(item.id)).toBe("2000.000");
       expect(await lastUnitCost(item.id)).toBe("0.020000");
     }, 120_000);
 
@@ -127,8 +131,8 @@ describe.skipIf(!modulesIntegrationEnabled)(
       const r = await api.entry(world.cookie, {
         lines: [
           { itemId: item.id, quantity: 1, unit: "l", totalCost: 5 },
-          { newItem: { name: "Sal" }, quantity: 1, unit: "kg" },
-          { itemId: item.id, quantity: 1, unit: "kg" },
+          { newItem: { name: "Sal" }, quantity: 1, unit: "kg", totalCost: 0 },
+          { itemId: item.id, quantity: 1, unit: "kg", totalCost: 0 },
         ],
       });
       expect(r.status).toBe(422);
@@ -154,25 +158,43 @@ describe.skipIf(!modulesIntegrationEnabled)(
             itemId: item.id,
             quantity: 1,
             unit: "g",
+            totalCost: 0,
           })),
         }),
       ).toEqual([422, "too_many_lines"]);
       expect(
         await code({
           lines: [
-            { itemId: item.id, newItem: { name: "X" }, quantity: 1, unit: "g" },
+            {
+              itemId: item.id,
+              newItem: { name: "X" },
+              quantity: 1,
+              unit: "g",
+              totalCost: 0,
+            },
           ],
         }),
       ).toEqual([422, "invalid_line"]);
       expect(
-        await code({ lines: [{ itemId: item.id, quantity: 1, unit: "taza" }] }),
+        await code({
+          lines: [{ itemId: item.id, quantity: 1, unit: "taza", totalCost: 0 }],
+        }),
       ).toEqual([422, "invalid_unit"]);
       expect(
-        await code({ lines: [{ itemId: item.id, quantity: 0, unit: "g" }] }),
+        await code({
+          lines: [{ itemId: item.id, quantity: 0, unit: "g", totalCost: 0 }],
+        }),
       ).toEqual([422, "invalid_quantity"]);
       expect(
         await code({
-          lines: [{ newItem: { name: "levadura" }, quantity: 1, unit: "g" }],
+          lines: [
+            {
+              newItem: { name: "levadura" },
+              quantity: 1,
+              unit: "g",
+              totalCost: 0,
+            },
+          ],
         }),
       ).toEqual([409, "item_name_taken"]);
     }, 120_000);
@@ -186,7 +208,12 @@ describe.skipIf(!modulesIntegrationEnabled)(
             unit: "g",
             totalCost: 1,
           },
-          { newItem: { name: "albahaca" }, quantity: 50, unit: "g" },
+          {
+            newItem: { name: "albahaca" },
+            quantity: 50,
+            unit: "g",
+            totalCost: 0,
+          },
         ],
       });
       expect(r.status).toBe(201);
@@ -198,7 +225,7 @@ describe.skipIf(!modulesIntegrationEnabled)(
     it("aislamiento: un insumo de OTRO negocio es 404 y el registro general no muestra lo ajeno", async () => {
       const ajeno = await newItem(other, "Ajeno");
       const r = await api.entry(world.cookie, {
-        lines: [{ itemId: ajeno.id, quantity: 1, unit: "g" }],
+        lines: [{ itemId: ajeno.id, quantity: 1, unit: "g", totalCost: 0 }],
       });
       expect(r.status).toBe(404);
       expect((await r.json()).code).toBe("item_not_found");
