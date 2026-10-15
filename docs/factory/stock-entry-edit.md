@@ -15,6 +15,7 @@ El owner canceló expresamente la edición de entradas, sus revisiones, la reval
 - `stock/ui/stock-types.ts`: `entryLines` rechaza precio vacío en cualquier línea. Cero explícito es válido; los borradores sin precio y las líneas nuevas siguen vacíos, sin autocompletar cero. Conteos utilizan su validación separada de cantidades.
 - `stock/server/purchase-price.ts` y `stock/server/routes.ts`: comprobación de presencia en las dos rutas públicas de compra antes de llamar a sus escritores (que contienen el drenaje y la transacción). Se lee cada body una vez y se reenvía sin convertir sus precios.
 - Tests focales en `stock/ui/stock-types.test.ts` y `stock/server/purchase-price.test.ts`.
+- Fuentes e2e existentes `tests/e2e/stock-local.spec.ts` y `stock-photos.spec.ts` adaptadas al cambio intencional: saldos ocultos con historial/pendientes presentes, precio faltante bloquea Manual/IA y debe completarse explícitamente. Las fixtures IA siguen devolviendo precio null; los asserts comprueban el precio completado en el payload, incluido cero explícito en audio. No se ejecutaron estas suites.
 
 ## Contrato HTTP
 
@@ -34,6 +35,8 @@ Checks sobre el contenido del commit de producto indicado, en este worktree con 
 - Prettier aplicado solo a los archivos de código propios; `git diff --check` correcto. PARQUEADO conserva su formato previo.
 
 No se accedió a DB ni se ejecutaron Neon, browser, e2e, build o verify global. La visibilidad y los recorridos reales del modal quedan para QA del owner; no se afirma PASS funcional en browser. No hay servidores o procesos persistentes propios, push ni integración en dev/main. Este handoff se añade después del commit de producto comprobado.
+
+La actualización posterior de fuentes e2e y este handoff no cambia el código de producto comprobado. Los checks focales no se repitieron por este ajuste de expectativas; las suites e2e quedan expresamente sin ejecutar.
 
 ## Cómo probar en browser
 
