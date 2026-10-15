@@ -114,8 +114,8 @@ export async function readSaleCommissions(
       "location_not_found",
       "Ese local o venta no existe.",
     );
-  const locationId = rawLocationId as string,
-    sourceOrderId = rawOrderId as string;
+  const locationId = (rawLocationId as string).trim().toLowerCase(),
+    sourceOrderId = (rawOrderId as string).trim().toLowerCase();
   return withDbTransaction(async (tx) => {
     await tx.execute(sql`set transaction isolation level repeatable read`);
     const [local] = await tx

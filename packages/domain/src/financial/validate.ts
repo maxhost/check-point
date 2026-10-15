@@ -99,6 +99,12 @@ export function assertFinancialSettlement(
         on: rational(0n),
       },
       seen = new Set<string>();
+    if (
+      total.g !== toMinor(total.og, minor) ||
+      total.d !== toMinor(total.od, minor) ||
+      total.n !== toMinor(total.on, minor)
+    )
+      invalid();
     let lastPosition = -1,
       lastId = "";
     for (const raw of s.lines as unknown[]) {

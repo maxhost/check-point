@@ -4,11 +4,8 @@ import {
   readComposition,
   saveComposition,
 } from "./recipes/server/compositions";
-import {
-  dropPosWorld,
-  openOrder,
-  pos,
-} from "./pos/server/pos-integration-support";
+import { dropPosWorld, openOrder } from "./pos/server/pos-integration-support";
+import { closeWithCash } from "./pos/server/pos-payment-integration-support";
 import { scannedCustomer } from "../server/counter/coupon-cycle-support";
 import {
   businessModules,
@@ -105,6 +102,11 @@ describe.skipIf(!modulesIntegrationEnabled)(
       expect((await close(order, key)).status).toBe(200);
       const event = await eventOf(order.id);
       const payload = event.payload as SaleClosedEvent;
+      expect(payload.eventVersion).toBe(2);
+      if (payload.eventVersion !== 2)
+        throw new Error("Expected the current POS financial writer");
+      expect(payload.money.collected).toBe("30.00");
+      expect(payload.payments).toHaveLength(1);
       expect(payload.lines[0].resourceVersions).toContainEqual({
         providerId: "recipes",
         slot: "composition",
@@ -291,7 +293,7 @@ describe.skipIf(!modulesIntegrationEnabled)(
         const order = await openOrder(withPass, [
           { productId: withPass.medialuna, quantity: 3 },
         ]);
-        const response = await pos.close(withPass.ownerCookie, order.id, {
+        const response = await closeWithCash(withPass.ownerCookie, order.id, {
           version: order.version,
           clientRequestId: randomUUID(),
           membershipId: customer.membershipId,

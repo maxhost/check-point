@@ -62,6 +62,64 @@ function financialEvent(): SaleClosedEventV2 {
   };
 }
 describe("P1 durable v1/v2 decoder", () => {
+  it("rejects a fabricated zero with coherent signed deltas but a positive original net", () => {
+    const v = financialEvent();
+    v.money.collected = "0";
+    v.money.roundingAdjustment = "-9";
+    v.money.normalizationAdjustments.net = {
+      numerator: "-980",
+      denominator: "1",
+      scale: 2,
+    };
+    v.lines[0].money.net = "0";
+    v.lines[0].money.roundingAdjustment = "-9";
+    v.lines[0].money.normalizationAdjustments.net = {
+      numerator: "-980",
+      denominator: "1",
+      scale: 2,
+    };
+    v.payments = [];
+    v.paymentOriginals = [];
+    expect(() => decodeSaleClosedEvent(v)).toThrow("invalid_financial_input");
+  });
+  it("rejects gross and discount values different from their approved HALF_UP originals", () => {
+    const gross = financialEvent();
+    gross.money.gross = "11";
+    gross.money.roundingAdjustment = "0";
+    gross.money.normalizationAdjustments.gross = {
+      numerator: "60",
+      denominator: "1",
+      scale: 2,
+    };
+    gross.lines[0].money.gross = "11";
+    gross.lines[0].money.roundingAdjustment = "0";
+    gross.lines[0].money.normalizationAdjustments.gross = {
+      numerator: "60",
+      denominator: "1",
+      scale: 2,
+    };
+    const discount = financialEvent();
+    discount.money.discount = "0";
+    discount.money.roundingAdjustment = "0";
+    discount.money.normalizationAdjustments.discount = {
+      numerator: "-60",
+      denominator: "1",
+      scale: 2,
+    };
+    discount.lines[0].money.discount = "0";
+    discount.lines[0].money.roundingAdjustment = "0";
+    discount.lines[0].money.normalizationAdjustments.discount = {
+      numerator: "-60",
+      denominator: "1",
+      scale: 2,
+    };
+    expect(() => decodeSaleClosedEvent(gross)).toThrow(
+      "invalid_financial_input",
+    );
+    expect(() => decodeSaleClosedEvent(discount)).toThrow(
+      "invalid_financial_input",
+    );
+  });
   it("accepts historical envelopes without inventing money and preserves v2 product resource slots", () => {
     const v2 = financialEvent();
     expect(decodeSaleClosedEvent(v2)).toBe(v2);
