@@ -65,10 +65,12 @@ describe.skipIf(!modulesIntegrationEnabled)(
           where n.nspname = any(${textArray(MODULES.map((m) => m.id))})
           group by 1 order by 1`),
       );
-      // Spec 0220: el esquema `pos` (POS y Mesas: Mesas no tiene esquema propio, ADR 0141 §6, asi que
-      // `tables` no aparece). Sus cuatro tablas, mudadas desde `core` por la 0079.
+      // Spec 0220: POS tiene cuatro tablas mudadas desde core por 0079; 0091 agrega tres
+      // de pagos. Rentabilidad es modulo (registro), con tres tablas de 0086 y dos de 0091.
+      // Mesas no tiene esquema propio (ADR 0141 §6), asi que `tables` no aparece.
       expect(result.rows).toEqual([
-        { schema: "pos", tables: 4 },
+        { schema: "pos", tables: 7 },
+        { schema: "profitability", tables: 5 },
         { schema: "recipes", tables: expect.any(Number) },
         { schema: "stock", tables: expect.any(Number) },
       ]);
