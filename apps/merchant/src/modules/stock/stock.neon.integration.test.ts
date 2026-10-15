@@ -51,6 +51,7 @@ describe.skipIf(!modulesIntegrationEnabled)("Modulo Stock (spec 0210)", () => {
       status: "active",
       onHand: "0.000",
       lastUnitCost: null,
+      weightedAverageUnitCost: null,
       updatedAt: expect.any(String),
     });
     await newItem(world, "Aceite", "ml");

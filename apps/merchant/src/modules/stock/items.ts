@@ -26,6 +26,7 @@ export type ItemDTO = {
   status: "active" | "archived";
   onHand: string;
   lastUnitCost: string | null;
+  weightedAverageUnitCost: string | null;
   updatedAt: string;
 };
 
@@ -38,6 +39,7 @@ export const itemColumns = {
   unit: stockItems.unit,
   status: stockItems.status,
   lastUnitCost: sql<string | null>`null::numeric`,
+  weightedAverageUnitCost: sql<string | null>`null::numeric`,
   updatedAt: stockItems.updatedAt,
 };
 
@@ -47,6 +49,7 @@ export type ItemRow = {
   unit: string;
   status: string;
   lastUnitCost: string | null;
+  weightedAverageUnitCost: string | null;
   updatedAt: Date;
 };
 
@@ -70,6 +73,13 @@ export function toItemDTO(
         ? null
         : formatDecimal(
             fromDb(row.lastUnitCost, UNIT_COST_SCALE),
+            UNIT_COST_SCALE,
+          ),
+    weightedAverageUnitCost:
+      row.weightedAverageUnitCost === null
+        ? null
+        : formatDecimal(
+            fromDb(row.weightedAverageUnitCost, UNIT_COST_SCALE),
             UNIT_COST_SCALE,
           ),
     updatedAt: row.updatedAt.toISOString(),
@@ -182,6 +192,7 @@ export async function listItems(
     .select({
       ...itemColumns,
       lastUnitCost: stockItemLocations.lastUnitCost,
+      weightedAverageUnitCost: stockItemLocations.weightedAverageUnitCost,
       onHand: totals.onHand,
     })
     .from(stockItems)
@@ -262,7 +273,10 @@ export async function updateItem(
         .where(eq(stockItems.id, item.id))
         .returning(itemColumns);
       const [pair] = await tx
-        .select({ lastUnitCost: stockItemLocations.lastUnitCost })
+        .select({
+          lastUnitCost: stockItemLocations.lastUnitCost,
+          weightedAverageUnitCost: stockItemLocations.weightedAverageUnitCost,
+        })
         .from(stockItemLocations)
         .where(
           and(
@@ -272,7 +286,11 @@ export async function updateItem(
           ),
         );
       return toItemDTO(
-        { ...row, lastUnitCost: pair?.lastUnitCost ?? null },
+        {
+          ...row,
+          lastUnitCost: pair?.lastUnitCost ?? null,
+          weightedAverageUnitCost: pair?.weightedAverageUnitCost ?? null,
+        },
         await onHandOf(tx, item.id, location.id),
         location.id,
       );

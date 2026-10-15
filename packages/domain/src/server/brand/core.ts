@@ -5,6 +5,9 @@ export type BrandRecord = {
   name: string;
   timezone: string;
   currencyCode: string;
+  chargesVat: boolean;
+  saleVatRate: string | null;
+  recoversPurchaseVat: boolean;
   brandPrimaryColor: string;
   brandComplementaryColor: string;
   brandAccentColor: string;
