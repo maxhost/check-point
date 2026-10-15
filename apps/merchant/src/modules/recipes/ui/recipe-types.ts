@@ -6,7 +6,7 @@ import {
   type StockItem,
 } from "../../stock/ui/stock-types";
 
-import type { LibraryRecipeDTO } from "../server/contracts";
+import type { LibraryRecipeDTO, RecipeCostListDTO } from "../server/contracts";
 
 export type RecipeProduct = {
   productId: string;
@@ -17,10 +17,31 @@ export type RecipeProduct = {
 export type LibrarySummary = Omit<LibraryRecipeDTO, "lines"> & {
   lineCount: number;
 };
-export type RecipeSummary = RecipeProduct & {
-  ingredientCount: number;
-  recipeCount: number;
-};
+export type RecipeSummary = RecipeCostListDTO["recipes"][number];
+
+/** Intl groups the integer as BigInt; the server's exact fraction is preserved. */
+export function recipeMoney(
+  value: string,
+  currencyCode: string,
+  minorUnits: 0 | 2,
+) {
+  const negative = value.startsWith("-");
+  const [integer, fraction = ""] = value.replace(/^-/, "").split(".");
+  const magnitude = BigInt(integer);
+  const signed = negative ? (magnitude === 0n ? -0 : -magnitude) : magnitude;
+  return new Intl.NumberFormat("es", {
+    style: "currency",
+    currency: currencyCode,
+    currencyDisplay: "code",
+    minimumFractionDigits: minorUnits,
+    maximumFractionDigits: minorUnits,
+  })
+    .formatToParts(signed)
+    .map((part) =>
+      part.type === "fraction" ? fraction.padEnd(minorUnits, "0") : part.value,
+    )
+    .join("");
+}
 export type RecipeComponent = {
   recipeId: string;
   recipeName: string;

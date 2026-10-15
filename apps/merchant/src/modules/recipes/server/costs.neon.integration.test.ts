@@ -188,7 +188,7 @@ describe.skipIf(!modulesIntegrationEnabled)("0234 current recipe costs", () => {
       isCombo: true,
       recipes: [
         { recipeId: a.id, quantity: "0.400" },
-        { recipeId: b.id, quantity: "0.400" },
+        { recipeId: b.id, quantity: "0.100" },
       ],
       expectedRevisionId: null,
     };
@@ -198,7 +198,7 @@ describe.skipIf(!modulesIntegrationEnabled)("0234 current recipe costs", () => {
       comboBody,
     );
     expect(preview.ingredients).toMatchObject([
-      { itemId: shared.id, exactQuantity: "0.000800", quantity: "0.001" },
+      { itemId: shared.id, exactQuantity: "0.000500", quantity: "0.001" },
     ]);
     await saveComposition(owner.businessId, comboId, comboBody);
     await getDb()
