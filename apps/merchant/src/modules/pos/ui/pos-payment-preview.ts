@@ -1,4 +1,9 @@
 import {
+  buildFinancialAmounts,
+  type DiscountOrigin,
+} from "@mi-pasaporte/domain/financial";
+import { formatDecimal } from "../../decimal";
+import {
   formatMoney,
   previewUnits,
   unitLabel,
@@ -11,6 +16,8 @@ export type PaymentPreview = {
   grossCents: number | null;
   discountCents: number;
   netCents: number | null;
+  collectedAmount: string | null;
+  roundingAdjustmentCents: number;
   coupon: CounterCoupon | null;
   error: string | null;
   canConfirm: boolean;
@@ -46,6 +53,8 @@ export function paymentPreview(
     grossCents: gross,
     discountCents: 0,
     netCents: gross,
+    collectedAmount: null,
+    roundingAdjustmentCents: 0,
     coupon: null,
     error: null,
     canConfirm: false,
@@ -133,7 +142,47 @@ export function paymentPreview(
     } else if (coupon.kind !== "custom")
       return fail("El beneficio no es válido.");
   }
-  output.netCents = Math.max(0, gross - output.discountCents);
+  const originalNet = Math.max(0, gross - output.discountCents);
+  const activeCoupon = output.coupon;
+  let origin: DiscountOrigin | null = null;
+  if (activeCoupon && output.discountCents > 0) {
+    const lineScoped = ["free_product", "two_for_one"].includes(
+      activeCoupon.kind,
+    );
+    const target = lineScoped
+      ? order.items.find(
+          (item) => item.productId === (activeCoupon.productId ?? productId),
+        )
+      : undefined;
+    origin = {
+      type: "campaign_coupon",
+      sourceId: activeCoupon.couponId,
+      benefitKind: activeCoupon.kind,
+      scope: lineScoped ? "line" : "order",
+      ...(target ? { targetSourceLineId: target.lineId } : {}),
+    };
+  }
+  try {
+    const amounts = buildFinancialAmounts({
+      currencyCode: order.business.currencyCode,
+      lines: order.items.map((item, position) => ({
+        sourceLineId: item.lineId,
+        position,
+        unitPrice: item.unitPrice,
+        quantity: item.quantity,
+      })),
+      discount: origin
+        ? { amount: formatDecimal(BigInt(output.discountCents), 2), origin }
+        : null,
+    });
+    output.grossCents = moneyCents(amounts.gross);
+    output.discountCents = moneyCents(amounts.discount)!;
+    output.netCents = moneyCents(amounts.collected);
+    output.collectedAmount = amounts.collected;
+    output.roundingAdjustmentCents = output.netCents! - originalNet;
+  } catch {
+    return fail("No pudimos calcular el importe de cobro. Revisa la orden.");
+  }
   if (resolved) {
     const { kind, accrual } = resolved.program;
     if (

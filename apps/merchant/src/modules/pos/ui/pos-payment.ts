@@ -5,7 +5,13 @@ import type {
   ResolveResponse,
 } from "../../../app/backoffice/counter/types";
 import { paymentPreview } from "./pos-payment-preview";
-import { orderUrl, PosError, posRequest, type PosOrder } from "./pos-types";
+import {
+  orderUrl,
+  PosError,
+  posRequest,
+  type PosOrder,
+  type PosPaymentMethod,
+} from "./pos-types";
 
 type Phase =
   | "idle"
@@ -28,6 +34,8 @@ type PaymentState = {
   notice: string | null;
   review: boolean;
   validated: boolean;
+  methods: PosPaymentMethod[];
+  methodId: string | null;
 };
 const initial = (): PaymentState => ({
   phase: "idle",
@@ -41,6 +49,8 @@ const initial = (): PaymentState => ({
   notice: null,
   review: false,
   validated: false,
+  methods: [],
+  methodId: null,
 });
 export function usePosPayment({
   order,
@@ -139,6 +149,8 @@ export function usePosPayment({
       document.removeEventListener("click", links, true);
     };
   }, [blocked]);
+  const selectedMethod =
+    state.methods.find((method) => method.id === state.methodId) ?? null;
   const snapshot = order
     ? JSON.stringify([order.version, order.total, order.items])
     : "";
@@ -149,7 +161,7 @@ export function usePosPayment({
         state.resolved,
         state.productId,
         state.excludedId,
-        state.received,
+        selectedMethod?.isCash ? state.received : null,
       )
     : null;
   const amountKey = `${snapshot}:${preview?.netCents}`;
@@ -322,11 +334,30 @@ export function usePosPayment({
           resolved: { ...resolved, couponState: result.couponState },
           productId: oldId === nextId ? current.current.productId : null,
           review: changed || current.current.review,
-          phase: "paymentOpen",
-          validated: true,
           error: recoveryError,
         });
-      } else if (live(value)) update({ phase: "paymentOpen", validated: true });
+      }
+      if (!live(value)) return;
+      const currentPreview = paymentPreview(
+        selected.current!,
+        current.current.resolved,
+        current.current.productId,
+        current.current.excludedId,
+      );
+      if ((currentPreview.netCents ?? 0) > 0) {
+        const result = await posRequest<{
+          methods: PosPaymentMethod[];
+          defaultMethodId: string | null;
+        }>("/api/modules/pos/payment-methods");
+        if (!live(value)) return;
+        const methodId = result.methods.some(
+          (method) => method.id === current.current.methodId,
+        )
+          ? current.current.methodId
+          : result.defaultMethodId;
+        update({ methods: result.methods, methodId });
+      }
+      if (live(value)) update({ phase: "paymentOpen", validated: true });
     } catch (error) {
       if (live(value)) {
         update({ phase: "paymentOpen", validated: false });
@@ -385,13 +416,30 @@ export function usePosPayment({
       currentState.resolved,
       currentState.productId,
       currentState.excludedId,
-      currentState.received,
+      currentState.methods.find((method) => method.id === currentState.methodId)
+        ?.isCash
+        ? currentState.received
+        : null,
     );
-    if (!retry && !computed.canConfirm) return;
+    if (
+      !retry &&
+      (!computed.canConfirm ||
+        ((computed.netCents ?? 0) > 0 && !currentState.methodId))
+    )
+      return;
     if (!attempt.current) {
       const body = {
         clientRequestId: crypto.randomUUID(),
         version: saved.version,
+        payments:
+          (computed.netCents ?? 0) === 0
+            ? []
+            : [
+                {
+                  methodId: currentState.methodId,
+                  amount: computed.collectedAmount,
+                },
+              ],
         ...(currentState.resolved
           ? { membershipId: currentState.resolved.membership.id }
           : {}),
@@ -469,6 +517,11 @@ export function usePosPayment({
   }
   return {
     ...state,
+    selectedMethod,
+    setMethodId: (methodId: string | null) => {
+      if (!denyNavigation() && !locked.current)
+        update({ methodId, received: null, receivedError: null });
+    },
     preview,
     blocked,
     active,

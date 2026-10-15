@@ -272,6 +272,7 @@ export async function linesForClose(tx: DbTransaction, id: string) {
   return tx
     .select({
       sourceLineId: posOrderItems.id,
+      position: posOrderItems.position,
       productId: posOrderItems.productId,
       nameSnapshot: posOrderItems.nameSnapshot,
       unitPrice: posOrderItems.unitPriceSnapshot,

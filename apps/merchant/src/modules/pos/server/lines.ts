@@ -1,3 +1,4 @@
+import { formatDecimal, fromDb } from "../../decimal";
 import { CounterError, isUuid } from "@mi-pasaporte/domain/server/counter/core";
 import type { GrantItem } from "../../../server/counter/orders";
 import { buildDetailed } from "../../../server/counter/grant-input";
@@ -27,20 +28,20 @@ export function normalizeTableLabel(raw: unknown): string {
 /** El total de una linea: el MISMO calculo que `buildDetailed` (`grant-input.ts`), para que la
  * orden del POS y la `core.order` del cierre digan lo mismo. */
 export function lineTotalOf(unitPrice: string, quantity: number): string {
-  return (Number(unitPrice) * quantity).toFixed(2);
+  return formatDecimal(fromDb(unitPrice, 2) * BigInt(quantity), 2);
 }
 
 /** Σ de las lineas, sumado EN CENTAVOS (sumar decimales arrastra error de punto flotante). */
 export function totalOf(
   lines: readonly { unitPrice: string; quantity: number }[],
 ): string {
-  const cents = lines.reduce(
-    (sum, line) =>
-      sum +
-      Math.round(Number(lineTotalOf(line.unitPrice, line.quantity)) * 100),
-    0,
+  return formatDecimal(
+    lines.reduce(
+      (sum, line) => sum + fromDb(line.unitPrice, 2) * BigInt(line.quantity),
+      0n,
+    ),
+    2,
   );
-  return (cents / 100).toFixed(2);
 }
 
 /** Una linea del cuerpo de crear/editar: `lineId` presente = linea existente; ausente = nueva. */

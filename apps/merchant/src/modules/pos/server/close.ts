@@ -1,3 +1,14 @@
+import {
+  minorUnitForCurrency,
+  normalizeMoney,
+} from "@mi-pasaporte/domain/financial";
+import {
+  parsePayments,
+  settle,
+  persistPaymentSnapshot,
+  paymentMetadata,
+} from "./settlement";
+import { paymentMethodsForClose } from "./payment-methods";
 import { after } from "next/server";
 import {
   publishSaleClosed,
@@ -92,6 +103,7 @@ async function accreditInTx(
     input.membershipId,
   );
   const grossTotal = totalOf(ctx.items);
+  const minorUnit = minorUnitForCurrency(business.currencyCode);
   const order = {
     businessId: business.id,
     locationId: ctx.order.locationId,
@@ -113,12 +125,16 @@ async function accreditInTx(
         grossTotal,
         coupon: input.coupon,
         now: ctx.now,
+        settlementMinorUnit: minorUnit,
       })
     : await persistGrant(
         {
           ...order,
-          total: grossTotal,
-          units: computeAccrual(accrual, Number(grossTotal)),
+          total: normalizeMoney(grossTotal, minorUnit),
+          units: computeAccrual(
+            accrual,
+            Number(normalizeMoney(grossTotal, minorUnit)),
+          ),
         },
         tx,
       );
@@ -177,14 +193,21 @@ export async function closePosOrder(
         );
       }
       const items: GrantItem[] = lines.map((line) => ({
+        sourceLineId: line.sourceLineId,
         productId: line.productId,
         nameSnapshot: line.nameSnapshot,
-        unitPrice: Number(line.unitPrice).toFixed(2),
+        unitPrice: line.unitPrice,
         quantity: line.quantity,
         lineTotal: lineTotalOf(line.unitPrice, line.quantity),
       }));
 
       let orderId: string | null = null;
+      const payments = parsePayments(raw.payments);
+      const methods = await paymentMethodsForClose(
+        tx,
+        business.id,
+        payments.map((payment) => payment.methodId),
+      );
       if (input.membershipId) {
         const granted = await accreditInTx(tx, {
           business,
@@ -198,6 +221,31 @@ export async function closePosOrder(
         outcome.created = granted;
       }
 
+      const financialInput = {
+        currencyCode: business.currencyCode,
+        lines,
+        discount: outcome.created?.financialDiscount ?? null,
+      };
+      // Same approved net as accreditation; one coupon decision under its own locks.
+      const settlement = settle({ ...financialInput, payments });
+      if (
+        outcome.created &&
+        normalizeMoney(outcome.created.total, settlement.minorUnit) !==
+          settlement.collected
+      )
+        throw new Error("Accreditation net conflict");
+      const paymentsMetadata = paymentMetadata(settlement, methods);
+      const storedSettlement = {
+        ...settlement,
+        payments: settlement.payments.map((payment) => ({
+          ...payment,
+          ...paymentsMetadata.find(
+            (metadata) => metadata.paymentId === payment.paymentId,
+          )!,
+        })),
+      };
+      await persistPaymentSnapshot(tx, business.id, id, settlement, methods);
+
       if (!row.locationId)
         throw new CounterError(
           422,
@@ -210,6 +258,8 @@ export async function closePosOrder(
         locationId: row.locationId,
         closedAt: now,
         userId,
+        settlement,
+        paymentsMetadata,
         lines: lines.map(({ sourceLineId, productId, quantity }) => ({
           sourceLineId,
           productId,
@@ -225,6 +275,7 @@ export async function closePosOrder(
           closedByUserId: userId,
           closeRequestId: input.clientRequestId,
           orderId,
+          settlement: storedSettlement,
           updatedAt: closedAt,
         })
         .where(and(eq(posOrders.id, id), eq(posOrders.status, "open")))

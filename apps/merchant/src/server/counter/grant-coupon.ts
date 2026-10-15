@@ -1,3 +1,7 @@
+import {
+  normalizeMoney,
+  type DiscountOrigin,
+} from "@mi-pasaporte/domain/financial";
 import { type DbTransaction, withDbTransaction } from "@mi-pasaporte/db";
 import { computeAccrual } from "@mi-pasaporte/domain/server/loyalty-program/accrual";
 import type { AccrualInput } from "@mi-pasaporte/domain/server/loyalty-program/core";
@@ -74,6 +78,8 @@ export type CouponGrantContext = {
   grossTotal: string;
   coupon: CouponRef;
   now: Date;
+  /** Optional liquidation precision; existing counter callers retain cent semantics. */
+  settlementMinorUnit?: 0 | 2;
 };
 
 /** The counter's sale with a coupon: its OWN transaction, and the concurrent loser of the same
@@ -140,8 +146,24 @@ export async function grantWithCouponInTx(
   });
   if (!decision.ok)
     throw new CounterError(decision.status, decision.code, decision.message);
-  const net = fromCents(grossCents - decision.discountCents);
+  const net = normalizeMoney(
+    fromCents(grossCents - decision.discountCents),
+    ctx.settlementMinorUnit ?? 2,
+  );
   const discountAmount = fromCents(decision.discountCents);
+  const financialOrigin: DiscountOrigin | null =
+    decision.discountCents > 0
+      ? {
+          type: "campaign_coupon",
+          sourceId: locked.coupon.id,
+          campaignId: locked.campaign.id,
+          benefitKind: locked.coupon.kindSnapshot,
+          scope: decision.targetSourceLineId ? "line" : "order",
+          ...(decision.targetSourceLineId
+            ? { targetSourceLineId: decision.targetSourceLineId }
+            : {}),
+        }
+      : null;
   const units = computeAccrual(ctx.accrual, Number(net));
 
   // (5) The order, then the coupon's extra units, then its row tied to the order.
@@ -174,6 +196,9 @@ export async function grantWithCouponInTx(
   await clearSelectionIf(tx, consumerId, locked.coupon.id);
   return {
     ...granted,
+    financialDiscount: financialOrigin
+      ? { amount: discountAmount, origin: financialOrigin }
+      : null,
     // The FINAL balance: the sale's, plus the coupon's extra when there was one.
     balanceAfter: extra?.balanceAfter ?? granted.balanceAfter,
     coupon: {
