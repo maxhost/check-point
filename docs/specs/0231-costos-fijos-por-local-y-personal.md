@@ -9,7 +9,7 @@ archivos: modules/profitability; schema/modules/profitability; identidad y asign
 
 # 0231 — Costos fijos por local y personal
 
-ADR0144; piso L2 por dinero, acceso y aislamiento. **Este encargo entrega solo esta spec y el ADR0147 propuesto. No autoriza código, UI ni migraciones.** Decisiones de producto cerradas; revisión documental/QA pendiente. Tablas, nombres y contratos siguientes son solución técnica propuesta, no citas del owner ni implementación existente.
+ADR0144; piso L2 por dinero, acceso y aislamiento. **Este encargo entrega solo esta spec y el ADR0147 propuesto. No autoriza código, UI ni migraciones.** Decisiones de producto cerradas; aceptación documental registrada en el [informe de QA](../factory/0230-0231-qa.md). Tablas, nombres y contratos siguientes son solución técnica propuesta, no citas del owner ni implementación existente.
 
 ## Problema
 

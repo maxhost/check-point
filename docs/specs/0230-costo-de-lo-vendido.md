@@ -1,7 +1,7 @@
 ---
 spec: 0230
 fecha: 2026-10-14
-estado: cerrada
+estado: implementada
 resumen: Congelar el costo de ingredientes de cada consumo para conservar el costo histórico de la venta, con lectura completa, incompleta o pendiente.
 disjunta: no; depende de 0227/0228 y comparte esquema, locks y aplicador Stock con R1 y etapa 6; documentalmente independiente de 0231
 archivos: packages/db/src/schema/modules/stock.ts, packages/db/drizzle/**, apps/merchant/src/modules/stock/**, apps/merchant/src/modules/recipes/server/consumption*.ts
@@ -147,3 +147,9 @@ Entrega documental basada en `20a6dd6397b9bcbf203b0ca28b51bd5bccd7cada`. Pregunt
 2. **Conversión ante cambio de moneda:** Marca permite cambiar `currency_code`, no convierte promedios y el evento no captura moneda.0230 congela moneda/escala y valor nominal disponibles en la primera aplicación exitosa; no convierte el promedio anterior ni detecta su moneda original. El snapshot protege movimientos ya aplicados frente a ediciones posteriores. Soportar conversión/cambio con datos previos, incluido el intervalo cierre→aplicación, requiere otro encargo; no se aprueba aquí ninguna equivalencia monetaria ni política de conversión.
 
 El número de migración se asigna al implementar en coordinación con0231. Diseño técnico cerrado, incluida precedencia de los tres estados, wrapper modular y límites exteriores. Esta spec no atribuye al owner decisiones sobre terminalización ni conversión. El owner autorizó posteriormente implementar0230; el coordinador asigna contrato/reserva de código antes de escribir y marca implementada solo después de QA pertinente. Esta actualización documental no genera migración ni publica.
+
+## Aceptación de implementación local
+
+El owner autorizó posteriormente lanzar al implementador. Producto `fe5fb583106b801e7341a80cbc10062b0259e856`, entrega `119740b72775bfa5120291b8b353e621e8aba6b0`; [evidencia del autor](../factory/0230-stock.md). QA independiente sobre `c9d733cfdf9caffd407482139b3ec764ed0a1ffe`: 5/5 DB y 31/31 unitarios/fronteras, sin skips ni retries; regresiones0227/0228 y DDL0085 reutilizados por identidad de fuentes, configuración y SQL. La combinación con documentación0231 conserva exactamente el código probado; [informe combinado](../factory/0230-0231-qa.md).
+
+0085 aplicada a CI y, por coordinación, a la base local protegida: 86 entradas de journal, cuatro columnas verificadas y hash SQL `7e17ff9b5b45f828b83c93a1082f02b1953625d6535b0555044df201e079c0fe` coincidente. Sin backfill monetario, reconstrucción histórica, HTTP/UI nuevos ni operaciones PROD. Esta aceptación no autoriza push o migración de producción.
