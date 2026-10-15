@@ -195,6 +195,7 @@ export async function expireLeaseForRecovery(eventId: string) {
     .where(
       and(
         eq(moduleEventDeliveries.eventId, eventId),
+        eq(moduleEventDeliveries.subscriberId, "recipes"),
         eq(moduleEventDeliveries.state, "processing"),
       ),
     );
@@ -204,7 +205,12 @@ export async function deliveryOf(eventId: string) {
   const [delivery] = await getDb()
     .select()
     .from(moduleEventDeliveries)
-    .where(eq(moduleEventDeliveries.eventId, eventId));
+    .where(
+      and(
+        eq(moduleEventDeliveries.eventId, eventId),
+        eq(moduleEventDeliveries.subscriberId, "recipes"),
+      ),
+    );
   return delivery;
 }
 
