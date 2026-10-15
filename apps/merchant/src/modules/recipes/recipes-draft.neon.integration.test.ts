@@ -4,19 +4,18 @@ import { getDb } from "@mi-pasaporte/db";
 import { aiRequests, stockItems } from "@mi-pasaporte/db/schema";
 import {
   type ModuleWorld,
-  api,
+  callModuleRoute,
   dropModuleWorld,
   enableModules,
   modulesIntegrationEnabled,
   newItem,
   seedModuleWorld,
-  seedProduct,
 } from "../modules-integration-support";
 import { ScriptedAiProvider, aiRaw } from "../../server/ai/ai-test-support";
 import { buildRecipeDraft } from "./draft";
 
-/** Spec 0214 — dictado de recetas con proveedor INYECTADO, y el PUT ampliado (newItem, unit). Spec
- * 0224: el uso va a `core.ai_request` (tarea `recipes.recipe_text`). */
+/** R1 preserves draft normalization/newItem validation through independent recipe routes.
+ * Actual AI usage and tenant inventory are checked with an injected provider. */
 
 let world: ModuleWorld;
 let other: ModuleWorld;
@@ -48,10 +47,9 @@ const usos = () =>
     .where(eq(aiRequests.businessId, world.businessId));
 
 describe.skipIf(!modulesIntegrationEnabled)(
-  "Recetas: dictado (spec 0214)",
+  "Recetas: dictado independiente (SPEC0232)",
   () => {
     it("borrador por unidad: 1 kg de harina para 40 → 25 g; un insumo ajeno sale nuevo; uso kind=recipe", async () => {
-      const product = await seedProduct(world, "Medialuna", "1.00");
       const harina = await newItem(world, "Harina");
       const ajeno = await newItem(other, "Manteca");
       const provider = scripted({
@@ -76,8 +74,10 @@ describe.skipIf(!modulesIntegrationEnabled)(
       const { draft } = await buildRecipeDraft(
         world.businessId,
         world.ownerId,
-        product,
-        { text: "con 1 kilo de harina y 500 de manteca salen 40 medialunas" },
+        {
+          name: "Medialuna",
+          text: "con 1 kilo de harina y 500 de manteca salen 40 medialunas",
+        },
         provider,
       );
       expect(draft.yield).toBe(40);
@@ -93,9 +93,9 @@ describe.skipIf(!modulesIntegrationEnabled)(
         name: "Manteca",
         quantity: "12.500",
       });
-      // El modelo vio el producto y SOLO los insumos de este negocio (contexto del servidor).
+      // El modelo vio el nombre de receta y SOLO los insumos de este negocio (contexto del servidor).
       const context = provider.calls[0].input.context ?? "";
-      expect(context).toContain("PRODUCTO: Medialuna");
+      expect(context).toContain("RECETA: Medialuna");
       expect(context).toContain("Harina");
       expect(context).not.toContain("Manteca");
 
@@ -109,35 +109,39 @@ describe.skipIf(!modulesIntegrationEnabled)(
       });
     }, 120_000);
 
-    it("producto de OTRO negocio → 404 sin llamar a la IA ni registrar uso", async () => {
-      const ajeno = await seedProduct(other, "Ajeno", "1.00");
+    it("nombre inválido corta antes de IA y no registra uso", async () => {
       const provider = scripted({ yield: 1, lines: [] });
       const before = (await usos()).length;
-      await expect(
-        buildRecipeDraft(
-          world.businessId,
-          world.ownerId,
-          ajeno,
-          { text: "algo" },
-          provider,
-        ),
-      ).rejects.toMatchObject({ status: 404, code: "product_not_found" });
+      for (const name of [undefined, "  ", "x".repeat(121)]) {
+        await expect(
+          buildRecipeDraft(
+            world.businessId,
+            world.ownerId,
+            { name, text: "algo" },
+            provider,
+          ),
+        ).rejects.toMatchObject({ status: 422, code: "invalid_name" });
+      }
       expect(provider.calls).toHaveLength(0);
-      const after = (await usos()).length;
-      expect(after).toBe(before);
+      expect((await usos()).length).toBe(before);
     }, 120_000);
 
-    it("PUT con newItem + unit kg crea el insumo y guarda en g; existente con unit compatible convierte", async () => {
-      const product = await seedProduct(world, "Pizza", "8.00");
+    it("POST con newItem + unit kg crea el insumo y guarda en g; existente con unit compatible convierte", async () => {
       const muzza = await newItem(world, "Muzzarella");
-      const r = await api.saveRecipe(world.cookie, product, {
-        lines: [
-          { itemId: muzza.id, quantity: "0.15", unit: "kg" },
-          { newItem: { name: "Salsa de tomate" }, quantity: 100, unit: "ml" },
-          { newItem: { name: "Oregano" }, quantity: 2, unit: "g" },
-        ],
-      });
-      expect(r.status).toBe(200);
+      const r = await callModuleRoute(
+        "POST",
+        "/api/modules/recipes/library",
+        world.cookie,
+        {
+          name: "Pizza",
+          lines: [
+            { itemId: muzza.id, quantity: "0.15", unit: "kg" },
+            { newItem: { name: "Salsa de tomate" }, quantity: 100, unit: "ml" },
+            { newItem: { name: "Oregano" }, quantity: 2, unit: "g" },
+          ],
+        },
+      );
+      expect(r.status).toBe(201);
       const recipe = (await r.json()).recipe;
       expect(
         recipe.lines.map(
@@ -164,11 +168,15 @@ describe.skipIf(!modulesIntegrationEnabled)(
       expect(salsa).toEqual([{ unit: "ml" }]);
     }, 120_000);
 
-    it("PUT: unit_mismatch, newItem sin unit, nombre tomado (sin dejar insumos creados), itemId y newItem juntos", async () => {
-      const product = await seedProduct(world, "Empanada", "1.20");
+    it("POST: unit_mismatch, newItem sin unit, nombre tomado (sin dejar insumos creados), itemId y newItem juntos", async () => {
       const carne = await newItem(world, "Carne");
       const code = async (lines: unknown[]) => {
-        const res = await api.saveRecipe(world.cookie, product, { lines });
+        const res = await callModuleRoute(
+          "POST",
+          "/api/modules/recipes/library",
+          world.cookie,
+          { name: "Empanada", lines },
+        );
         return [res.status, (await res.json()).code];
       };
       expect(
@@ -201,15 +209,23 @@ describe.skipIf(!modulesIntegrationEnabled)(
     }, 120_000);
 
     it("por la ruta: texto vacio → 422; con Recetas apagado → 403", async () => {
-      const product = await seedProduct(world, "Tarta", "5.00");
-      const r = await api.recipeDraft(world.cookie, product, { text: "  " });
+      const r = await callModuleRoute(
+        "POST",
+        "/api/modules/recipes/draft",
+        world.cookie,
+        { name: "Tarta", text: "  " },
+      );
       expect(r.status).toBe(422);
       expect((await r.json()).code).toBe("invalid_text");
       const lone = await seedModuleWorld("Receta sin modulo");
       try {
         await enableModules(lone, ["stock"]);
-        const p = await seedProduct(lone, "X", "1.00");
-        const off = await api.recipeDraft(lone.cookie, p, { text: "harina" });
+        const off = await callModuleRoute(
+          "POST",
+          "/api/modules/recipes/draft",
+          lone.cookie,
+          { name: "X", text: "harina" },
+        );
         expect(off.status).toBe(403);
         expect((await off.json()).code).toBe("module_disabled");
       } finally {

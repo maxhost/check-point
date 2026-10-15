@@ -123,3 +123,40 @@ describe("normalizeRecipeDraft (spec 0214)", () => {
     expect(d.unparsed).toEqual(["x", "a", "b"]);
   });
 });
+
+/** Product ownership checks disappear with R1's independent context. Input checks
+ * still reject invalid names before touching inventory or invoking AI. */
+describe("R1 draft context validation", () => {
+  it.each([undefined, null, {}, "", "  ", "x".repeat(121)])(
+    "rejects an invalid name before any AI request: %j",
+    async (name) => {
+      const { buildRecipeDraft } = await import("./draft");
+      await expect(
+        buildRecipeDraft("business", "operator", { name, text: "harina" }),
+      ).rejects.toMatchObject({ status: 422, code: "invalid_name" });
+    },
+  );
+
+  it.each(["", "  ", "x".repeat(2001)])(
+    "rejects empty or oversized dictation with a valid independent name",
+    async (text) => {
+      const { buildRecipeDraft } = await import("./draft");
+      await expect(
+        buildRecipeDraft("business", "operator", { name: "Sopa", text }),
+      ).rejects.toMatchObject({ status: 422, code: "invalid_text" });
+    },
+  );
+
+  it("validates the multipart recipe name without requiring a product", async () => {
+    const { buildRecipePhotoDraft } = await import("./draft");
+    const form = new FormData();
+    form.set("name", " ");
+    const request = new Request("http://localhost/draft-photo", {
+      method: "POST",
+      body: form,
+    });
+    await expect(
+      buildRecipePhotoDraft("business", "operator", request),
+    ).rejects.toMatchObject({ status: 422, code: "invalid_name" });
+  });
+});

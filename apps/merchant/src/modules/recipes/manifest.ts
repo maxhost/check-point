@@ -1,12 +1,12 @@
 import type { ModuleManifest } from "../contract";
 import { GASTRONOMIA } from "../categories";
 
-/** Spec 0210 / 0216 — Recetas: receta de cada producto, costo y margen. Requiere Stock (de ahi
+/** Spec 0210 / 0216 — Recetas: recetas independientes y composiciones de productos. Requiere Stock (de ahi
  * puede importar, ADR 0139 §1). Permiso propio `recipes`. */
 export const manifest: ModuleManifest = {
   id: "recipes",
   name: "Recetas",
-  description: "Receta de cada producto, costo y margen",
+  description: "Recetas y composiciones de tus productos",
   requires: ["stock"],
   optional: ["pos"],
   suggestedFor: [...GASTRONOMIA],
@@ -14,10 +14,8 @@ export const manifest: ModuleManifest = {
     {
       id: "recipes",
       label: "Recetas",
-      description: "Recetas, costo y margen de cada producto.",
+      description: "Crear recetas y componer productos y combos.",
     },
   ],
-  navigation: [
-    { path: "", label: "Recetas", icon: "Book", permission: "recipes" },
-  ],
+  navigation: [],
 };

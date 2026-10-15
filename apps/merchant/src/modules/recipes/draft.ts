@@ -20,10 +20,10 @@ import {
   RECIPE_TEXT_TASK,
   type RawRecipeDraft,
 } from "./ai-tasks";
-import { MAX_RECIPE_LINES, ownProduct } from "./recipes";
+import { MAX_RECIPE_LINES } from "./server/contracts";
 
 /**
- * Spec 0214 — EL BORRADOR DE UNA RECETA desde el texto dictado, POR UNA UNIDAD del producto. La IA
+ * Spec 0214 — EL BORRADOR DE UNA RECETA desde el texto dictado, POR UNA UNIDAD de la receta. La IA
  * propone y el dueño confirma con el `PUT` de la receta (ADR 0082): aca no se escribe la receta. La IA
  * pasa por el servicio del core (spec 0224), que registra el USO en `core.ai_request`, sin el texto.
  *
@@ -46,7 +46,7 @@ export type RecipeDraftLine = {
   itemId: string | null;
   name: string;
   isNew: boolean;
-  /** Por UNA unidad del producto, en la unidad base; null = sin cantidad («a gusto»). */
+  /** Por UNA unidad de la receta, en la unidad base; null = sin cantidad («a gusto»). */
   quantity: string | null;
   unit: "g" | "ml" | "unit";
   sourceText: string;
@@ -149,16 +149,26 @@ export function normalizeRecipeDraft(
   };
 }
 
-type Product = Awaited<ReturnType<typeof ownProduct>>;
+/** A draft has its own recipe context; no product/local needs to exist. */
+function recipeName(raw: unknown): string {
+  const name = typeof raw === "string" ? raw.trim() : "";
+  if (!name || name.length > 120)
+    throw new ModuleError(
+      422,
+      "invalid_name",
+      "El nombre de la receta tiene que tener entre 1 y 120 caracteres.",
+    );
+  return name;
+}
 
-/** `POST /api/modules/recipes/:productId/draft` — `{ text }`. `provider` se inyecta en los tests. */
+/** `POST /api/modules/recipes/draft` — `{ name, text }`. `provider` se inyecta en los tests. */
 export async function buildRecipeDraft(
   businessId: string,
   userId: string,
-  rawProductId: unknown,
   body: Record<string, unknown>,
   provider?: AiProvider,
 ): Promise<{ draft: RecipeDraft }> {
+  const name = recipeName(body.name);
   const input = typeof body.text === "string" ? body.text.trim() : "";
   if (input.length === 0 || input.length > MAX_TEXT) {
     throw new ModuleError(
@@ -167,28 +177,32 @@ export async function buildRecipeDraft(
       `El texto tiene que tener entre 1 y ${MAX_TEXT} caracteres.`,
     );
   }
-  // El producto ANTES de la IA: uno ajeno es 404 sin gastar ni registrar uso.
-  const product = await ownProduct(getDb(), businessId, rawProductId, false);
   return runRecipeDraft(
     businessId,
     userId,
-    product,
+    name,
     { text: input, photos: [] },
     provider,
   );
 }
 
-/** `POST /api/modules/recipes/:productId/draft-photo` — spec 0223: 1 a 3 fotos de la receta del
- * producto → el MISMO borrador que el dictado. El producto se valida UNA vez y ANTES de leer las
- * fotos; las fotos invalidas cortan antes de la IA y sin registrar. */
+/** `POST /api/modules/recipes/draft-photo`: multipart name + 1..3 photos.
+ * Invalid context/photos stop before AI usage; analysis never saves a recipe. */
 export async function buildRecipePhotoDraft(
   businessId: string,
   userId: string,
-  rawProductId: unknown,
   request: Request,
   provider?: AiProvider,
 ): Promise<{ draft: RecipeDraft }> {
-  const product = await ownProduct(getDb(), businessId, rawProductId, false);
+  let name: string;
+  try {
+    // Keep the original body for the shared image validator and its byte limits.
+    const form = await request.clone().formData();
+    name = recipeName(form.get("name"));
+  } catch (error) {
+    if (error instanceof ModuleError) throw error;
+    throw new ModuleError(422, "invalid_photos", "No pudimos leer las fotos.");
+  }
   let photos: AiImage[];
   try {
     photos = await readAiImages(request, RECIPE_PHOTO_INPUT);
@@ -198,7 +212,7 @@ export async function buildRecipePhotoDraft(
   return runRecipeDraft(
     businessId,
     userId,
-    product,
+    name,
     { text: "", photos },
     provider,
   );
@@ -207,7 +221,7 @@ export async function buildRecipePhotoDraft(
 async function runRecipeDraft(
   businessId: string,
   userId: string,
-  product: Product,
+  name: string,
   source: { text: string; photos: AiImage[] },
   provider: AiProvider | undefined,
 ): Promise<{ draft: RecipeDraft }> {
@@ -223,7 +237,7 @@ async function runRecipeDraft(
     )
     .orderBy(asc(sql`lower(${stockItems.name})`))
     .limit(MAX_ITEMS_FOR_MODEL);
-  const context = `PRODUCTO: ${product.name}\n\nINSUMOS EXISTENTES:\n${inventoryForModel(items)}`;
+  const context = `RECETA: ${name}\n\nINSUMOS EXISTENTES:\n${inventoryForModel(items)}`;
   try {
     const result = await runAiTask(
       photo ? RECIPE_PHOTO_TASK : RECIPE_TEXT_TASK,
