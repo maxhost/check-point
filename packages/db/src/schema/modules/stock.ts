@@ -5,6 +5,7 @@ import {
   index,
   numeric,
   pgSchema,
+  smallint,
   text,
   timestamp,
   uniqueIndex,
@@ -80,6 +81,17 @@ export const stockMovements = stockSchema.table(
     kind: text("kind").notNull(),
     quantity: numeric("quantity", { precision: 14, scale: 3 }).notNull(),
     totalCost: numeric("total_cost", { precision: 12, scale: 2 }),
+    /** Spec 0230: immutable valuation at first successful consumption application. */
+    consumptionUnitCost: numeric("consumption_unit_cost", {
+      precision: 14,
+      scale: 6,
+    }),
+    consumptionLossFactor: numeric("consumption_loss_factor", {
+      precision: 12,
+      scale: 6,
+    }),
+    consumptionCurrencyCode: text("consumption_currency_code"),
+    consumptionMinorUnits: smallint("consumption_minor_units"),
     countedQuantity: numeric("counted_quantity", { precision: 14, scale: 3 }),
     entryId: uuid("entry_id"),
     note: text("note"),
@@ -121,6 +133,26 @@ export const stockMovements = stockSchema.table(
     check(
       "stock_movement_consumption_check",
       sql`${table.kind} <> 'consumption' or (${table.quantity}<0 and ${table.totalCost} is null and ${table.countedQuantity} is null and ${table.sourceOrderId} is not null and ${table.sourceLineId} is not null and ${table.productId} is not null)`,
+    ),
+    check(
+      "stock_movement_consumption_snapshot_check",
+      sql`(${table.consumptionUnitCost} is null and ${table.consumptionLossFactor} is null and ${table.consumptionCurrencyCode} is null and ${table.consumptionMinorUnits} is null) or (${table.kind} = 'consumption' and ${table.consumptionLossFactor} is not null and ${table.consumptionCurrencyCode} is not null and ${table.consumptionMinorUnits} is not null)`,
+    ),
+    check(
+      "stock_movement_consumption_cost_check",
+      sql`${table.consumptionUnitCost} is null or (${table.consumptionUnitCost} >= 0 and ${table.consumptionUnitCost} not in ('NaN'::numeric, 'Infinity'::numeric, '-Infinity'::numeric))`,
+    ),
+    check(
+      "stock_movement_consumption_factor_check",
+      sql`${table.consumptionLossFactor} is null or (${table.consumptionLossFactor} >= 1 and ${table.consumptionLossFactor} not in ('NaN'::numeric, 'Infinity'::numeric, '-Infinity'::numeric))`,
+    ),
+    check(
+      "stock_movement_consumption_currency_check",
+      sql`${table.consumptionCurrencyCode} is null or ${table.consumptionCurrencyCode} ~ '^[A-Z]{3}$'`,
+    ),
+    check(
+      "stock_movement_consumption_scale_check",
+      sql`${table.consumptionMinorUnits} is null or ${table.consumptionMinorUnits} in (0, 2)`,
     ),
     uniqueIndex("stock_movement_consumption_unique")
       .on(

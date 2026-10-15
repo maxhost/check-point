@@ -99,13 +99,16 @@ export async function lockItemLocations(
   locationId: string,
 ) {
   const ids = [...new Set(itemIds)].sort();
-  if (!ids.length) return;
+  if (!ids.length) return [];
   await tx
     .insert(stockItemLocations)
     .values(ids.map((itemId) => ({ businessId, itemId, locationId })))
     .onConflictDoNothing();
-  await tx
-    .select({ itemId: stockItemLocations.itemId })
+  return tx
+    .select({
+      itemId: stockItemLocations.itemId,
+      weightedAverageUnitCost: stockItemLocations.weightedAverageUnitCost,
+    })
     .from(stockItemLocations)
     .where(
       and(
