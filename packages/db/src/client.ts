@@ -42,9 +42,10 @@ function poolFor(connectionString: string, connectionTimeoutMs?: number): Pool {
       connectionString,
       connectionTimeoutMillis: connectionTimeoutMs,
     });
-    // The deadline may terminate a backend. Bounded callers retire failed clients;
-    // pool error events from an already idle/disconnected client must not crash the process.
-    if (connectionTimeoutMs) pool.on("error", () => {});
+    // Idle errors have no active query to reject. Handle every pool without logging the
+    // driver error/client context, which may contain connection credentials. Active
+    // query failures still propagate through their transaction promise below.
+    pool.on("error", () => {});
     pools.set(key, pool);
   }
   return pool;
