@@ -12,6 +12,10 @@ import {
   independentRecipeLines,
   recipeSaleResolutions,
   recipeRevisions,
+  stockMovements,
+  stockItemLocations,
+  moduleEvents,
+  moduleEventDeliveries,
 } from "@mi-pasaporte/db/schema";
 import { and, eq, sql } from "drizzle-orm";
 import {
@@ -75,6 +79,63 @@ describe.skipIf(!modulesIntegrationEnabled)(
           lines: [{ itemId: item.id, unit: "g", quantity: "125.250" }],
         })
         .returning();
+      const [empty] = await getDb()
+        .insert(recipeRevisions)
+        .values({ businessId: world.businessId, productId: ids[5], lines: [] })
+        .returning();
+      await getDb().insert(moduleResourceVersions).values({
+        businessId: world.businessId,
+        resourceType: "product",
+        resourceId: ids[5],
+        providerId: "recipes",
+        slot: "recipe",
+        versionId: empty.id,
+      });
+      const [event] = await getDb()
+        .insert(moduleEvents)
+        .values({
+          businessId: world.businessId,
+          eventType: "sale.closed",
+          eventVersion: 1,
+          sourceId: randomUUID(),
+          locationId: world.locationId,
+          payload: {},
+        })
+        .returning();
+      await getDb().insert(moduleEventDeliveries).values({
+        eventId: event.id,
+        subscriberId: "recipes",
+        state: "pending",
+      });
+      await getDb().insert(stockItemLocations).values({
+        businessId: world.businessId,
+        itemId: item.id,
+        locationId: world.locationId,
+        weightedAverageUnitCost: "0.000000",
+        weightedAverageInitializedAt: new Date(),
+      });
+      await getDb()
+        .insert(stockMovements)
+        .values(
+          [null, undefined, "0.000000", "2.125000"].map((cost) => ({
+            businessId: world.businessId,
+            itemId: item.id,
+            locationId: world.locationId,
+            sourceOrderId: randomUUID(),
+            sourceLineId: randomUUID(),
+            productId: ids[0],
+            kind: "consumption",
+            quantity: "-0.125",
+            ...(cost === undefined
+              ? {}
+              : {
+                  consumptionUnitCost: cost,
+                  consumptionLossFactor: "1.025000",
+                  consumptionCurrencyCode: "USD",
+                  consumptionMinorUnits: 2,
+                }),
+          })),
+        );
       const rollback = new Error("ROLLBACK_R1_PROBE");
       try {
         await withDbTransaction(async (tx) => {
@@ -84,6 +145,30 @@ describe.skipIf(!modulesIntegrationEnabled)(
           ).toBeGreaterThanOrEqual(2);
           const result = await cutoverR1(tx, { writersDrained: true });
           expect(result.migrated).toBeGreaterThanOrEqual(5);
+          expect(result.equivalentProducts).toBe(result.migrated);
+          expect(result.comparison).toEqual({ unchanged: true, changed: [] });
+          expect(result.after.preserved).toEqual(measured.preserved);
+          expect(result.after.inventory.stock).toEqual(
+            measured.inventory.stock,
+          );
+          expect(
+            measured.inventory.legacy.emptyRevisions,
+          ).toBeGreaterThanOrEqual(1);
+          expect(
+            measured.inventory.legacy.emptyPointers,
+          ).toBeGreaterThanOrEqual(1);
+          expect(measured.inventory.events.pending).toBeGreaterThanOrEqual(1);
+          expect(measured.inventory.stock).toMatchObject({
+            legacySnapshots: expect.any(Number),
+            knownZeroCosts: expect.any(Number),
+          });
+          for (const key of [
+            "legacySnapshots",
+            "unknownCosts",
+            "knownZeroCosts",
+            "knownCosts",
+          ] as const)
+            expect(measured.inventory.stock[key]).toBeGreaterThanOrEqual(1);
           const mapping = await tx
             .select()
             .from(recipeMigrationMappings)
@@ -124,8 +209,13 @@ describe.skipIf(!modulesIntegrationEnabled)(
                 eq(moduleResourceVersions.providerId, "recipes"),
               ),
             );
-          expect(pointers).toHaveLength(5);
-          expect(pointers.every((p) => p.slot === "composition")).toBe(true);
+          expect(pointers).toHaveLength(6);
+          expect(pointers.filter((p) => p.slot === "composition")).toHaveLength(
+            5,
+          );
+          expect(pointers.find((p) => p.slot === "recipe")?.versionId).toBe(
+            empty.id,
+          );
           expect(
             (
               await tx

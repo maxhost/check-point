@@ -16,6 +16,8 @@ import {
 import { and, eq, sql } from "drizzle-orm";
 import { lockRecipes } from "./common";
 import { publishResolution } from "./publication";
+import { comparePreservedR1, inventoryR1, preservedR1 } from "./preflight";
+import { verifyMigratedR1 } from "./migration-compare";
 
 async function sourceRows(tx: DbTransaction) {
   return tx
@@ -70,6 +72,8 @@ export async function preflightR1(tx: DbTransaction) {
     }[],
     productsWithRecipes: new Set(rows.map((r) => r.product.id)).size,
     ingredientLines: rows.length,
+    inventory: await inventoryR1(tx),
+    preserved: await preservedR1(tx),
   };
 }
 /** Caller must establish a real writer cut; this explicit argument is never inferred by deployment. */
@@ -121,7 +125,7 @@ export async function cutoverR1(
     group.push(row);
     groups.set(row.product.id, group);
   }
-  let migrated = 0;
+  const migratedProducts: string[] = [];
   for (const [productId, lines] of groups) {
     if (mapped.has(productId) || configured.has(productId)) continue;
     const { product, categoryName } = lines[0],
@@ -214,7 +218,33 @@ export async function cutoverR1(
         .update(JSON.stringify({ product, categoryName, frozen }))
         .digest("hex"),
     });
-    migrated++;
+    migratedProducts.push(productId);
   }
-  return { ...before, migrated };
+  const equivalentProducts = await verifyMigratedR1(
+    tx,
+    migratedProducts,
+    rows.map((r) => ({
+      businessId: r.product.businessId,
+      productId: r.product.id,
+      itemId: r.itemId,
+      quantity: r.quantity,
+      unit: r.unit,
+    })),
+  );
+  const after = await preflightR1(tx);
+  const comparison = comparePreservedR1(before.preserved, after.preserved);
+  if (!comparison.unchanged) {
+    const error = new Error(
+      `R1 changed preserved data: ${comparison.changed.join(", ")}`,
+    );
+    error.name = "R1PreservationError";
+    throw error;
+  }
+  return {
+    ...before,
+    migrated: migratedProducts.length,
+    equivalentProducts,
+    after,
+    comparison,
+  };
 }

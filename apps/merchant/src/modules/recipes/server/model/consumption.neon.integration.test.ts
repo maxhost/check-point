@@ -88,6 +88,57 @@ const drain = (eventId: string) =>
 describe.skipIf(!modulesIntegrationEnabled)(
   "R1 captured composition consumption and frozen Stock costs",
   () => {
+    it("a combo with an empty recipe retains the other recipe's frozen cost and incomplete coverage", async () => {
+      const item = await newItem(world, "Insumo combo mixto");
+      await getDb().insert(stockItemLocations).values({
+        businessId: world.businessId,
+        itemId: item.id,
+        locationId: world.locationId,
+        weightedAverageUnitCost: "3.000000",
+        weightedAverageInitializedAt: new Date(),
+      });
+      const empty = await createRecipe(world.businessId, {
+        name: "Receta vacía combo",
+        lines: [],
+      });
+      const full = await createRecipe(world.businessId, {
+        name: "Receta completa combo",
+        lines: [{ itemId: item.id, quantity: "2.000" }],
+      });
+      const productId = await seedProduct(
+        world,
+        "Combo vacío y completo",
+        "10.00",
+      );
+      await saveComposition(world.businessId, productId, {
+        isCombo: true,
+        recipes: [
+          { recipeId: empty.id, quantity: "1.000" },
+          { recipeId: full.id, quantity: "1.000" },
+        ],
+        expectedRevisionId: null,
+      });
+      const sale = await publish(productId);
+      expect((await drain(sale.eventId)).applied).toBe(1);
+      expect(await rows(sale.sourceOrderId)).toMatchObject([
+        { quantity: "-2.000", consumptionUnitCost: "3.000000" },
+      ]);
+      expect(await sources(sale.sourceOrderId)).toMatchObject([
+        { recipeId: full.id, allocatedQuantity: "2.000" },
+      ]);
+      expect(
+        await readSaleConsumptionCost({
+          businessId: world.businessId,
+          locationId: world.locationId,
+          sourceOrderId: sale.sourceOrderId,
+        }),
+      ).toMatchObject({
+        state: "incompleto",
+        knownCost: "6.00",
+        reasons: ["sin_receta"],
+        missingRecipes: [{ productId }],
+      });
+    }, 30_000);
     it("shared ingredient creates one ledger row and two immutable sources from versions at close", async () => {
       const item = await newItem(world, "Carne combo");
       await getDb().insert(stockItemLocations).values({

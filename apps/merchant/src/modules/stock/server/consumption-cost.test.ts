@@ -29,6 +29,18 @@ const movement: CostMovement = {
 const applied = { state: "applied" } as const;
 
 describe("0230 exact consumption valuation and coverage", () => {
+  it("an empty component keeps a mixed combo incomplete while preserving known ingredient cost", () => {
+    expect(
+      summarizeConsumptionCost([{ ...line, incompleteRecipe: true }], applied, [
+        movement,
+      ]),
+    ).toMatchObject({
+      state: "incompleto",
+      knownCost: "8.00",
+      missingRecipes: [{ sourceLineId: "l1", productId: "p1" }],
+      reasons: ["sin_receta"],
+    });
+  });
   it("R1 positive ingredients rounded to zero are incomplete without inventing zero cost", () => {
     const rounded = { ...line, consumptions: [], roundingOmissions: true };
     expect(summarizeConsumptionCost([rounded], applied, [])).toMatchObject({

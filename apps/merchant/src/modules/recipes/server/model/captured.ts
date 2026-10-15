@@ -109,6 +109,12 @@ export async function capturedConsumption(
           line.quantity,
         );
         expected.recipe = expanded.sources.length ? "present" : "absent";
+        expected.incompleteRecipe = resolution.components.some(
+          (component) =>
+            revisions.find(
+              (revision) => revision.id === component.recipeRevisionId,
+            )?.lines.length === 0,
+        );
         expected.roundingOmissions = expanded.ingredients.some(
           (i) => i.quantity === "0.000",
         );

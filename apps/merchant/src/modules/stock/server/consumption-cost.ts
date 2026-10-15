@@ -15,6 +15,7 @@ export type ExpectedCostLine = {
   recipe: "present" | "absent" | "unknown";
   consumptions: { itemId: string; quantity: string }[];
   roundingOmissions?: boolean;
+  incompleteRecipe?: boolean;
 };
 export type ConsumptionDelivery = {
   state: "pending" | "processing" | "applied" | "skipped" | "unknown";
@@ -117,7 +118,7 @@ export function summarizeConsumptionCost(
     const reasons = [...sum.reasons];
     if (line.roundingOmissions) reasons.push("redondeo_sin_consumo");
     const missingRecipes =
-      line.recipe === "absent"
+      line.recipe === "absent" || line.incompleteRecipe
         ? [{ sourceLineId: line.sourceLineId, productId: line.productId }]
         : [];
     if (missingRecipes.length) reasons.push("sin_receta");

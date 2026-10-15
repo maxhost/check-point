@@ -210,17 +210,6 @@ export const api = {
     ),
   recipes: (cookie: string) =>
     callModuleRoute("GET", "/api/modules/recipes/library", cookie),
-  recipe: (cookie: string, productId: string) =>
-    callModuleRoute("GET", `/api/modules/recipes/${productId}`, cookie),
-  recipeDraft: (cookie: string, productId: string, body: unknown) =>
-    callModuleRoute(
-      "POST",
-      `/api/modules/recipes/${productId}/draft`,
-      cookie,
-      body,
-    ),
-  saveRecipe: (cookie: string, productId: string, body: unknown) =>
-    callModuleRoute("PUT", `/api/modules/recipes/${productId}`, cookie, body),
 };
 
 /** Crea un insumo por la ruta (falla ruidoso si no es 201). */

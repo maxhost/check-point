@@ -76,3 +76,23 @@ La revisión del candidato combinado identificó dos límites que **siguen abier
 - Un combo con una receta vacía y otra con ingredientes conocidos puede omitir la cobertura incompleta del componente vacío. Se debe conservar la suma conocida de la otra receta y devolver incompleto, con caso focal real y unitario. No se resuelve recalculando costos ni convirtiendo ausencia en cero.
 
 El coordinador asignará ambos fixes en la continuación desde B combinado, junto con la retirada del backend antiguo. La alineación y medición local que realice coordinación tienen evidencia propia; esta entrega no se atribuye esas operaciones.
+
+## Continuación sobre el candidato combinado: pendientes cerrados
+
+Base `a139aad367e6067add2a62f564e343efd1067a94`, con el adaptador HTTP de B integrado. Los hallazgos del apartado anterior quedan cerrados en esta continuación:
+
+- Se retiraron `recipes.ts`, `read.ts` y `cost.ts` antiguos del módulo y los helpers HTTP legados sin consumidores. Se conserva el parser útil en `server/model/input.ts`. Se eliminó `cost.test.ts` asociado al lector actual retirado; las pruebas de valoración histórica 0230 y las pruebas del dominio nuevo permanecen. No se conserva un backend incompatible bajo las rutas nuevas ni un lector de costo actual 1.3.
+- Una resolución con componente vacío comunica cobertura incompleta a Stock sin perder los ingredientes presentes. El caso real de combo vacío + completo confirma un único movimiento de `-2.000`, snapshot unitario `3.000000`, procedencia de la receta completa, `knownCost=6.00`, estado `incompleto` y razón `sin_receta`. No se calcula el costo de la receta vacía como cero.
+- Preflight ahora informa revisiones/punteros vacíos o inválidos, slots simultáneos, estados de entregas, snapshots legados/desconocidos/conocidos/cero, grupos de cantidades por local y colisiones de primeros candidatos de nombre. Añade conteos/huellas de esquema y manifiesto. Las cantidades por producto/insumo y cada campo de eventos/deliveries/ledger/snapshots/promedios locales participan en huellas exactas calculadas en PostgreSQL; no se vuelcan filas, nombres ni datos de cliente al log.
+- El corte verifica la expansión de venta ×1 de cada producto recién migrado contra sus ingredientes, cantidades decimales y unidades de origen. También compara conteos/huellas de todos los datos preservados antes/después y aborta la transacción ante diferencias. Reejecutar no compara una composición ya corregida por el comercio contra su origen legado ni sobrescribe el mapping. El CLI usa lectura `REPEATABLE READ` y registra entorno local, SHA y si el árbol estaba modificado; el retiro real de writers sigue siendo una comprobación operativa explícita.
+
+Evidencia de esta continuación, Node `24.20.0`, configuración CI seleccionada y wrapper obligatorio:
+
+- Merchant y DB typecheck, ESLint focal, Prettier y `git diff --check`: EXIT0.
+- **48/48 unitarios**, nueve archivos: parser, expansión, preflight/comparación, cobertura/costo Stock, snapshot legado, ownership canónico y las tres fronteras. El nuevo caso de comparación detecta cambio de huella monetaria aunque el número de movimientos sea igual, además de adiciones a stock local.
+- `NEON_TEST_ENV_FILE=/private/tmp/checkpass-specs/ci-selected.env tools/neon-test.sh src/modules/recipes/server/model/consumption.neon.integration.test.ts src/modules/recipes-r1-migration.neon.integration.test.ts --no-file-parallelism`: **6/6**, EXIT0, ambos teardowns completos. Consumo cubre el caso mixto nuevo y los cuatro casos anteriores. Migración siembra snapshots legado NULL, costo desconocido, cero y conocido; un puntero/revisión vacíos y una entrega pendiente; confirma huellas y stock iguales antes/después, equivalencia de cantidades y replay sin sobrescribir correcciones.
+- CLI `--help`: EXIT0 sin DB. Los hashes 0088/0089/0090 siguen exactamente iguales a los publicados arriba; no se añadió ni modificó SQL. No hubo skips ni cambios de presupuesto para alcanzar el verde.
+
+DB CI liberada después del wrapper. Esta continuación no ejecutó el corte local global ni midió nombres del comercio real. Coordinación conserva su evidencia separada de backup/esquema/preflight local; debe repetir el preflight ampliado y ejecutar el corte sobre el candidato aceptado, con writers retirados. Los mismos comandos operativos anteriores siguen vigentes. El resultado del corte contiene `migrated`, `equivalentProducts`, inventarios antes/después y `comparison.unchanged`; el manifiesto cuenta productos mapeados/renombrados y el endpoint entrega su detalle al comercio.
+
+No quedan pendientes de los tres ajustes asignados. La aceptación corresponde a QA independiente del SHA combinado; esta evidencia no sustituye esa revisión ni autoriza push/PROD.
