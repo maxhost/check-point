@@ -375,9 +375,15 @@ test("crear en pasos con precio de catálogo; editar conserva snapshot y lineId;
     .getByRole("button", { name: "Confirmar cobro", exact: true })
     .click();
   await expect(page.getByText("Venta cerrada sin pase.")).toBeVisible();
-  expect(closeBodies[0]).toMatchObject({ version: 2 });
+  expect(closeBodies[0]).toMatchObject({
+    version: 2,
+    payments: [
+      { methodId: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee", amount: "20.00" },
+    ],
+  });
   expect(Object.keys(closeBodies[0] as object).sort()).toEqual([
     "clientRequestId",
+    "payments",
     "version",
   ]);
   expect(calls).toEqual([]);

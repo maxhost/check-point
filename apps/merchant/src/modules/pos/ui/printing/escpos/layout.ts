@@ -71,6 +71,17 @@ export function layoutTicket(doc: TicketDoc, paper: Paper): Row[] {
       rows.push({ kind: "text", text: t, align: "left" });
   }
   rows.push({ kind: "rule" });
+  if (doc.summary) {
+    rows.push(...text(`Bruto: ${doc.summary.gross}`, "left"));
+    rows.push(...text(`Descuento: -${doc.summary.discount}`, "left"));
+    if (doc.summary.roundingAdjustment)
+      rows.push(
+        ...text(
+          `Ajuste de redondeo: ${doc.summary.roundingAdjustment}`,
+          "left",
+        ),
+      );
+  }
   for (const t of twoColumns("TOTAL", plain(doc.total), columns))
     rows.push({ kind: "text", text: t, align: "left", bold: true });
   rows.push(...text(`${doc.date} ${doc.time}`, "center"));

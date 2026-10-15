@@ -7,6 +7,7 @@ import {
 import { initializePaymentMethods } from "./payment-catalog";
 import { getDb, withDbTransaction } from "@mi-pasaporte/db";
 import {
+  businesses,
   businessModules,
   orderItems,
   orders,
@@ -63,8 +64,17 @@ export async function setPosModule(
   await setModuleRow(businessId, "pos", enabled);
 }
 
-export async function seedPosWorld(label: string): Promise<PosWorld> {
+export async function seedPosWorld(
+  label: string,
+  countryCode = "EC",
+  currencyCode = "USD",
+): Promise<PosWorld> {
   const world = await seedCycleWorld(label);
+  await getDb()
+    .update(businesses)
+    .set({ countryCode, currencyCode })
+    .where(eq(businesses.id, world.seed.business.id));
+  world.seed.business.currencyCode = currencyCode;
   await setPosModule(world.seed.business.id, true);
   await withDbTransaction((tx) =>
     initializePaymentMethods(tx, { businessId: world.seed.business.id }),
@@ -90,12 +100,13 @@ export async function posStaff(
   return { userId, cookie: await cookieDe(userId) };
 }
 
-/** `core.pos_order.order_id` apunta a `core.order` sin cascada: las ordenes del POS se borran
- * ANTES que el mundo (que borra las `core.order`). */
+/** Cut the test's accreditation reference before legacy cleanup; immutable payments only
+ * cascade when the aggregate root disappears, after orders and consumer memberships. */
 export async function dropPosWorld(world: PosWorld | undefined): Promise<void> {
   if (!world) return;
   await getDb()
-    .delete(posOrders)
+    .update(posOrders)
+    .set({ orderId: null })
     .where(eq(posOrders.businessId, world.seed.business.id));
   await dropCycleWorld(world);
   if (world.extraUsers.length > 0)

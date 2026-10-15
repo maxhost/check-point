@@ -25,6 +25,15 @@ export function PosPrintTicket({ doc }: { doc: TicketDoc }) {
           </div>
         ))}
       </div>
+      {doc.summary && (
+        <>
+          <Text>Bruto: {doc.summary.gross}</Text>
+          <Text>Descuento: −{doc.summary.discount}</Text>
+          {doc.summary.roundingAdjustment && (
+            <Text>Ajuste de redondeo: {doc.summary.roundingAdjustment}</Text>
+          )}
+        </>
+      )}
       <Text variant="label">Total: {doc.total}</Text>
       <Text variant="small">
         {doc.date} · {doc.time}
