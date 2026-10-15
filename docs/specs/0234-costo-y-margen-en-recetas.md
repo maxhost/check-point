@@ -1,7 +1,7 @@
 ---
 spec: 0234
 fecha: 2026-10-15
-estado: borrador
+estado: cerrada
 resumen: Mostrar costo de receta, precio, ganancia y margen por producto según el local elegido, usando la composición vigente y el costo promedio local.
 disjunta: no; backend independiente del wizard L1 y UI dependiente de su integración, con relevo explícito de escritor
 archivos: apps/merchant/src/modules/recipes/server/, apps/merchant/src/modules/recipes/ui/
@@ -9,7 +9,7 @@ archivos: apps/merchant/src/modules/recipes/server/, apps/merchant/src/modules/r
 
 # 0234 — Pieza 1.3: costo y margen por producto en Recetas
 
-Piso **L2: dinero**. ADR0144, ADR0139 y `docs/VERIFICACION.md`. Esta entrega prepara la spec; **no autoriza implementación antes del OK expreso del owner**. Sin ADR nuevo, push, migraciones ni operaciones PROD. El endpoint nuevo es de lectura: no modifica inventario, costos ni composiciones.
+Piso **L2: dinero**. ADR0144, ADR0139 y `docs/VERIFICACION.md`. El owner autorizó implementar esta spec el 2026-10-15: «implementa la 0234». Sin ADR nuevo, push, migraciones ni operaciones PROD. El endpoint nuevo es de lectura: no modifica inventario, costos ni composiciones.
 
 ## Problema
 
@@ -118,13 +118,13 @@ La cabecera ofrece el selector de local usando componentes existentes del kit y 
 
 ## Archivos y paralelismo
 
-Ahora solo esta spec; sin índices ni estados. Implementación futura: writer L2 en `apps/merchant/src/modules/recipes/server/` para lectura, DTO, ruta y test Neon focal. Reutiliza `model/expand.ts`, `modules/decimal.ts` y datos Stock; sin tocar escrituras R1, esquema, tooling, dependencias o core. Ampliación de paths vuelve al coordinador. Ficha operativa conserva base/worktree/reservas.
+Sin índices ni estados. Writer L2 en `apps/merchant/src/modules/recipes/server/` para lectura, DTO, ruta y test Neon focal. Reutiliza `model/expand.ts`, `modules/decimal.ts` y datos Stock; sin tocar escrituras R1, esquema, tooling, dependencias o core. Ampliación de paths vuelve al coordinador. Ficha operativa conserva base/worktree/reservas.
 
-La UI está reservada al encargo L1 hasta su entrega/integración. El coordinador confirma la base combinada y relevo antes de reservar al writer L2 `recipes/ui/recipes-console.tsx`, `recipe-requests.ts` y tipos de la lista. No editar modal/pasos del wizard para sumar esta lectura. UI mantiene kit, copy de merchant y frontera modular.
+El wizard L1 está integrado en main/dev local en `cf2e7552`. El coordinador libera su reserva y asigna al writer L2 `recipes/ui/recipes-console.tsx`, `recipe-requests.ts` y tipos de la lista. No editar modal/pasos del wizard para sumar esta lectura. UI mantiene kit, copy de merchant y frontera modular.
 
 ## Definition of Done
 
-- [ ] Spec revisada/cerrada y OK expreso del owner antes de implementar; decisiones de redondeo registradas arriba.
+- [x] Spec revisada/cerrada y OK expreso del owner antes de implementar; decisiones de redondeo registradas arriba.
 - [ ] Una lectura por local devuelve lista completa con costo de receta, precio, ganancia y margen actuales para productos simples y combos; coincide con cantidades de preview/consumo por una unidad.
 - [ ] Costos faltantes nombrados y margen oculto; null, cero, precio ausente, precio cero y pérdida tratados según contrato; aislamiento real entre comercios/locales.
 - [ ] Lectura sin escrituras, sin fallback a otro costo ni consultas fiscales; catálogo, `unit_cost`, Stock, venta y backend R1 de escritura intactos.
@@ -155,4 +155,4 @@ Sin DB PROD, e2e, verify global ni suites adicionales. La QA en browser del owne
 
 Verificación estática hecha sobre base `b87f5d40def5e4c99de8bafc50a625f55e7712f5`. La UI L1 leída como dependencia corresponde al candidato congelado `cf2e75520ef4f739f94d2176d63b8050b435e019`; no se editó ese checkout. No se ejecutaron tests ni acceso DB, no se implementó producto ni se hicieron commits/push.
 
-Las cuatro preguntas están respondidas. **Borrador para revisión y OK del owner**; sin decisiones funcionales pendientes. UI espera integración/relevo del wizard. Nota factual: core admite escala 2 sin validar moneda; esta pieza asume precio ya en unidad mínima, no afirma que existan precios legacy incompatibles ni los corrige. Lectura defensiva ante un dato fuera de esa precisión, sin escribir ni inventar un precio.
+Las cuatro preguntas están respondidas y el owner autorizó la implementación; sin decisiones funcionales pendientes. El wizard está integrado y el coordinador asigna el relevo de UI. Nota factual: core admite escala 2 sin validar moneda; esta pieza asume precio ya en unidad mínima, no afirma que existan precios legacy incompatibles ni los corrige. Lectura defensiva ante un dato fuera de esa precisión, sin escribir ni inventar un precio.
