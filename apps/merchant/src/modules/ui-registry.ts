@@ -3,6 +3,7 @@ import { StockLog } from "./stock/ui/stock-log";
 import { PosScreen } from "./pos/ui/pos-screen";
 import { TicketSettings } from "./pos/ui/ticket-settings";
 import { LocationTables } from "./tables/ui/location-tables";
+import { RecipesConsole } from "./recipes/ui/recipes-console";
 
 /**
  * Spec 0216 / ADR 0139 §3 y §4 — EL REGISTRO DE PANTALLAS: por modulo, la pantalla de cada `path`
@@ -27,7 +28,7 @@ export type ModuleScreens = {
 
 export const UI_SCREENS: Readonly<Record<string, ModuleScreens>> = {
   stock: { screens: { "": StockLog } },
-  recipes: { screens: {} },
+  recipes: { screens: { "": RecipesConsole } },
   pos: { screens: { "": PosScreen }, settingsPanel: TicketSettings },
   tables: { screens: {}, locationPanel: LocationTables },
   profitability: { screens: {} },

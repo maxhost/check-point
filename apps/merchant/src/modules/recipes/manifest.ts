@@ -17,5 +17,7 @@ export const manifest: ModuleManifest = {
       description: "Crear recetas y componer productos y combos.",
     },
   ],
-  navigation: [],
+  navigation: [
+    { path: "", label: "Recetas", icon: "Book", permission: "recipes" },
+  ],
 };
