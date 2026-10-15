@@ -1,8 +1,13 @@
 import type { DbTransaction } from "@mi-pasaporte/db";
 import { and, eq, inArray, sql } from "drizzle-orm";
-import { stockItems, stockMovements } from "@mi-pasaporte/db/schema";
+import {
+  businesses,
+  stockItems,
+  stockMovements,
+} from "@mi-pasaporte/db/schema";
 import { formatDecimal, fromDb } from "../decimal";
 import { lockItemLocations } from "./local";
+import { consumptionMinorUnits } from "./consumption-money";
 /** Caller owns the delivery transaction. Archived ingredients remain consumable. */
 export async function applyConsumption(
   tx: DbTransaction,
@@ -60,7 +65,12 @@ export async function applyConsumption(
     .for("key share");
   if (items.length !== ids.length)
     throw new Error("Consumption item unavailable");
-  await lockItemLocations(tx, args.businessId, ids, args.locationId);
+  const pairs = await lockItemLocations(
+    tx,
+    args.businessId,
+    ids,
+    args.locationId,
+  );
   const existing = await tx
     .select({
       sourceLineId: stockMovements.sourceLineId,
@@ -97,10 +107,29 @@ export async function applyConsumption(
       throw new Error("Consumption snapshot conflict");
     return false;
   });
-  // At most 16k bind parameters per query, safely below PostgreSQL's 65535 cap.
+  if (!fresh.length) return;
+  // Read currency only for a new valuation, once for this complete delivery.
+  // A replay must also work after today's currency/policy has changed.
+  const [business] = await tx
+    .select({ currencyCode: businesses.currencyCode })
+    .from(businesses)
+    .where(eq(businesses.id, args.businessId));
+  if (!business) throw new Error("Consumption business unavailable");
+  const minorUnits = consumptionMinorUnits(business.currencyCode);
+  const costs = new Map(
+    pairs.map((pair) => [pair.itemId, pair.weightedAverageUnitCost]),
+  );
+  const valued = fresh.map((movement) => ({
+    ...movement,
+    consumptionUnitCost: costs.get(movement.itemId) ?? null,
+    consumptionLossFactor: "1.000000",
+    consumptionCurrencyCode: business.currencyCode,
+    consumptionMinorUnits: minorUnits,
+  }));
+  // At most 20k bind parameters per query, safely below PostgreSQL's 65535 cap.
   // Every chunk and the delivery acknowledgment still share the caller transaction.
-  for (let offset = 0; offset < fresh.length; offset += 1000) {
-    const chunk = fresh.slice(offset, offset + 1000);
+  for (let offset = 0; offset < valued.length; offset += 1000) {
+    const chunk = valued.slice(offset, offset + 1000);
     const inserted = await tx
       .insert(stockMovements)
       .values(chunk)
