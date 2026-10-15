@@ -1,9 +1,9 @@
 ---
 spec: 0229
 fecha: 2026-10-14
-estado: cerrada
+estado: implementada
 resumen: Guardar tres datos fiscales por comercio en Marca, sin usarlos hoy en precios, cobros ni costos.
-disjunta: si; documento independiente de 0228, sin dependencia de cálculo fiscal ni writers de implementación asignados.
+disjunta: si entre dominios; esquema0228/0229 serializado por A, sin dependencia de cálculo fiscal.
 archivos: packages/db/src/schema/business.ts; packages/domain/src/server/brand.ts y brand/; apps/merchant/src/app/api/brand/route.ts; apps/merchant/src/app/backoffice/brand/; pruebas focales de Marca; futura migración generada de packages/db.
 ---
 
@@ -95,11 +95,11 @@ Un writer de esquema/migración y un contrato HTTP compartido. Antes de código,
 
 Los criterios siguientes corresponden a la **implementación futura**, no se declaran cumplidos por entregar este documento:
 
-- [ ] Tres datos por comercio con defaults y restricciones acordados; existentes y nuevos quedan consistentes.
-- [ ] Sección, textos, habilitación, guardado/recarga y recuperación de Marca cumplen lo aprobado.
-- [ ] GET/PUT privados preservan compatibilidad, permiso `brand`, aislamiento y control de revisión.
-- [ ] Precios, cobros, costos y consumidores públicos permanecen ajenos a estos datos.
-- [ ] Pruebas focales y aceptación de tarea/combinación sobre SHA verificable; sólo entonces el coordinador podrá marcar implementada.
+- [x] Tres datos por comercio con defaults y restricciones acordados; existentes y nuevos quedan consistentes.
+- [x] Sección, textos, habilitación, guardado/recarga y recuperación de Marca cumplen lo aprobado.
+- [x] GET/PUT privados preservan compatibilidad, permiso `brand`, aislamiento y control de revisión.
+- [x] Precios, cobros, costos y consumidores públicos permanecen ajenos a estos datos.
+- [x] Pruebas focales y aceptación de tarea/combinación sobre SHA verificable; sólo entonces el coordinador podrá marcar implementada.
 
 ## Pruebas pertinentes
 
@@ -119,3 +119,9 @@ Hoy sólo se verifican integridad y formato del documento, unicidad del número 
 Spec cerrada por las respuestas citadas, pendiente de encargo de implementación. La ficha operativa conserva base, worktree, reserva y SHA de entrega; esos datos no forman parte del contrato del producto. No hay hallazgos bloqueantes en esta pieza. Los hallazgos de las dos filas futuras permanecen **a decidir** y no se atribuyen al owner como reglas aprobadas.
 
 El encargo termina al entregar esta spec y las filas propuestas. No ejecutar su migración, modificar código, integrar/pushear ni marcar implementada por esta entrega.
+
+## Implementación y aceptación — 2026-10-14
+
+Implementación autorizada posteriormente por el [handoff0228/0229](../handoff-0228-0229-implementacion.md), conservando las decisiones funcionales anteriores. Producto combinado verificado `07393f2cacbad43cc3d92fd98b028ab1f8ff8a70`, entrega A `bc9b29bd674452e11f70943f06850be0d2bb277e` y B `4b25cfabf857c480400c475f4aaa2d4a61579b35`; [informe QA independiente](../factory/0228-0229-qa.md), [entrega A](../factory/0228-stock.md), [entrega B](../factory/0229-brand.md). QA funcional y combinación PASS:29DB afectados y1probe fiscal bruto independientes,77unitarios, tipos/lint/guardias y build Merchant; browser23 y visual390/1280, API/DBMarca20, DDL3 y regresiones compatibles de autores según identidad registrada. Cierre documental final comprobado separadamente; ningún PASS por skips/retries ni cambios de presupuestos.
+
+Migración0084 aplicada sólo a CI protegida; conserva EXPAND0227, flag de consumo y costo bruto IVA incluido. No publicación, seed ni migración PROD. Main local permanece anterior hasta autorización explícita del owner. Las restricciones iniciales de entrega documental describen el encargo original; esta implementación se autorizó por el handoff citado, sin habilitar funciones fiscales futuras.

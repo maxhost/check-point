@@ -1,7 +1,7 @@
 ---
 spec: 0228
 fecha: 2026-10-14
-estado: cerrada
+estado: implementada
 resumen: Costo promedio ponderado móvil de cada insumo en cada local, actualizado al registrar compras con decimales exactos y sin impedirlas por consumos pendientes.
 disjunta: no; comparte escritura, locks y esquema Stock con etapa 0 y el futuro consumidor del costo
 archivos: packages/db/src/schema/modules/stock.ts, packages/db/drizzle/**, apps/merchant/src/modules/stock/**
@@ -84,11 +84,11 @@ Implementación futura: un writer de `packages/db/src/schema/modules/stock.ts` y
 
 ## Definition of Done
 
-- [ ] Cada par conserva promedio inicial local y actualiza correctamente al comprar en orden de registro, con cantidades exactas y costo a 6 decimales.
-- [ ] Compras/entradas atómicas; una falla del aplicador no impide registrar una compra válida; retries de consumo nunca vuelven a ponderar.
-- [ ] Compra sin precio, saldo no positivo, costo desconocido, precio cero y conteos/consumos respetan las reglas aprobadas; locales/comercios aislados.
-- [ ] DTO Stock distingue promedio y último costo; Recetas/POS y datos fiscales permanecen fuera de esta pieza.
-- [ ] Inicialización una sola vez y checks focales de aceptación/combinación con evidencia del SHA/entorno; coordinador marca implementada sólo tras QA pertinente.
+- [x] Cada par conserva promedio inicial local y actualiza correctamente al comprar en orden de registro, con cantidades exactas y costo a 6 decimales.
+- [x] Compras/entradas atómicas; una falla del aplicador no impide registrar una compra válida; retries de consumo nunca vuelven a ponderar.
+- [x] Compra sin precio, saldo no positivo, costo desconocido, precio cero y conteos/consumos respetan las reglas aprobadas; locales/comercios aislados.
+- [x] DTO Stock distingue promedio y último costo; Recetas/POS y datos fiscales permanecen fuera de esta pieza.
+- [x] Inicialización una sola vez y checks focales de aceptación/combinación con evidencia del SHA/entorno; coordinador marca implementada sólo tras QA pertinente.
 
 ## Pruebas pertinentes
 
@@ -106,3 +106,9 @@ En implementación: Node24; DB sólo mediante `tools/neon-test.sh` y configuraci
 ## Handoff y abierto
 
 Base documental `39d00edfca6347773c03a015a2ffcd1a1d38b0dd`. Preguntas/respondidas arriba; ADR0146 registra almacenamiento, serialización y aproximación aprobada. **Sin hallazgos de producto abiertos ni respuestas inferidas:** el mensaje original repetido/truncado no agrega alcance. Restan implementación, SQL/corte de writers, medición y QA, por encargo separado; son trabajo futuro, no decisiones bloqueantes de esta spec. SHA de entrega y verificaciones documentales se informan fuera del documento. Sin código, migraciones ejecutadas, índices/estados comunes ni publicación.
+
+## Implementación y aceptación — 2026-10-14
+
+Implementación autorizada posteriormente por el [handoff0228/0229](../handoff-0228-0229-implementacion.md), conservando las decisiones funcionales anteriores. Producto combinado verificado `07393f2cacbad43cc3d92fd98b028ab1f8ff8a70`, entrega A `bc9b29bd674452e11f70943f06850be0d2bb277e` y B `4b25cfabf857c480400c475f4aaa2d4a61579b35`; [informe QA independiente](../factory/0228-0229-qa.md), [entrega A](../factory/0228-stock.md), [entrega B](../factory/0229-brand.md). QA funcional y combinación PASS:29DB afectados y1probe fiscal bruto independientes,77unitarios, tipos/lint/guardias y build Merchant; browser23 y visual390/1280, API/DBMarca20, DDL3 y regresiones compatibles de autores según identidad registrada. Cierre documental final comprobado separadamente; ningún PASS por skips/retries ni cambios de presupuestos.
+
+Migración0084 aplicada sólo a CI protegida; conserva EXPAND0227, flag de consumo y costo bruto IVA incluido. No publicación, seed ni migración PROD. Main local permanece anterior hasta autorización explícita del owner. Las restricciones iniciales de entrega documental describen el encargo original; esta implementación se autorizó por el handoff citado, sin habilitar funciones fiscales futuras.

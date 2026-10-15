@@ -3,7 +3,19 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — SPECS0228/0229 EN IMPLEMENTACIÓN; QA ABIERTA (2026-10-14)
+## ESTADO — SPECS0228/0229 IMPLEMENTADAS; QA PASS; MAIN LOCAL ESPERA AUTORIZACIÓN (2026-10-14)
+
+Owner autorizó continuar el [handoff0228/0229](../handoff-0228-0229-implementacion.md) automáticamente hasta QA pasado, con dos implementadores y QA independiente. Producto congelado `07393f2cacbad43cc3d92fd98b028ab1f8ff8a70`, A `bc9b29bd674452e11f70943f06850be0d2bb277e`, B `4b25cfabf857c480400c475f4aaa2d4a61579b35`; [QA independiente](../factory/0228-0229-qa.md), [A](../factory/0228-stock.md), [B](../factory/0229-brand.md), [fichas](../factory/0228-0229-contract.md). Coordinador incorpora cierre documental sin alterar producto; main local sigue `39d00edfca6347773c03a015a2ffcd1a1d38b0dd`. Falta sólo autorización final del owner para avanzar main local. Ningún push ni operación PROD autorizados.
+
+Promedio móvil nullable6 por insumo/local, apertura única desde último costo local, bigint3/2/6 con importe exacto y compra/entrada atómicas bajo locks compatibles. Drenaje previo acotado fuera de transacción; fallo/timeout no bloquea compra válida y recuperación no repondera. Marca guarda tres datos privados por comercio con decimal exacto, legacy/guardbrand/idguard/revisión409, kit y recuperación existentes; no activa cálculos. Esquema único0084 aditivo, conserva EXPAND0227 y flag de consumo. Rollout/corte/seed/rollback en tools/stock-average, sin ejecución PROD.
+
+QA candidato: **29/29DB +1/1probe fiscal bruto,77/77unit, tipos DB/dominio/Merchant, ESLint, guard10, detector[], check-numbers y build Merchant PASS**, sin skips/retries. Lote10000 aplicado íntegro en5867ms dentro20s; corte70000 en1000ms. Browser fiscal4+regresión19 y visual390/1280 claro/oscuro, DBMarca20, DDL3 y entradas7/local5/conteoconcurrente1 se reutilizan según identidad de fuentes registrada. Formato de documentos de coordinación corregido preservando contenido histórico y rutas literales; cierre documental se valida además sobre su SHA.
+
+Se conservan los rojos iniciales: algunos diagnósticos cruzaron reposo real (pmset), pero las corridas A14:08/14:16 no; no atribuir todos a suspensión. Baseline c9 controlado despierto pasó10/10 y candidato corregido pasó todos los afectados. QA detectó idlePoolError sin listener normal; A corrigió todos los pools sin cambiar URLs/budgets/capacidad, unitdriver2+antiPROD10PASS. En diagnóstico se imprimió inesperadamente contexto con credencialCI: owner informado, logs restringidos/redactados y salida posterior sanitizada antes de disco; **rotación de credencialCI pendiente**, no PROD.
+
+Los tres worktrees/reservas propios se conservan limpios y sin procesos DB/servidores, hasta merge autorizado a main local: A `/private/tmp/checkpass-0228/factory-0228-cost-spec`, B `/private/tmp/checkpass-0229/factory-0229-brand-tax-spec`, QA `/private/tmp/checkpass-0228-0229/factory-0228-0229-qa`. Entregas/histórico y ref backupB preservados; factory integrate/cleanup sólo después de aceptación y ancestro de main. Artefactos y skills ajenos del checkout principal preservados. No retirar worktrees por force ni publicar por inferencia.
+
+## HISTÓRICO — SPECS0228/0229 EN IMPLEMENTACIÓN; QA ABIERTA (2026-10-14)
 
 Owner autorizó continuar el [handoff0228/0229](../handoff-0228-0229-implementacion.md) con dos implementadores y QA independiente hasta PASS completo. Reserva/coordinación/harness `e62b07dd`: continuidad documental validada5/5 por autor y QA, histórico preservado, checkout limpio/ancestros/repositorio/scope/recursos/procesos comprobados, cleanup intacto. [Fichas y ampliación B](../factory/0228-0229-contract.md). Main local permanece39d00edf; ningún push/PROD ni autorización final de merge solicitada aún.
 
@@ -216,7 +228,7 @@ Próximo paso: publicación solamente si el owner la solicita.
 
 Ajuste L0 solicitado con dos capturas: en escritorio Tomar pedido y el pie de
 la orden abierta quedaban justo tras el contenido. Main del workspace, wrapper
- y editor ahora crecen como columna flex; el pie usa mt-auto y sticky bottom-0
+y editor ahora crecen como columna flex; el pie usa mt-auto y sticky bottom-0
 en md. Móvil conserva sus clases existentes. Aplicado en pos-console.tsx y
 pos-editor.tsx, sin commit ni merge/push. Revisión visual del owner pendiente.
 Node24: typecheck, ESLint merchant, formato, guardia UI y diffcheck en0. Sin suites
@@ -240,18 +252,18 @@ El owner debe recargar Ajustes para renovar la lectura que había fallado.
 Commit UI `da9c924a8099ee58b28a691c7266a8b1d18d07fc`. API de Claude `1106798` ya en dev. Owner pidió solo pantalla,
 commit en dev sin push ni merge. No se tocaron API, servidor, packages, kit,
 printing/** ni tooling. DTO frontend de tres booleanos compartido entre Ajustes
- y POS en settings/ticket-settings-types.ts.
+y POS en settings/ticket-settings-types.ts.
 
 Imprimir tickets controla printingEnabled guardado; apagado oculta nombre del
 comercio/mesa sin borrar sus valores. PUT siempre manda los tres booleanos. Carga
- y errores visibles aun apagado; mientras carga, el interruptor está deshabilitado.
+y errores visibles aun apagado; mientras carga, el interruptor está deshabilitado.
 POS toma el ajuste de pos-printing.ts y oculta Imprimir en orden abierta y detalle
 cuando false o pendiente. Validación exige los tres campos, sin defaults inventados;
 print() también respeta la regla. Fixtures POS, mesas e impresión con enabled=true
 para preservar sus recorridos; casos nuevos prueban false/true y PUT completo.
 
 Node24, salida0: typecheck merchant, ESLint merchant + cuatro e2e, Prettier merchant
-+ e2e, guardia UI y diffcheck. Chromium 121/121 específicos de pos.spec,
+y e2e, guardia UI y diffcheck. Chromium 121/121 específicos de pos.spec,
 pos-printing.spec, ticket-settings.spec y tables.spec (50.6s). Rutas simuladas con
 page.route; sin Neon ni suite completa. Reporte /private/tmp/0206-report/index.html.
 CI main verde4c40a6a consultado. Spec0206 e INDEX actualizados con evidencia y SHA.
@@ -529,7 +541,7 @@ pnpm verify --base HEAD ejecutado una vez: tipos, lint, ui-guard, formato,
 2465 unitarias y build de las 4 apps correctos. ROJO: E2E general no arranca por
 Next dev existente en 3200/3201; Neon related 37/41 inicial por etiqueta Plan Plus
 anterior. Textos esperados actualizados y suite fallida repetida por
- tools/neon-test.sh src/server/billing-reconcile-page.neon.integration.test.ts:
+tools/neon-test.sh src/server/billing-reconcile-page.neon.integration.test.ts:
 5/5 en CI. No se repitió todo verify ni se afirma verde. Registros
 /private/tmp/0196-verify.log y /private/tmp/0196-neon-recheck.log. Tres suites E2E
 usaron configuración temporal sin webServer y public3003 existente. Tipos Next
@@ -1335,7 +1347,7 @@ No se tocó kit, CSS, API, servidor, tooling ni contratos. Componentes/Tailwind/
 existentes. 32 pruebas POS verdes (14,5 s); prueba puntual final 1/1 (2,0 s).
 Aserciones: padding/borde cero, fondo transparente, ancho móvil 390 px, navbar oculta,
 retorno sin GET extra, edición/listado correctos e icono X con ancho real 24 px.
-Capturas móvil/escritorio vistas en /private/tmp/pos-0176-*.png y pos-0175-*.png.
+Capturas móvil/escritorio vistas en `/private/tmp/pos-0176-*.png` y `pos-0175-*.png`.
 Typecheck 6 paquetes, ESLint, Prettier, guardia UI 22 archivos sin aumentos,
 números y diff-check verdes. Sin build/full verify sobre dev activo.
 
