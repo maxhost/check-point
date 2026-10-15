@@ -14,3 +14,18 @@ Evidencia: Node24.20.0; Prettier explícito con `--ignore-path /dev/null` sobre 
 QA ejecutó un probe independiente Python/Fraction de14932 casos USD/COP globales y dirigidos, con dos/tres líneas, pesos0, cobertura total y empates: sumas G/D/N/A, límites0≤descuento≤bruto y originales exactos PASS. Coordinación comprobó489996 casos BigInt con los mismos invariantes. Son comprobaciones del algoritmo de diseño, no del producto futuro. Ambas verificaron COP10,40−0,60: G10, D1, A+1, N10; y COP0,60 con descuento total: G1, D1, N0, pagos[].
 
 No se ejecutaron DB, migraciones ni pruebas de producto para esta revisión; checkout QA permaneció limpio en `42c7661b`. La implementación posterior requiere sus propias pruebas y QA. Validar precios según moneda en origen permanece como hallazgo fuera del encargo; no bloquea cierres ni se presenta como resuelto.
+
+## Corrección técnica durante implementación
+
+La revisión posterior encontró un defecto del algoritmo documentado: el reparto conjunto podía redistribuir brutos ya normalizados. Coordinación lo midió sobre el helper real congelado `729a39c4`: USD dos líneas0,01 con descuento0,01 daban brutos0,02/0 y netos0,01/0; cuatro líneas0,01 con descuento0,02 daban brutos0,02/0/0,02/0. Los totales y límites previos pasaban, pero el oráculo no exigía conservar cada bruto ya alineado. El implementador reprodujo un test nuevo FAIL sobre ese caso antes de corregirlo; los otros nueve unitarios financieros pasaban. No fue una mutación ni se relajó el test.
+
+Aplicando la regla general de normalización ya aprobada, se corrigieron SPEC/ADR sin nueva decisión de producto: si todos los brutos originales son múltiplos de minorUnit, conservarlos; descontar las cuotas acumuladas y distribuir solo A, que en esa rama es0 o1, sobre pesos restantes. La rama general fraccionaria conserva la fórmula conjunta. No cambia el cobrado aprobado, firmas, límites de descuento ni conservación de originales/deltas. Las cuotas racionales siguen auditadas aunque A=0.
+
+QA independiente verificó matemáticamente **152500 casos** Python/Fraction USD/COP globales/dirigidos con tres líneas, ceros, cobertura total y empates: bruto por línea conservado,0≤descuento≤bruto, netos no negativos, sumas G/D/N/A y A∈{0,1} PASS, sin contraejemplos. Con pesos enteros y D≤G, una diferencia de prefijos no supera la longitud entera de su línea; si no hay pesos restantes, N=A=0. Sin DB ni edición de producto.
+
+**PASS documental focal** sobre `f311de4578f4ad26956e683778275ea6916b4409`: SPEC0233 y ADR0149 alineados con la corrección, ejemplos de dos/cuatro líneas y prueba11 actualizados. Prettier forzado2/2, cuatro tablas/28 filas, enlaces y diff-check PASS; checkout QA intacto `3e0ee77f`. Hashes nuevos:
+
+- SPEC0233: `cb3d6f6a638c816301eec3741c410ac21cec1d19b2b6418af85861f2f6cd4c5b`.
+- ADR0149: `fed2193008f85e753b99cbf0ddea8682573332f30deac9216c825419c66787a3`.
+
+El probe anterior de coordinación sobre el helper real729 había pasado12172 casos y716 listas de pagos para sumas/límites/deltas/ceros; no incluía este oráculo de idempotencia y no certifica la versión corregida. Ambos resultados se conservan con su alcance real. Aún requiere pruebas de producto y QA de la implementación final.
