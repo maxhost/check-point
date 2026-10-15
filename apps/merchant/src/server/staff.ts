@@ -1,5 +1,9 @@
 import { and, asc, eq } from "drizzle-orm";
-import { getDb } from "@mi-pasaporte/db";
+import { getDb, withDbTransaction } from "@mi-pasaporte/db";
+import {
+  lockLinkedStaffPerson,
+  touchStaffPerson,
+} from "./staff-people/identity";
 import {
   businesses,
   memberships,
@@ -218,65 +222,69 @@ export async function setStaffStatus(
     throw new StaffError(400, "El integrante no es válido.", "invalid_target");
   }
 
-  const [target] = await getDb()
-    // `permissions` viaja en el MISMO `select` que ya traia `role`: es una columna mas en una
-    // consulta que ya se hacia, no una consulta nueva.
-    .select({ role: memberships.role, permissions: memberships.permissions })
-    .from(memberships)
-    .where(
-      and(
-        eq(memberships.businessId, business.id),
-        eq(memberships.userId, targetUserId),
-      ),
-    )
-    .limit(1);
-  if (!target)
-    throw new StaffError(404, "Ese integrante no existe.", "staff_not_found");
-  if (target.role === "owner") {
-    throw new StaffError(
-      409,
-      "No puedes desactivar a la persona propietaria del negocio.",
-      "target_is_owner",
-    );
-  }
-  // R5 — despues del 404 y del 409, para no filtrar existencia con el 403.
-  assertTargetNotAdministrator(callerRole, target.permissions);
+  return withDbTransaction(async (tx) => {
+    const person = await lockLinkedStaffPerson(tx, business.id, targetUserId);
+    const [target] = await tx
+      // `permissions` viaja en el MISMO `select` que ya traia `role`: es una columna mas en una
+      // consulta que ya se hacia, no una consulta nueva.
+      .select({ role: memberships.role, permissions: memberships.permissions })
+      .from(memberships)
+      .where(
+        and(
+          eq(memberships.businessId, business.id),
+          eq(memberships.userId, targetUserId),
+        ),
+      )
+      .limit(1);
+    if (!target)
+      throw new StaffError(404, "Ese integrante no existe.", "staff_not_found");
+    if (target.role === "owner") {
+      throw new StaffError(
+        409,
+        "No puedes desactivar a la persona propietaria del negocio.",
+        "target_is_owner",
+      );
+    }
+    // R5 — despues del 404 y del 409, para no filtrar existencia con el 403.
+    assertTargetNotAdministrator(callerRole, target.permissions);
 
-  const [row] = await getDb()
-    .update(memberships)
-    .set({ status })
-    .where(
-      and(
-        eq(memberships.businessId, business.id),
-        eq(memberships.userId, targetUserId),
-      ),
-    )
-    .returning({
-      role: memberships.role,
-      status: memberships.status,
-      permissions: memberships.permissions,
-      handle: memberships.handle,
-      createdAt: memberships.createdAt,
+    const [row] = await tx
+      .update(memberships)
+      .set({ status })
+      .where(
+        and(
+          eq(memberships.businessId, business.id),
+          eq(memberships.userId, targetUserId),
+        ),
+      )
+      .returning({
+        role: memberships.role,
+        status: memberships.status,
+        permissions: memberships.permissions,
+        handle: memberships.handle,
+        createdAt: memberships.createdAt,
+      });
+
+    if (status === "disabled") {
+      await tx.delete(sessions).where(eq(sessions.userId, targetUserId));
+    }
+
+    const [profile] = await tx
+      .select({ name: users.name })
+      .from(users)
+      .where(eq(users.id, targetUserId))
+      .limit(1);
+
+    if (person) await touchStaffPerson(tx, business.id, person.id);
+    return toStaffDTO({
+      userId: targetUserId,
+      name: profile?.name ?? "",
+      handle: row.handle,
+      slug: business.slug,
+      role: row.role,
+      status: row.status,
+      permissions: row.permissions,
+      createdAt: row.createdAt,
     });
-
-  if (status === "disabled") {
-    await getDb().delete(sessions).where(eq(sessions.userId, targetUserId));
-  }
-
-  const [profile] = await getDb()
-    .select({ name: users.name })
-    .from(users)
-    .where(eq(users.id, targetUserId))
-    .limit(1);
-
-  return toStaffDTO({
-    userId: targetUserId,
-    name: profile?.name ?? "",
-    handle: row.handle,
-    slug: business.slug,
-    role: row.role,
-    status: row.status,
-    permissions: row.permissions,
-    createdAt: row.createdAt,
   });
 }

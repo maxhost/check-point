@@ -22,6 +22,12 @@ const objetivo: { role: string; permissions: string[] } = {
   permissions: ["staff", "catalog"],
 };
 
+// SPEC0231: retain R1b assertions while isolating new identity maintenance and sharing the fake transaction.
+vi.mock("./staff-people/identity", () => ({
+  lockLinkedStaffPerson: async () => null,
+  touchStaffPerson: async () => {},
+}));
+
 vi.mock("@mi-pasaporte/db", () => {
   const chain: Record<string, unknown> = {};
   for (const m of ["select", "from", "where", "update", "set"]) {
@@ -33,7 +39,10 @@ vi.mock("@mi-pasaporte/db", () => {
       "el writer llego a ESCRIBIR: R1b no corto la degradacion (o el doble quedo corto)",
     );
   };
-  return { getDb: () => chain };
+  return {
+    getDb: () => chain,
+    withDbTransaction: (work: (tx: typeof chain) => unknown) => work(chain),
+  };
 });
 
 const { setStaffPermissions } = await import("./staff-permissions");

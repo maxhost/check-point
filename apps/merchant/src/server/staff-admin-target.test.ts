@@ -65,6 +65,12 @@ const objetivo: { role: string; permissions: string[] } = {
   permissions: ["staff"],
 };
 
+// SPEC0231: isolate new identity maintenance here; real transaction/identity rollback has DB coverage.
+vi.mock("./staff-people/identity", () => ({
+  lockLinkedStaffPerson: async () => null,
+  touchStaffPerson: async () => {},
+}));
+
 vi.mock("@mi-pasaporte/db", () => {
   const chain: Record<string, unknown> = {};
   for (const m of ["select", "from", "where", "update", "set", "delete"]) {
@@ -76,7 +82,10 @@ vi.mock("@mi-pasaporte/db", () => {
       "la baja llego a ESCRIBIR: R5 no corto (o el doble quedo corto)",
     );
   };
-  return { getDb: () => chain };
+  return {
+    getDb: () => chain,
+    withDbTransaction: (work: (tx: typeof chain) => unknown) => work(chain),
+  };
 });
 
 const { setStaffStatus } = await import("./staff");

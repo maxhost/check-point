@@ -1,5 +1,9 @@
 import { and, eq } from "drizzle-orm";
-import { getDb } from "@mi-pasaporte/db";
+import { withDbTransaction, type DbTransaction } from "@mi-pasaporte/db";
+import {
+  lockLinkedStaffPerson,
+  touchStaffPerson,
+} from "./staff-people/identity";
 import { memberships, users } from "@mi-pasaporte/db/schema";
 import { type StaffDTO, StaffError, toStaffDTO } from "./staff";
 import { freeHandle, isUniqueViolation } from "./staff-create";
@@ -118,22 +122,23 @@ export async function renameStaff(
   value: unknown,
 ): Promise<StaffDTO> {
   const { name } = parseRenameInput(value);
-  // Con `targetUserId`: el handle que ese integrante tiene HOY no cuenta como ocupado.
-  const handle = await freeHandle(business.id, name, targetUserId);
-  const row = await updateHandle(business.id, targetUserId, handle);
-  if (!row) throw await rejectionFor(business.id, targetUserId);
-
-  await getDb().update(users).set({ name }).where(eq(users.id, targetUserId));
-
-  return toStaffDTO({
-    userId: targetUserId,
-    name,
-    handle: row.handle,
-    slug: business.slug,
-    role: row.role,
-    status: row.status,
-    permissions: row.permissions,
-    createdAt: row.createdAt,
+  return withDbTransaction(async (tx) => {
+    const person = await lockLinkedStaffPerson(tx, business.id, targetUserId);
+    const handle = await freeHandle(business.id, name, targetUserId, tx);
+    const row = await updateHandle(tx, business.id, targetUserId, handle);
+    if (!row) throw await rejectionFor(tx, business.id, targetUserId);
+    await tx.update(users).set({ name }).where(eq(users.id, targetUserId));
+    if (person) await touchStaffPerson(tx, business.id, person.id, name);
+    return toStaffDTO({
+      userId: targetUserId,
+      name,
+      handle: row.handle,
+      slug: business.slug,
+      role: row.role,
+      status: row.status,
+      permissions: row.permissions,
+      createdAt: row.createdAt,
+    });
   });
 }
 
@@ -148,12 +153,13 @@ export async function renameStaff(
  * presenta como el `503 staff_unavailable` del contrato.
  */
 async function updateHandle(
+  tx: DbTransaction,
   businessId: string,
   targetUserId: string,
   handle: string,
 ) {
   try {
-    const [row] = await getDb()
+    const [row] = await tx
       .update(memberships)
       .set({ handle })
       .where(
@@ -211,10 +217,11 @@ async function updateHandle(
  * tercer caso de `staff-rename-status.neon.integration.test.ts`.
  */
 async function rejectionFor(
+  tx: DbTransaction,
   businessId: string,
   targetUserId: string,
 ): Promise<StaffError> {
-  const [target] = await getDb()
+  const [target] = await tx
     .select({ role: memberships.role, status: memberships.status })
     .from(memberships)
     .where(

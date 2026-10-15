@@ -76,9 +76,6 @@ describe.skipIf(!enabled)(
 
     afterAll(async () => {
       const db = getDb();
-      await db
-        .delete(memberships)
-        .where(eq(memberships.businessId, businessId));
       await db.delete(businesses).where(eq(businesses.id, businessId));
       for (const id of [ownerId, staffUserId]) {
         await db.delete(users).where(eq(users.id, id));

@@ -37,6 +37,11 @@ vi.mock("./auth", () => ({
   }),
 }));
 
+// SPEC0231: the same fake DB is the transaction; business row locks are covered against real DB.
+vi.mock("./staff-location-timeline", () => ({
+  lockStaffBusiness: async () => {},
+}));
+
 vi.mock("@mi-pasaporte/db", () => {
   const chain: Record<string, unknown> = {};
   for (const m of [
@@ -58,7 +63,10 @@ vi.mock("@mi-pasaporte/db", () => {
   chain.returning = () => Promise.resolve(insertRows);
   chain.catch = () => Promise.resolve([]);
   chain.then = (resolve: (v: unknown[]) => unknown) => resolve(takenHandles);
-  return { getDb: () => chain };
+  return {
+    getDb: () => chain,
+    withDbTransaction: (work: (tx: typeof chain) => unknown) => work(chain),
+  };
 });
 
 import { createStaff } from "./staff-create";

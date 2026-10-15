@@ -175,9 +175,6 @@ describe.skipIf(!enabled)("GET /api/staff contra Neon (spec 0068 §1)", () => {
   afterAll(async () => {
     const db = getDb();
     for (const businessId of Object.values(businessIds)) {
-      await db
-        .delete(memberships)
-        .where(eq(memberships.businessId, businessId));
       await db.delete(businesses).where(eq(businesses.id, businessId));
     }
     for (const userId of [...Object.values(ids), ...staffIds]) {

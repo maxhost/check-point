@@ -26,6 +26,12 @@ let sets: Array<Record<string, unknown>> = [];
 /** Lo que el `returning` del `UPDATE` TIRA en vez de resolver: la carrera del unico. */
 let updateError: unknown = null;
 
+// SPEC0231: isolate new identity maintenance here; real transaction/identity rollback has DB coverage.
+vi.mock("./staff-people/identity", () => ({
+  lockLinkedStaffPerson: async () => null,
+  touchStaffPerson: async () => {},
+}));
+
 vi.mock("@mi-pasaporte/db", () => {
   const chain: Record<string, unknown> = {};
   for (const m of ["select", "from", "where", "insert", "update", "delete"]) {
@@ -40,7 +46,10 @@ vi.mock("@mi-pasaporte/db", () => {
     updateError ? Promise.reject(updateError) : Promise.resolve(updatedRows);
   // El `select` de `freeHandle` se `await`ea sobre el `.where(...)`.
   chain.then = (resolve: (v: unknown[]) => unknown) => resolve(takenRows);
-  return { getDb: () => chain };
+  return {
+    getDb: () => chain,
+    withDbTransaction: (work: (tx: typeof chain) => unknown) => work(chain),
+  };
 });
 
 import { parseRenameInput, renameStaff } from "./staff-rename";

@@ -1,5 +1,9 @@
 import { and, eq } from "drizzle-orm";
-import { getDb } from "@mi-pasaporte/db";
+import { withDbTransaction } from "@mi-pasaporte/db";
+import {
+  lockLinkedStaffPerson,
+  touchStaffPerson,
+} from "./staff-people/identity";
 import { memberships, users } from "@mi-pasaporte/db/schema";
 import {
   isValidPermission,
@@ -187,75 +191,79 @@ export async function setStaffPermissions(
   assertGrantable(caller.role, permissions);
   assertNotSelf(caller.userId, targetUserId);
 
-  const [target] = await getDb()
-    // `permissions` viaja en el MISMO `select` que ya traia `role`: es una columna mas en una
-    // consulta que ya se hacia, no una consulta nueva (mismo argumento con el que la 0086 sumo
-    // la columna al guard).
-    .select({ role: memberships.role, permissions: memberships.permissions })
-    .from(memberships)
-    .where(
-      and(
-        eq(memberships.businessId, business.id),
-        eq(memberships.userId, targetUserId),
-      ),
-    )
-    .limit(1);
-  if (!target)
-    throw new StaffError(
-      404,
-      "Ese integrante no existe.",
-      STAFF_PERMISSION_CODES.staffNotFound,
+  return withDbTransaction(async (tx) => {
+    const person = await lockLinkedStaffPerson(tx, business.id, targetUserId);
+    const [target] = await tx
+      // `permissions` viaja en el MISMO `select` que ya traia `role`: es una columna mas en una
+      // consulta que ya se hacia, no una consulta nueva (mismo argumento con el que la 0086 sumo
+      // la columna al guard).
+      .select({ role: memberships.role, permissions: memberships.permissions })
+      .from(memberships)
+      .where(
+        and(
+          eq(memberships.businessId, business.id),
+          eq(memberships.userId, targetUserId),
+        ),
+      )
+      .limit(1);
+    if (!target)
+      throw new StaffError(
+        404,
+        "Ese integrante no existe.",
+        STAFF_PERMISSION_CODES.staffNotFound,
+      );
+    if (target.role === "owner") {
+      // R4 — mismo `code` y mismo status que `setStaffStatus`. El `CHECK 2` de la migracion
+      // 0041 es la red: aunque este guard se cayera, la base rechaza un owner con permisos.
+      throw new StaffError(
+        409,
+        "No puedes cambiar los permisos de la persona propietaria.",
+        STAFF_PERMISSION_CODES.targetIsOwner,
+      );
+    }
+    // R1, la otra mitad. Va aca —paso 4bis— para que un id inexistente siga siendo 404.
+    assertDemotable(caller.role, target.permissions);
+    // Spec 0216 / 0220: el permiso de un modulo (tambien `pos`) solo con el modulo encendido.
+    // Despues del target, para que 404/409 sigan primero.
+    await assertModulePermissionsGrantable(
+      business.id,
+      permissions,
+      target.permissions,
     );
-  if (target.role === "owner") {
-    // R4 — mismo `code` y mismo status que `setStaffStatus`. El `CHECK 2` de la migracion
-    // 0041 es la red: aunque este guard se cayera, la base rechaza un owner con permisos.
-    throw new StaffError(
-      409,
-      "No puedes cambiar los permisos de la persona propietaria.",
-      STAFF_PERMISSION_CODES.targetIsOwner,
-    );
-  }
-  // R1, la otra mitad. Va aca —paso 4bis— para que un id inexistente siga siendo 404.
-  assertDemotable(caller.role, target.permissions);
-  // Spec 0216 / 0220: el permiso de un modulo (tambien `pos`) solo con el modulo encendido.
-  // Despues del target, para que 404/409 sigan primero.
-  await assertModulePermissionsGrantable(
-    business.id,
-    permissions,
-    target.permissions,
-  );
 
-  const [row] = await getDb()
-    .update(memberships)
-    .set({ permissions })
-    .where(
-      and(
-        eq(memberships.businessId, business.id),
-        eq(memberships.userId, targetUserId),
-      ),
-    )
-    .returning({
-      role: memberships.role,
-      status: memberships.status,
-      permissions: memberships.permissions,
-      handle: memberships.handle,
-      createdAt: memberships.createdAt,
+    const [row] = await tx
+      .update(memberships)
+      .set({ permissions })
+      .where(
+        and(
+          eq(memberships.businessId, business.id),
+          eq(memberships.userId, targetUserId),
+        ),
+      )
+      .returning({
+        role: memberships.role,
+        status: memberships.status,
+        permissions: memberships.permissions,
+        handle: memberships.handle,
+        createdAt: memberships.createdAt,
+      });
+
+    const [profile] = await tx
+      .select({ name: users.name })
+      .from(users)
+      .where(eq(users.id, targetUserId))
+      .limit(1);
+
+    if (person) await touchStaffPerson(tx, business.id, person.id);
+    return toStaffDTO({
+      userId: targetUserId,
+      name: profile?.name ?? "",
+      handle: row.handle,
+      slug: business.slug,
+      role: row.role,
+      status: row.status,
+      permissions: row.permissions,
+      createdAt: row.createdAt,
     });
-
-  const [profile] = await getDb()
-    .select({ name: users.name })
-    .from(users)
-    .where(eq(users.id, targetUserId))
-    .limit(1);
-
-  return toStaffDTO({
-    userId: targetUserId,
-    name: profile?.name ?? "",
-    handle: row.handle,
-    slug: business.slug,
-    role: row.role,
-    status: row.status,
-    permissions: row.permissions,
-    createdAt: row.createdAt,
   });
 }
