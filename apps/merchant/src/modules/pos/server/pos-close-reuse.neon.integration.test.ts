@@ -1,3 +1,4 @@
+import { closeWithCash } from "./pos-payment-integration-support";
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
@@ -8,7 +9,6 @@ import {
   type PosWorld,
   dropPosWorld,
   openOrder,
-  pos,
   posIntegrationEnabled,
   posRow,
   seedPosWorld,
@@ -52,16 +52,20 @@ describe.skipIf(!posIntegrationEnabled)(
         version: order.version,
         membershipId: c.membershipId,
       };
-      expect((await pos.close(a.ownerCookie, order.id, body)).status).toBe(200);
+      expect((await closeWithCash(a.ownerCookie, order.id, body)).status).toBe(
+        200,
+      );
       expect(spy).toHaveBeenCalledTimes(1);
       expect(spy.mock.calls[0][0].id).toBe((await posRow(order.id)).orderId);
       expect(spy.mock.calls[0][0].pushQueueId).not.toBeNull();
-      expect((await pos.close(a.ownerCookie, order.id, body)).status).toBe(200);
-      const plain = await openOrder(a, cart());
-      const noPass = { clientRequestId: randomUUID(), version: plain.version };
-      expect((await pos.close(a.ownerCookie, plain.id, noPass)).status).toBe(
+      expect((await closeWithCash(a.ownerCookie, order.id, body)).status).toBe(
         200,
       );
+      const plain = await openOrder(a, cart());
+      const noPass = { clientRequestId: randomUUID(), version: plain.version };
+      expect(
+        (await closeWithCash(a.ownerCookie, plain.id, noPass)).status,
+      ).toBe(200);
       expect(spy).toHaveBeenCalledTimes(1);
     }, 180_000);
 
@@ -69,7 +73,7 @@ describe.skipIf(!posIntegrationEnabled)(
       const c1 = await scannedCustomer(a);
       const first = await openOrder(a, cart());
       const key = randomUUID();
-      const firstClose = await pos.close(a.ownerCookie, first.id, {
+      const firstClose = await closeWithCash(a.ownerCookie, first.id, {
         clientRequestId: key,
         version: first.version,
         membershipId: c1.membershipId,
@@ -78,7 +82,7 @@ describe.skipIf(!posIntegrationEnabled)(
 
       const c2 = await scannedCustomer(a);
       const noCoupon = await openOrder(a, cart());
-      const r1 = await pos.close(a.ownerCookie, noCoupon.id, {
+      const r1 = await closeWithCash(a.ownerCookie, noCoupon.id, {
         clientRequestId: key,
         version: noCoupon.version,
         membershipId: c2.membershipId,
@@ -98,7 +102,7 @@ describe.skipIf(!posIntegrationEnabled)(
       });
       await choose(c2, couponId);
       const withCoupon = await openOrder(a, cart());
-      const r2 = await pos.close(a.ownerCookie, withCoupon.id, {
+      const r2 = await closeWithCash(a.ownerCookie, withCoupon.id, {
         clientRequestId: key,
         version: withCoupon.version,
         membershipId: c2.membershipId,

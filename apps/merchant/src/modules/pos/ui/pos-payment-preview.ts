@@ -2,7 +2,6 @@ import {
   buildFinancialAmounts,
   type DiscountOrigin,
 } from "@mi-pasaporte/domain/financial";
-import { formatDecimal } from "../../decimal";
 import {
   formatMoney,
   previewUnits,
@@ -172,7 +171,10 @@ export function paymentPreview(
         quantity: item.quantity,
       })),
       discount: origin
-        ? { amount: formatDecimal(BigInt(output.discountCents), 2), origin }
+        ? {
+            amount: `${BigInt(output.discountCents) / 100n}.${String(BigInt(output.discountCents) % 100n).padStart(2, "0")}`,
+            origin,
+          }
         : null,
     });
     output.grossCents = moneyCents(amounts.gross);
@@ -183,6 +185,8 @@ export function paymentPreview(
   } catch {
     return fail("No pudimos calcular el importe de cobro. Revisa la orden.");
   }
+  if (output.netCents === null)
+    return fail("No pudimos calcular el importe de cobro. Revisa la orden.");
   if (resolved) {
     const { kind, accrual } = resolved.program;
     if (

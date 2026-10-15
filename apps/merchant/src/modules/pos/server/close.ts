@@ -41,22 +41,8 @@ import { linesForClose } from "./orders";
 import { parseVersion, withCurrentOrder } from "./order-input";
 import { type PosOrderDTO, getPosOrder } from "./read";
 
-/**
- * Spec 0169 / ADR 0130 §3-§4 — CERRAR una orden del POS (`POST /api/modules/pos/orders/:id/close`).
- *
- * UNA transaccion, y el orden de bloqueo es el declarado por el ADR:
- * **pos_order `FOR UPDATE` → campaign → campaign_coupon → business_customer** (los tres ultimos
- * los toma `grantWithCouponInTx`, en el orden de `coupon-locks.ts`).
- *
- * - Sin `membershipId`: la orden pasa a `closed` y no se acredita nada (no hay cliente).
- * - Con `membershipId`: LA MISMA acreditacion del mostrador en modo `detailed` — `accrualContext`
- *   (membresia del negocio, programa acreditable, su `accrual`), `persistGrant` o, con cupon, los
- *   seis pasos de `grantWithCouponInTx` — con las lineas de los SNAPSHOTS de la orden, el local de
- *   la orden y `note = "Mesa: <tableLabel>"`. Un error de la acreditacion revierte TODO: la orden
- *   sigue `open` y el cliente ve el codigo del mostrador.
- * - Reintento con el mismo `clientRequestId` sobre una orden ya cerrada con el → el resultado
- *   guardado. `afterGrant` corre DESPUES del commit y solo si ESTE cierre creo la `core.order`.
- */
+/** Durable close: order lock → coupon locks → immutable financial snapshot + event.
+ * Subscriber application remains outside the sale commit (ADR0145). */
 
 type CloseInput = {
   clientRequestId: string;

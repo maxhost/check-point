@@ -1,11 +1,11 @@
+import { catalogFor } from "./payment-catalog";
+export {
+  listPaymentCatalog,
+  initializePaymentMethods,
+} from "./payment-catalog";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { getDb, withDbTransaction, type DbTransaction } from "@mi-pasaporte/db";
-import {
-  businesses,
-  paymentMethodCatalog,
-  posPaymentMethods,
-  posPaymentMethodInitializations,
-} from "@mi-pasaporte/db/schema";
+import { posPaymentMethods } from "@mi-pasaporte/db/schema";
 import { isUuid, pgErrorCode } from "@mi-pasaporte/domain/server/counter/core";
 import { ModuleError } from "../../errors";
 
@@ -23,7 +23,6 @@ export type PaymentMethod = {
   isCash: boolean;
   status: "active" | "archived";
 };
-type Db = DbTransaction | ReturnType<typeof getDb>;
 const methodMissing = () =>
   new ModuleError(
     404,
@@ -39,82 +38,6 @@ const toMethod = (
   isCash: row.isCash,
   status: row.status as PaymentMethod["status"],
 });
-
-async function catalogFor(db: Db, businessId: string) {
-  const [business] = await db
-    .select({ countryCode: businesses.countryCode })
-    .from(businesses)
-    .where(eq(businesses.id, businessId));
-  if (!business) throw methodMissing();
-  const country = await db
-    .select()
-    .from(paymentMethodCatalog)
-    .where(eq(paymentMethodCatalog.countryCode, business.countryCode))
-    .orderBy(asc(paymentMethodCatalog.sortOrder), asc(paymentMethodCatalog.id));
-  const entries = country.length
-    ? country
-    : await db
-        .select()
-        .from(paymentMethodCatalog)
-        .where(sql`${paymentMethodCatalog.countryCode} is null`)
-        .orderBy(
-          asc(paymentMethodCatalog.sortOrder),
-          asc(paymentMethodCatalog.id),
-        );
-  return {
-    countryCode: business.countryCode,
-    source: country.length ? ("country" as const) : ("base" as const),
-    entries,
-  };
-}
-export async function listPaymentCatalog(businessId: string) {
-  const catalog = await catalogFor(getDb(), businessId);
-  return {
-    ...catalog,
-    entries: catalog.entries.map(
-      ({ id, name, chargeShape, isCash, initiallySuggested }) => ({
-        id,
-        name,
-        chargeShape,
-        isCash,
-        initiallySuggested,
-      }),
-    ),
-  };
-}
-
-/** Activation owns its module lock and transaction; reads never seed implicitly. */
-export async function initializePaymentMethods(
-  tx: DbTransaction,
-  { businessId }: { businessId: string },
-) {
-  const [existing] = await tx
-    .select()
-    .from(posPaymentMethodInitializations)
-    .where(eq(posPaymentMethodInitializations.businessId, businessId));
-  if (existing) return;
-  const catalog = await catalogFor(tx, businessId);
-  await tx
-    .insert(posPaymentMethods)
-    .values(
-      catalog.entries
-        .filter((entry) => entry.initiallySuggested)
-        .map((entry) => ({
-          businessId,
-          catalogId: entry.id,
-          name: entry.name,
-          chargeShape: entry.chargeShape,
-          isCash: entry.isCash,
-        })),
-    );
-  await tx
-    .insert(posPaymentMethodInitializations)
-    .values({
-      businessId,
-      countryCode: catalog.countryCode,
-      source: catalog.source,
-    });
-}
 
 export async function listPaymentMethods(
   businessId: string,
@@ -159,7 +82,8 @@ export async function createPaymentMethod(
       };
       if (body.catalogId !== undefined) {
         if (
-          !isUuid(body.catalogId) ||
+          typeof body.catalogId !== "string" ||
+          !isUuid(body.catalogId.trim()) ||
           body.name !== undefined ||
           body.chargeShape !== undefined
         )
@@ -170,7 +94,8 @@ export async function createPaymentMethod(
           );
         const catalog = await catalogFor(tx, businessId);
         const entry = catalog.entries.find(
-          (candidate) => candidate.id === body.catalogId,
+          (candidate) =>
+            candidate.id === (body.catalogId as string).trim().toLowerCase(),
         );
         if (!entry) throw methodMissing();
         if (entry.isCash) {
@@ -280,8 +205,8 @@ export async function paymentMethodsForClose(
   businessId: string,
   ids: string[],
 ) {
-  if (ids.some((id) => !isUuid(id))) throw methodMissing();
-  const unique = [...new Set(ids)].sort();
+  if (ids.some((id) => !isUuid(id.trim()))) throw methodMissing();
+  const unique = [...new Set(ids.map((id) => id.trim().toLowerCase()))].sort();
   const rows = unique.length
     ? await tx
         .select()

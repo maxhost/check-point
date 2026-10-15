@@ -41,7 +41,7 @@ export function parsePayments(raw: unknown) {
       );
     return {
       paymentId: randomUUID(),
-      methodId: entry.methodId,
+      methodId: entry.methodId.trim().toLowerCase(),
       amount: entry.amount,
     };
   });

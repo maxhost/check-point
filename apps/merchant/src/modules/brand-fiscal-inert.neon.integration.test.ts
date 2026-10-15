@@ -1,3 +1,4 @@
+import { closeWithCash } from "./pos/server/pos-payment-integration-support";
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
@@ -13,7 +14,6 @@ import {
   seedPosWorld,
   dropPosWorld,
   openOrder,
-  pos,
 } from "./pos/server/pos-integration-support";
 
 const brandInput = (revision: number) => ({
@@ -61,7 +61,7 @@ describe.skipIf(!enabled)(
             { productId: world.medialuna, quantity: 2 },
             { productId: world.cafe, quantity: 1 },
           ]);
-          const response = await pos.close(world.ownerCookie, order.id, {
+          const response = await closeWithCash(world.ownerCookie, order.id, {
             clientRequestId: randomUUID(),
             version: order.version,
             membershipId: customer.membershipId,

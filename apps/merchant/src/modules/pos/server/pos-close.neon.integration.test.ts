@@ -1,3 +1,4 @@
+import { closeWithCash } from "./pos-payment-integration-support";
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -55,7 +56,7 @@ async function closeWithPass(
   coupon?: { couponId: string },
 ) {
   const order = await openOrder(world, cart(), "Mesa 4");
-  const response = await pos.close(world.ownerCookie, order.id, {
+  const response = await closeWithCash(world.ownerCookie, order.id, {
     clientRequestId: randomUUID(),
     version: order.version,
     membershipId: customer.membershipId,
@@ -80,7 +81,7 @@ describe.skipIf(!posIntegrationEnabled)(
   () => {
     it("CASO 3 — sin pase: `closed`, `order_id` null, ninguna `core.order`", async () => {
       const order = await openOrder(world, cart());
-      const response = await pos.close(world.ownerCookie, order.id, {
+      const response = await closeWithCash(world.ownerCookie, order.id, {
         clientRequestId: randomUUID(),
         version: order.version,
       });
@@ -104,7 +105,7 @@ describe.skipIf(!posIntegrationEnabled)(
 
     it("un cupon SIN pase → 422 `invalid_input`, y la orden sigue abierta", async () => {
       const order = await openOrder(world, cart());
-      const response = await pos.close(world.ownerCookie, order.id, {
+      const response = await closeWithCash(world.ownerCookie, order.id, {
         clientRequestId: randomUUID(),
         version: order.version,
         coupon: { couponId: randomUUID() },

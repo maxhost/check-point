@@ -188,3 +188,31 @@ describe("decideCouponDiscount (spec 0148)", () => {
         ).toEqual({ ok: true, discountCents: 0 });
   });
 });
+
+it("P1 returns the opaque FIRST matching line for free/2x1 with repeated products and different prices", () => {
+  const items = [
+    {
+      sourceLineId: "first-source",
+      productId: PRODUCT,
+      unitPrice: "0.60",
+      quantity: 2,
+    },
+    {
+      sourceLineId: "second-source",
+      productId: PRODUCT,
+      unitPrice: "8.00",
+      quantity: 1,
+    },
+  ];
+  for (const kind of ["free_product", "two_for_one"] as const) {
+    expect(
+      decideCouponDiscount(
+        input({ kind, items, productId: PRODUCT, totalCents: 920 }),
+      ),
+    ).toEqual({
+      ok: true,
+      discountCents: 60,
+      targetSourceLineId: "first-source",
+    });
+  }
+});
