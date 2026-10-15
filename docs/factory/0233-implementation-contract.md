@@ -43,6 +43,10 @@ Fundamento A `729a39c4` integrado en B mediante ref nueva `p1-0233-pos-foundatio
 
 Versión funcional vigente de0233/0149 tras corrección técnica: `f311de45`, [QA documental adicional](0233-financial-snapshot-doc-qa.md). A corrige el helper para conservar brutos ya alineados y agrega su regresión; el neto aprobado y firmas permanecen. QA temprano también detectó pérdida/falta de carga de medios al quitar cliente o cupón100%; B corrige esas transiciones y debe probarlas en browser antes del cierre. Estos checkpoints no son entregas completas ni PASS final de P1.
 
+Segundo fundamento A `4abb4ef1` y checkpoint B `120292e2`: B pausó limpio y sin procesos, se creó `p1-0233-pos-combined` sobre4abb, se refrescó factory y se reaplicaron exclusivamente sus commits como `1fdd9e1a`/`e8a06a02`, preservando las refs previas. Combinados en dev `553a9b4d`; A continuó por factory desde su entrega anterior sobre esa combinación. B tiene CI exclusiva para cierres/provider real; A solo journal y preparación de compatibilidad hasta nueva asignación. Selector8/8 browser y44 unitarios A son señales parciales, sin aceptación final.
+
+QA temprano del combinado reprodujo un validator que aceptaba cero operativo incompatible con el neto original mediante ajuste arbitrario. A debe exigir HALF_UP de originales en los totales de orden, conservando cuotas por línea; también canonicalizar UUID en los bordes de Rentabilidad para evitar fallos de comparación con providers. Se conservan reproducción/fallos y se exige prueba de regresión antes del candidato final.
+
 ## Recursos, QA y aceptación
 
 Reservas/paths exactos y base se registran con factory antes del código. Tres worktrees operativos como máximo; el coordinador integra serialmente en dev y conserva commits/ref previos al refrescar dependencias. A tiene journal exclusivo; DB CI se asigna a un solo writer también durante DDL y teardown, solo `tools/neon-test.sh` y configuración seleccionada externa. Ninguna copia de env PROD. Tipos/lint/guardias focales y evidencia reutilizada por identidad; no verify global por ceremonia.
