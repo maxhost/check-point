@@ -1,6 +1,9 @@
 import { Alert, Button, Text } from "../../../ui";
 import { formatAmount, type StockItem } from "./stock-types";
 
+// Owner 2026-10-15: keep the balances implementation parked until its UI is redesigned.
+const SHOW_CURRENT_BALANCES = false;
+
 export function StockSummary({
   items,
   pending,
@@ -30,7 +33,7 @@ export function StockSummary({
           </Button>
         </Alert>
       )}
-      {items.length > 0 && (
+      {SHOW_CURRENT_BALANCES && items.length > 0 && (
         <div className="grid gap-2" aria-label="Saldos del local">
           {items.map((item) => (
             <Text key={item.id}>

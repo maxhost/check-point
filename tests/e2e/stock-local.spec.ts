@@ -14,7 +14,7 @@ test.afterAll(async () => {
 });
 
 for (const width of [390, 1280]) {
-  test(`Local elegido separa saldo y manual/audio/conteo; archivado y pendientes (${width})`, async ({
+  test(`Local elegido separa historial y manual/audio/conteo; saldos ocultos y pendientes (${width})`, async ({
     page,
   }, info) => {
     const { reads } = await stockLocalFixture(page);
@@ -68,13 +68,19 @@ for (const width of [390, 1280]) {
     await chooseLocal(page, "Norte");
     await expect(
       page.getByText("Harina: -750 g", { exact: false }),
-    ).toBeVisible();
+    ).toHaveCount(0);
+    await expect(
+      page.getByLabel("Saldos del local", { exact: true }),
+    ).toHaveCount(0);
     await expect(
       page.getByText("Consumo · Harina", { exact: false }),
     ).toBeVisible();
     await expect(page.getByText("Venta sale", { exact: false })).toBeVisible();
     await expect(
       page.getByText("1 consumo pendiente", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Actualizar stock", exact: true }),
     ).toBeVisible();
     await page.screenshot({
       path: info.outputPath(`stock-local-${width}.png`),
@@ -93,13 +99,23 @@ for (const width of [390, 1280]) {
     await dialog
       .getByRole("textbox", { name: "Cantidad", exact: true })
       .fill("2");
+    await expect(
+      dialog.getByRole("textbox", { name: "Precio total", exact: true }),
+    ).toHaveValue("");
+    await expect(
+      dialog.getByRole("button", { name: "Guardar compra", exact: true }),
+    ).toBeDisabled();
+    expect(entries).toEqual([]);
+    await dialog
+      .getByRole("textbox", { name: "Precio total", exact: true })
+      .fill("5");
     await dialog
       .getByRole("button", { name: "Guardar compra", exact: true })
       .click();
     await expect(dialog).toHaveCount(0);
     expect(entries[0]).toMatchObject({
       locationId: "second",
-      lines: [{ itemId: "flour", quantity: "2" }],
+      lines: [{ itemId: "flour", quantity: "2", totalCost: "5" }],
     });
     await page
       .getByRole("button", { name: "Registrar stock", exact: true })
@@ -112,13 +128,23 @@ for (const width of [390, 1280]) {
       .getByRole("textbox", { name: "Describe tu compra", exact: true })
       .fill("2,5 kg de harina");
     await dialog.getByRole("button", { name: "Analizar", exact: true }).click();
+    await expect(
+      dialog.getByRole("textbox", { name: "Precio total", exact: true }),
+    ).toHaveValue("");
+    await expect(
+      dialog.getByRole("button", { name: "Guardar compra", exact: true }),
+    ).toBeDisabled();
+    expect(entries).toHaveLength(1);
+    await dialog
+      .getByRole("textbox", { name: "Precio total", exact: true })
+      .fill("0");
     await dialog
       .getByRole("button", { name: "Guardar compra", exact: true })
       .click();
     await expect(dialog).toHaveCount(0);
     expect(entries[1]).toMatchObject({
       locationId: "second",
-      lines: [{ itemId: "flour", quantity: "2.5", unit: "kg" }],
+      lines: [{ itemId: "flour", quantity: "2.5", unit: "kg", totalCost: "0" }],
     });
     await chooseLocal(page, "Sur · Archivado");
     await page
@@ -199,9 +225,12 @@ test("Cambiar local no muestra saldos ni pendientes del anterior si falla su lec
   await expect(
     page.getByText("1 consumo pendiente", { exact: true }),
   ).toBeVisible();
+  await expect(page.getByText("Harina: 1000 g", { exact: false })).toHaveCount(
+    0,
+  );
   await expect(
-    page.getByText("Harina: 1000 g", { exact: false }),
-  ).toBeVisible();
+    page.getByLabel("Saldos del local", { exact: true }),
+  ).toHaveCount(0);
   await chooseLocal(page, "Norte");
   await expect(
     page.getByText("No pudimos leer el local Norte. Reintenta.", {

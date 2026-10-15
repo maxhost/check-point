@@ -96,7 +96,7 @@ for (const width of [390, 1280]) {
     ).toBeVisible();
     await expect(
       dialog.getByRole("textbox", {
-        name: "Precio total (opcional)",
+        name: "Precio total",
         exact: true,
       }),
     ).toHaveValue("");
@@ -113,6 +113,10 @@ for (const width of [390, 1280]) {
       )
       .click();
     await expect(dialog.getByRole("checkbox")).toBeChecked();
+    await expect(
+      dialog.getByRole("button", { name: "Guardar compra", exact: true }),
+    ).toBeDisabled();
+    expect(writes).toEqual([]);
     await dialog
       .getByRole("button", { name: "Volver a las fotos", exact: true })
       .click();
@@ -136,6 +140,16 @@ for (const width of [390, 1280]) {
       page.getByRole("option", { name: "Archivado", exact: true }),
     ).toHaveCount(0);
     await page.keyboard.press("Escape");
+    await expect(
+      dialog.getByRole("textbox", { name: "Precio total", exact: true }),
+    ).toHaveValue("");
+    await expect(
+      dialog.getByRole("button", { name: "Guardar compra", exact: true }),
+    ).toBeDisabled();
+    expect(writes).toEqual([]);
+    await dialog
+      .getByRole("textbox", { name: "Precio total", exact: true })
+      .fill("12,5");
     await dialog
       .getByRole("button", { name: "Guardar compra", exact: true })
       .click();
@@ -144,7 +158,7 @@ for (const width of [390, 1280]) {
       {
         locationId: "local",
         lines: [
-          { itemId: "flour", quantity: "2.5", unit: "kg", totalCost: null },
+          { itemId: "flour", quantity: "2.5", unit: "kg", totalCost: "12.5" },
         ],
       },
     ]);

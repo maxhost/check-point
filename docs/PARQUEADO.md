@@ -11,6 +11,10 @@ conserva).
 Regla al sacar algo de aca: **nada toca codigo sin su spec cerrada.** Varias de estas filas dicen
 explicitamente «necesita spec» — eso es literal.
 
+## PARQUEADO 2026-10-15 — Rediseñar UI de saldo actual por insumo/local
+
+Decisión del owner del 2026-10-15: ocultar temporalmente el listado superior de saldos de Stock, conservando su código. El rediseño de esa UI queda pendiente; no se implementa en este cambio. El historial de movimientos y el aviso de consumos pendientes siguen visibles.
+
 
 ## PARQUEADO 2026-10-13 — Fase 2 de modulos (spec 0220, POS y Mesas): esperando la 2b de GPT
 
