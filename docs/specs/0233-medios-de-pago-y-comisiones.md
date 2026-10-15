@@ -1,0 +1,173 @@
+---
+spec: 0233
+fecha: 2026-10-15
+estado: cerrada
+resumen: Cada cierre POS conserva el cobrado y sus medios; Rentabilidad calcula después la comisión con la configuración capturada al cierre, sin modificar ventas anteriores.
+disjunta: no; comparte eventos y cierre POS con R1, y módulo Rentabilidad con 0231
+archivos: módulos pos/profitability; contratos genéricos de módulos y eventos; esquemas core/POS/Rentabilidad; ADR0149
+---
+
+# 0233 — Medios de pago y comisiones
+
+ADR0144; piso L2 por dinero, aislamiento y migración. **Encargo exclusivamente documental:** esta spec y [ADR0149](../adr/0149-pagos-y-comisiones-congelados-al-cierre.md). No autoriza implementación, pantallas definitivas, generación de migraciones, publicación ni operaciones PROD. 0230 y 0231 ya terminaron según el handoff vigente; P1 se implementará después de ellas, con un único writer para sus contratos compartidos.
+
+## Problema
+
+En la base `21a77b162669ea867eae34c9dc746c76f549cc5c`, `pos/server/close.ts` conserva idempotencia y acredita opcionalmente al cliente, pero no persiste total, moneda ni medios en `pos.pos_order`. Sin cliente, el cierre solo conserva las líneas. Con cliente, `GrantedOrder.total` ya devuelve el neto autorizado y `coupon.discountAmount` el descuento efectivo; no se debe reconstruir otro descuento después. `pos/server/lines.ts` y el cierre usan centavos y `toFixed(2)`. El campo «Recibido» del checkout calcula cambio en el navegador y no representa el importe cobrado ni se envía al cierre.
+
+`sale.closed` v1 lleva líneas, cantidades y referencias, sin dinero o pagos. Su publicación captura punteros y elegibilidad en una sentencia, dentro de la transacción del cierre; los handlers se ejecutan después mediante deliveries durables. Rentabilidad existe con permiso `profitability`, `requires: []` y sin dependencia de POS. Se verificaron los archivos indicados en el encargo, ADR0138/0139/0141/0145, specs0230/0231 y el informe de Ecuador provisto. Ese informe es insumo de catálogo, no verificación de tarifas ni de legislación vigente.
+
+### Preguntas hechas y respuestas del owner
+
+Estas respuestas se recibieron antes de redactar:
+
+| Pregunta presentada | Respuesta recibida |
+| --- | --- |
+| Rentabilidad apagado al cerrar: ¿sin dato y sin reconstrucción posterior? | «De acuerdo: comisión sin dato, sin cálculo retroactivo. Smart Menu la tiene que mostrar como sin dato, nunca como $0». |
+| Neto cero por cupón/recompensa: ¿pedir medio y cómo tratar el fijo? | «Si lo cobrado es 0 (cupón o recompensa cubre todo), POS no pide medio; lista pagos vacía y comisión 0. Elegir medio obligatorio vale cuando hay importe a cobrar». Reemplaza la recomendación de exigir Efectivo con importe cero. |
+| ¿Una entrada por medio y venta, con fijo una vez por entrada? | «De acuerdo: una entrada por medio y venta; fijo una vez por medio usado». |
+| ¿Redondear el neto final a la unidad mínima y registrar ajuste, o rechazar fracciones? | «De acuerdo con primera opción: redondear neto final a unidad mínima moneda (también USD), registrar ajuste y usar mismo importe pagos y acreditación. No rechazar cierres». |
+| Ecuador: iniciales 1–6, Datalink opcional y Peigo pendiente de forma comprobada. | «De acuerdo. Peigo FUERA catálogo hasta confirmar forma cobro; se puede crear como medio libre». |
+
+Siguen cerradas las diez decisiones del encargo: medios por comercio, catálogo core por país sin tasas, carga al activar POS y backfill para los ya activos, archivo sin borrar y Efectivo permanente, lista de pagos, tarifas por comercio, base después del descuento, congelación por venta y cálculo en Rentabilidad sin dependencia del POS. No se trasladan comisiones al precio ni se incorpora fiscalidad.
+
+## Alcance y diseño
+
+### Catálogo, medios y activación
+
+Un solo nivel: cada medio tiene nombre y `chargeShape: none | percent | fixed | percent_and_fixed`. El catálogo de plataforma es core, de solo lectura comercial y mantenido por migración, sin pantalla administrativa ni tasas, importes de referencia o valores comerciales precargados.
+
+| País | Catálogo | Se carga inicialmente |
+| --- | --- | --- |
+| EC | Efectivo `none`; Tarjeta de débito `percent`; Tarjeta de crédito `percent`; Transferencia `none`; DeUna `percent`; Payphone `percent`; Datalink `fixed`. | Los seis primeros. Datalink se puede agregar desde el catálogo. Peigo queda fuera; no se inventa su forma. |
+| Sin catálogo específico | Efectivo `none`; Tarjeta débito `percent`; Tarjeta crédito `percent`; Transferencia `none`; QR `percent`. | Lista base completa. No agregar proveedores de otros países. |
+
+Ecuador usa DeUna en lugar de QR genérico. Se pueden crear medios libres, eligiendo nombre y forma; así se representa Peigo cuando el comercio conoce su contrato. Las formas sugeridas no prometen tarifas universales. La ayuda de configuración pide el porcentaje/fijo efectivo descontado, impuestos sobre comisión incluidos cuando correspondan, sin precargar cifras del informe. Mensualidades y alquiler de terminal son costos fijos de 0231; diferidos y retenciones fiscales quedan fuera.
+
+POS copia sugerencias por el país actual al primer encendido, en la misma transacción de activación mediante `onEnable` genérico del ADR. Un marcador de inicialización evita duplicar, reactivar archivados o reponer medios al apagar/encender. Cambiar país después no reemplaza la lista elegida: el comercio administra sus medios. La migración inicializa una vez los comercios con POS ya encendido; los apagados se inicializan al activarlos. Efectivo se identifica por una clave estable, no por el texto, y nunca se archiva ni se crea por duplicado.
+
+### Datos y fronteras
+
+Nombres de tablas propuestos; números SQL se asignan al implementar:
+
+| Propietario | Datos e invariantes |
+| --- | --- |
+| Core: `payment_method_catalog` | ID/clave estable, país o lista base, nombre, forma, orden, `initiallySuggested`, `isCash`. Sin tasas. No depende de esquemas de módulo. |
+| POS: `payment_method` | UUID propio, comercio, catálogo opcional, nombre, forma, `isCash`, estado activo/archivado y timestamps. Únicos `(business_id,id)`, Efectivo por comercio y nombre activo normalizado sin mayúsculas. Referencia módulo→catálogo core; nada hacia Rentabilidad. |
+| POS: snapshot del cierre y `order_payment` | Bruto, descuento, ajuste firmado, neto cobrado, moneda/unidad mínima y lista de pagos en el mismo commit de `closed`. Cada pago tiene ID estable, medio propio y nombre/forma congelados, importe positivo. Único orden+medio; FK compuesta comercio/orden y comercio/medio. Venta nueva de neto0 tiene snapshot completo y ninguna fila de pago. |
+| Rentabilidad: `commission_revision` | Append-only: comercio, recurso medio identificado por proveedor/ID, forma, porcentaje/fijo permitidos, moneda/unidad del fijo cuando corresponda y revisión. No FK/import a POS. Puntero vigente genérico por recurso `payment_method`, proveedor Rentabilidad, slot `commission`. |
+| Rentabilidad: `payment_commission` | Snapshot inmutable por comercio+evento+pago: orden/local/origen opacos, medio/nombre, base cobrada, moneda/unidad, revisión capturada o ausencia explícita, porcentaje/fijo efectivos, importe calculado y `configured`. Unicidad por pago/evento; datos y acknowledgment del delivery en una transacción. |
+
+Todas las referencias se filtran por comercio y los datos propios usan FKs compuestas donde corresponde. Origen de venta/medio en Rentabilidad es opaco, sin FK hacia POS, igual que el origen de consumo en Stock. Archivo no borra medios, revisiones, pagos ni nombres históricos. Reagregar una sugerencia archivada puede crear otro medio activo con ID propio; no reescribe el anterior ni hereda silenciosamente su tarifa. La forma del medio queda fija para ese ID; para otra forma se crea otro medio.
+
+Para listar/validar medios al configurar tarifas sin exigir permiso `pos`, core ofrece un directorio genérico de recursos mediante providers del registro, descrito en ADR0149. POS aporta únicamente ID, nombre, forma y estado del comercio solicitado. Rentabilidad puede consumir esa metadata bajo su propio permiso, sin importar tablas/código POS ni exponer órdenes o importes POS. El recurso persiste aunque el productor esté apagado; no convierte `optional` en permiso de importar. Rentabilidad conserva `requires: []`; declarar POS como opcional identifica el productor, no impide funcionar sin él. Sin medios existentes, la configuración devuelve lista vacía. El mismo enganche ofrece lectura puntual `sale_settlement` con `{sourceOrderId,locationId,collectedTotal,currencyCode,minorUnit,snapshotPresent}`; únicamente snapshot persistido, sin líneas ni datos de cliente. Sirve para verificar neto0 si falta evento, también con POS apagado, bajo guard Rentabilidad y pertenencia del comercio/local. No concede permiso de leer otros campos POS ni de reconstruir comisiones.
+
+### Cobrado, pagos y redondeo
+
+El servidor calcula sobre snapshots de líneas, nunca precios actuales ni importes confiados al navegador:
+
+1. Bruto exacto = suma de precio guardado × cantidad. Sin cliente: descuento0. Con cliente: el flujo autorizado del cupón determina el descuento; se comparte ese resultado, sin aplicar el cupón dos veces ni escribir un descuento alternativo en Rentabilidad.
+2. `netBeforeRounding = gross - discount`; `collected = HALF_UP(netBeforeRounding, minorUnit)`; `roundingAdjustment = collected - netBeforeRounding`. Redondear una sola vez el neto final, también USD. El ajuste se expone como ajuste, no como descuento del cupón.
+3. El mismo `collected` se guarda en POS, en `core.order.total` si hubo acreditación, en el evento y en la suma de pagos. La acreditación calcula sus unidades sobre ese importe. Para el cupón, redondear antes de `persistGrant` y `computeAccrual`; redondear solo el valor retornado sería incorrecto. ADR0149 define el parámetro genérico de liquidación que preserva otros callers.
+4. Con `collected > 0`, pagos obligatorios, 1..N medios propios activos distintos, cada importe positivo y múltiplo de unidad mínima; suma exacta igual al neto. Efectivo es la selección inicial de UI, no un pago inventado por el servidor cuando falta el campo. Lo recibido y el cambio en efectivo quedan fuera de esta suma.
+5. Con `collected = 0`, `payments: []` obligatorio y comisión cierta0: POS no pide medio ni agrega Efectivo. No hay fijo sin pago. Este cero deriva de un snapshot de venta nueva con neto0, incluso si Rentabilidad estaba apagado; no se deduce de ausencia de evento/pagos en datos legados.
+
+Aritmética exacta por strings/enteros; sin `Number`, `toFixed` ni redondeos intermedios como fuente monetaria nueva. Criterio de unidades de 0230/0231: COP, CLP, JPY, PYG0; restantes monedas ofrecidas2. Se comparte helper core sin importar Stock. Snapshot de bruto/descuento/ajuste conserva precisión suficiente para explicar el ajuste de neto, no se pierde antes de redondear. Ejemplo COP: bruto `10.25`, descuento `0.00`, neto previo `10.25`, ajuste `-0.25`, cobrado y acreditación `10`. No se rechaza ese cierre por los centavos anteriores.
+
+Los pagos manuales sí rechazan exceso de precisión o suma distinta: eso es una entrada incoherente, no rechazo de una venta por el redondeo autorizado. La UI envía automáticamente el neto ya redondeado para su único medio y permite revisar cambios de beneficio antes de un nuevo intento. Importes persistidos finitos y no negativos; ajuste firmado finito, moneda válida y unidad0/2. El neto/suma se valida en writer transaccional; no usar CHECKs con subconsultas. Límites monetarios y overflow se validan antes de persistir, sin truncado.
+
+### Evento v2 y captura al cerrar
+
+`sale.closed` v2 conserva todos los campos comunes v1, sus IDs de línea y `resourceVersions[]` —incluido slot `composition` de R1— y agrega:
+
+```
+eventVersion: 2
+money: { gross, discount, roundingAdjustment, collected, currencyCode, minorUnit }
+payments: [{ paymentId, methodProviderId, methodId, methodName, chargeShape,
+             amount, resourceVersions: [{ providerId, slot, versionId }] }]
+```
+
+Importes son strings, unidades enteras. `money.collected` coincide con el snapshot POS y la suma de pagos. Pagos0 es lista vacía, no un objeto de importe0. El publisher amplía su captura genérica de referencias de productos a una lista de recursos tipados/IDs, incluidos los medios, en **una sola sentencia MVCC con elegibilidad**. Cada pago recibe la referencia de comisión vigente allí; si no existe, la ausencia queda congelada y significa sin configurar, no permiso para consultar la tarifa futura. Cambiar tasa después del cierre y antes del aplicador no cambia esa venta. No seleccionar revisiones por `created_at <= closedAt`: el orden de commit puede diferir de sus timestamps.
+
+POS guarda pagos y dinero; core solo captura referencias/eligibilidad y persiste el evento. Ningún handler ni consulta a tablas Rentabilidad/Stock/Recetas corre dentro del cobro. Fallos del aplicador no revierten `closed` ni ocupan la mesa. Como ADR0145, falla al persistir venta/evento durable impide confirmar un commit inexistente. Flags de eventos actuales se conservan: snapshots POS se guardan aun sin evento; un cobro positivo sin evento queda sin dato de comisión y no se reconstruye. Activación operativa completa de P1 requiere comprobar publicación habilitada; esta preservación del flag no autoriza activarlo por inferencia.
+
+Tipos/validadores aceptan unión v1|v2. Recetas/Stock y su lector0230 usan el envelope común, no exigen v1 ni interpretan pagos. R1 y P1 serializan el writer de `publish/types` y consumidor/reader, preservando slot `composition`. Eventos v1 existentes y deliveries de Recetas se procesan iguales; no se crean deliveries retroactivos de Rentabilidad ni se mutan payloads v1. Lectura de comisión v1: sin dato. El rollout retira writers de cierre v1 antes de habilitar v2; no se afirma compatibilidad con binarios antiguos que desconocen v2.
+
+### Cálculo durable y lectura de comisión
+
+Rentabilidad suscribe `sale.closed` sin requerir POS. Cada pago positivo usa exclusivamente su revisión capturada o el default sin configurar explícito. Fórmula exacta por pago: `amount × percent / 100 + fixed`; solo entonces HALF_UP a unidad mínima de la moneda. El fijo se aplica una vez por medio usado; no se reparte entre productos. Una comisión puede superar el pago por su fijo: no caparla al neto. USD9 al2,5% + fijo0,10 =0,325 → **0,33**. Dos medios calculan por separado sus transacciones y la venta suma sus comisiones ya liquidadas, sin volver a redondear porcentajes sobre el total de la orden.
+
+`none` produce0 conocido; una tarifa no cargada produce0 **con `configured:false` y aviso**, incluida ausencia de puntero capturada. Porcentaje/fijo explícitos0 son configuración válida. Solo se permiten campos de la forma; los componentes aplicables pueden quedar `null` (efectivo0 y aviso) y los no aplicables se omiten. `configured` exige todos los componentes aplicables cargados, incluido cero explícito. `%` en0..100 con hasta6 decimales y fijo no negativo con unidad mínima de su moneda. El aviso de falta de configuración pertenece a Rentabilidad, no al flujo de cobro.
+
+Handler reclama delivery y escribe todos los snapshots/ack atómicamente, reutilizando retry/claims/cron de ADR0145. Reintento compara identidad, base, moneda y referencias capturadas; no revalora con tarifas actuales ni duplica fijos. Falla técnica sigue pendiente recuperable. Pendiente originado con Rentabilidad encendido sigue aplicándose aunque luego se apague. Apagado al cierre genera skipped y **comisión sin dato**, sin aplicación al reactivar. En neto0 manda la regla explícita de venta sin pago y comisión0, no un consumo de tarifa posterior.
+
+Lectura interna por comercio/local/venta, sin importar POS ni precios actuales. Estado `completo | incompleto | pendiente`, pagos con importe de comisión/null, `configured`, motivos y moneda/unidad; total nullable. Configuración ausente produce importe provisional0 y estado incompleto con aviso `commission_unconfigured`; no se presenta como tasa conocida. Sin evento/legado o apagado al cierre de cobro positivo: importe/total null, razón explícita y texto «Sin dato», nunca0. Pendiente/application_failed conserva estado pendiente. Neto0 nuevo completo produce0 aunque no haya delivery aplicado, usando el evento como evidencia principal. Si falta evento, el reader puede verificar únicamente ese cero mediante `sale_settlement` del mismo directorio, en la misma transacción de lectura consistente que consulta evento/delivery/snapshots. Debe existir snapshot persistido del comercio/local/orden y `collectedTotal=0`; un histórico sin snapshot, fallo del provider o ausencia no cumple esa prueba y sigue sin dato. Conflicto entre evento y snapshot no se convierte en cero. Un snapshot positivo no habilita cálculo retroactivo ni sustituye falta de evento/eligibilidad por0.
+
+Tarifa fija congela su moneda al configurarla. Cambio posterior de moneda no altera ventas capturadas. Si una venta nueva captura fijo no cero de otra moneda, no convertirlo ni aplicar su nominal: resultado incompleto con `commission_currency_mismatch` y total desconocido; no bloquear cobro ni rellenar esa venta al reconfigurar después. Porcentaje sin fijo es independiente de esa moneda. Agregados separan monedas capturadas sin conversión. La política general de cambio de moneda queda como hallazgo externo de 0230/0231.
+
+### Contratos HTTP y mínimo POS
+
+Bajo `/api/modules/<id>`, sesión, pertenencia al comercio y módulo encendido. DTO sin secretos, payloads internos o filas de otro comercio. Errores `{error,code}` y campos documentados de revisión; UUID ajeno/inexistente404.
+
+| Permiso y ruta | Contrato |
+| --- | --- |
+| `pos`: `GET /pos/payment-methods` | `{methods:[{id,name,chargeShape,isCash,status}], defaultMethodId}`; activos por defecto, `?status=all` para administración. Sin tasas/comisiones. |
+| `pos`: `GET /pos/payment-method-catalog` | `{countryCode,source:'country'|'base',entries:[{id,name,chargeShape,isCash,initiallySuggested}]}`. Catálogo aplicable al país actual, sin tasas; no siembra al leer. |
+| `pos`: `POST /pos/payment-methods` | `{catalogId}` o `{name,chargeShape}` libre; `201 {method}`. Nombre1..120 recortado, campos excluyentes; sugerencia activa repetida o nombre activo duplicado409. Efectivo se reutiliza, nunca se duplica. |
+| `pos`: `POST /pos/payment-methods/:id/archive` | `200 {method}` archivado; idempotente si ya archivado; Efectivo `409 cash_required`. No borra historia/configuración. |
+| `pos`: `POST /pos/orders/:id/close` | Campos vigentes más `payments:[{methodId,amount}]`; lista vacía solo neto0. Respuesta conserva orden y agrega `settlement:{gross,discount,roundingAdjustment,collected,currencyCode,minorUnit,payments}`; legado `settlement:null`. Sin comisiones en respuesta POS. |
+| `profitability`: `GET /profitability/commissions` | `{methods:[{providerId,methodId,name,status,chargeShape,revisionId,percent,fixed,currencyCode,minorUnit,configured}]}`; directory público mínimo+config propia, sin exigir permiso POS. |
+| `profitability`: `PUT /profitability/commissions/:methodId` | `{expectedRevisionId:null|uuid,percent?:string|null,fixed?:string|null}`; referencia/proveedor del recurso se resuelve en servidor. Reemplaza la configuración: exige cada componente aplicable como string o null y omite los no aplicables; moneda/unidad del fijo actuales capturadas por servidor. `200 {commission}` con revisión nueva; conflicto409, sin efecto retroactivo. |
+| `profitability`: `GET /profitability/sale-commissions/:sourceOrderId?locationId=:id` | Local obligatorio y propio; `{state,currencyCode,minorUnit,total,payments,reasons}` desde eventos/snapshots. No reconstruye desde POS. Ausencia de evidencia: sin dato, no404 que invite a inventar un cero. |
+
+Cierre nuevo: `422 payment_required`, `payment_sum_mismatch`, `duplicate_payment_method`, `invalid_payment_amount`; archivado `409 payment_method_archived`; referencia ajena `404 payment_method_not_found`. Neto0 con lista no vacía `422 payments_not_expected`. Suma distinta tras actualización de cupón devuelve importes autoritativos para revisar, con rollback de cierre/acreditación. `409 commission_revision_conflict`, `422 invalid_commission`, `404 payment_method_not_found` para tarifas. No agregar fallos de aplicador como errores del cierre.
+
+Preservar lock de orden, versión y `close_request_id`: el branch cerrado+misma clave devuelve snapshot original antes de exigir pagos nuevos, incluido reintento legado sin campo. Validar pagos de órdenes abiertas dentro de su transacción. El cuerpo de reintento incierto conserva pagos/clave originales en `attempt.current`; recuperar antes de cambiarlos. Medio archivado concurrentemente se ordena con validación del pago: un cierre que validó antes puede conservar ese snapshot; solicitudes posteriores al archivo no lo seleccionan.
+
+Mínimo propuesto, sin diseñar pantallas definitivas: selector del kit «Medio de pago», Efectivo preseleccionado y una sola entrada por el neto revisado. Mostrar ajuste de redondeo si existe. Recibido/cambio solo efectivo, nunca como base de comisión. Neto0 oculta/no exige selector y envía `[]`. Datos/tarifas de comisión no aparecen en POS. Contrato admite varios medios distintos sin implementar UI mixta ni división por comensales.
+
+### Migración y corte
+
+Hace falta migración de catálogo core, medios/inicialización/pagos/snapshot POS y revisiones/resultados Rentabilidad, sin generar archivo en este encargo. Aditiva; snapshots nuevos de cierres anteriores quedan ausentes, nunca backfill de Efectivo, importes o comisiones. No reconstruir descuento desde líneas ni tasas desde configuración actual. Conservar snapshots monetarios0230 y revisiones/deliveries R1; no revalorizar costos de stock.
+
+Preflight de esquema real, país/catálogo y comercios activos; seed idempotente del catálogo aprobado e inicialización por comercio con unicidad. Readers v1/v2 y esquema antes de writer v2; retirar/drain comprobablemente writers de cierre antiguos y sesiones UI obsoletas, actualizar consumidores de ambos envelopes y después activar nuevos cierres con pagos. Órdenes abiertas conservan precios/cupón, usan selector nuevo y redondeo final al cerrarse. Cierres legados siguen recuperándose con su clave. No usar una espera temporal como prueba del corte.
+
+Revisiones de tarifa y puntero se escriben atómicamente; captura no bloquea por locks de configuración. Rollback preserva eventos v2, pagos y snapshots, con binario compatible para leer/reintentar pendientes; no volver a un lector solo v1 ni borrar comisiones aplicadas. Mantener EXPAND0227/flags existentes, sin contract implícito. Identificar DB local/CI/PROD; cada operación PROD requerirá autorización explícita propia.
+
+Fuera: pantallas definitivas, propinas/cargo de servicio, anular cobradas, división por comensales, retenciones fiscales, catálogo de otros países, comisión profesional, diferidos, procesamiento real de pagos, equilibrio/Smart Menu y asignación de comisión a productos. El cero por neto cubierto no incorpora un nuevo motor de recompensas: se acepta el neto autorizado existente.
+
+## Archivos y paralelismo
+
+Implementación futura en serie tras0231 y coordinada con R1 por eventos/cierre. Un writer para esquemas/journal, tipos/publisher y contrato de recursos; otro para consumidor/configuración Rentabilidad según scopes cerrados, con correcciones de ambos y QA independiente. El helper monetario común tiene writer único; no importar Stock desde core o Rentabilidad. UI mínima POS en `modules/pos/ui`, kit/copy vigentes; no guardias nuevas ni modificación del kit para evitar fallos.
+
+Este encargo escribe únicamente los dos documentos indicados. Ficha operativa contiene base/worktree/reserva y evidencia. Sin INDEX, TASKS, estados, código, migraciones generadas ni push.
+
+## Definition of Done
+
+- [ ] Cierre positivo conserva cobrado y medios con suma exacta; neto0 no pide medio, guarda lista vacía y comisión0 cierta.
+- [ ] Neto, ajuste, acreditación y evento coinciden por moneda, con y sin cliente/cupón, sin rechazar por el redondeo autorizado.
+- [ ] Comisión usa revisión capturada al cierre; aplicación/retry posteriores conservan tarifas/base y no duplican fijos.
+- [ ] Apagado/legado de cobro positivo se muestran sin dato; falta de tarifa usa0 con aviso diferenciado.
+- [ ] Catálogo/archivo/permisos y fronteras sin dependencia Rentabilidad→POS; históricos y snapshots0230/R1 intactos.
+- [ ] QA focal de entrega y combinación sobre SHA/entorno identificados; migración no reconstruye datos históricos.
+
+## Pruebas pertinentes
+
+Plan para implementación futura, no pruebas de producto ejecutadas en este encargo. Node24; tipos/lint/fronteras pertinentes y suites focales de POS/eventos/Rentabilidad, sin verify global por ceremonia. DB solo `tools/neon-test.sh`, entorno protegido y reserva exclusiva también en teardown; DDL aislado con `--no-file-parallelism`.
+
+1. Cobro positivo sin medio, suma errónea, importe inválido, duplicado de medio y medio ajeno/archivado fallan sin cerrar/acreditar; válido conserva snapshot y una entrada por medio. UI usa neto, no recibido/cambio. Archivo concurrente conserva orden de validación y no filtra otro comercio.
+2. Cliente con/sin cupón y sin cliente: bruto/descuento/neto/ajuste guardados iguales a pagos/evento/core.order. Cupón100% o producto gratis deja pagos[] y comisión0; medio presente en neto0 falla. Ese cero vale con Rentabilidad apagado; legado sin snapshot nunca se convierte en cero.
+3. USD2 decimales, COP/CLP/JPY/PYG0, mitades y fracciones preexistentes; round neto una vez y mismo importe para acreditar, incluidas variantes de cupón. Ajuste firmado explícito. No modificar cupones/acreditaciones de otros callers con default anterior. UI preview y backend acuerdan.
+4. Comisión porcentual, fija y ambas; USD9×2,5%+0,10=0,33; cero configurado, none y ausencia configurada0+aviso distintos. Mixto: fijo una vez por medio usado. Fijo mayor al pago permitido, límites/NaN/Infinity/exceso de precisión rechazados sin truncar.
+5. Cerrar, editar tarifa y aplicar después: misma revisión del cierre, sin precio actual. Retry y claims concurrentes no duplican; fallo parcial revierte todos los snapshots/ack, no venta. Pendiente encendido→apagado aplica; apagado al cerrar→encender no reconstruye. Config ausente al cierre no toma tasa creada antes del retry.
+6. Evento v1 pendiente sigue consumiendo cantidades/costo0230; v2 conserva campos y slotcomposition R1, combo compartiendo insumo no cambia su consolidación/procedencia. Falla Rentabilidad no retrasa cierre ni delivery Recetas; cierre sin suscriptores funciona. Sin evento de cobro positivo da sin dato.
+7. Catálogo EC inicial1–6, Datalink agregable, Peigo ausente/libre; país sin catálogo recibe base. Activación repetida/migración idempotentes sin duplicar Efectivo ni restaurar archivados. Efectivo no archivable; históricos preservan nombre/forma.
+8. Permiso POS no revela tarifas/sueldos; Rentabilidad configura desde metadata mínima sin permiso POS, con POS apagado o sin datos sin dependencia obligatoria. IDs cruzados404 y filtros comercio/local en snapshots/lectores/provider; sin FK/import core→módulo o Rentabilidad→POS.
+9. Evento neto0 da0 sin handler; si falta evento, fallback `sale_settlement` verifica solo snapshot persistido0, con POS apagado y sin permiso POS. Fallo/ausencia/legado o snapshot positivo siguen sin dato, sin reconstrucción. IDs/locales ajenos404 y lectura/provider usan misma transacción consistente.
+10. Migración mantiene cierres históricos sin snapshot y ningún backfill monetario. Reintento legado misma clave sinpayments recupera original; reintento nuevo mantiene pagos pese a cambios posteriores. Cambio monetario posterior conserva historia; fijo incompatible no convierte ni inventa0, y reconfigurar no rellena pasado.
+
+## Handoff y abierto
+
+Decisiones recibidas y registradas antes de redacción. Lecturas de código sobre base `21a77b1`; verificaciones presentes son documentales. No se ejecutaron migraciones ni pruebas de comportamiento, no se accedió a PROD y no se investigaron tarifas externas. Evidencia documental/SHA se entrega fuera del documento.
+
+Hallazgos a decidir fuera del alcance: confirmar forma de Peigo antes de incorporarlo al catálogo; tarifas/diferidos efectivos de cada comercio; política general de cambio de moneda y conversión; futura asignación de comisión a productos/recetas para Smart Menu. Peigo permanece excluido y tarifas sin precarga. Ninguno autoriza inventar datos ni impide el contrato cerrado de P1. Catálogo de otros países y pantallas definitivas requieren encargo posterior.
