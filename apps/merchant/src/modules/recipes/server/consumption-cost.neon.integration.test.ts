@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 import { getDb, withDbTransaction } from "@mi-pasaporte/db";
 import {
   locations,
@@ -211,7 +211,7 @@ run("0230 frozen cost and captured sale coverage", { timeout: 60000 }, () => {
         .where(
           and(
             eq(moduleEventDeliveries.eventId, s.eventId!),
-            eq(moduleEventDeliveries.subscriberId, "profitability"),
+            ne(moduleEventDeliveries.subscriberId, "recipes"),
           ),
         ),
     ).toEqual([{ state: "skipped" }]);
