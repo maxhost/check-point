@@ -108,9 +108,9 @@ export function entryLines(lines: StockLine[], items: StockItem[]) {
       if (Number(quantity) <= 0)
         throw new Error("La cantidad debe ser mayor que cero.");
       countedQuantity(quantity, line.unit);
-      const totalCost = line.totalCost.trim()
-        ? decimal(line.totalCost, 2, 10)
-        : null;
+      if (!line.totalCost.trim())
+        throw new Error("Completa el precio total. Si fue gratis, escribe 0.");
+      const totalCost = decimal(line.totalCost, 2, 10);
       const item = items.find((item) => item.id === line.itemId);
       if (line.itemId && (!item || item.status !== "active"))
         throw new Error("Selecciona un insumo activo.");

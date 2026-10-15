@@ -10,6 +10,7 @@ import { createItem, listItems, updateItem } from "../items";
 import { listMovements, recordAdjustment, recordPurchase } from "../movements";
 import { listLog, recordEntry } from "../entries";
 import { buildDraft, buildPhotoDraft } from "../draft";
+import { requireEntryPrices, requirePurchasePrice } from "./purchase-price";
 
 /**
  * Spec 0210 / 0212 / 0216 — LA API DE STOCK, bajo `/api/modules/stock/…`. Los mismos handlers que
@@ -89,16 +90,14 @@ export const routes: readonly ModuleRoute[] = [
     method: "POST",
     path: "items/:itemId/purchases",
     failure: "No pudimos registrar la compra.",
-    handler: async ({ request, business, userId, params }) =>
-      NextResponse.json(
-        await recordPurchase(
-          business.id,
-          userId,
-          params.itemId,
-          await readModuleBody(request),
-        ),
+    handler: async ({ request, business, userId, params }) => {
+      const body = await readModuleBody(request);
+      requirePurchasePrice(body);
+      return NextResponse.json(
+        await recordPurchase(business.id, userId, params.itemId, body),
         { status: 201 },
-      ),
+      );
+    },
   },
   /** `{ countedQuantity, note? }` → `201`. */
   {
@@ -137,11 +136,13 @@ export const routes: readonly ModuleRoute[] = [
     method: "POST",
     path: "entries",
     failure: "No pudimos registrar la entrada.",
-    handler: async ({ request, business, userId }) =>
-      NextResponse.json(
-        await recordEntry(business.id, userId, await readModuleBody(request)),
-        { status: 201 },
-      ),
+    handler: async ({ request, business, userId }) => {
+      const body = await readModuleBody(request);
+      requireEntryPrices(body);
+      return NextResponse.json(await recordEntry(business.id, userId, body), {
+        status: 201,
+      });
+    },
   },
   /** Spec 0212: el texto dictado → borrador de lineas. No guarda stock. */
   {

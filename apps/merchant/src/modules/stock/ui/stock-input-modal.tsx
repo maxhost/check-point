@@ -233,7 +233,7 @@ export function StockInputModal({
           ? "Indica cuánto tienes ahora. El ajuste se calcula a partir del conteo."
           : reviewing
             ? "Revisa los ítems, corrige lo que necesites y guarda o descarta la compra."
-            : "Ingresa tu compra por audio, foto o a mano. El precio es opcional."
+            : "Ingresa tu compra por audio, foto o a mano. Completa el precio total de cada ítem."
       }
       onClose={close}
       dismissible={!busy}
@@ -353,7 +353,7 @@ export function StockInputModal({
               <>
                 <TextAreaField
                   label="Describe tu compra"
-                  description="Usa el micrófono en tu teclado. Menciona el nombre, la cantidad y, si lo tienes, el precio total de cada ítem. La transcripción aparecerá aquí."
+                  description="Usa el micrófono en tu teclado. Menciona el nombre, la cantidad y el precio total de cada ítem. La transcripción aparecerá aquí."
                   placeholder="Hoy compré 1 kg de harina por 25, un cartón de 30 huevos por 4 y 2 kg de tomates por 7."
                   value={transcript}
                   onChange={setTranscript}
@@ -421,8 +421,8 @@ export function StockInputModal({
               <div className="grid gap-2">
                 <Heading level={2}>Revisa los ítems</Heading>
                 <Text variant="muted">
-                  El precio indicado es el total de cada línea. Puedes dejarlo
-                  vacío si no lo conoces.
+                  Completa el precio total de cada línea. Si fue gratis, escribe
+                  0.
                 </Text>
               </div>
             )}
@@ -531,9 +531,15 @@ export function StockInputModal({
                     </div>
                     {!adjusting && (
                       <TextField
-                        label="Precio total (opcional)"
-                        description="Total pagado por la cantidad de esta línea, no por unidad."
-                        placeholder="Sin precio"
+                        label="Precio total"
+                        description="Total pagado por la cantidad de esta línea. Si fue gratis, escribe 0."
+                        placeholder="Completa el precio total"
+                        isRequired
+                        errorMessage={
+                          line.totalCost.trim()
+                            ? undefined
+                            : "Completa el precio total. Si fue gratis, escribe 0."
+                        }
                         inputMode="decimal"
                         value={line.totalCost}
                         onChange={(totalCost) => patch(line.key, { totalCost })}
