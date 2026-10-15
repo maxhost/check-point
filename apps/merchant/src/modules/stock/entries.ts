@@ -16,6 +16,7 @@ import {
 import {
   type MovementDTO,
   applyPurchase,
+  attemptPurchaseConsumption,
   movementColumns,
   parseLimit,
   parseNote,
@@ -146,6 +147,7 @@ export async function recordEntry(
   const note = parseNote(body.note);
   const entryId = randomUUID();
 
+  await attemptPurchaseConsumption(businessId, location.id);
   try {
     return await withDbTransaction(async (tx) => {
       const rows = new Map<string, ItemRow>();

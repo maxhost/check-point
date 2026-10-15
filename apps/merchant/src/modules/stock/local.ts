@@ -70,6 +70,24 @@ export async function lockItemLocation(
       ),
     )
     .for("update");
+  if (pair.weightedAverageInitializedAt === null) {
+    const [initialized] = await tx
+      .update(stockItemLocations)
+      .set({
+        weightedAverageUnitCost: pair.lastUnitCost,
+        weightedAverageInitializedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(stockItemLocations.businessId, businessId),
+          eq(stockItemLocations.itemId, itemId),
+          eq(stockItemLocations.locationId, locationId),
+        ),
+      )
+      .returning();
+    return initialized;
+  }
   return pair;
 }
 

@@ -153,6 +153,15 @@ export const stockItemLocations = stockSchema.table(
     itemId: uuid("item_id").notNull(),
     locationId: uuid("location_id").notNull(),
     lastUnitCost: numeric("last_unit_cost", { precision: 14, scale: 6 }),
+    /** Spec 0228: promedio móvil por par; null desconocido, cero conocido. */
+    weightedAverageUnitCost: numeric("weighted_average_unit_cost", {
+      precision: 14,
+      scale: 6,
+    }),
+    /** Copia única del último costo local, incluso null. */
+    weightedAverageInitializedAt: timestamp("weighted_average_initialized_at", {
+      withTimezone: true,
+    }),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -169,6 +178,10 @@ export const stockItemLocations = stockSchema.table(
       columns: [t.businessId, t.locationId],
       foreignColumns: [locations.businessId, locations.id],
     }).onDelete("cascade"),
+    check(
+      "stock_item_location_average_cost_check",
+      sql`${t.weightedAverageUnitCost} is null or ${t.weightedAverageUnitCost} >= 0`,
+    ),
     check(
       "stock_item_location_cost_check",
       sql`${t.lastUnitCost} is null or ${t.lastUnitCost}>=0`,

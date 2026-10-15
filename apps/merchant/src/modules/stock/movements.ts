@@ -26,6 +26,7 @@ import {
   UNIT_COST_SCALE,
   parsePurchaseCost,
   parsePurchaseQuantity,
+  weightedAverageCostOf,
 } from "./numbers";
 
 /**
@@ -138,12 +139,11 @@ export function archived(): ModuleError {
 }
 
 /**
- * Inserta UNA compra de un insumo YA BLOQUEADO por quien llama, y recalcula `last_unit_cost`. La
+ * Inserta UNA compra de un insumo YA BLOQUEADO y pondera sobre el saldo anterior. La
  * usan la compra suelta y cada linea de una entrada (`entries.ts`): un solo camino de escritura.
  *
- * El costo vigente es el de la compra CON PRECIO mas reciente por `occurred_at`: una compra cargada
- * con fecha vieja no lo pisa, y una compra sin precio no cuenta (ni actualiza ni bloquea). Se lee
- * bajo el lock del insumo, antes de insertar la nueva.
+ * El promedio sigue registro serial bajo el lock del par; el último costo conserva su
+ * orden por fecha. Una compra sin precio conserva ambos, incluso null.
  */
 export async function applyPurchase(
   tx: DbTransaction,
@@ -167,6 +167,20 @@ export async function applyPurchase(
     item.id,
     args.locationId,
   );
+  const previousQuantity = fromDb(
+    await onHandOf(tx, item.id, args.locationId),
+    QUANTITY.scale,
+  );
+  const nextAverage = weightedAverageCostOf(
+    previousQuantity,
+    pair.weightedAverageUnitCost === null
+      ? null
+      : fromDb(pair.weightedAverageUnitCost, UNIT_COST_SCALE),
+    args.quantity,
+    cost?.totalCost ?? null,
+  );
+  const weightedAverageUnitCost =
+    nextAverage === null ? null : formatDecimal(nextAverage, UNIT_COST_SCALE);
   const [movement] = await tx
     .insert(stockMovements)
     .values({
@@ -210,18 +224,34 @@ export async function applyPurchase(
       parsePurchaseCost(latest.totalCost, fromDb(latest.quantity, 3))!.unitCost,
       UNIT_COST_SCALE,
     );
-    await tx
-      .update(stockItemLocations)
-      .set({ lastUnitCost, updatedAt: new Date() })
-      .where(
-        and(
-          eq(stockItemLocations.businessId, args.businessId),
-          eq(stockItemLocations.locationId, args.locationId),
-          eq(stockItemLocations.itemId, item.id),
-        ),
-      );
   }
-  return { movement: toMovementDTO(movement), item: { ...item, lastUnitCost } };
+  await tx
+    .update(stockItemLocations)
+    .set({ lastUnitCost, weightedAverageUnitCost, updatedAt: new Date() })
+    .where(
+      and(
+        eq(stockItemLocations.businessId, args.businessId),
+        eq(stockItemLocations.locationId, args.locationId),
+        eq(stockItemLocations.itemId, item.id),
+      ),
+    );
+  return {
+    movement: toMovementDTO(movement),
+    item: { ...item, lastUnitCost, weightedAverageUnitCost },
+  };
+}
+
+/** One bounded durable attempt before purchase locks; failure never rejects the purchase. */
+export async function attemptPurchaseConsumption(
+  businessId: string,
+  locationId: string,
+): Promise<void> {
+  await retryModuleEvents({
+    businessId,
+    locationId,
+    budgetMs: 2000,
+    force: true,
+  }).catch(() => {});
 }
 
 /** `POST /api/modules/stock/items/:itemId/purchases` — `{ quantity, totalCost?, occurredAt?, note? }`. */
@@ -238,6 +268,7 @@ export async function recordPurchase(
   const cost = parsePurchaseCost(body.totalCost, quantity);
   const occurredAt = parseOccurredAt(body.occurredAt, new Date());
   const note = parseNote(body.note);
+  await attemptPurchaseConsumption(businessId, location.id);
   return withDbTransaction(async (tx) => {
     const locked = await lockItem(tx, businessId, rawItemId);
     const { movement, item } = await applyPurchase(tx, {
@@ -321,7 +352,11 @@ export async function recordAdjustment(
       return {
         movement: toMovementDTO(movement),
         item: toItemDTO(
-          { ...item, lastUnitCost: pair.lastUnitCost },
+          {
+            ...item,
+            lastUnitCost: pair.lastUnitCost,
+            weightedAverageUnitCost: pair.weightedAverageUnitCost,
+          },
           formatDecimal(counted, QUANTITY.scale),
           location.id,
         ),

@@ -1,4 +1,5 @@
 import {
+  boolean,
   check,
   integer,
   jsonb,
@@ -82,6 +83,12 @@ export const businesses = core.table(
     /** ISO 4217 currency for prices; default derived from the country at migration time. */
     currencyCode: text("currency_code").notNull().default("USD"),
     timezone: text("timezone").notNull(),
+    /** Spec 0229: datos privados, sin activar cálculo fiscal. */
+    chargesVat: boolean("charges_vat").notNull().default(false),
+    saleVatRate: numeric("sale_vat_rate", { precision: 5, scale: 2 }),
+    recoversPurchaseVat: boolean("recovers_purchase_vat")
+      .notNull()
+      .default(false),
     /** Spec 0103 / ADR 0095 §6: the hours `[start, end)`, in `timezone`, in which a
      * CAMPAIGN push may go out. Only the push of a campaign reads them. */
     pushWindowStartHour: integer("push_window_start_hour").notNull().default(9),
@@ -104,6 +111,14 @@ export const businesses = core.table(
       .defaultNow(),
   },
   (table) => [
+    check(
+      "business_sale_vat_rate_check",
+      sql`${table.saleVatRate} is null or ${table.saleVatRate} between 0 and 100`,
+    ),
+    check(
+      "business_charges_vat_rate_check",
+      sql`not ${table.chargesVat} or ${table.saleVatRate} is not null`,
+    ),
     check(
       "business_status_check",
       sql`${table.status} in ('active', 'suspended', 'closed')`,

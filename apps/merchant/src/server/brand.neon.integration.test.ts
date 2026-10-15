@@ -56,6 +56,14 @@ describe.skipIf(!enabled)("brand service against Neon", () => {
     await db.delete(users).where(eq(users.id, userId));
   }, 30_000);
 
+  it("starts a new business at false/null/false without guessing a country rate", async () => {
+    expect(await ownerBusiness(userId)).toMatchObject({
+      chargesVat: false,
+      saleVatRate: null,
+      recoversPurchaseVat: false,
+    });
+  });
+
   it("bumps the revision on save and rejects a stale save with 409", async () => {
     // Fresh business starts at brand_revision = 1; the first save matches and bumps to 2.
     const saved = await saveBrand(userId, brandInput(1));
@@ -94,4 +102,48 @@ describe.skipIf(!enabled)("brand service against Neon", () => {
     });
     expect(saved.currencyCode).toBe("BRL");
   });
+  it("round-trips exact fiscal values, legacy omissions, retention and null versus zero", async () => {
+    const current = (await ownerBusiness(userId))!;
+    const saved = await saveBrand(userId, {
+      ...brandInput(current.brandRevision),
+      chargesVat: true,
+      saleVatRate: "015.2",
+      recoversPurchaseVat: true,
+    });
+    expect(saved).toMatchObject({
+      chargesVat: true,
+      saleVatRate: "15.20",
+      recoversPurchaseVat: true,
+    });
+    const legacy = await saveBrand(userId, brandInput(saved.brandRevision));
+    expect(legacy).toMatchObject({
+      chargesVat: true,
+      saleVatRate: "15.20",
+      recoversPurchaseVat: true,
+    });
+    const off = await saveBrand(userId, {
+      ...brandInput(legacy.brandRevision),
+      chargesVat: false,
+    });
+    expect(off.saleVatRate).toBe("15.20");
+    const zero = await saveBrand(userId, {
+      ...brandInput(off.brandRevision),
+      chargesVat: true,
+      saleVatRate: "0",
+    });
+    expect(zero.saleVatRate).toBe("0.00");
+    const empty = await saveBrand(userId, {
+      ...brandInput(zero.brandRevision),
+      chargesVat: false,
+      saleVatRate: null,
+    });
+    expect(empty.saleVatRate).toBeNull();
+    await expect(
+      saveBrand(userId, {
+        ...brandInput(empty.brandRevision),
+        chargesVat: true,
+      }),
+    ).rejects.toMatchObject({ status: 422 });
+    expect(await ownerBusiness(userId)).toEqual(empty);
+  }, 30_000);
 });

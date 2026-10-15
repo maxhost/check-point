@@ -1,6 +1,7 @@
 import { isIanaTimezone } from "../timezone";
 import { isSupportedCurrency } from "../../lib/currencies";
 import { BrandError, colorPattern, type LogoAction } from "./core";
+import { validateVatPatch } from "./vat";
 
 function nonEmpty(value: unknown, field: string) {
   if (typeof value !== "string" || !value.trim()) {
@@ -72,6 +73,7 @@ export function validateBrandInput(value: unknown) {
     name: nonEmpty(input.name, "El nombre"),
     timezone,
     currencyCode,
+    vat: validateVatPatch(input),
     brandPrimaryColor: color(input.brandPrimaryColor, "El color primario"),
     brandComplementaryColor: color(
       input.brandComplementaryColor,

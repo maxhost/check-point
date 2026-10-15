@@ -70,3 +70,30 @@ export function parsePurchaseCost(
   }
   return { totalCost, unitCost };
 }
+
+/** Spec 0228: cantidades3, costo6, importe2; nunca redondea el precio antes de ponderar. */
+export function weightedAverageCostOf(
+  previousQuantity: bigint,
+  previousCost: bigint | null,
+  quantity: bigint,
+  totalCost: bigint | null,
+): bigint | null {
+  if (quantity <= 0n) throw new RangeError("quantity tiene que ser > 0");
+  if (totalCost === null) return previousCost;
+  if (totalCost < 0n || (previousCost !== null && previousCost < 0n))
+    throw new RangeError("El costo no puede ser negativo");
+  const result =
+    previousQuantity <= 0n || previousCost === null
+      ? roundDiv(totalCost * 10n ** 7n, quantity)
+      : roundDiv(
+          previousQuantity * previousCost + totalCost * 10n ** 7n,
+          previousQuantity + quantity,
+        );
+  if (result >= UNIT_COST_LIMIT)
+    throw new ModuleError(
+      422,
+      "invalid_cost",
+      "El costo por unidad es demasiado alto.",
+    );
+  return result;
+}
