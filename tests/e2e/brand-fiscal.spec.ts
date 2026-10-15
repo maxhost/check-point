@@ -15,7 +15,7 @@ for (const width of [390, 1280]) {
   test(`fiscal ${width}px: required, exact payload, independent flags, retention and reload`, async ({
     page,
     brandHarness,
-  }) => {
+  }, testInfo) => {
     await page.setViewportSize({ width, height: 844 });
     const api = await brandFixture(page);
     await page.goto(brandHarness);
@@ -84,24 +84,24 @@ for (const width of [390, 1280]) {
     ).toBe(true);
     await section.screenshot({
       animations: "disabled",
-      path: `/private/tmp/checkpass-0229-fiscal-${width}-light.png`,
+      path: testInfo.outputPath(`checkpass-0229-fiscal-${width}-light.png`),
     });
     await page.screenshot({
       animations: "disabled",
       fullPage: true,
-      path: `/private/tmp/checkpass-0229-page-${width}-light.png`,
+      path: testInfo.outputPath(`checkpass-0229-page-${width}-light.png`),
     });
     await page.evaluate(
       () => (document.documentElement.dataset.theme = "dark"),
     );
     await section.screenshot({
       animations: "disabled",
-      path: `/private/tmp/checkpass-0229-fiscal-${width}-dark.png`,
+      path: testInfo.outputPath(`checkpass-0229-fiscal-${width}-dark.png`),
     });
     await page.screenshot({
       animations: "disabled",
       fullPage: true,
-      path: `/private/tmp/checkpass-0229-page-${width}-dark.png`,
+      path: testInfo.outputPath(`checkpass-0229-page-${width}-dark.png`),
     });
   });
 }
