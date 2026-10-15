@@ -1,7 +1,7 @@
 ---
 adr: 0147
 fecha: 2026-10-14
-estado: propuesta
+estado: aceptada
 resumen: Separar identidad de Equipo y acceso opcional, versionar locales y ofrecer panel y callback genéricos sin datos monetarios en core.
 ---
 
@@ -78,3 +78,7 @@ Implementación futura con reservas explícitas de contratos/core/esquema y back
 ## Verificación al implementar
 
 Persona sin acceso sin auth/membership/PIN; grant/revocación con protecciones actuales y mismo `personId`; backfill sin alterar credenciales/permisos ni inventar locales. Core exige `staff`, módulo su permiso, DTOs core sin dinero. Callback incluso apagado guarda reparto en misma transacción, conserva total/meses previos/subidas futuras y falla sin datos sensibles; concurrencia con writers salariales usa persona→costos. Sin escrituras al leer. Acciones/panel solo con permiso/activación/aporte; tenant y revocación comprobados por servidor. Mantener negativos auth/membresía y fronteras modulares sin relajar guardias o tests.
+
+## Encargo posterior de implementación
+
+Diseño técnico aceptado después del QA documental registrado en `docs/factory/0230-0231-qa.md`. El owner autorizó posteriormente lanzar la implementación0231; la [ficha operativa](../factory/0231-implementation-contract.md) asigna explícitamente contratos core, esquema/migración y backend a dos implementadores. Se mantiene la separación entre diseño y ejecución: UI y operaciones PROD siguen fuera de este encargo.
