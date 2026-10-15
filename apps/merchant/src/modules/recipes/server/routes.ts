@@ -1,17 +1,43 @@
-import { listLocations } from "../../stock/local";
-export { eventSubscriptions } from "./consumption";
 import { NextResponse } from "next/server";
+import { listLocations } from "../../stock/local";
 import { readModuleBody } from "../../errors";
 import type { ModuleRoute } from "../../route-table";
-import { listRecipes, readRecipe, saveRecipe } from "../recipes";
 import { buildRecipeDraft, buildRecipePhotoDraft } from "../draft";
+import {
+  archiveRecipe,
+  createRecipe,
+  listLibrary,
+  listMigrationRenames,
+  listRecipeRevisions,
+  readLibraryRecipe,
+  updateRecipe,
+} from "./library";
+import {
+  listCompositionRevisions,
+  listProducts,
+  previewComposition,
+  readComposition,
+  saveComposition,
+} from "./compositions";
+export { eventSubscriptions } from "./consumption";
 
-/**
- * Spec 0210 / 0214 / 0216 — LA API DE RECETAS, bajo `/api/modules/recipes/…`. Los mismos handlers
- * que vivian en `app/api/modules/recipes/**`, con las mismas URLs, cuerpos y status. El despachador
- * aplica antes el permiso `recipes` y el modulo encendido (que por dependencias implica Stock).
- */
+const query = (request: Request) => new URL(request.url).searchParams;
+
+/** SPEC0232: identities live in /library; products only own a composition.
+ * The dispatcher applies the recipes grant and module/dependency guards. */
 export const routes: readonly ModuleRoute[] = [
+  {
+    // Generic module roots reserve PUT for activation and otherwise default to405.
+    // Keep the removed product listing explicitly404 without core exceptions.
+    method: "GET",
+    path: "",
+    failure: "Esa ruta no existe.",
+    handler: async () =>
+      NextResponse.json(
+        { error: "Esa ruta no existe.", code: "route_not_found" },
+        { status: 404 },
+      ),
+  },
   {
     method: "GET",
     path: "locations",
@@ -19,41 +45,104 @@ export const routes: readonly ModuleRoute[] = [
     handler: async ({ business }) =>
       NextResponse.json(await listLocations(business.id)),
   },
-  /** Todos los productos con su costo y margen → `200 { recipes }`. */
   {
     method: "GET",
-    path: "",
+    path: "library",
     failure: "No pudimos leer las recetas.",
     handler: async ({ business, request }) =>
-      NextResponse.json({
-        recipes: await listRecipes(
-          business.id,
-          new URL(request.url).searchParams.get("locationId"),
-        ),
-      }),
+      NextResponse.json(await listLibrary(business.id, query(request))),
   },
-  /** La receta de un producto con sus lineas → `200 { recipe }`. */
+  {
+    method: "POST",
+    path: "library",
+    failure: "No pudimos crear la receta.",
+    handler: async ({ business, request }) =>
+      NextResponse.json(
+        {
+          recipe: await createRecipe(
+            business.id,
+            await readModuleBody(request),
+          ),
+        },
+        { status: 201 },
+      ),
+  },
   {
     method: "GET",
-    path: ":productId",
+    path: "library/:recipeId",
     failure: "No pudimos leer la receta.",
+    handler: async ({ business, params }) =>
+      NextResponse.json({
+        recipe: await readLibraryRecipe(business.id, params.recipeId),
+      }),
+  },
+  {
+    method: "PUT",
+    path: "library/:recipeId",
+    failure: "No pudimos guardar la receta.",
     handler: async ({ business, params, request }) =>
       NextResponse.json({
-        recipe: await readRecipe(
+        recipe: await updateRecipe(
           business.id,
-          params.productId,
-          new URL(request.url).searchParams.get("locationId"),
+          params.recipeId,
+          await readModuleBody(request),
         ),
       }),
   },
-  /** `{ lines: [{ itemId, quantity }] }` reemplaza la receta → `200 { recipe }`. */
+  {
+    method: "POST",
+    path: "library/:recipeId/archive",
+    failure: "No pudimos archivar la receta.",
+    handler: async ({ business, params, request }) =>
+      NextResponse.json({
+        recipe: await archiveRecipe(
+          business.id,
+          params.recipeId,
+          await readModuleBody(request),
+        ),
+      }),
+  },
+  {
+    method: "GET",
+    path: "library/:recipeId/revisions",
+    failure: "No pudimos leer el historial de la receta.",
+    handler: async ({ business, params, request }) =>
+      NextResponse.json(
+        await listRecipeRevisions(business.id, params.recipeId, query(request)),
+      ),
+  },
+  {
+    method: "GET",
+    path: "migration-renames",
+    failure: "No pudimos leer los nombres actualizados.",
+    handler: async ({ business, request }) =>
+      NextResponse.json(
+        await listMigrationRenames(business.id, query(request)),
+      ),
+  },
+  {
+    method: "GET",
+    path: "products",
+    failure: "No pudimos leer los productos.",
+    handler: async ({ business, request }) =>
+      NextResponse.json(await listProducts(business.id, query(request))),
+  },
+  {
+    method: "GET",
+    path: "products/:productId/composition",
+    failure: "No pudimos leer la composición.",
+    handler: async ({ business, params }) =>
+      NextResponse.json({
+        composition: await readComposition(business.id, params.productId),
+      }),
+  },
   {
     method: "PUT",
-    path: ":productId",
-    failure: "No pudimos guardar la receta.",
-    handler: async ({ request, business, params }) =>
+    path: "products/:productId/composition",
+    failure: "No pudimos guardar la composición.",
+    handler: async ({ business, params, request }) =>
       NextResponse.json({
-        recipe: await saveRecipe(
+        composition: await saveComposition(
           business.id,
           params.productId,
           await readModuleBody(request),
@@ -61,45 +150,51 @@ export const routes: readonly ModuleRoute[] = [
       }),
   },
   {
-    method: "DELETE",
-    path: ":productId",
-    failure: "No pudimos borrar la receta.",
+    method: "GET",
+    path: "products/:productId/composition/revisions",
+    failure: "No pudimos leer el historial de la composición.",
     handler: async ({ business, params, request }) =>
-      NextResponse.json({
-        recipe: await saveRecipe(business.id, params.productId, {
-          lines: [],
-          locationId: new URL(request.url).searchParams.get("locationId"),
-        }),
-      }),
+      NextResponse.json(
+        await listCompositionRevisions(
+          business.id,
+          params.productId,
+          query(request),
+        ),
+      ),
   },
-  /** Spec 0214: el texto dictado → borrador de la receta por unidad. No guarda la receta. */
   {
     method: "POST",
-    path: ":productId/draft",
+    path: "products/:productId/composition/preview",
+    failure: "No pudimos calcular el descuento de insumos.",
+    handler: async ({ business, params, request }) =>
+      NextResponse.json({
+        preview: await previewComposition(
+          business.id,
+          params.productId,
+          await readModuleBody(request),
+        ),
+      }),
+  },
+  {
+    method: "POST",
+    path: "draft",
     failure: "No pudimos analizar el texto.",
-    handler: async ({ request, business, userId, params }) =>
+    handler: async ({ business, userId, request }) =>
       NextResponse.json(
         await buildRecipeDraft(
           business.id,
           userId,
-          params.productId,
           await readModuleBody(request),
         ),
       ),
   },
-  /** Spec 0223: 1 a 3 fotos (multipart `photos`) de la receta → el mismo borrador. */
   {
     method: "POST",
-    path: ":productId/draft-photo",
+    path: "draft-photo",
     failure: "No pudimos analizar la foto.",
-    handler: async ({ request, business, userId, params }) =>
+    handler: async ({ business, userId, request }) =>
       NextResponse.json(
-        await buildRecipePhotoDraft(
-          business.id,
-          userId,
-          params.productId,
-          request,
-        ),
+        await buildRecipePhotoDraft(business.id, userId, request),
       ),
   },
 ];
