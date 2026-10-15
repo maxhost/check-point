@@ -2,7 +2,7 @@
 adr: 0149
 fecha: 2026-10-15
 estado: aceptada
-resumen: POS conserva cobrado/pagos y el cierre captura referencias genéricas de comisión; Rentabilidad aplica después esas revisiones mediante evento v2 compatible, sin requerir POS.
+resumen: Snapshot financiero normalizado por orden y línea en sale.closed v2, con descuento y origen congelados, originales y ajustes; comisión posterior independiente en Rentabilidad.
 ---
 
 # 0149 — Pagos y comisiones congelados al cierre
@@ -14,6 +14,8 @@ resumen: POS conserva cobrado/pagos y el cierre captura referencias genéricas d
 Código revisado en `21a77b162669ea867eae34c9dc746c76f549cc5c`: POS no guarda total/medios; `GrantedOrder.total` es neto real autorizado, cupón devuelve descuento y lo persiste antes de retornar; `publishSaleClosed` captura punteros de productos/activación en una sentencia, payload v1 y deliveries durables; módulos declaran callbacks en `ModuleServer`, sin callback de encendido ni directorio de recursos. Rentabilidad ya existe, independientemente del estado antiguo de algún documento0231.
 
 Owner confirma medio obligatorio solo con cobro positivo; neto0 sin medio/pagos[] y comisión0. Rentabilidad apagado al cierre positivo implica sin dato y sin reconstrucción; Smart Menu nunca lo muestra como0. Una entrada por medio/venta y fijo una vez por medio. Redondear neto final a unidad mínima, también USD, registrar ajuste y compartir monto con acreditación; no rechazar por esa fracción. Ecuador carga inicialmente1–6 del informe, Datalink opcional; Peigo fuera hasta confirmar forma, permitido como medio libre. El resto de decisiones cerradas y resúmenes fieles de las respuestas están en la spec.
+
+Ampliación posterior acordada por el owner al cerrar P3: v2 incluye importes y descuento/origen por línea para evitar v3. Reparto global mediante proporciones acumuladas redondeadas; última cierra el total y ninguna cuota es negativa ni supera su bruto. Gratis/2x1 pertenece entero a la línea del producto elegida. Todos los importes operativos financieros se normalizan a la unidad mínima, con originales y ajustes auditables y cobrado aprobado intacto. Esta regla general se aplica a los casos similares sin nuevas consultas. Validar precios por moneda en el origen queda como hallazgo; todos USD es información del owner, no un inventario DB.
 
 ## Decisión
 
@@ -34,15 +36,29 @@ El directorio es necesario porque configurar comisiones requiere conocer los med
 
 POS guarda bruto, descuento autorizado, ajuste, neto cobrado, moneda/unidad y pagos en el mismo commit de `closed`, con/sin cliente. Cantidades/precios vienen de snapshots, no catálogo actual. `Recibido`/cambio no son base de comisión. Con cliente, el flujo de acreditación/cupón sigue siendo único; su resultado alimenta el snapshot POS.
 
-Helper monetario compartido en core implementa aritmética exacta y HALF_UP por unidad mínima, con el criterio0230/0231, sin importar Stock. `collected = round(gross-discount,minorUnit)` y `roundingAdjustment = collected-(gross-discount)`. No sumar redondeos intermedios ni renombrar ajuste como descuento.
+Helper monetario core genérico usa enteros/racionales y HALF_UP por minorUnit, sin importar Stock. Preservar originales G0,D0,N0=G0−D0 y cobrado aprobado N=round(N0); operar G=round(G0), D=round(D0), A=N−(G−D), con **G−D+A=N**. Guardar cada diferencia de normalización y también N−N0, sin confundir ese ajuste original con A. Importes operativos normalizados; originales/deltas de auditoría conservan precisión exacta. Comisión y pagos siguen la misma regla, sin redondear tasas como dinero ni alterar el costo unitario6 de0230.
 
 El flujo genérico de acreditación permite un parámetro opcional de unidad de liquidación, default2 para conservar callers actuales; POS pasa la unidad de su moneda. Con cupón, aplicar redondeo antes de persistir `core.order.total` y calcular unidades. Sin cupón se entrega el mismo neto al writer. Se preserva descuento autorizado y se registra ajuste en POS/evento; core.order, pagos y acreditación comparten neto. No basta redondear después de `grantWithCouponInTx`: ya habría persistido otro valor. Esto justifica tocar el helper genérico del core; no agrega reglas ni literales POS en core.
 
-Neto positivo exige pagos propios/activos distintos con importes positivos, precisión válida y suma exacta igual al neto; una entrada por medio. Neto0 exige pagos[] y comisión0, aun sin Rentabilidad encendido, porque es un hecho explícito del snapshot nuevo. No asignar medio ficticio, fijo ni cero desde ausencia de datos legados. Validación de nuevos pagos ocurre después del branch idempotente cerrado+misma clave; el retry viejo no necesita inventar pagos para recuperar una venta cerrada.
+Neto positivo exige pagos propios/activos distintos con importes originales positivos y precisión válida; la suma original debe normalizar al neto aprobado. El reparto acumulado produce pagos operativos positivos cuya suma exacta es ese neto, conservando originales/deltas y las entradas que normalizan0 solo en auditoría; una entrada por medio. Neto0 exige pagos[] y comisión0, aun sin Rentabilidad encendido, porque es un hecho explícito del snapshot nuevo. No asignar medio ficticio, fijo ni cero desde ausencia de datos legados. Validación de nuevos pagos ocurre después del branch idempotente cerrado+misma clave; el retry viejo no necesita inventar pagos para recuperar una venta cerrada.
+
+### 2b. Descuento por línea necesario para v2
+
+El reparto, su persistencia y el origen entran en0233. Postergarlos a P3 obligaría a cambiar el contrato cuando el primer evento v2 ya fuera durable o a reinterpretar ventas desde líneas actuales. P3 implementará premios/canjes; no se añade ese motor aquí.
+
+Orden congelado `(position,sourceLineId)` ascendente. C(T,w) reparte enteros de unidad mínima por prefijos proporcionales HALF_UP; cuota=acumulado actual−anterior, última=T−Σanteriores. Evita el resto negativo de redondear individualmente: USD cuatro líneas0,01 y descuento0,02 →0,01/0/0,01/0. Pesos0 reciben0; total de pesos0 exige T0.
+
+Descuento original global d0_i=D0×g0_i/G0; cuota operativa d_i=C(D,g0_i). Gratis/2x1 conserva la referencia exacta de la primera coincidencia que ya eligió el evaluador y descuenta una unidad snapshot, sin buscar otra línea del mismo producto ni repartir entre duplicadas. D0 y D quedan enteros en ese destino.
+
+Para asegurar límites tras normalizar brutos fraccionarios, R=G−D y pesos restantes w_i=g0_i−d0_i; r_i=C(R,w_i), bruto operativo g_i=d_i+r_i. Neto n_i=C(N,w_i), ajuste a_i=n_i−(g_i−d_i). Todos no negativos salvo ajustes firmados, descuento≤bruto, y las sumas cierran G,D,N,A. Normalización conjunta del snapshot, sin cambiar precios en Catálogo. Los originales/deltas que sean no terminantes se conservan como racional reducido con numerador/denominador/escala, no floats. Fórmulas/DTO completos en0233.
+
+Persistir dinero/originales/ajustes/origen por línea POS con orden/pagos/acreditación/outbox en el mismo commit. Core recibe referencias opacas de línea, devuelve decisión autorizada y origen; no importa POS. Retry lee snapshot sin recalcular distribución. No backfill de ventas anteriores. Ejemplo COP probado en aceptación: originales10,40−0,60=9,80→cobrado10; operativo **10−1+1=10**, con todos los deltas auditados. COP0,60 con100%→bruto1/descuento1/neto0, pagos[].
+
+Origen congelado `campaign_coupon` con couponId/campaignId/benefitKind y alcance/destino; reserva `program_reward` y referencia extensible para P3. No endpoint ni productor de canje de premios ahora. Descuentos no reducen cantidades de consumo: gratis/2x1 mantiene todas las unidades reales y referenciasR1.
 
 ### 3. Evento v2 y captura consistente de tarifa
 
-Extender `SaleClosedEvent` a unión v1|v2. V2 conserva campos comunes y referencias de cada línea, incluidos slots R1, y agrega `money:{gross,discount,roundingAdjustment,collected,currencyCode,minorUnit}` y pagos con ID, medio/proveedor/nombre/forma/importe y `resourceVersions[]`.
+Extender `SaleClosedEvent` a unión v1|v2. V2 conserva campos comunes y referencias de línea, incluidos slotsR1. Agrega dinero de orden, dinero/origen por línea y pagos: bruto, descuento atribuido, neto, ajuste firmado, originales/deltas y moneda/unidad; cada pago conserva ID, medio/proveedor/nombre/forma, importe operativo, original/ajuste y resourceVersions. La estructura escrita en0233 es el contrato de implementación. P3 no requiere v3 por estos campos.
 
 `publishSaleClosed` se amplía de punteros exclusivamente de producto a referencias de recursos genéricos. En una sentencia MVCC captura punteros de productos y medios más elegibilidad de suscriptores. Configuración de comisión crea una revisión inmutable y actualiza su puntero en la misma transacción; cada pago captura `(providerId,slot:'commission',versionId)` del recurso medio. Ausencia de puntero queda congelada como falta de configuración. Identidad de revisión capturada manda, no una búsqueda posterior por `created_at <= closedAt`: inicio/fecha de una transacción no prueba que su commit fuese visible al cierre.
 
@@ -52,7 +68,7 @@ Stock/Recetas y lector0230 aceptan ambos envelopes usando los campos comunes; nu
 
 ### 4. Aplicación independiente, faltantes y conservación
 
-Rentabilidad procesa cada pago con la revisión capturada y guarda resultado/ack en una sola transacción durable. Fórmula por pago `round(amount×percent/100+fixed,minorUnit)`; fijo una vez por medio usado. Múltiples medios representan transacciones distintas; sumar sus comisiones finales. No capar fijo al importe cobrado. Sin tarifas por local, productos o profesional.
+Rentabilidad procesa cada pago con la revisión capturada y guarda resultado/ack en una sola transacción durable. Fórmula por pago `round(amount×percent/100+originalFixed,minorUnit)`; fijo una vez por medio usado. Conservar resultado exacto original y diferencia de normalización; si el fijo se muestra normalizado conserva también su original/delta y no se usa esa representación para un redondeo intermedio del cálculo. Múltiples medios representan transacciones distintas; sumar sus comisiones operativas finales, conservando suma original y ajuste. Pagos fraccionarios se normalizan acumuladamente para cerrar el N aprobado; los normalizados0 no generan fijo y quedan auditados. No capar fijo al importe cobrado. Sin tarifas por local, productos o profesional.
 
 Guardar base, moneda/unidad, referencias, parámetros y resultado permite replay idéntico, sin revalorar con tarifas vigentes. IDs de evento/pago y unicidad impiden duplicación; claim, backoff y cron existentes recuperan fallos sin frenar cobro. No depender de que `after()` termine. Un error revierte resultados/ack de ese delivery, no venta ni resultados de otro suscriptor.
 
@@ -81,6 +97,8 @@ Corte verificable de writers/UI antiguos y soporte v1/v2, no espera fija. Rollba
 - **Resolver por fecha de revisión:** no garantiza visibilidad del commit; descartado frente a referencia capturada atómicamente.
 - **Tarifas junto a medios POS o catálogo con tasas:** rompe propiedad/permisos elegidos y promete tasas que el comercio debe configurar; descartado.
 - **Rentabilidad requiere/importa POS o duplica sus tablas por SQL:** restringe módulo a POS y vulnera ADR0139/0141; se elige directorio registrado de metadata mínima y origen sin FK.
+- **Dejar reparto/origen por línea para P3:** descartado porque v2 debe nacer completo y no reinterpretar ventas.0233 calcula/persiste/publica el reparto actual; P3 conserva premios/canjes.
+- **Redondear cuotas individualmente y restar a la última:** puede dar descuento negativo; acumulados y bruto restante garantizan las sumas y límites.
 - **Evento nuevo independiente para pagos:** duplicaría coordinación de durabilidad/orden de cierre. Se amplía el mismo evento con envelope compatible y readers explícitos.
 - **Inferir efectivo/costo0 para histórico o módulos apagados:** falsea datos; no se hace. La excepción neto0 exige snapshot nuevo explícito.
 
@@ -89,5 +107,7 @@ Costo de esta decisión: extensión genérica de recursos/publicación y lifecyc
 ## Estado y límites
 
 Decisión de diseño cerrada con respuestas del owner previas a redacción. No equivale a implementación ni valida comportamiento en DB/PROD. Alcance documental exacto: SPEC0233 y este ADR, sin índices/estados. Requiere migración futura, no generada.
+
+Hallazgo del owner: validar precios según moneda en Catálogo/POS eliminaría fracciones COP/CLP; fuera de este encargo. No se presenta como un cambio realizado.
 
 Hallazgos externos a decidir: forma de Peigo antes de incluirlo, tarifas/diferidos reales por comercio, política general de moneda y asignación futura de comisiones para Smart Menu. Ningún precio o afirmación jurídica del informe se presenta como vigente. UI definitiva, propina/servicio, anulaciones cobradas, retenciones y comisión profesional quedan fuera.

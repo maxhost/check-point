@@ -1,6 +1,6 @@
 # R1 — contrato de implementación de SPEC0232 / ADR0148
 
-Fecha: 2026-10-15. El owner autorizó lanzar dos implementadores y QA independiente después del PASS documental. Base de preparación: `fbc903b728c11ba1bbd6e74a73796a5fa292a388` en dev. Este contrato y el ajuste documental P1 son trabajo del coordinador. La autorización de R1 incluye código, migración y comprobaciones locales/CI protegidas; no incluye push ni operaciones PROD. Se mantienen excluidos INDEX, TASKS y estados comunes. Main local espera la decisión final del owner.
+Fecha: 2026-10-15. El owner autorizó lanzar dos implementadores y QA independiente después del PASS documental. Base de preparación: `fbc903b728c11ba1bbd6e74a73796a5fa292a388` en dev. Este contrato y el ajuste documental P1 son trabajo del coordinador. La autorización de R1 incluye código, migración y comprobaciones locales/CI protegidas; no incluye push ni operaciones PROD. Se mantienen excluidos INDEX, TASKS y estados comunes. El owner autorizó posteriormente completar R1, pasar QA y hacer merge a main local; después implementar P1, pasar su QA y hacer también merge a main local. No se vuelve a pedir esa aprobación local.
 
 ## Fuentes y alcance
 
@@ -39,4 +39,4 @@ Presupuesto inicial focal de20min por candidato, cero mutaciones por defecto. No
 
 DB solo `tools/neon-test.sh`, Node24 y configuración CI seleccionada fuera del repo; no usar ni imprimir DATABASE_URL de PROD. El coordinador reserva `db:recipes-r1-ci` para un solo writer, también durante DDL/teardown. A pide turno antes de usar DB; B y QA esperan liberación explícita. DDL aislado con `--no-file-parallelism`. Nada de migraciones o tests concurrentes sobre la misma DB. La app local se alineará con la migración antes de entregar, usando el migrador local protegido y configuración seleccionada; no equivale a smoke de UI.
 
-Cada entrega: commits propios, checkout limpio, comandos/resultados y límites en `docs/factory/0232-{model,http}.md`; coordinación registra factory deliver/accept. Fallos vuelven al autor, sin crear reviewers extra. Candidato final se integra en dev con QA pertinente. No promoción a main local, cleanup ni push por inferencia.
+Cada entrega: commits propios, checkout limpio, comandos/resultados y límites en `docs/factory/0232-{model,http}.md`; coordinación registra factory deliver/accept. Fallos vuelven al autor, sin crear reviewers extra. Candidato final se integra en dev con QA pertinente. Con PASS del candidato R1, promover a main local y hacer factory integrate/cleanup conforme a la autorización explícita posterior del owner. Luego preparar contratos/reservas de implementación P1 desde la base integrada; P1 termina también en main local tras QA. Cada push y operación PROD sigue requiriendo permiso propio.
