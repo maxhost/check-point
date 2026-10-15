@@ -71,3 +71,6 @@ export const recipeRevisions = recipesSchema.table("revision", {
     .notNull()
     .defaultNow(),
 });
+
+export * from "./recipes-library";
+export * from "./recipes-compositions";

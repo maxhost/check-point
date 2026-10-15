@@ -617,6 +617,13 @@
       "when": 1792039438982,
       "tag": "0087_meses_finitos",
       "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "7",
+      "when": 1792043671943,
+      "tag": "0088_recetas_independientes",
+      "breakpoints": true
     }
   ]
 }
