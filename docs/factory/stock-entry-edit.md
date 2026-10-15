@@ -46,3 +46,9 @@ La actualización posterior de fuentes e2e y este handoff no cambia el código d
 4. Registrar stock → Ajustar stock: el conteo sigue sin campo ni requisito de precio.
 
 Siguiente paso: revisión independiente del coordinador sobre el candidato congelado y QA browser del owner. La edición de entradas quedó cancelada, no pendiente de implementación.
+
+## Cierre del coordinador
+
+QA independiente `recipes_qa`: **PASS de revisión estática** sobre `6a9a16b5b9ac3bea4132b180ec89c875c95e413e`, sin hallazgos bloqueantes. Se cotejaron guardas antes de escritores/drenaje, cero explícito, validación numérica delegada existente, compra manual/IA, conteos separados y ocultamiento de saldos conservando pendientes. Se reutilizan tipos/lint y 36 unitarios del autor; no se ejecutaron browser ni e2e adicionales.
+
+Integración local en dev: `c7270046a2ca3e4464e1af8fc0fd4c774e65722d`. La combinación conserva Stock, PARQUEADO y las fuentes e2e idénticos al candidato aceptado, y el documento de plan idéntico al cambio ajeno `000ff724`. QA revisó esa compatibilidad focal; el coordinador confirmó los diffs vacíos tras el merge. Este cierre agrega solo evidencia documental. Main local recibe la integración para la prueba del owner; sin push, SQL ni operaciones DB.
