@@ -73,7 +73,7 @@ describe.skipIf(!modulesIntegrationEnabled)(
         {
           id: "recipes",
           name: "Recetas",
-          description: "Receta de cada producto, costo y margen",
+          description: "Recetas y composiciones de tus productos",
           requires: ["stock"],
           enabled: false,
           suggested: true,
@@ -84,7 +84,7 @@ describe.skipIf(!modulesIntegrationEnabled)(
             {
               id: "recipes",
               label: "Recetas",
-              description: "Recetas, costo y margen de cada producto.",
+              description: "Crear recetas y componer productos y combos.",
             },
           ],
         },
@@ -120,7 +120,7 @@ describe.skipIf(!modulesIntegrationEnabled)(
         {
           id: "profitability",
           name: "Rentabilidad",
-          description: "Costos fijos y del personal de tus locales",
+          description: "Costos fijos, sueldos y comisiones de tus ventas",
           requires: [],
           enabled: false,
           suggested: true,

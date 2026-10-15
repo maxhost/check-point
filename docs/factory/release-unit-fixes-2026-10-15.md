@@ -25,3 +25,14 @@ En este worktree y sobre el contenido del commit de tests indicado, Node `v24.20
 El doble DB no accede a una base real. No se ejecutaron DB/Neon, browser, build o verify global en este worktree. La validación completa del hook de publicación corresponde al coordinador y no se declara aprobada por estos checks focales.
 
 Sin servidores o procesos persistentes propios; sin push ni merge. Este handoff se añade después del commit de tests comprobado. Siguiente paso: revisión independiente del candidato congelado e integración por el coordinador antes de repetir la señal global afectada para publicación.
+
+## Continuación: expectativas Neon del registro de módulos
+
+Base actualizada por el coordinador a `05cf722ea1a4a0f9e88e9b0b5dfaf1d321b5a3a4`, con la entrega anterior integrada. Nuevos fallos globales observados en el mismo log del ensayo de publicación, líneas 2426 y 2441. Scope ampliado únicamente a los dos tests siguientes y este handoff; sin cambios de producto.
+
+- `modules-fk.neon.integration.test.ts`: el piso exacto sigue comprobando esquemas y tablas, actualizado a POS7 y Rentabilidad5. Evidencia versionada: 0079 trasladó las cuatro tablas POS originales, 0091 añade `order_payment`, `payment_method_initialization` y `payment_method`; 0086 creó las tres tablas `fixed_cost*` de Rentabilidad y 0091 añade `commission_revision` y `payment_commission`. `profitability` consta en `modules/registry.ts`, por lo que es esquema de módulo, no core. No se alteraron la consulta de FKs ni el control que crea una FK core→stock dentro de una transacción revertida.
+- `modules-registry.neon.integration.test.ts`: el contrato esperado de `GET /api/modules` conserva la comparación exacta de los cinco módulos y se actualizan únicamente tres textos aprobados en los manifiestos actuales: descripción de Recetas, descripción de su permiso y descripción de Rentabilidad. Las demás comprobaciones de permisos, apagado, dependencias y aislamiento permanecen intactas.
+
+No se accedió a CI ni se ejecutaron estas suites Neon durante esta continuación: la DB seguía reservada por el coordinador para la corrida global. La revisión de SQL/manifiestos explica el ajuste, pero no se presenta como PASS DB. La ejecución focal DB queda pendiente de liberar CI/asignación del coordinador.
+
+Checks de esta revisión con Node `v24.20.0`, precedidos de `source ~/.nvm/nvm.sh && nvm use`: `pnpm exec eslint apps/merchant/src/modules/modules-fk.neon.integration.test.ts apps/merchant/src/modules/modules-registry.neon.integration.test.ts` y `pnpm --filter @mi-pasaporte/merchant typecheck`, ambos exit 0; `git diff --check` correcto. Sin skips/retries presentados como evidencia DB y sin repetir la batería global.
