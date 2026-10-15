@@ -22,6 +22,17 @@ import { onHandSql, waitForLockWaiters } from "./stock-integration-support";
 
 let world: ModuleWorld;
 
+async function readMovements(itemId: string) {
+  const response = await api.movements(world.cookie, itemId);
+  const body = await response.json();
+  expect(
+    response.status,
+    JSON.stringify({ error: body.error, code: body.code }),
+  ).toBe(200);
+  expect(body.movements).toBeInstanceOf(Array);
+  return body.movements;
+}
+
 beforeAll(async () => {
   world = await seedModuleWorld("Stock concurrente");
   await enableModules(world, ["stock"]);
@@ -61,9 +72,7 @@ describe.skipIf(!modulesIntegrationEnabled)(
       const failed = a.status === 409 ? a : b;
       expect((await failed.json()).code).toBe("count_changed");
       // Spec0227 SERIALIZABLE explicitly aborts only the concurrent count; caller retries it.
-      const beforeRetry = (
-        await (await api.movements(world.cookie, item.id)).json()
-      ).movements;
+      const beforeRetry = await readMovements(item.id);
       expect(
         beforeRetry.filter((m: { kind: string }) => m.kind === "adjustment"),
       ).toHaveLength(1);
@@ -74,8 +83,7 @@ describe.skipIf(!modulesIntegrationEnabled)(
       const final = await onHandSql(item.id);
       // Sin el lock los dos leen 100 y el saldo termina en (10−100)+(7−100)+100 = −83.
       expect(["10.000", "7.000"]).toContain(final);
-      const moves = (await (await api.movements(world.cookie, item.id)).json())
-        .movements;
+      const moves = await readMovements(item.id);
       const adjustments = moves.filter(
         (m: { kind: string }) => m.kind === "adjustment",
       );
