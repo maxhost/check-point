@@ -11,6 +11,25 @@ conserva).
 Regla al sacar algo de aca: **nada toca codigo sin su spec cerrada.** Varias de estas filas dicen
 explicitamente «necesita spec» — eso es literal.
 
+## PARQUEADO 2026-10-15 — Premios como cupones (canje desde la PWA) y rediseño del mostrador
+
+Owner 2026-10-15, al revisar P3 del plan `docs/plan-margen-ganancia-2026-10-14.md`: el canje del premio desde la PWA
+«no hace parte de este arco» y «el mostrador se rediseñará, queda fuera de este arco».
+**Hoy (código leído 2026-10-15):** la PWA solo informa «Listo para canjear» (`apps/consumer/.../wallet/rewards-modal.tsx`,
+sin botón); el mostrador canjea el premio directo (`counter/redeem-panel.tsx` → `server/counter/redemptions.ts` →
+`core.reward_redemption`), sin cupón, sin venta, sin descontar stock ni costo. La 0233 reserva `discountOrigin.type =
+'program_reward'` sin productor. **Consecuencia mientras siga parqueado:** los premios canjeados no entran en la ganancia.
+**Decisiones del owner ya tomadas (no volver a preguntar):**
+1. Todo es un cupón: canjear puntos/sellos emite un cupón; los puntos se descuentan al emitirlo.
+2. Solo el cliente convierte el premio en cupón, desde la PWA. El comercio nunca canjea ni aplica un cupón que el
+   cliente no generó y seleccionó.
+3. POS y mostrador hacen lo mismo: evalúan si el cliente tiene un cupón seleccionado y lo consumen, con la API que ya
+   usa el POS (`grant-coupon.ts` / `coupon-discount.ts`).
+4. Cupón de premio vencido sin uso: se pierde con sus puntos («no es responsabilidad del comercio»).
+5. Mostrador: no se elimina; se repiensa y rediseña después (sigue siendo el camino sin POS y para cupones sin compra).
+6. Se conserva la regla de la 0148: canjear un premio no cuenta como el beneficio de la visita.
+Reglas de canje vigentes: ADR 0119/0120, spec 0148. **Necesita spec + ADR** (L2: dinero y fidelización).
+
 ## PARQUEADO 2026-10-15 — Rediseñar UI de saldo actual por insumo/local
 
 Decisión del owner del 2026-10-15: ocultar temporalmente el listado superior de saldos de Stock, conservando su código. El rediseño de esa UI queda pendiente; no se implementa en este cambio. El historial de movimientos y el aviso de consumos pendientes siguen visibles.
