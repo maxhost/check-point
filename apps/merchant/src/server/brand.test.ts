@@ -5,6 +5,10 @@ import {
   validateBrandInput,
 } from "@mi-pasaporte/domain/server/brand";
 import { normalizeImage } from "@mi-pasaporte/domain/server/assets/image";
+import {
+  canonicalVatRate,
+  resultingBrandVat,
+} from "@mi-pasaporte/domain/server/brand/vat";
 import { isIanaTimezone } from "@mi-pasaporte/domain/server/timezone";
 
 const valid = {
@@ -107,5 +111,93 @@ describe("brand contract", () => {
     // Aspect ratio preserved (4:3 → 2048×1536).
     expect(meta.width).toBe(2048);
     expect(meta.height).toBe(1536);
+  });
+});
+
+describe("brand fiscal contract 0229", () => {
+  it.each([
+    ["0", "0.00"],
+    ["000.00", "0.00"],
+    ["100", "100.00"],
+    ["100.00", "100.00"],
+    ["15.5", "15.50"],
+    ["00015.02", "15.02"],
+    [null, null],
+  ])("canonicalizes exact percentage %s to %s", (value, expected) => {
+    expect(canonicalVatRate(value)).toBe(expected);
+    expect(
+      validateBrandInput({ ...valid, saleVatRate: value }).vat.saleVatRate,
+    ).toBe(expected);
+  });
+
+  it.each([
+    "",
+    " ",
+    " 15 ",
+    "-0",
+    "-1",
+    "100.01",
+    "101",
+    "999999999999999999999999",
+    "15.001",
+    "1e1",
+    "NaN",
+    "Infinity",
+    ".5",
+    "15.",
+    "15,25",
+    "+15",
+    15,
+    false,
+    undefined,
+  ])("rejects non-decimal/invalid percentage %s without rounding", (value) => {
+    expect(() => validateBrandInput({ ...valid, saleVatRate: value })).toThrow(
+      BrandError,
+    );
+  });
+
+  it.each(["chargesVat", "recoversPurchaseVat"])(
+    "only accepts strict booleans for %s",
+    (field) => {
+      for (const value of ["false", "true", 0, 1, null, undefined]) {
+        expect(() => validateBrandInput({ ...valid, [field]: value })).toThrow(
+          BrandError,
+        );
+      }
+      for (const value of [true, false]) {
+        expect(validateBrandInput({ ...valid, [field]: value }).vat).toEqual({
+          [field]: value,
+        });
+      }
+    },
+  );
+
+  it("preserves omissions and validates the complete saved state (null differs from zero)", () => {
+    const initial = {
+      chargesVat: false,
+      saleVatRate: null,
+      recoversPurchaseVat: false,
+    };
+    expect(validateBrandInput(valid).vat).toEqual({});
+    expect(resultingBrandVat(initial, {})).toEqual(initial);
+    expect(() => resultingBrandVat(initial, { chargesVat: true })).toThrow(
+      "Ingresa la tasa",
+    );
+    const enabled = resultingBrandVat(initial, {
+      chargesVat: true,
+      saleVatRate: "0.00",
+    });
+    expect(enabled.saleVatRate).toBe("0.00");
+    expect(resultingBrandVat(enabled, { chargesVat: false })).toEqual({
+      ...enabled,
+      chargesVat: false,
+    });
+    expect(() => resultingBrandVat(enabled, { saleVatRate: null })).toThrow(
+      BrandError,
+    );
+    expect(resultingBrandVat(initial, { recoversPurchaseVat: true })).toEqual({
+      ...initial,
+      recoversPurchaseVat: true,
+    });
   });
 });

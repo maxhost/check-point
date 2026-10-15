@@ -240,3 +240,179 @@ describe.skipIf(!enabled)(
     }, 240_000);
   },
 );
+
+describe.skipIf(!enabled)(
+  "private fiscal brand API 0229 with real sessions",
+  () => {
+    let a: Seed;
+    let b: Seed;
+    const extraUsers: string[] = [];
+    let team = "";
+    let noBrand = "";
+    let ownerA = "";
+    let ownerB = "";
+    const read = async (cookie: string) => {
+      const response = await BRAND_GET(conCookie("/api/brand", "GET", cookie));
+      expect(response.status).toBe(200);
+      return response.json();
+    };
+    const put = (cookie: string, body: unknown) =>
+      BRAND_PUT(conCookie("/api/brand", "PUT", cookie, body));
+
+    beforeAll(async () => {
+      const seed = (name: string) =>
+        seedBusiness({
+          name,
+          kind: "points",
+          mode: "per_amount",
+          grant: 10,
+          blockAmount: "1.00",
+        });
+      a = await seed("Fiscal A");
+      b = await seed("Fiscal B");
+      const withBrand = await seedMember({
+        businessId: a.business.id,
+        permissions: ["brand"],
+      });
+      const without = await seedMember({
+        businessId: a.business.id,
+        permissions: ["loyalty"],
+      });
+      extraUsers.push(withBrand, without);
+      team = await cookieDe(withBrand);
+      noBrand = await cookieDe(without);
+      ownerA = await cookieDe(a.userId);
+      ownerB = await cookieDe(b.userId);
+    }, 180_000);
+
+    afterAll(async () => {
+      for (const seed of [a, b]) if (seed) await dropBusiness(seed.business.id);
+      for (const id of [...extraUsers, a?.userId, b?.userId].filter(Boolean)) {
+        await getDb().delete(users).where(eq(users.id, id));
+      }
+    }, 180_000);
+
+    it("delegated brand writes exactly the guarded business, ignoring a forged body id", async () => {
+      const beforeB = await read(ownerB);
+      expect(beforeB).toMatchObject({
+        chargesVat: false,
+        saleVatRate: null,
+        recoversPurchaseVat: false,
+      });
+      const beforeA = await read(team);
+      const response = await put(team, {
+        ...brandBody(beforeA.brandRevision, "Fiscal A"),
+        businessId: b.business.id,
+        chargesVat: true,
+        saleVatRate: "17.25",
+        recoversPurchaseVat: true,
+      });
+      expect(response.status).toBe(200);
+      const saved = await response.json();
+      expect(saved).toMatchObject({
+        id: a.business.id,
+        chargesVat: true,
+        saleVatRate: "17.25",
+        recoversPurchaseVat: true,
+      });
+      expect(saved).not.toHaveProperty("logoObjectKey");
+      expect(await read(ownerA)).toEqual(saved);
+      expect(await read(ownerB)).toEqual(beforeB);
+    }, 60_000);
+
+    it("legacy API payload preserves fields and malformed JSON returns400 without writes", async () => {
+      const before = await read(team);
+      const response = await put(
+        team,
+        brandBody(before.brandRevision, "Fiscal Legacy"),
+      );
+      expect(response.status).toBe(200);
+      const saved = await response.json();
+      expect(saved).toMatchObject({
+        chargesVat: true,
+        saleVatRate: "17.25",
+        recoversPurchaseVat: true,
+      });
+      const malformed = await BRAND_PUT(
+        new Request("http://localhost:3001/api/brand", {
+          method: "PUT",
+          headers: { cookie: team, "content-type": "application/json" },
+          body: "{",
+        }),
+      );
+      expect(malformed.status).toBe(400);
+      expect(await read(team)).toEqual(saved);
+    }, 60_000);
+
+    it("validates complete state and strict field types with422, preserving DB revision", async () => {
+      const before = await read(team);
+      for (const patch of [
+        { chargesVat: true, saleVatRate: null },
+        { saleVatRate: "100.01" },
+        { saleVatRate: "10.001" },
+        { saleVatRate: 15 },
+        { chargesVat: "false" },
+        { recoversPurchaseVat: null },
+      ]) {
+        const response = await put(team, {
+          ...brandBody(before.brandRevision, "Invalid"),
+          ...patch,
+        });
+        expect(response.status).toBe(422);
+      }
+      expect(await read(team)).toEqual(before);
+    }, 120_000);
+
+    it("a team member without brand cannot read or write fiscal data", async () => {
+      const before = await read(team);
+      const deniedRead = await BRAND_GET(
+        conCookie("/api/brand", "GET", noBrand),
+      );
+      const deniedWrite = await put(noBrand, {
+        ...brandBody(before.brandRevision, "Denied"),
+        chargesVat: false,
+        saleVatRate: null,
+      });
+      for (const response of [deniedRead, deniedWrite]) {
+        expect(response.status).toBe(403);
+        expect((await response.json()).code).toBe("missing_permission");
+      }
+      expect(await read(team)).toEqual(before);
+    }, 60_000);
+
+    it("same-revision concurrent sessions yield one complete save and one409 without merging values", async () => {
+      const before = await read(team);
+      const candidates = [
+        {
+          ...brandBody(before.brandRevision, "Fiscal Race A"),
+          chargesVat: true,
+          saleVatRate: "0",
+          recoversPurchaseVat: false,
+        },
+        {
+          ...brandBody(before.brandRevision, "Fiscal Race B"),
+          chargesVat: false,
+          saleVatRate: null,
+          recoversPurchaseVat: true,
+        },
+      ];
+      const responses = await Promise.all([
+        put(team, candidates[0]),
+        put(ownerA, candidates[1]),
+      ]);
+      expect(responses.map((r) => r.status).sort()).toEqual([200, 409]);
+      const winner = responses.findIndex((r) => r.status === 200);
+      const saved = await responses[winner].json();
+      expect(saved).toMatchObject({
+        name: candidates[winner].name,
+        chargesVat: candidates[winner].chargesVat,
+        recoversPurchaseVat: candidates[winner].recoversPurchaseVat,
+        saleVatRate: winner === 0 ? "0.00" : null,
+        brandRevision: before.brandRevision + 1,
+      });
+      expect(await read(team)).toEqual(saved);
+      const loser = await responses[1 - winner].json();
+      expect(loser.error).toContain("otra sesión");
+    }, 60_000);
+  },
+);
