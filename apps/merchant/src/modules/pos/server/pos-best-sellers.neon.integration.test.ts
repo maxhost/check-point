@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { getDb } from "@mi-pasaporte/db";
-import { posOrders } from "@mi-pasaporte/db/schema";
+import { locations, posOrders } from "@mi-pasaporte/db/schema";
 import { scannedCustomer } from "../../../server/counter/coupon-cycle-support";
 import {
   type PosWorld,
@@ -82,10 +82,23 @@ describe.skipIf(!posIntegrationEnabled)(
       const elsewhere = await closeOrder([
         { productId: otroLocal, quantity: 9 },
       ]);
-      await getDb()
+      // 0083 assigns a legacy null location to the only active local; use a real second local.
+      const [otherLocation] = await getDb()
+        .insert(locations)
+        .values({
+          businessId: a.seed.business.id,
+          name: "Otro local ranking",
+          addressLabel: "Quito",
+          countryCode: "EC",
+          addressSnapshot: {},
+        })
+        .returning({ id: locations.id });
+      const [relocated] = await getDb()
         .update(posOrders)
-        .set({ locationId: null })
-        .where(eq(posOrders.id, elsewhere));
+        .set({ locationId: otherLocation.id })
+        .where(eq(posOrders.id, elsewhere))
+        .returning({ locationId: posOrders.locationId });
+      expect(relocated.locationId).toBe(otherLocation.id);
 
       const body = await catalog();
       expect(body.bestSellingProductIds).toEqual([a.medialuna, a.cafe]);
