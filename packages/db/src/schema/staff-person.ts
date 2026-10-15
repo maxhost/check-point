@@ -79,7 +79,7 @@ export const staffLocationPeriods = core.table(
     }).onDelete("cascade"),
     check(
       "staff_location_period_month_check",
-      sql`extract(day from ${t.fromMonth}) = 1 and (${t.untilMonth} is null or (extract(day from ${t.untilMonth}) = 1 and ${t.untilMonth} > ${t.fromMonth}))`,
+      sql`isfinite(${t.fromMonth}) and extract(day from ${t.fromMonth}) = 1 and (${t.untilMonth} is null or (isfinite(${t.untilMonth}) and extract(day from ${t.untilMonth}) = 1 and ${t.untilMonth} > ${t.fromMonth}))`,
     ),
   ],
 );

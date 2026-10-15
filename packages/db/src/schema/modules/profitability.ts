@@ -55,7 +55,7 @@ export const profitabilityFixedCosts = profitabilitySchema.table(
     ),
     check(
       "profitability_cost_end_check",
-      sql`${t.endMonth} is null or extract(day from ${t.endMonth}) = 1`,
+      sql`${t.endMonth} is null or (isfinite(${t.endMonth}) and extract(day from ${t.endMonth}) = 1)`,
     ),
     check("profitability_cost_revision_check", sql`${t.revision} > 0`),
   ],
@@ -115,7 +115,7 @@ export const profitabilityFixedCostPeriods = profitabilitySchema.table(
     }),
     check(
       "profitability_period_month_check",
-      sql`extract(day from ${t.fromMonth}) = 1 and (${t.untilMonth} is null or (extract(day from ${t.untilMonth}) = 1 and ${t.untilMonth} > ${t.fromMonth}))`,
+      sql`isfinite(${t.fromMonth}) and extract(day from ${t.fromMonth}) = 1 and (${t.untilMonth} is null or (isfinite(${t.untilMonth}) and extract(day from ${t.untilMonth}) = 1 and ${t.untilMonth} > ${t.fromMonth}))`,
     ),
     check(
       "profitability_period_label_check",

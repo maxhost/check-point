@@ -81,8 +81,8 @@ export async function limpiarNegocios(
   userIds: string[],
 ): Promise<void> {
   const db = getDb();
+  // SPEC0231: delete the aggregate root first; identity and membership FK remain strict.
   for (const businessId of businessIds) {
-    await db.delete(memberships).where(eq(memberships.businessId, businessId));
     await db.delete(businesses).where(eq(businesses.id, businessId));
   }
   for (const userId of userIds) {
