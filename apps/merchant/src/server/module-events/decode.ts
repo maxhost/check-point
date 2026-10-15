@@ -53,7 +53,9 @@ export function decodeSaleClosedEvent(value: unknown): SaleClosedEvent {
       if (
         !isUuid(p.paymentId) ||
         !isUuid(p.methodId) ||
+        typeof p.methodProviderId !== "string" ||
         !p.methodProviderId ||
+        typeof p.methodName !== "string" ||
         !p.methodName ||
         !["none", "percent", "fixed", "percent_and_fixed"].includes(
           p.chargeShape,

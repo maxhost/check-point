@@ -139,7 +139,7 @@ export async function saveCommission(
   body: Record<string, unknown>,
 ) {
   if (!isUuid(rawId)) throw methodNotFound();
-  const methodId = rawId as string;
+  const methodId = (rawId as string).trim().toLowerCase();
   if (body.expectedRevisionId !== null && !isUuid(body.expectedRevisionId))
     throw new ModuleError(
       422,
@@ -159,7 +159,11 @@ export async function saveCommission(
     if (resources.length !== 1) throw methodNotFound();
     const method = paymentMetadata(resources[0]);
     const current = await currentCommission(tx, businessId, methodId);
-    if ((current?.id ?? null) !== body.expectedRevisionId)
+    const expectedRevisionId =
+      body.expectedRevisionId === null
+        ? null
+        : (body.expectedRevisionId as string).trim().toLowerCase();
+    if ((current?.id ?? null) !== expectedRevisionId)
       throw new ModuleError(
         409,
         "commission_revision_conflict",

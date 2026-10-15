@@ -14,9 +14,11 @@ import {
   setModuleRow,
   dropPosWorld,
 } from "./pos/server/pos-integration-support";
+import { closeWithCash } from "./pos/server/pos-payment-integration-support";
+import { initializePaymentMethods } from "./pos/server/payment-catalog";
 import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
-import { getDb } from "@mi-pasaporte/db";
+import { getDb, withDbTransaction } from "@mi-pasaporte/db";
 import {
   locations,
   moduleEvents,
@@ -88,7 +90,7 @@ export const close = (
   order: { id: string; version: number },
   key = randomUUID(),
 ) =>
-  route("POST", `pos/orders/${order.id}/close`, {
+  closeWithCash(world.cookie, order.id, {
     version: order.version,
     clientRequestId: key,
   });
@@ -131,6 +133,9 @@ export async function setupStockLocalWorld() {
   world = await seedModuleWorld("0227 integration");
   other = await seedModuleWorld("0227 foreign");
   await enableModules(world, ["stock", "recipes", "pos", "tables"]);
+  await withDbTransaction((tx) =>
+    initializePaymentMethods(tx, { businessId: world.businessId }),
+  );
   const [local] = await getDb()
     .select({ id: locations.id })
     .from(locations)
