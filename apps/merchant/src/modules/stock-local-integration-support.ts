@@ -1,3 +1,12 @@
+import {
+  createRecipe,
+  updateRecipe,
+  readLibraryRecipe,
+} from "./recipes/server/library";
+import {
+  readComposition,
+  saveComposition,
+} from "./recipes/server/compositions";
 import { vi } from "vitest";
 import * as eventRetry from "../server/module-events/retry";
 import {
@@ -36,11 +45,31 @@ export const route = (
   body?: unknown,
   cookie = world.cookie,
 ) => callModuleRoute(method, `/api/modules/${path}`, cookie, body);
-export const put = (quantity: string, id = productId) =>
-  route("PUT", `recipes/${id}`, {
-    locationId: localId,
+export async function put(quantity: string, id = productId) {
+  const composition = await readComposition(world.businessId, id);
+  if (composition.recipes.length) {
+    const recipe = await readLibraryRecipe(
+      world.businessId,
+      composition.recipes[0].recipeId,
+    );
+    const updated = await updateRecipe(world.businessId, recipe.id, {
+      name: recipe.name,
+      lines: [{ itemId: flourId, quantity, unit: "g" }],
+      expectedRevisionId: recipe.revisionId,
+    });
+    return Response.json({ recipe: updated });
+  }
+  const recipe = await createRecipe(world.businessId, {
+    name: `Receta ${id}`,
     lines: [{ itemId: flourId, quantity, unit: "g" }],
   });
+  await saveComposition(world.businessId, id, {
+    isCombo: false,
+    recipes: [{ recipeId: recipe.id, quantity: "1.000" }],
+    expectedRevisionId: composition.revisionId,
+  });
+  return Response.json({ recipe });
+}
 export const create = async (
   quantity = 3,
   tableId?: string,
@@ -137,16 +166,15 @@ export async function preparePassWorld() {
         unit: "g",
       })
       .returning({ id: stockItems.id });
-    const saved = await callModuleRoute(
-      "PUT",
-      `/api/modules/recipes/${fixture.medialuna}`,
-      fixture.ownerCookie,
-      { lines: [{ itemId: item.id, quantity: "250.000", unit: "g" }] },
-    );
-    if (saved.status !== 200)
-      throw new Error(
-        `prepare pass recipe: ${saved.status} ${await saved.text()}`,
-      );
+    const recipe = await createRecipe(fixture.seed.business.id, {
+      name: "Pase receta",
+      lines: [{ itemId: item.id, quantity: "250.000", unit: "g" }],
+    });
+    await saveComposition(fixture.seed.business.id, fixture.medialuna, {
+      isCombo: false,
+      recipes: [{ recipeId: recipe.id, quantity: "1.000" }],
+      expectedRevisionId: null,
+    });
     return fixture;
   } catch (error) {
     await dropPosWorld(fixture);

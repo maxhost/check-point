@@ -1,5 +1,9 @@
 import { randomUUID } from "node:crypto";
-import * as recipeSnapshot from "./recipes/server/consumption-snapshot";
+import * as recipeSnapshot from "./recipes/server/model/captured";
+import {
+  readComposition,
+  saveComposition,
+} from "./recipes/server/compositions";
 import {
   dropPosWorld,
   openOrder,
@@ -13,7 +17,8 @@ import {
   moduleResourceVersions,
   posOrders,
   products,
-  recipeRevisions,
+  independentRecipeRevisions,
+  recipeSaleResolutions,
   stockItems,
   stockMovements,
 } from "@mi-pasaporte/db/schema";
@@ -50,7 +55,6 @@ import {
   localId,
   productId,
   flourId,
-  route,
   put,
   setupStockLocalWorld,
   cleanupStockLocalWorld,
@@ -74,15 +78,24 @@ describe.skipIf(!modulesIntegrationEnabled)(
             eq(moduleResourceVersions.providerId, "recipes"),
           ),
         );
+      const [resolution] = await getDb()
+        .select()
+        .from(recipeSaleResolutions)
+        .where(eq(recipeSaleResolutions.id, pointer.versionId));
       const [revision] = await getDb()
         .select()
-        .from(recipeRevisions)
-        .where(eq(recipeRevisions.id, pointer.versionId));
+        .from(independentRecipeRevisions)
+        .where(
+          eq(
+            independentRecipeRevisions.id,
+            resolution.components[0].recipeRevisionId,
+          ),
+        );
       expect(revision.lines).toEqual([
-        { itemId: flourId, unit: "g", quantity: "250.000" },
+        { itemId: flourId, itemName: "Harina", unit: "g", quantity: "250.000" },
       ]);
       const expansion = vi
-        .spyOn(recipeSnapshot, "expandRecipes")
+        .spyOn(recipeSnapshot, "capturedConsumption")
         .mockImplementation(() => {
           throw new Error("Revision read unavailable");
         });
@@ -94,8 +107,8 @@ describe.skipIf(!modulesIntegrationEnabled)(
       const payload = event.payload as SaleClosedEvent;
       expect(payload.lines[0].resourceVersions).toContainEqual({
         providerId: "recipes",
-        slot: "recipe",
-        versionId: revision.id,
+        slot: "composition",
+        versionId: resolution.id,
       });
       const [stored] = await getDb()
         .select()
@@ -146,7 +159,7 @@ describe.skipIf(!modulesIntegrationEnabled)(
       holdImmediateRetry();
       expect((await put("250.000")).status).toBe(200);
       const expansion = vi
-        .spyOn(recipeSnapshot, "expandRecipes")
+        .spyOn(recipeSnapshot, "capturedConsumption")
         .mockImplementation(() => {
           throw new Error("Recipe revision expansion unavailable");
         });
@@ -187,12 +200,21 @@ describe.skipIf(!modulesIntegrationEnabled)(
       expect(await movements(order.id)).toEqual([]);
       const captured = event.payload as SaleClosedEvent;
       const revisionId = captured.lines[0].resourceVersions[0].versionId;
+      const [frozenResolution] = await getDb()
+        .select()
+        .from(recipeSaleResolutions)
+        .where(eq(recipeSaleResolutions.id, revisionId));
       const [frozen] = await getDb()
         .select()
-        .from(recipeRevisions)
-        .where(eq(recipeRevisions.id, revisionId));
+        .from(independentRecipeRevisions)
+        .where(
+          eq(
+            independentRecipeRevisions.id,
+            frozenResolution.components[0].recipeRevisionId,
+          ),
+        );
       expect(frozen.lines).toEqual([
-        { itemId: flourId, unit: "g", quantity: "250.000" },
+        { itemId: flourId, itemName: "Harina", unit: "g", quantity: "250.000" },
       ]);
       expansion.mockRestore();
       // Recover after product deletion without consulting today's recipe or POS.
@@ -234,29 +256,35 @@ describe.skipIf(!modulesIntegrationEnabled)(
       const delivery = await deliveryOf(event.id);
       expect(delivery.state).toBe("skipped");
       expect(delivery.terminalReason).toBe("modules_disabled");
-      const deleted = await route(
-        "DELETE",
-        `recipes/${productId}?locationId=${localId}`,
+      const currentComposition = await readComposition(
+        world.businessId,
+        productId,
       );
-      expect(deleted.status).toBe(200);
+      const deleted = await saveComposition(world.businessId, productId, {
+        isCombo: false,
+        recipes: [],
+        expectedRevisionId: currentComposition.revisionId,
+      });
+      expect(deleted.recipes).toEqual([]);
       const emptyOrder = await create();
       expect((await close(emptyOrder)).status).toBe(200);
       const emptyEvent = await eventOf(emptyOrder.id);
       await drain(emptyEvent.id);
       expect(await movements(emptyOrder.id)).toEqual([]);
       const payload = emptyEvent.payload as SaleClosedEvent;
-      const [revision] = await getDb()
+      const [resolution] = await getDb()
         .select()
-        .from(recipeRevisions)
+        .from(recipeSaleResolutions)
         .where(
           eq(
-            recipeRevisions.id,
+            recipeSaleResolutions.id,
             payload.lines[0].resourceVersions[0].versionId,
           ),
         );
-      expect(revision.lines).toEqual([]);
+      expect(resolution.components).toEqual([]);
     }, 30_000);
     it("sale with customer pass accrues normally and consumes normalized recipe once", async () => {
+      holdImmediateRetry();
       const withPass = await preparePassWorld();
       try {
         const customer = await scannedCustomer(withPass);
@@ -274,12 +302,13 @@ describe.skipIf(!modulesIntegrationEnabled)(
         expect(sale.sale).not.toBeNull();
         const event = await eventOf(order.id, withPass.seed.business.id);
         await expireLeaseForRecovery(event.id);
-        await retryModuleEvents({
+        const applied = await retryModuleEvents({
           businessId: withPass.seed.business.id,
           eventIds: [event.id],
           force: true,
           budgetMs: 20000,
         });
+        expect(applied).toMatchObject({ applied: 1, failed: 0 });
         await expect
           .poll(
             async () =>

@@ -1,46 +1,32 @@
-import { and, eq, inArray } from "drizzle-orm";
-import { recipeRevisions } from "@mi-pasaporte/db/schema";
 import type { ModuleServer } from "../../route-table";
-import { expandRecipes } from "./consumption-snapshot";
 import { applyConsumption } from "../../stock/consumption";
+import { capturedConsumption } from "./model/captured";
+import { persistProvenance } from "./model/provenance";
 
-/** Resolve only the immutable revisions captured by core; never query POS or today's recipe. */
+/** Both captured formats are immutable; the transaction also owns delivery acknowledgment. */
 export const eventSubscriptions: NonNullable<
   ModuleServer["eventSubscriptions"]
 > = [
   {
     eventType: "sale.closed",
     resourceType: "product",
-    slot: "recipe",
+    slot: "composition",
     requiredModules: ["stock"],
     handler: async (tx, event) => {
-      const ids = event.payload.lines.flatMap((line) =>
-        line.resourceVersions
-          .filter(
-            (ref) => ref.providerId === "recipes" && ref.slot === "recipe",
-          )
-          .map((ref) => ref.versionId),
+      const captured = await capturedConsumption(
+        tx,
+        event.businessId,
+        event.payload,
       );
-      const revisions = ids.length
-        ? await tx
-            .select()
-            .from(recipeRevisions)
-            .where(
-              and(
-                eq(recipeRevisions.businessId, event.businessId),
-                inArray(recipeRevisions.id, ids),
-              ),
-            )
-        : [];
-      const lines = expandRecipes(event.payload, revisions);
       await applyConsumption(tx, {
         businessId: event.businessId,
         locationId: event.payload.locationId,
         sourceOrderId: event.payload.sourceOrderId,
         closedAt: new Date(event.payload.closedAt),
         userId: event.payload.userId,
-        lines,
+        lines: captured.movements,
       });
+      await persistProvenance(tx, event, captured.sources);
     },
   },
 ];

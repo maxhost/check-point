@@ -624,6 +624,20 @@
       "when": 1792043671943,
       "tag": "0088_recetas_independientes",
       "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "7",
+      "when": 1792043967362,
+      "tag": "0089_recipes_r1_invariants",
+      "breakpoints": true
+    },
+    {
+      "idx": 90,
+      "version": "7",
+      "when": 1792044782073,
+      "tag": "0090_recipes_r1_cascade",
+      "breakpoints": true
     }
   ]
 }

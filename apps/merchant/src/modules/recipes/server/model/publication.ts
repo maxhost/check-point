@@ -5,6 +5,7 @@ import {
   productCompositions,
   recipeSaleResolutions,
   recipeEntities,
+  moduleResourceVersions,
   type RecipeComponent,
 } from "@mi-pasaporte/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
@@ -60,6 +61,17 @@ export async function publishResolution(
       components,
     })
     .returning();
+  await tx
+    .delete(moduleResourceVersions)
+    .where(
+      and(
+        eq(moduleResourceVersions.businessId, businessId),
+        eq(moduleResourceVersions.resourceType, "product"),
+        eq(moduleResourceVersions.resourceId, revision.productId),
+        eq(moduleResourceVersions.providerId, "recipes"),
+        eq(moduleResourceVersions.slot, "recipe"),
+      ),
+    );
   await tx
     .insert(productCompositions)
     .values({

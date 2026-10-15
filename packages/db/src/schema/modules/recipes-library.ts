@@ -109,7 +109,7 @@ export function createRecipeLibraryTables() {
       foreignKey({
         columns: [t.businessId, t.itemId],
         foreignColumns: [stockItems.businessId, stockItems.id],
-      }).onDelete("restrict"),
+      }).onDelete("no action"),
       uniqueIndex("recipes_recipe_line_item_unique").on(t.recipeId, t.itemId),
       check(
         "recipes_recipe_line_quantity_check",

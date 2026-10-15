@@ -1,3 +1,4 @@
+-- Composite referenced keys must exist before FK creation (Drizzle generated FK before unique indexes).
 CREATE TABLE "recipes"."composition_revision" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"business_id" uuid NOT NULL,
@@ -84,29 +85,54 @@ CREATE TABLE "recipes"."sale_resolution" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-ALTER TABLE "recipes"."composition_revision" ADD CONSTRAINT "composition_revision_business_id_business_id_fk" FOREIGN KEY ("business_id") REFERENCES "core"."business"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "recipes"."recipe_line" ADD CONSTRAINT "recipe_line_business_id_recipe_id_recipe_business_id_id_fk" FOREIGN KEY ("business_id","recipe_id") REFERENCES "recipes"."recipe"("business_id","id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "recipes"."recipe_line" ADD CONSTRAINT "recipe_line_business_id_item_id_item_business_id_id_fk" FOREIGN KEY ("business_id","item_id") REFERENCES "stock"."item"("business_id","id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "recipes"."recipe_revision" ADD CONSTRAINT "recipe_revision_business_id_business_id_fk" FOREIGN KEY ("business_id") REFERENCES "core"."business"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "recipes"."recipe_revision" ADD CONSTRAINT "recipe_revision_business_id_recipe_id_recipe_business_id_id_fk" FOREIGN KEY ("business_id","recipe_id") REFERENCES "recipes"."recipe"("business_id","id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "recipes"."product_composition" ADD CONSTRAINT "product_composition_business_id_product_id_product_business_id_id_fk" FOREIGN KEY ("business_id","product_id") REFERENCES "core"."product"("business_id","id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "recipes"."product_composition" ADD CONSTRAINT "product_composition_business_id_revision_id_composition_revision_business_id_id_fk" FOREIGN KEY ("business_id","revision_id") REFERENCES "recipes"."composition_revision"("business_id","id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "recipes"."product_composition" ADD CONSTRAINT "product_composition_business_id_resolution_id_sale_resolution_business_id_id_fk" FOREIGN KEY ("business_id","resolution_id") REFERENCES "recipes"."sale_resolution"("business_id","id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "recipes"."consumption_source" ADD CONSTRAINT "consumption_source_business_id_business_id_fk" FOREIGN KEY ("business_id") REFERENCES "core"."business"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "recipes"."consumption_source" ADD CONSTRAINT "consumption_source_business_id_resolution_id_sale_resolution_business_id_id_fk" FOREIGN KEY ("business_id","resolution_id") REFERENCES "recipes"."sale_resolution"("business_id","id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "recipes"."consumption_source" ADD CONSTRAINT "consumption_source_business_id_composition_revision_id_composition_revision_business_id_id_fk" FOREIGN KEY ("business_id","composition_revision_id") REFERENCES "recipes"."composition_revision"("business_id","id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "recipes"."consumption_source" ADD CONSTRAINT "consumption_source_business_id_recipe_revision_id_recipe_revision_business_id_id_fk" FOREIGN KEY ("business_id","recipe_revision_id") REFERENCES "recipes"."recipe_revision"("business_id","id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "recipes"."recipe" ADD CONSTRAINT "recipe_business_id_business_id_fk" FOREIGN KEY ("business_id") REFERENCES "core"."business"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "recipes"."migration_mapping" ADD CONSTRAINT "migration_mapping_business_id_business_id_fk" FOREIGN KEY ("business_id") REFERENCES "core"."business"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "recipes"."migration_mapping" ADD CONSTRAINT "migration_mapping_business_id_recipe_id_recipe_business_id_id_fk" FOREIGN KEY ("business_id","recipe_id") REFERENCES "recipes"."recipe"("business_id","id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "recipes"."sale_resolution" ADD CONSTRAINT "sale_resolution_business_id_business_id_fk" FOREIGN KEY ("business_id") REFERENCES "core"."business"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "recipes"."sale_resolution" ADD CONSTRAINT "sale_resolution_business_id_composition_revision_id_composition_revision_business_id_id_fk" FOREIGN KEY ("business_id","composition_revision_id") REFERENCES "recipes"."composition_revision"("business_id","id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-CREATE UNIQUE INDEX "recipes_composition_revision_business_id_unique" ON "recipes"."composition_revision" USING btree ("business_id","id");--> statement-breakpoint
-CREATE INDEX "recipes_composition_revision_history_idx" ON "recipes"."composition_revision" USING btree ("business_id","product_id","created_at","id");--> statement-breakpoint
-CREATE UNIQUE INDEX "recipes_recipe_line_item_unique" ON "recipes"."recipe_line" USING btree ("recipe_id","item_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "recipes_recipe_revision_business_id_unique" ON "recipes"."recipe_revision" USING btree ("business_id","id");--> statement-breakpoint
-CREATE INDEX "recipes_recipe_revision_history_idx" ON "recipes"."recipe_revision" USING btree ("business_id","recipe_id","created_at","id");--> statement-breakpoint
-CREATE UNIQUE INDEX "recipes_consumption_source_unique" ON "recipes"."consumption_source" USING btree ("business_id","source_order_id","source_line_id","item_id","recipe_revision_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "recipes_recipe_business_id_unique" ON "recipes"."recipe" USING btree ("business_id","id");--> statement-breakpoint
-CREATE UNIQUE INDEX "recipes_recipe_active_name_unique" ON "recipes"."recipe" USING btree ("business_id",lower("name")) WHERE "recipes"."recipe"."status"='active';--> statement-breakpoint
+CREATE UNIQUE INDEX "recipes_composition_revision_business_id_unique" ON "recipes"."composition_revision" USING btree ("business_id","id");
+--> statement-breakpoint
+CREATE INDEX "recipes_composition_revision_history_idx" ON "recipes"."composition_revision" USING btree ("business_id","product_id","created_at","id");
+--> statement-breakpoint
+CREATE UNIQUE INDEX "recipes_recipe_line_item_unique" ON "recipes"."recipe_line" USING btree ("recipe_id","item_id");
+--> statement-breakpoint
+CREATE UNIQUE INDEX "recipes_recipe_revision_business_id_unique" ON "recipes"."recipe_revision" USING btree ("business_id","id");
+--> statement-breakpoint
+CREATE INDEX "recipes_recipe_revision_history_idx" ON "recipes"."recipe_revision" USING btree ("business_id","recipe_id","created_at","id");
+--> statement-breakpoint
+CREATE UNIQUE INDEX "recipes_consumption_source_unique" ON "recipes"."consumption_source" USING btree ("business_id","source_order_id","source_line_id","item_id","recipe_revision_id");
+--> statement-breakpoint
+CREATE UNIQUE INDEX "recipes_recipe_business_id_unique" ON "recipes"."recipe" USING btree ("business_id","id");
+--> statement-breakpoint
+CREATE UNIQUE INDEX "recipes_recipe_active_name_unique" ON "recipes"."recipe" USING btree ("business_id",lower("name")) WHERE "recipes"."recipe"."status"='active';
+--> statement-breakpoint
 CREATE UNIQUE INDEX "recipes_sale_resolution_business_id_unique" ON "recipes"."sale_resolution" USING btree ("business_id","id");
+--> statement-breakpoint
+ALTER TABLE "recipes"."composition_revision" ADD CONSTRAINT "composition_revision_business_id_business_id_fk" FOREIGN KEY ("business_id") REFERENCES "core"."business"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "recipes"."recipe_line" ADD CONSTRAINT "recipe_line_business_id_recipe_id_recipe_business_id_id_fk" FOREIGN KEY ("business_id","recipe_id") REFERENCES "recipes"."recipe"("business_id","id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "recipes"."recipe_line" ADD CONSTRAINT "recipe_line_business_id_item_id_item_business_id_id_fk" FOREIGN KEY ("business_id","item_id") REFERENCES "stock"."item"("business_id","id") ON DELETE restrict ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "recipes"."recipe_revision" ADD CONSTRAINT "recipe_revision_business_id_business_id_fk" FOREIGN KEY ("business_id") REFERENCES "core"."business"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "recipes"."recipe_revision" ADD CONSTRAINT "recipe_revision_business_id_recipe_id_recipe_business_id_id_fk" FOREIGN KEY ("business_id","recipe_id") REFERENCES "recipes"."recipe"("business_id","id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "recipes"."product_composition" ADD CONSTRAINT "product_composition_business_id_product_id_product_business_id_id_fk" FOREIGN KEY ("business_id","product_id") REFERENCES "core"."product"("business_id","id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "recipes"."product_composition" ADD CONSTRAINT "product_composition_business_id_revision_id_composition_revision_business_id_id_fk" FOREIGN KEY ("business_id","revision_id") REFERENCES "recipes"."composition_revision"("business_id","id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "recipes"."product_composition" ADD CONSTRAINT "product_composition_business_id_resolution_id_sale_resolution_business_id_id_fk" FOREIGN KEY ("business_id","resolution_id") REFERENCES "recipes"."sale_resolution"("business_id","id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "recipes"."consumption_source" ADD CONSTRAINT "consumption_source_business_id_business_id_fk" FOREIGN KEY ("business_id") REFERENCES "core"."business"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "recipes"."consumption_source" ADD CONSTRAINT "consumption_source_business_id_resolution_id_sale_resolution_business_id_id_fk" FOREIGN KEY ("business_id","resolution_id") REFERENCES "recipes"."sale_resolution"("business_id","id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "recipes"."consumption_source" ADD CONSTRAINT "consumption_source_business_id_composition_revision_id_composition_revision_business_id_id_fk" FOREIGN KEY ("business_id","composition_revision_id") REFERENCES "recipes"."composition_revision"("business_id","id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "recipes"."consumption_source" ADD CONSTRAINT "consumption_source_business_id_recipe_revision_id_recipe_revision_business_id_id_fk" FOREIGN KEY ("business_id","recipe_revision_id") REFERENCES "recipes"."recipe_revision"("business_id","id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "recipes"."recipe" ADD CONSTRAINT "recipe_business_id_business_id_fk" FOREIGN KEY ("business_id") REFERENCES "core"."business"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "recipes"."migration_mapping" ADD CONSTRAINT "migration_mapping_business_id_business_id_fk" FOREIGN KEY ("business_id") REFERENCES "core"."business"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "recipes"."migration_mapping" ADD CONSTRAINT "migration_mapping_business_id_recipe_id_recipe_business_id_id_fk" FOREIGN KEY ("business_id","recipe_id") REFERENCES "recipes"."recipe"("business_id","id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "recipes"."sale_resolution" ADD CONSTRAINT "sale_resolution_business_id_business_id_fk" FOREIGN KEY ("business_id") REFERENCES "core"."business"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "recipes"."sale_resolution" ADD CONSTRAINT "sale_resolution_business_id_composition_revision_id_composition_revision_business_id_id_fk" FOREIGN KEY ("business_id","composition_revision_id") REFERENCES "recipes"."composition_revision"("business_id","id") ON DELETE cascade ON UPDATE no action;

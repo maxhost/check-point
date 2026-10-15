@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ModuleError } from "../errors";
-import { MAX_RECIPE_LINES, parseRecipeLines } from "./recipes";
+import { MAX_RECIPE_LINES } from "./server/contracts";
+import { parseRecipeLines } from "./server/model/input";
 
 /** Spec 0210 — la validacion de entrada de las recetas, sin base. Mudado de `stock/parse.test.ts`
  * (spec 0220): Stock no puede importar de Recetas, que no esta en su `requires` (regla 7). */
