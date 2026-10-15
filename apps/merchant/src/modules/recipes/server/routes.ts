@@ -3,6 +3,7 @@ import { listLocations } from "../../stock/local";
 import { readModuleBody } from "../../errors";
 import type { ModuleRoute } from "../../route-table";
 import { buildRecipeDraft, buildRecipePhotoDraft } from "../draft";
+import { listRecipeCosts } from "./costs";
 import {
   archiveRecipe,
   createRecipe,
@@ -26,6 +27,15 @@ const query = (request: Request) => new URL(request.url).searchParams;
 /** SPEC0232: identities live in /library; products only own a composition.
  * The dispatcher applies the recipes grant and module/dependency guards. */
 export const routes: readonly ModuleRoute[] = [
+  {
+    method: "GET",
+    path: "costs",
+    failure: "No pudimos leer los costos de receta.",
+    handler: async ({ business, request }) =>
+      NextResponse.json(
+        await listRecipeCosts(business, query(request).get("locationId")),
+      ),
+  },
   {
     // Generic module roots reserve PUT for activation and otherwise default to405.
     // Keep the removed product listing explicitly404 without core exceptions.

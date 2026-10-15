@@ -1,5 +1,24 @@
 export const MAX_RECIPE_LINES = 50;
 export const MAX_COMPONENTS = 50;
+export type RecipeCostListDTO = {
+  locationId: string;
+  currencyCode: string;
+  minorUnits: 0 | 2;
+  recipes: {
+    productId: string;
+    productName: string;
+    isCombo: boolean;
+    compositionRevisionId: string;
+    resolutionId: string;
+    ingredientCount: number;
+    recipeCount: number;
+    recipeCost: string | null;
+    price: string | null;
+    profit: string | null;
+    marginPercent: string | null;
+    missingCosts: { itemId: string; itemName: string }[];
+  }[];
+};
 export type RecipeLineDTO = {
   itemId: string;
   itemName: string;
