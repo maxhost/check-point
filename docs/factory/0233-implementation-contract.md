@@ -2,6 +2,8 @@
 
 Fecha: 2026-10-15. Tarea preparada por el coordinador; **no se despacha código P1 hasta terminar QA e integración R1 en main local**. El owner autorizó esa secuencia y ambos merges locales. Sin push ni operaciones PROD; INDEX, TASKS y estados comunes siguen excluidos. La base exacta y las reservas se fijan al despachar.
 
+Despacho autorizado después del cierre R1: main local `271dbba682f841b8277093a6431fd3d5408b6231`, QA independiente PASS y corte local ejecutado con equivalencia de los dos productos. Sus tres reservas quedaron retired y los worktrees limpios se retiraron mediante factory, sin force. P1 parte del commit de este despacho en dev, registrado por SHA en las nuevas reservas; no hereda el PASS de R1. Fichas: `p1-0233-core`, `p1-0233-pos` y `p1-0233-qa`, en worktrees nuevos bajo `/private/tmp/checkpass-p1-implementation`. A conserva el journal y recibe inicialmente la DB CI; B y QA esperan turno explícito.
+
 ## Mandato y equipo
 
 [SPEC0233](../specs/0233-medios-de-pago-y-comisiones.md), [ADR0149](../adr/0149-pagos-y-comisiones-congelados-al-cierre.md) y [QA documental de la ampliación](0233-financial-snapshot-doc-qa.md), candidato documental `faf7de09`. Dos implementadores que también corrigen, coordinador y QA independiente, sin subdelegación ni reviewers extra. Piso L2; dinero, tenant y migración requieren negativos reales y evidencia por SHA/entorno.
