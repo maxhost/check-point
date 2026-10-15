@@ -1,7 +1,7 @@
 ---
 spec: 0232
 fecha: 2026-10-15
-estado: cerrada
+estado: implementada
 resumen: Recetas con identidad propia y composiciones versionadas de productos y combos, con versiones congeladas al cerrar y procedencia del consumo por receta.
 disjunta: no; comparte revisiones y aplicador con 0227/0230, migraciones y consumidores futuros 1.3/Smart Menu; coordinar cierre genérico con P1
 archivos: packages/db/src/schema/modules/recipes.ts, packages/db/drizzle/**, apps/merchant/src/modules/recipes/**, apps/merchant/src/modules/stock/consumption.ts, apps/merchant/src/modules/stock/server/consumption-cost.ts, apps/merchant/src/modules/ui-registry.ts
@@ -9,7 +9,7 @@ archivos: packages/db/src/schema/modules/recipes.ts, packages/db/drizzle/**, app
 
 # 0232 — R1: recetas independientes y combos
 
-Piso **L2: dinero y migración**. ADR0138/0139/0144/0145 y [ADR0148](../adr/0148-recetas-independientes-y-composiciones-versionadas.md). Encargo **solo documental**: sin código, SQL generado, cambios en índices/estados ni autorización de publicación u operaciones PROD. Las pruebas y el corte descritos son aceptación de una implementación futura.
+Piso **L2: dinero y migración**. ADR0138/0139/0144/0145 y [ADR0148](../adr/0148-recetas-independientes-y-composiciones-versionadas.md). El encargo original fue **solo documental**. El owner autorizó posteriormente implementar R1 con dos implementadores y QA independiente, y hacer merge a main local; [contrato](../factory/0232-implementation-contract.md). Esa autorización no incluye push ni operaciones PROD. Índices y estados comunes permanecen fuera del encargo.
 
 ## Problema
 
@@ -126,22 +126,22 @@ UI nueva de Recetas, lectura actual de costo por receta/producto y costo del Cat
 
 ## Archivos y paralelismo
 
-Esta entrega modifica **solo esta spec y ADR0148**. Dos implementadores documentales y QA independiente; no subdelegación. Base/worktree/reserva en ficha operativa, no autorización de código. Sin INDEX/TASKS/estados.
+La entrega documental original modificó **solo esta spec y ADR0148**. La implementación posterior se contrató por separado con dos implementadores y QA independiente; sin subdelegación, INDEX/TASKS/estados. Bases, scopes y evidencia están en el contrato y las entregas.
 
 Implementación futura: un writer de esquema/SQL/journal/mapping; writer Recetas de biblioteca, composición, resoluciones/fanout, contratos, borradores y consumidor/lector dual; adaptación Stock acotada para atomicidad con procedencia y cobertura de redondeo, manteniendo su clave. Ningún import Stock→Recetas. Un writer para registros/UI retirados; core no requiere modificaciones R1. Contratar por escrito la convivencia con v1/v2 de P1 y serializar archivos compartidos; no compartir DB durante DDL/teardown. Stock 0228/0230,1.3 y Smart Menu consumen los contratos sin reabrir estas reglas.
 
 ## Definition of Done
 
-- [ ] Recetas propias por comercio, opcionales respecto a producto, con nombre único activo y archivo protegido solo por uso vigente.
-- [ ] Composición versionada con cantidades decimales, flag en Recetas y sin combos anidados; migración conserva venta/stock de cada receta actual×1 y entrega renombrados deterministas.
-- [ ] Cierre captura ambas revisiones mediante resolución inmutable; edición posterior, retry y órdenes abiertas no reinterpretan ventas.
-- [ ] Consumo compartido consolidado y procedencia por receta persistidos atómicamente; reparto suma el ledger y costos 0230 permanecen congelados.
-- [ ] HTTP permite preview verificable, historial y borradores independientes; rutas/UI antiguas retiradas con referencias, sin UI nueva.
-- [ ] QA focal de tarea y combinación sobre SHA/entorno exactos; coordinador marca implementada únicamente después de esa evidencia futura.
+- [x] Recetas propias por comercio, opcionales respecto a producto, con nombre único activo y archivo protegido solo por uso vigente.
+- [x] Composición versionada con cantidades decimales, flag en Recetas y sin combos anidados; migración conserva venta/stock de cada receta actual×1 y entrega renombrados deterministas.
+- [x] Cierre captura ambas revisiones mediante resolución inmutable; edición posterior, retry y órdenes abiertas no reinterpretan ventas.
+- [x] Consumo compartido consolidado y procedencia por receta persistidos atómicamente; reparto suma el ledger y costos 0230 permanecen congelados.
+- [x] HTTP permite preview verificable, historial y borradores independientes; rutas/UI antiguas retiradas con referencias, sin UI nueva.
+- [x] QA focal de tarea y combinación sobre SHA/entorno exactos; coordinador marca implementada únicamente después de esa evidencia futura.
 
 ## Pruebas pertinentes
 
-Plan para implementación, **ninguna prueba de producto ejecutada en este encargo**. Reutilizar suites de recetas/draft/consumption-snapshot y consumption-cost 0230; Node 24; tipos/lint/fronteras pertinentes. DB únicamente `tools/neon-test.sh`, configuración CI/desarrollo protegida, DDL aislado `--no-file-parallelism` y DB reservada también al limpiar. Sin verify global por ceremonia ni PASS desde skips/retries.
+Plan de aceptación definido durante el encargo documental; la evidencia ejecutada de la implementación posterior se enlaza al final. Reutilizar suites de recetas/draft/consumption-snapshot y consumption-cost 0230; Node 24; tipos/lint/fronteras pertinentes. DB únicamente `tools/neon-test.sh`, configuración CI/desarrollo protegida, DDL aislado `--no-file-parallelism` y DB reservada también al limpiar. Sin verify global por ceremonia ni PASS desde skips/retries.
 
 1. Migración: cada producto con receta vende igual antes/después, incluidas cantidades normalizadas por rendimiento; no crear entidades de productos sin receta ni consumo histórico. Reejecución conserva IDs/mapping y nombres corregidos después por el comercio. Duplicados con/sin categoría, mayúsculas, categorías iguales, candidato contra original y nombres 120 generan únicos deterministas y manifiesto sin mutar Catálogo. `/migration-renames` entrega solo renombrados del comercio, con nombres iniciales inmutables y etiqueta actual distinguida. Trigger legado retirado evita punteros que se sobrescriban.
 2. Combo de dos recetas con mismo insumo: un movimiento por línea/insumo, dos procedencias con versiones correctas y suma exacta de repartos; dos líneas de venta conservan orígenes separados. Recipe/composition ajena rechazada 404; IDs de productos/combos no se aceptan como recetas.
@@ -154,6 +154,6 @@ Plan para implementación, **ninguna prueba de producto ejecutada en este encarg
 
 ## Handoff y abierto
 
-Preguntas respondidas arriba, diseño técnico en ADR0148. **Sin decisiones de producto bloqueantes abiertas.** Hallazgos a decidir en sus encargos: UI nueva y presentación del listado de renombrados; contratos de agregación Smart Menu/1.3; implementación/corte compartido con v2 de P1. R1 no anticipa esas decisiones. Antes de migrar debe medirse el número real de duplicados y verificarse el esquema/writers del entorno: todavía no medido, sin acceso DB ni operación PROD en este encargo.
+Preguntas respondidas arriba, diseño técnico en ADR0148. **Sin decisiones de producto bloqueantes abiertas.** Hallazgos a decidir en sus encargos: UI nueva y presentación del listado de renombrados; contratos de agregación Smart Menu/1.3; implementación/corte compartido con v2 de P1. R1 no anticipa esas decisiones. Antes de cada migración debe medirse el número real de duplicados y verificarse esquema/writers del entorno. El corte local ya tiene medición y equivalencia verificadas; no se extrapola a PROD.
 
-Restan implementación, SQL, medición, migración y QA de producto por autorización separada. Verificación de esta entrega limitada a lectura del código/contratos y checks documentales; SHA/evidencia se informan en la entrega, sin afirmar comportamiento implementado. No publicación ni cambios en índices/estados comunes.
+Implementación y QA funcional completados por la autorización posterior. Candidato de producto `10b7f6dbcd35532bfb3883354f1d0e4d71525a65`: QA independiente18/18 DB,67/67 unitarios, tipos DB/Merchant y build Merchant PASS, sin skips/retries. [QA](../factory/0232-implementation-qa.md), [entrega A](../factory/0232-model.md), [entrega B](../factory/0232-http.md) y [corte local](../factory/0232-local-integration.md). Migraciones0088/0089/0090 aplicadas a CI/local; local migró2 productos con13 líneas, equivalencia×1 de ambos y huellas preservadas. No publicación, operaciones PROD ni cambios propios en índices/estados comunes.
