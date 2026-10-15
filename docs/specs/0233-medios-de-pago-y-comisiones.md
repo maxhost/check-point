@@ -1,7 +1,7 @@
 ---
 spec: 0233
 fecha: 2026-10-15
-estado: cerrada
+estado: implementada
 resumen: Importes y descuento atribuible por línea en sale.closed v2, con pagos y comisiones congelados, originales y ajustes auditables.
 disjunta: no; comparte eventos y cierre POS con R1, y módulo Rentabilidad con 0231
 archivos: módulos pos/profitability; contratos genéricos de módulos y eventos; esquemas core/POS/Rentabilidad; ADR0149
@@ -9,7 +9,7 @@ archivos: módulos pos/profitability; contratos genéricos de módulos y eventos
 
 # 0233 — Medios de pago y comisiones
 
-ADR0144; piso L2 por dinero, aislamiento y migración. **Encargo exclusivamente documental:** esta spec y [ADR0149](../adr/0149-pagos-y-comisiones-congelados-al-cierre.md). No autoriza implementación, pantallas definitivas, generación de migraciones, publicación ni operaciones PROD. 0230 y 0231 ya terminaron según el handoff vigente; P1 se implementará después de ellas, con un único writer para sus contratos compartidos.
+ADR0144; piso L2 por dinero, aislamiento y migración; [ADR0149](../adr/0149-pagos-y-comisiones-congelados-al-cierre.md). El owner autorizó implementar P1 después de R1, con dos implementadores, QA independiente y merge a main local; [contrato](../factory/0233-implementation-contract.md). Se conservan fuera de alcance las pantallas definitivas, push y operaciones PROD. INDEX, TASKS y estados comunes no se modifican.
 
 ## Problema
 
@@ -180,23 +180,23 @@ Fuera: pantallas definitivas, propinas/cargo de servicio, anular cobradas, divis
 
 ## Archivos y paralelismo
 
-Implementación futura en serie tras0231 y coordinada con R1 por eventos/cierre. Un writer para esquemas/journal, tipos/publisher y contrato de recursos; otro para consumidor/configuración Rentabilidad según scopes cerrados, con correcciones de ambos y QA independiente. El helper monetario común tiene writer único; no importar Stock desde core o Rentabilidad. UI mínima POS en `modules/pos/ui`, kit/copy vigentes; no guardias nuevas ni modificación del kit para evitar fallos.
+Implementación en serie tras0231 y R1. A fue writer de esquema/journal, helper monetario, contratos genéricos, eventos y Rentabilidad; B implementó POS, cupón, providers y selector, con correcciones de ambos y QA independiente. El helper monetario común mantiene writer único; no importar Stock desde core o Rentabilidad. UI mínima POS en `modules/pos/ui`, kit/copy vigentes; sin guardias nuevas ni modificación del kit para evitar fallos. Las lecturas y tickets usan el snapshot financiero operativo, incluido su ajuste firmado, para evitar reconstruir un bruto incorrecto en COP.
 
-Este encargo escribe únicamente los dos documentos indicados. Ficha operativa contiene base/worktree/reserva y evidencia. Sin INDEX, TASKS, estados, código, migraciones generadas ni push.
+La ficha operativa y las entregas contienen bases, reservas y evidencia. Migraciones0091/0092 generadas por A y aplicadas exclusivamente en CI protegida y desarrollo local; no se ejecutó PROD ni push.
 
 ## Definition of Done
 
-- [ ] Cierre positivo conserva cobrado y medios con suma exacta; neto0 no pide medio, guarda lista vacía y comisión0 cierta.
-- [ ] Neto, ajuste, acreditación y evento coinciden por moneda, con y sin cliente/cupón, sin rechazar por el redondeo autorizado.
-- [ ] V2 lleva bruto/descuento/neto/origen por línea, reparto acumulado acotado, originales/deltas exactos y persistencia atómica, sin motor de premios.
-- [ ] Comisión usa revisión capturada al cierre; aplicación/retry posteriores conservan tarifas/base y no duplican fijos.
-- [ ] Apagado/legado de cobro positivo se muestran sin dato; falta de tarifa usa0 con aviso diferenciado.
-- [ ] Catálogo/archivo/permisos y fronteras sin dependencia Rentabilidad→POS; históricos y snapshots0230/R1 intactos.
-- [ ] QA focal de entrega y combinación sobre SHA/entorno identificados; migración no reconstruye datos históricos.
+- [x] Cierre positivo conserva cobrado y medios con suma exacta; neto0 no pide medio, guarda lista vacía y comisión0 cierta.
+- [x] Neto, ajuste, acreditación y evento coinciden por moneda, con y sin cliente/cupón, sin rechazar por el redondeo autorizado.
+- [x] V2 lleva bruto/descuento/neto/origen por línea, reparto acumulado acotado, originales/deltas exactos y persistencia atómica, sin motor de premios.
+- [x] Comisión usa revisión capturada al cierre; aplicación/retry posteriores conservan tarifas/base y no duplican fijos.
+- [x] Apagado/legado de cobro positivo se muestran sin dato; falta de tarifa usa0 con aviso diferenciado.
+- [x] Catálogo/archivo/permisos y fronteras sin dependencia Rentabilidad→POS; históricos y snapshots0230/R1 intactos.
+- [x] QA focal de entrega y combinación sobre SHA/entorno identificados; migración no reconstruye datos históricos.
 
 ## Pruebas pertinentes
 
-Plan para implementación futura, no pruebas de producto ejecutadas en este encargo. Node24; tipos/lint/fronteras pertinentes y suites focales de POS/eventos/Rentabilidad, sin verify global por ceremonia. DB solo `tools/neon-test.sh`, entorno protegido y reserva exclusiva también en teardown; DDL aislado con `--no-file-parallelism`.
+Casos de aceptación y regresión; resultados ejecutados en las entregas enlazadas al final. Node24; tipos/lint/fronteras pertinentes y suites focales de POS/eventos/Rentabilidad, sin verify global por ceremonia. DB solo `tools/neon-test.sh`, entorno protegido y reserva exclusiva también en teardown; DDL aislado con `--no-file-parallelism`.
 
 1. Cobro positivo sin medio, suma errónea, importe inválido, duplicado de medio y medio ajeno/archivado fallan sin cerrar/acreditar; válido conserva snapshot y una entrada por medio. UI usa neto, no recibido/cambio. Archivo concurrente conserva orden de validación y no filtra otro comercio.
 2. Cliente con/sin cupón y sin cliente: bruto/descuento/neto/ajuste guardados iguales a pagos/evento/core.order. Cupón100% o producto gratis deja pagos[] y comisión0; medio presente en neto0 falla. Ese cero vale con Rentabilidad apagado; legado sin snapshot nunca se convierte en cero.
@@ -214,7 +214,9 @@ Plan para implementación futura, no pruebas de producto ejecutadas en este enca
 
 ## Handoff y abierto
 
-Decisiones recibidas y registradas antes de redacción. Lecturas de código sobre base `21a77b1`; verificaciones presentes son documentales. No se ejecutaron migraciones ni pruebas de comportamiento, no se accedió a PROD y no se investigaron tarifas externas. Evidencia documental/SHA se entrega fuera del documento. El PASS anterior de0233/0149 no cubre automáticamente esta ampliación por línea; requiere nueva revisión documental antes de su implementación.
+Decisiones recibidas antes de redacción, ampliación por línea y corrección técnica revisadas antes del cierre. Candidato combinado `3450607ae6b9eb4ac0de4ea40be8d117108926c5`, A `b955bcad`, B `fe149b27`; [QA independiente PASS](../factory/0233-implementation-qa.md), [A](../factory/0233-core-profitability.md), [B](../factory/0233-pos.md) y [corte local](../factory/0233-local-integration.md). QA verificó53 unitarios focales, tipos y build Merchant; las entregas registran DB reales, browser y correcciones con sus primeros fallos, sin sumar selecciones/repeticiones como casos nuevos.
+
+0091/0092 aplicadas en CI y local, con respaldo drenado y conservación exacta de27 movimientos Stock,2 mappings R1 y7 cierres históricos locales. App local disponible; publicación de eventos permanece apagada según el rollout previo: un cobro positivo sin evento conserva comisión sin dato. No se accedió a PROD ni se publicaron cambios. Pantallas definitivas y pruebas de impresora física quedan fuera de esta entrega.
 
 Hallazgo del owner no resuelto: validación de precios según moneda en Catálogo/POS; hoy admite fracciones COP/CLP. Todos los comercios actuales USD es información del owner, sin inventario DB en este encargo.
 

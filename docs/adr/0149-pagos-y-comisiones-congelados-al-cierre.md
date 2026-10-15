@@ -108,7 +108,9 @@ Costo de esta decisión: extensión genérica de recursos/publicación y lifecyc
 
 ## Estado y límites
 
-Decisión de diseño cerrada con respuestas del owner previas a redacción. No equivale a implementación ni valida comportamiento en DB/PROD. Alcance documental exacto: SPEC0233 y este ADR, sin índices/estados. Requiere migración futura, no generada.
+Decisión implementada con autorización posterior del owner para implementación, QA y merge a main local. Candidato combinado `3450607ae6b9eb4ac0de4ea40be8d117108926c5`, con [QA independiente PASS](../factory/0233-implementation-qa.md) y entregas enlazadas en SPEC0233. Migraciones0091/0092 aplicadas en CI protegida y desarrollo local, sin backfill financiero; [evidencia local](../factory/0233-local-integration.md). Índices/estados comunes intactos; ningún push ni operación PROD.
+
+Las proyecciones POS y tickets toman los importes operativos del snapshot, con ajuste firmado, sin reconstruir bruto a partir de neto normalizado y descuento original. El validator exige HALF_UP de los originales en los totales de orden; líneas mantienen sus cuotas repartidas y ajustes auditables. El provider de cero sin evento valida el snapshot antes de declararlo evidencia. La publicación local conserva su flag previo apagado; no habilita comisiones positivas conocidas sin evento.
 
 Hallazgo del owner: validar precios según moneda en Catálogo/POS eliminaría fracciones COP/CLP; fuera de este encargo. No se presenta como un cambio realizado.
 
