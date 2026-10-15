@@ -106,7 +106,7 @@ export function fakeStripe(): FakeStripe {
     customerParams: [],
     sessionKeys: [],
     customerKeys: [],
-    nextCustomerId: "cus_creado_por_el_checkout",
+    nextCustomerId: `cus_${globalThis.crypto.randomUUID()}`,
     invoices: [],
     invoicesError: null,
     invoiceParams: [],

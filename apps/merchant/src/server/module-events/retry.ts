@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
-import { getDb, withDbTransaction } from "@mi-pasaporte/db";
+import { getDb, withDbTransaction, type DbTransaction } from "@mi-pasaporte/db";
 import { moduleEvents, moduleEventDeliveries } from "@mi-pasaporte/db/schema";
 import { SERVER_MODULES } from "../../modules/server-registry";
 import { decodeSaleClosedEvent } from "./decode";
@@ -17,6 +17,14 @@ function connectionBudget(deadline: number) {
   if (remaining <= 0) throw new Error("Retry budget exhausted");
   return [1, 50, 100, 250, 500, 1000].filter((n) => n <= remaining).at(-1) ?? 1;
 }
+/** Configure both local limits in one round trip; the transaction still has the absolute retry deadline. */
+async function setRetryTimeouts(tx: DbTransaction, deadline: number) {
+  const remaining = Math.max(1, deadline - Date.now());
+  await tx.execute(sql`select
+    pg_catalog.set_config('transaction_timeout', ${String(remaining)}, true),
+    pg_catalog.set_config('statement_timeout', ${String(Math.max(1, remaining - 1))}, true)
+  `);
+}
 export async function retryModuleEvents(options: RetryOptions = {}) {
   const result = { claimed: 0, applied: 0, pending: 0, failed: 0 };
   const deadline = Date.now() + Math.min(options.budgetMs ?? 20000, 20000);
@@ -28,12 +36,7 @@ export async function retryModuleEvents(options: RetryOptions = {}) {
     const claimed = await withDbTransaction(
       async (tx) => {
         if (Date.now() >= deadline) throw new Error("Retry budget exhausted");
-        await tx.execute(
-          sql`set local transaction_timeout = ${sql.raw(String(Math.max(1, deadline - Date.now())))}`,
-        );
-        await tx.execute(
-          sql`set local statement_timeout = ${sql.raw(String(Math.max(1, deadline - Date.now())))}`,
-        );
+        await setRetryTimeouts(tx, deadline);
         return tx.execute(sql`with candidate as (
    select d.id from core.module_event_delivery d join core.module_event e on e.id=d.event_id
    where ((d.state='pending' and (${options.force === true} or d.next_attempt_at<=now())) or (d.state='processing' and d.claim_until<=now()))
@@ -74,12 +77,7 @@ export async function retryModuleEvents(options: RetryOptions = {}) {
       await withDbTransaction(
         async (tx) => {
           if (Date.now() >= deadline) throw new Error("Retry budget exhausted");
-          await tx.execute(
-            sql`set local transaction_timeout = ${sql.raw(String(Math.max(1, deadline - Date.now())))}`,
-          );
-          await tx.execute(
-            sql`set local statement_timeout = ${sql.raw(String(Math.max(1, deadline - Date.now())))}`,
-          );
+          await setRetryTimeouts(tx, deadline);
           const [locked] = await tx
             .select()
             .from(moduleEventDeliveries)
@@ -130,12 +128,7 @@ export async function retryModuleEvents(options: RetryOptions = {}) {
       if (Date.now() < deadline)
         await withDbTransaction(
           async (tx) => {
-            await tx.execute(
-              sql`set local transaction_timeout = ${sql.raw(String(Math.max(1, deadline - Date.now())))}`,
-            );
-            await tx.execute(
-              sql`set local statement_timeout = ${sql.raw(String(Math.max(1, deadline - Date.now())))}`,
-            );
+            await setRetryTimeouts(tx, deadline);
             await tx
               .update(moduleEventDeliveries)
               .set({

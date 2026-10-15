@@ -1,5 +1,7 @@
 # Verificación completa local — 2026-10-15
 
+> Actualización posterior: la [investigación del fallo original de Stock](stock-cause-2026-10-15.md) reprodujo el error, capturó el timeout primario del COMMIT y aplicó una corrección real del backend. La modificación condicional del test mencionada en este informe histórico se revirtió; el test original quedó restaurado byte por byte. El informe nuevo contiene los SHAs y resultados posteriores. Los resultados originales de abajo se conservan.
+
 Cierre local: controles amplios ejecutados, fallo original conservado y correcciones de pruebas comprobadas mediante focos e inspección independiente.
 
 Solicitud del owner: ejecutar todas las suites como preparación de publicación, sin push ni operaciones de producción. Se usaron worktrees aislados, dependencias propias y recursos reservados con factory. No se editaron INDEX, TASKS ni archivos de estado.
