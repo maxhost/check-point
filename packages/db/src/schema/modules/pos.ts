@@ -4,6 +4,7 @@ import {
   foreignKey,
   index,
   integer,
+  jsonb,
   numeric,
   pgSchema,
   text,
@@ -16,6 +17,11 @@ import { users } from "../auth";
 import { businesses, locations } from "../business";
 import { products } from "../catalog";
 import { orders } from "../order";
+import { createPosPaymentTables } from "./pos-payments";
+import type {
+  FinancialSettlement,
+  FinancialLine,
+} from "../../../../domain/src/financial/types";
 
 /**
  * Spec 0220 / ADR 0141 §6 — EL MODULO POS (y Mesas) en su propio esquema Postgres. Las cuatro tablas
@@ -126,6 +132,7 @@ export const posOrders = posSchema.table(
     closedAt: timestamp("closed_at", { withTimezone: true }),
     orderId: uuid("order_id").references(() => orders.id),
     closeRequestId: uuid("close_request_id"),
+    settlement: jsonb("settlement").$type<FinancialSettlement>(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -134,6 +141,7 @@ export const posOrders = posSchema.table(
       .defaultNow(),
   },
   (table) => [
+    uniqueIndex("pos_order_business_id_unique").on(table.businessId, table.id),
     foreignKey({
       name: "pos_order_business_location_fk",
       columns: [table.businessId, table.locationId],
@@ -200,6 +208,7 @@ export const posOrderItems = posSchema.table(
     quantity: integer("quantity").notNull(),
     /** Orden de carga de la linea. */
     position: integer("position").notNull(),
+    financialSnapshot: jsonb("financial_snapshot").$type<FinancialLine>(),
   },
   (table) => [
     check(
@@ -233,3 +242,7 @@ export const ticketSettings = posSchema.table("ticket_settings", {
     .notNull()
     .defaultNow(),
 });
+const paymentTables = createPosPaymentTables(posSchema, posOrders);
+export const posPaymentMethods = paymentTables.methods;
+export const posPaymentMethodInitializations = paymentTables.initializations;
+export const posOrderPayments = paymentTables.payments;

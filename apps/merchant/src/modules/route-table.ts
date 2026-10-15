@@ -52,6 +52,11 @@ export type StaffLocationsChange = {
 /** Lo que un modulo aporta a `server-registry.ts`: sus rutas y, si las tiene, sus reglas. */
 export type ModuleServer = {
   routes: readonly ModuleRoute[];
+  onEnable?: (
+    tx: DbTransaction,
+    context: { businessId: string },
+  ) => Promise<void>;
+  resourceProviders?: readonly ModuleResourceProvider[];
   beforeDisable?: BeforeDisable;
   eventSubscriptions?: readonly EventSubscription[];
   /** Maintains existing derived data even when the contributor module is disabled. */
@@ -59,6 +64,23 @@ export type ModuleServer = {
     tx: DbTransaction,
     change: StaffLocationsChange,
   ) => Promise<void>;
+};
+export type ModuleResource = {
+  resourceId: string;
+  metadata: Record<string, unknown>;
+};
+/** Internal metadata only; caller's guard, business and transaction remain authoritative. */
+export type ModuleResourceProvider = {
+  resourceType: string;
+  list?: (
+    tx: DbTransaction,
+    businessId: string,
+  ) => Promise<readonly ModuleResource[]>;
+  read: (
+    tx: DbTransaction,
+    businessId: string,
+    resourceIds: readonly string[],
+  ) => Promise<readonly ModuleResource[]>;
 };
 
 export type RouteMatch =

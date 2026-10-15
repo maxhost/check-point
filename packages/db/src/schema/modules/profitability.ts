@@ -15,8 +15,13 @@ import {
 } from "drizzle-orm/pg-core";
 import { businesses, locations } from "../business";
 import { staffPersons, staffLocationPeriods } from "../staff-person";
+import { createCommissionTables } from "./profitability-commissions";
+export type { FrozenCommissionResult } from "./profitability-commissions";
 
 export const profitabilitySchema = pgSchema("profitability");
+const commissionTables = createCommissionTables(profitabilitySchema);
+export const profitabilityCommissionRevisions = commissionTables.revisions;
+export const profitabilityPaymentCommissions = commissionTables.snapshots;
 export const profitabilityFixedCosts = profitabilitySchema.table(
   "fixed_cost",
   {

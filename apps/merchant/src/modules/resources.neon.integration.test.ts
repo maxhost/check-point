@@ -1,0 +1,485 @@
+import { randomUUID } from "node:crypto";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { getDb, withDbTransaction } from "@mi-pasaporte/db";
+import { and, eq } from "drizzle-orm";
+import {
+  businessModules,
+  businesses,
+  moduleEvents,
+  moduleResourceVersions,
+  paymentMethodCatalog,
+  profitabilityPaymentCommissions as snapshots,
+  profitabilityCommissionRevisions as revisions,
+} from "@mi-pasaporte/db/schema";
+import { buildFinancialSettlement } from "@mi-pasaporte/domain/financial";
+import {
+  seedModuleWorld,
+  dropModuleWorld,
+  enableModules,
+  moduleStaff,
+  callModuleRoute,
+  modulesIntegrationEnabled,
+  type ModuleWorld,
+} from "./modules-integration-support";
+import { SERVER_MODULES } from "./server-registry";
+import type { ModuleServer, ModuleResource } from "./route-table";
+import { setModuleEnabled } from "./activation";
+import {
+  publishSaleClosed,
+  retryModuleEvents,
+  setResourceVersion,
+  type SaleClosedEvent,
+} from "../server/module-events";
+import {
+  saveCommission,
+  listCommissions,
+} from "./profitability/server/commissions/config";
+import { readSaleCommissions } from "./profitability/server/commissions/read";
+import { commissionSubscriptions } from "./profitability/server/commissions/apply";
+let world: ModuleWorld, other: ModuleWorld;
+const providerId = "payment-fixture",
+  registry = SERVER_MODULES as Record<string, ModuleServer>,
+  flag = process.env.MODULE_EVENTS_ENABLED;
+const methodIds = {
+  none: randomUUID(),
+  percent: randomUUID(),
+  fixed: randomUUID(),
+  mixed: randomUUID(),
+};
+const methods = new Map<string, ModuleResource[]>(),
+  settlements = new Map<string, ModuleResource>();
+beforeAll(async () => {
+  world = await seedModuleWorld("P1 commissions");
+  other = await seedModuleWorld("P1 other");
+  await enableModules(world, ["profitability"]);
+  await enableModules(other, ["profitability"]);
+  methods.set(
+    world.businessId,
+    Object.entries(methodIds).map(([shape, resourceId]) => ({
+      resourceId,
+      metadata: {
+        name: shape,
+        status: "active",
+        chargeShape: shape === "mixed" ? "percent_and_fixed" : shape,
+      },
+    })),
+  );
+  methods.set(other.businessId, [
+    {
+      resourceId: randomUUID(),
+      metadata: { name: "Foreign", status: "active", chargeShape: "percent" },
+    },
+  ]);
+  registry[providerId] = {
+    routes: [],
+    resourceProviders: [
+      {
+        resourceType: "payment_method",
+        list: async (_tx, businessId) => methods.get(businessId) ?? [],
+        read: async (_tx, businessId, ids) =>
+          (methods.get(businessId) ?? []).filter((r) =>
+            ids.includes(r.resourceId),
+          ),
+      },
+      {
+        resourceType: "sale_settlement",
+        read: async (_tx, businessId, ids) =>
+          ids.flatMap((id) => {
+            const r = settlements.get(businessId + "/" + id);
+            return r ? [r] : [];
+          }),
+      },
+    ],
+  };
+  process.env.MODULE_EVENTS_ENABLED = "true";
+}, 120000);
+afterAll(async () => {
+  delete registry[providerId];
+  if (flag === undefined) delete process.env.MODULE_EVENTS_ENABLED;
+  else process.env.MODULE_EVENTS_ENABLED = flag;
+  await dropModuleWorld(world);
+  await dropModuleWorld(other);
+}, 120000);
+async function sale(
+  payments = [{ methodId: methodIds.mixed, amount: "9.00" }],
+  price = "9.00",
+) {
+  const sourceOrderId = randomUUID(),
+    sourceLineId = randomUUID();
+  const settlement = buildFinancialSettlement({
+    currencyCode: "USD",
+    lines: [{ sourceLineId, position: 0, unitPrice: price, quantity: 1 }],
+    discount: null,
+    payments: payments.map((p) => ({ ...p, paymentId: randomUUID() })),
+  });
+  const event = await withDbTransaction((tx) =>
+    publishSaleClosed(tx, {
+      businessId: world.businessId,
+      sourceOrderId,
+      locationId: world.locationId,
+      closedAt: new Date(),
+      userId: world.ownerId,
+      lines: [{ sourceLineId, productId: null, quantity: 1 }],
+      settlement,
+      paymentsMetadata: settlement.payments.map((p) => {
+        const method = methods
+          .get(world.businessId)!
+          .find((m) => m.resourceId === p.methodId)!;
+        return {
+          paymentId: p.paymentId,
+          methodId: p.methodId,
+          methodProviderId: providerId,
+          methodName: String(method.metadata.name),
+          chargeShape: method.metadata.chargeShape as
+            "none" | "percent" | "fixed" | "percent_and_fixed",
+        };
+      }),
+    }),
+  );
+  return { sourceOrderId, eventId: event?.eventId };
+}
+const drain = (eventId: string) =>
+  retryModuleEvents({
+    businessId: world.businessId,
+    eventIds: [eventId],
+    force: true,
+    budgetMs: 20000,
+  });
+const read = (id: string) =>
+  readSaleCommissions(world.businessId, id, world.locationId);
+const rows = (eventId: string) =>
+  getDb().select().from(snapshots).where(eq(snapshots.eventId, eventId));
+describe.skipIf(!modulesIntegrationEnabled)(
+  "P1 resource metadata and durable commissions",
+  () => {
+    it("seeds approved country/base metadata without rates or Peigo", async () => {
+      const catalog = await getDb().select().from(paymentMethodCatalog);
+      expect(catalog).toHaveLength(12);
+      expect(catalog.some((c) => c.name.toLowerCase().includes("peigo"))).toBe(
+        false,
+      );
+      expect(
+        catalog.filter((c) => c.countryCode === "EC" && c.initiallySuggested),
+      ).toHaveLength(6);
+      expect(
+        catalog.filter((c) => c.countryCode === null && c.initiallySuggested),
+      ).toHaveLength(5);
+    });
+    it("configures with its own permission while the payment producer is disabled, validates inputs and tenants", async () => {
+      const staff = await moduleStaff(world, ["profitability"]);
+      expect(
+        (
+          await callModuleRoute(
+            "GET",
+            "/api/modules/profitability/commissions",
+            staff,
+          )
+        ).status,
+      ).toBe(200);
+      expect((await listCommissions(world.businessId)).methods).toHaveLength(4);
+      for (const body of [
+        { expectedRevisionId: null, percent: "1.0000001" },
+        { expectedRevisionId: null, percent: "Infinity" },
+        { expectedRevisionId: null, percent: "1", fixed: "0" },
+      ])
+        await expect(
+          saveCommission(world.businessId, methodIds.percent, body),
+        ).rejects.toMatchObject({ code: "invalid_commission" });
+      await expect(
+        saveCommission(other.businessId, methodIds.percent, {
+          expectedRevisionId: null,
+          percent: "1",
+        }),
+      ).rejects.toMatchObject({ status: 404 });
+      const configured = await saveCommission(
+        world.businessId,
+        methodIds.percent,
+        { expectedRevisionId: null, percent: "2" },
+      );
+      await expect(
+        saveCommission(world.businessId, methodIds.percent, {
+          expectedRevisionId: null,
+          percent: "3",
+        }),
+      ).rejects.toMatchObject({ code: "commission_revision_conflict" });
+      expect(configured).toMatchObject({
+        configured: true,
+        percent: "2.000000",
+      });
+    }, 30000);
+    it("captures an immutable rate at close and replay never takes the current rate", async () => {
+      const configured = await saveCommission(
+        world.businessId,
+        methodIds.mixed,
+        { expectedRevisionId: null, percent: "2.5", fixed: "0.10" },
+      );
+      const closed = await sale();
+      await saveCommission(world.businessId, methodIds.mixed, {
+        expectedRevisionId: configured.revisionId,
+        percent: "50",
+        fixed: "1.00",
+      });
+      expect(await read(closed.sourceOrderId)).toMatchObject({
+        state: "pendiente",
+        total: null,
+      });
+      expect((await drain(closed.eventId!)).applied).toBe(1);
+      expect(await read(closed.sourceOrderId)).toMatchObject({
+        state: "completo",
+        total: "0.33",
+        originalTotal: { numerator: "65", denominator: "2", scale: 2 },
+      });
+      const before = await rows(closed.eventId!);
+      expect(before[0].commissionRevisionId).toBe(configured.revisionId);
+      const [event] = await getDb()
+        .select()
+        .from(moduleEvents)
+        .where(eq(moduleEvents.id, closed.eventId!));
+      await withDbTransaction((tx) =>
+        commissionSubscriptions[0].handler(tx, {
+          id: event.id,
+          businessId: world.businessId,
+          payload: event.payload as SaleClosedEvent,
+        }),
+      );
+      expect(await rows(closed.eventId!)).toEqual(before);
+      await expect(
+        getDb()
+          .update(revisions)
+          .set({ percent: "99" })
+          .where(eq(revisions.id, configured.revisionId!)),
+      ).rejects.toThrow();
+      await expect(
+        getDb()
+          .update(snapshots)
+          .set({ amount: "1.00" })
+          .where(eq(snapshots.id, before[0].id)),
+      ).rejects.toThrow();
+    }, 45000);
+    it("freezes absent configuration and retains known partial components", async () => {
+      const fixed = await saveCommission(world.businessId, methodIds.fixed, {
+        expectedRevisionId: null,
+        fixed: "0.20",
+      });
+      const mixed = (await listCommissions(world.businessId)).methods.find(
+        (m) => m.methodId === methodIds.mixed,
+      )!;
+      await saveCommission(world.businessId, methodIds.mixed, {
+        expectedRevisionId: mixed.revisionId,
+        percent: null,
+        fixed: "0.20",
+      });
+      const closed = await sale([
+        { methodId: methodIds.fixed, amount: "4.00" },
+        { methodId: methodIds.mixed, amount: "5.00" },
+      ]);
+      expect((await drain(closed.eventId!)).applied).toBe(1);
+      expect(await read(closed.sourceOrderId)).toMatchObject({
+        state: "incompleto",
+        total: "0.40",
+        reasons: ["commission_unconfigured"],
+      });
+      const absentId = randomUUID();
+      methods.get(world.businessId)!.push({
+        resourceId: absentId,
+        metadata: {
+          name: "Unconfigured",
+          status: "active",
+          chargeShape: "percent",
+        },
+      });
+      const absent = await sale([{ methodId: absentId, amount: "9.00" }]);
+      await saveCommission(world.businessId, absentId, {
+        expectedRevisionId: null,
+        percent: "10",
+      });
+      expect((await drain(absent.eventId!)).applied).toBe(1);
+      expect(await read(absent.sourceOrderId)).toMatchObject({
+        state: "incompleto",
+        total: "0.00",
+        reasons: ["commission_unconfigured"],
+      });
+      expect((await rows(absent.eventId!))[0].commissionRevisionId).toBeNull();
+      expect(fixed.originalFixed).toEqual({
+        numerator: "20",
+        denominator: "1",
+        scale: 2,
+      });
+    }, 45000);
+    it("handles currency mismatch from the original fixed value and preserves zero compatibility", async () => {
+      await getDb()
+        .update(businesses)
+        .set({ currencyCode: "COP" })
+        .where(eq(businesses.id, world.businessId));
+      const current = (await listCommissions(world.businessId)).methods.find(
+        (m) => m.methodId === methodIds.fixed,
+      )!;
+      const cfg = await saveCommission(world.businessId, methodIds.fixed, {
+        expectedRevisionId: current.revisionId,
+        fixed: "0.10",
+      });
+      expect(cfg).toMatchObject({
+        fixed: "0",
+        originalFixed: { numerator: "10", denominator: "1", scale: 2 },
+        currencyCode: "COP",
+      });
+      await getDb()
+        .update(businesses)
+        .set({ currencyCode: "USD" })
+        .where(eq(businesses.id, world.businessId));
+      const closed = await sale([
+        { methodId: methodIds.fixed, amount: "9.00" },
+      ]);
+      await drain(closed.eventId!);
+      expect(await read(closed.sourceOrderId)).toMatchObject({
+        state: "incompleto",
+        total: null,
+        reasons: ["commission_currency_mismatch"],
+      });
+      await saveCommission(world.businessId, methodIds.fixed, {
+        expectedRevisionId: cfg.revisionId,
+        fixed: "0",
+      });
+      expect(await read(closed.sourceOrderId)).toMatchObject({ total: null });
+    }, 40000);
+    it("disabled positive close stays without data; explicit zero needs no handler or tariff", async () => {
+      await getDb()
+        .update(businessModules)
+        .set({ enabled: false })
+        .where(
+          and(
+            eq(businessModules.businessId, world.businessId),
+            eq(businessModules.moduleId, "profitability"),
+          ),
+        );
+      const positive = await sale([
+        { methodId: methodIds.none, amount: "9.00" },
+      ]);
+      expect(await read(positive.sourceOrderId)).toMatchObject({
+        state: "incompleto",
+        total: null,
+        reasons: ["commission_module_disabled"],
+      });
+      const zero = await sale([], "0.00");
+      expect(await read(zero.sourceOrderId)).toMatchObject({
+        state: "completo",
+        total: "0.00",
+        payments: [],
+      });
+      await enableModules(world, ["profitability"]);
+      await drain(positive.eventId!);
+      expect(await read(positive.sourceOrderId)).toMatchObject({ total: null });
+    }, 30000);
+    it("without event only a persisted canonical zero can supply known zero", async () => {
+      const id = randomUUID(),
+        resourceId = id;
+      settlements.set(world.businessId + "/" + id, {
+        resourceId,
+        metadata: {
+          sourceOrderId: id,
+          locationId: world.locationId,
+          snapshotPresent: true,
+          collectedTotal: "0.00",
+          currencyCode: "USD",
+          minorUnit: 2,
+        },
+      });
+      expect(await read(id)).toMatchObject({
+        state: "completo",
+        total: "0.00",
+      });
+      settlements.get(world.businessId + "/" + id)!.metadata.collectedTotal =
+        "1.00";
+      expect(await read(id)).toMatchObject({
+        state: "incompleto",
+        total: null,
+      });
+      expect(
+        await readSaleCommissions(other.businessId, id, other.locationId),
+      ).toMatchObject({ total: null });
+      await expect(
+        readSaleCommissions(world.businessId, id, other.locationId),
+      ).rejects.toMatchObject({ status: 404 });
+    }, 25000);
+    it("a bad later captured reference rolls back every payment snapshot and acknowledgment", async () => {
+      await withDbTransaction((tx) =>
+        setResourceVersion(tx, {
+          businessId: world.businessId,
+          resourceType: "payment_method",
+          resourceId: methodIds.fixed,
+          providerId: "profitability",
+          slot: "commission",
+          versionId: randomUUID(),
+        }),
+      );
+      const closed = await sale([
+        { methodId: methodIds.none, amount: "4.00" },
+        { methodId: methodIds.fixed, amount: "5.00" },
+      ]);
+      expect((await drain(closed.eventId!)).failed).toBe(1);
+      expect(await rows(closed.eventId!)).toEqual([]);
+      expect(await read(closed.sourceOrderId)).toMatchObject({
+        state: "pendiente",
+        total: null,
+        reasons: ["application_failed"],
+      });
+    }, 30000);
+    it("onEnable shares rollback with activation and is not rerun by idempotent enable", async () => {
+      await setModuleEnabled(other.businessId, "profitability", {
+        enabled: false,
+      });
+      const original = registry.profitability,
+        resourceId = randomUUID();
+      let calls = 0,
+        fail = true;
+      registry.profitability = {
+        ...original,
+        onEnable: async (tx, { businessId }) => {
+          calls++;
+          await setResourceVersion(tx, {
+            businessId,
+            resourceType: "activation_probe",
+            resourceId,
+            providerId: "activation-probe",
+            slot: "initialized",
+            versionId: randomUUID(),
+          });
+          if (fail) throw new Error("hook failed");
+        },
+      };
+      try {
+        await expect(
+          setModuleEnabled(other.businessId, "profitability", {
+            enabled: true,
+          }),
+        ).rejects.toThrow("hook failed");
+        expect(
+          await getDb()
+            .select()
+            .from(moduleResourceVersions)
+            .where(eq(moduleResourceVersions.resourceId, resourceId)),
+        ).toEqual([]);
+        const [state] = await getDb()
+          .select()
+          .from(businessModules)
+          .where(
+            and(
+              eq(businessModules.businessId, other.businessId),
+              eq(businessModules.moduleId, "profitability"),
+            ),
+          );
+        expect(state.enabled).toBe(false);
+        fail = false;
+        await setModuleEnabled(other.businessId, "profitability", {
+          enabled: true,
+        });
+        await setModuleEnabled(other.businessId, "profitability", {
+          enabled: true,
+        });
+        expect(calls).toBe(2);
+      } finally {
+        registry.profitability = original;
+      }
+    }, 30000);
+  },
+);

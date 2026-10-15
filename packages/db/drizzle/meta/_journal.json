@@ -638,6 +638,20 @@
       "when": 1792044782073,
       "tag": "0090_recipes_r1_cascade",
       "breakpoints": true
+    },
+    {
+      "idx": 91,
+      "version": "7",
+      "when": 1792047286033,
+      "tag": "0091_payment_methods_and_commissions",
+      "breakpoints": true
+    },
+    {
+      "idx": 92,
+      "version": "7",
+      "when": 1792047417496,
+      "tag": "0092_payment_catalog_and_history",
+      "breakpoints": true
     }
   ]
 }

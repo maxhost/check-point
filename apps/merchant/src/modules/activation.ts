@@ -161,6 +161,12 @@ export async function setModuleEnabled(
         target: [businessModules.businessId, businessModules.moduleId],
         set: { enabled: want, updatedAt: new Date() },
       });
+    if (want && !enabled.has(manifest.id)) {
+      const onEnable = Object.hasOwn(SERVER_MODULES, manifest.id)
+        ? SERVER_MODULES[manifest.id].onEnable
+        : undefined;
+      if (onEnable) await onEnable(tx, { businessId });
+    }
     if (want) enabled.add(manifest.id);
     else enabled.delete(manifest.id);
     return toDTO(manifest, enabled, await categoryOf(tx, businessId));

@@ -5,6 +5,9 @@ import { createCost, editCost, stopCost } from "./writers";
 import { getCost, listCosts, listLocations, listPeople } from "./queries";
 import { totals } from "./totals";
 import { staffLocationsChanged } from "./salary";
+import { listCommissions, saveCommission } from "./commissions/config";
+import { readSaleCommissions } from "./commissions/read";
+import { commissionSubscriptions } from "./commissions/apply";
 
 const query = (request: Request, name: string) =>
   new URL(request.url).searchParams.get(name);
@@ -21,6 +24,39 @@ async function body(request: Request): Promise<Record<string, unknown>> {
 }
 
 const handlers: readonly ModuleRoute[] = [
+  {
+    method: "GET",
+    path: "commissions",
+    failure: "No pudimos leer las comisiones.",
+    handler: async ({ business }) =>
+      NextResponse.json(await listCommissions(business.id)),
+  },
+  {
+    method: "PUT",
+    path: "commissions/:methodId",
+    failure: "No pudimos guardar la comisión.",
+    handler: async ({ business, params, request }) =>
+      NextResponse.json({
+        commission: await saveCommission(
+          business.id,
+          params.methodId,
+          await body(request),
+        ),
+      }),
+  },
+  {
+    method: "GET",
+    path: "sale-commissions/:sourceOrderId",
+    failure: "No pudimos leer las comisiones de la venta.",
+    handler: async ({ business, params, request }) =>
+      NextResponse.json(
+        await readSaleCommissions(
+          business.id,
+          params.sourceOrderId,
+          query(request, "locationId"),
+        ),
+      ),
+  },
   {
     method: "GET",
     path: "locations",
@@ -122,4 +158,8 @@ export const routes: readonly ModuleRoute[] = handlers.map((route) => ({
   },
 }));
 
-export const server: ModuleServer = { routes, staffLocationsChanged };
+export const server: ModuleServer = {
+  routes,
+  staffLocationsChanged,
+  eventSubscriptions: commissionSubscriptions,
+};
