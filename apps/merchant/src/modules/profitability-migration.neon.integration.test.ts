@@ -27,6 +27,10 @@ const readMigration = (name: string) =>
   );
 const migration = readMigration("0086_rentabilidad_y_personas"),
   finite = readMigration("0087_meses_finitos");
+const laterObjects = sql`select
+  to_regclass('profitability.commission_revision')::oid::text as commission_revision,
+  to_regclass('profitability.payment_commission')::oid::text as payment_commission,
+  to_regprocedure('profitability.p1_immutable()')::oid::text as immutable_function`;
 
 run(
   "0231 six-table migration and strict monthly boundaries (isolated DDL)",
@@ -106,6 +110,14 @@ run(
           createHash("sha256").update(source).digest("hex"),
         );
       }
+      const laterBefore = await getDb().execute(laterObjects);
+      expect(laterBefore.rows).toEqual([
+        {
+          commission_revision: expect.stringMatching(/^\d+$/),
+          payment_commission: expect.stringMatching(/^\d+$/),
+          immutable_function: expect.stringMatching(/^\d+$/),
+        },
+      ]);
       const rollback = new Error("rollback-0231-ddl");
       await expect(
         withDbTransaction(async (tx) => {
@@ -117,9 +129,20 @@ run(
             .select()
             .from(sessions)
             .where(eq(sessions.userId, userId));
-          await tx.execute(
-            sql`drop table profitability.fixed_cost_allocation; drop table profitability.fixed_cost_period; drop table profitability.fixed_cost; drop schema profitability; drop table core.staff_location_assignment; drop table core.staff_location_period; drop table core.staff_person`,
-          );
+          // Recreate the 0086 boundary without the later 0091 tables and 0092 function.
+          // Dropping their tables removes only their own triggers; no broad CASCADE.
+          await tx.execute(sql`
+            drop table profitability.payment_commission;
+            drop table profitability.commission_revision;
+            drop function profitability.p1_immutable();
+            drop table profitability.fixed_cost_allocation;
+            drop table profitability.fixed_cost_period;
+            drop table profitability.fixed_cost;
+            drop schema profitability;
+            drop table core.staff_location_assignment;
+            drop table core.staff_location_period;
+            drop table core.staff_person
+          `);
           for (const source of [migration, finite])
             for (const statement of source.split("--> statement-breakpoint"))
               await tx.execute(sql.raw(statement));
@@ -163,6 +186,10 @@ run(
           throw rollback;
         }),
       ).rejects.toBe(rollback);
+      // The isolated historical replay must leave the later P1 objects intact.
+      expect((await getDb().execute(laterObjects)).rows).toEqual(
+        laterBefore.rows,
+      );
     });
     it("measures the NULL Infinity loophole and rejects nonfinite dates, malformed months and monetary values", async () => {
       const sample = await getDb().execute(
