@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { and, eq, sql } from "drizzle-orm";
 import { getDb, withDbTransaction } from "@mi-pasaporte/db";
 import {
@@ -22,6 +22,7 @@ import {
   publishSaleClosed,
   retryModuleEvents,
 } from "../../server/module-events";
+import * as moduleEvents from "../../server/module-events";
 import { createItem, listItems } from "./items";
 import { recordPurchase, recordAdjustment } from "./movements";
 import { recordEntry } from "./entries";
@@ -158,6 +159,54 @@ run(
           ],
         }),
       );
+    }
+    async function recoverPending(id: string, eventId: string) {
+      const [delivery] = await getDb()
+        .select()
+        .from(moduleEventDeliveries)
+        .where(
+          and(
+            eq(moduleEventDeliveries.eventId, eventId),
+            eq(moduleEventDeliveries.subscriberId, subscriber),
+          ),
+        );
+      expect(["pending", "processing"]).toContain(delivery.state);
+      await getDb()
+        .update(moduleEventDeliveries)
+        .set({ claimUntil: new Date(0) })
+        .where(eq(moduleEventDeliveries.id, delivery.id));
+      mode = "ok";
+      expect(
+        (
+          await retryModuleEvents({
+            businessId: world.businessId,
+            locationId: world.locationId,
+            force: true,
+          })
+        ).applied,
+      ).toBe(1);
+      const current = (
+        await listItems(world.businessId, null, world.locationId)
+      ).find((x) => x.id === id)!;
+      expect(current).toMatchObject({
+        onHand: "12.000",
+        weightedAverageUnitCost: "2.666667",
+      });
+      const consumed = await getDb()
+        .select({ quantity: stockMovements.quantity })
+        .from(stockMovements)
+        .where(
+          and(
+            eq(stockMovements.itemId, id),
+            eq(stockMovements.kind, "consumption"),
+          ),
+        );
+      expect(consumed).toEqual([{ quantity: "-3.000" }]);
+      expect(
+        (await retryModuleEvents({ businessId: world.businessId, force: true }))
+          .applied,
+      ).toBe(0);
+      expect((await pair(id)).weightedAverageUnitCost).toBe("2.666667");
     }
     it("uses prior balance and registration order, preserving last cost date and count/consumption", async () => {
       const id = await item();
@@ -322,19 +371,103 @@ run(
       expect(after.onHand).toBe("20.000");
       expect(["3.000000", "3.250000"]).toContain(after.weightedAverageUnitCost);
     });
-    it("drains pending before purchase and does not mix locals/tenants", async () => {
+    it("bounded drain values the committed ledger and does not mix locals/tenants", async () => {
       const id = await item();
       await purchase(id, "10", "20");
-      await pending(id);
+      const event = await pending(id);
       mode = "ok";
-      const result = await purchase(id, "5", "20");
-      expect(result.item).toMatchObject({
-        onHand: "12.000",
-        weightedAverageUnitCost: "2.833333",
+      const originalRetry = retryModuleEvents;
+      const observations: {
+        options: Parameters<typeof retryModuleEvents>[0];
+        result?: Awaited<ReturnType<typeof retryModuleEvents>>;
+        error?: unknown;
+      }[] = [];
+      const observer = vi
+        .spyOn(moduleEvents, "retryModuleEvents")
+        .mockImplementation(async (options) => {
+          try {
+            const result = await originalRetry(options);
+            observations.push({ options, result });
+            return result;
+          } catch (error) {
+            observations.push({ options, error });
+            throw error;
+          }
+        });
+      const attemptsBefore = attempts;
+      let result: Awaited<ReturnType<typeof purchase>>;
+      try {
+        result = await purchase(id, "5", "20");
+      } finally {
+        observer.mockRestore();
+      }
+      expect(observations).toHaveLength(1);
+      const drain = observations[0];
+      expect(drain.options).toEqual({
+        businessId: world.businessId,
+        locationId: world.locationId,
+        budgetMs: 2000,
+        force: true,
       });
+      const [delivery] = await getDb()
+        .select({
+          state: moduleEventDeliveries.state,
+          attempts: moduleEventDeliveries.attempts,
+          diagnostic: moduleEventDeliveries.diagnostic,
+        })
+        .from(moduleEventDeliveries)
+        .where(
+          and(
+            eq(moduleEventDeliveries.eventId, event!.eventId),
+            eq(moduleEventDeliveries.subscriberId, subscriber),
+          ),
+        );
+      const ledger = await getDb()
+        .select({
+          kind: stockMovements.kind,
+          quantity: stockMovements.quantity,
+        })
+        .from(stockMovements)
+        .where(eq(stockMovements.itemId, id));
+      expect(
+        ledger
+          .filter((m) => m.kind === "purchase")
+          .map((m) => m.quantity)
+          .sort(),
+      ).toEqual(["10.000", "5.000"]);
+      const consumed = ledger.filter((m) => m.kind === "consumption");
+      if (delivery.state === "applied") {
+        expect(delivery).toMatchObject({ attempts: 1, diagnostic: null });
+        expect(drain.error).toBeUndefined();
+        expect(drain.result).toEqual({
+          claimed: 1,
+          applied: 1,
+          pending: 0,
+          failed: 0,
+        });
+        expect(attempts - attemptsBefore).toBe(1);
+        expect(consumed).toEqual([{ kind: "consumption", quantity: "-3.000" }]);
+        // Applied delivery and consumption are atomic; this average proves the drain preceded purchase.
+        expect(result.item).toMatchObject({
+          onHand: "12.000",
+          weightedAverageUnitCost: "2.833333",
+        });
+      } else {
+        expect(["pending", "processing"]).toContain(delivery.state);
+        expect(delivery.attempts).toBeLessThanOrEqual(1);
+        if (drain.result) expect(drain.result.applied).toBe(0);
+        else expect(drain.error).toBeDefined();
+        expect(consumed).toEqual([]);
+        expect(result.item).toMatchObject({
+          onHand: "15.000",
+          weightedAverageUnitCost: "2.666667",
+        });
+        await recoverPending(id, event!.eventId);
+      }
+      const average = delivery.state === "applied" ? "2.833333" : "2.666667";
       await purchase(id, "1", "9", { locationId: second });
       expect((await pair(id, second)).weightedAverageUnitCost).toBe("9.000000");
-      expect((await pair(id)).weightedAverageUnitCost).toBe("2.833333");
+      expect((await pair(id)).weightedAverageUnitCost).toBe(average);
       const foreign = await callModuleRoute(
         "POST",
         `/api/modules/stock/items/${id}/purchases`,
@@ -356,43 +489,7 @@ run(
           onHand: "15.000",
           weightedAverageUnitCost: "2.666667",
         });
-        const [delivery] = await getDb()
-          .select()
-          .from(moduleEventDeliveries)
-          .where(
-            and(
-              eq(moduleEventDeliveries.eventId, event!.eventId),
-              eq(moduleEventDeliveries.subscriberId, subscriber),
-            ),
-          );
-        expect(["pending", "processing"]).toContain(delivery.state);
-        await getDb()
-          .update(moduleEventDeliveries)
-          .set({ claimUntil: new Date(0) })
-          .where(eq(moduleEventDeliveries.id, delivery.id));
-        mode = "ok";
-        const recovered = await retryModuleEvents({
-          businessId: world.businessId,
-          locationId: world.locationId,
-          force: true,
-        });
-        expect(recovered.applied).toBe(1);
-        const current = (
-          await listItems(world.businessId, null, world.locationId)
-        ).find((x) => x.id === id)!;
-        expect(current).toMatchObject({
-          onHand: "12.000",
-          weightedAverageUnitCost: "2.666667",
-        });
-        expect(
-          (
-            await retryModuleEvents({
-              businessId: world.businessId,
-              force: true,
-            })
-          ).applied,
-        ).toBe(0);
-        expect((await pair(id)).weightedAverageUnitCost).toBe("2.666667");
+        await recoverPending(id, event!.eventId);
       });
     it("one failed drain for an entire repeated multi-line entry, preserving all purchases", async () => {
       const id = await item();
