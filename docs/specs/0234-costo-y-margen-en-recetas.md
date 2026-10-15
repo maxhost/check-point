@@ -1,7 +1,7 @@
 ---
 spec: 0234
 fecha: 2026-10-15
-estado: cerrada
+estado: implementada
 resumen: Mostrar costo de receta, precio, ganancia y margen por producto según el local elegido, usando la composición vigente y el costo promedio local.
 disjunta: no; backend independiente del wizard L1 y UI dependiente de su integración, con relevo explícito de escritor
 archivos: apps/merchant/src/modules/recipes/server/, apps/merchant/src/modules/recipes/ui/
@@ -125,11 +125,11 @@ El wizard L1 está integrado en main/dev local en `cf2e7552`. El coordinador lib
 ## Definition of Done
 
 - [x] Spec revisada/cerrada y OK expreso del owner antes de implementar; decisiones de redondeo registradas arriba.
-- [ ] Una lectura por local devuelve lista completa con costo de receta, precio, ganancia y margen actuales para productos simples y combos; coincide con cantidades de preview/consumo por una unidad.
-- [ ] Costos faltantes nombrados y margen oculto; null, cero, precio ausente, precio cero y pérdida tratados según contrato; aislamiento real entre comercios/locales.
-- [ ] Lectura sin escrituras, sin fallback a otro costo ni consultas fiscales; catálogo, `unit_cost`, Stock, venta y backend R1 de escritura intactos.
-- [ ] Backend listo antes de integrar las columnas en la lista restaurada; selector de local, refresco y respuestas tardías correctos, sin N+1 cliente para filas.
-- [ ] Test Neon focal, typecheck y lint merchant aprobados con SHA/entorno explícitos; QA de tarea y de combinación diferenciadas. Coordinador marca implementada tras QA pertinente.
+- [x] Una lectura por local devuelve lista completa con costo de receta, precio, ganancia y margen actuales para productos simples y combos; coincide con cantidades de preview/consumo por una unidad.
+- [x] Costos faltantes nombrados y margen oculto; null, cero, precio ausente, precio cero y pérdida tratados según contrato; aislamiento real entre comercios/locales.
+- [x] Lectura sin escrituras, sin fallback a otro costo ni consultas fiscales; catálogo, `unit_cost`, Stock, venta y backend R1 de escritura intactos.
+- [x] Backend listo antes de integrar las columnas en la lista restaurada; selector de local, refresco y respuestas tardías correctos por revisión estática, sin N+1 cliente para filas.
+- [x] Test Neon focal, typecheck y lint merchant aprobados con SHA/entorno explícitos; QA de tarea y de combinación diferenciadas. Coordinador marca implementada tras QA pertinente.
 
 ## Pruebas pertinentes
 
@@ -156,3 +156,5 @@ Sin DB PROD, e2e, verify global ni suites adicionales. La QA en browser del owne
 Verificación estática hecha sobre base `b87f5d40def5e4c99de8bafc50a625f55e7712f5`. La UI L1 leída como dependencia corresponde al candidato congelado `cf2e75520ef4f739f94d2176d63b8050b435e019`; no se editó ese checkout. No se ejecutaron tests ni acceso DB, no se implementó producto ni se hicieron commits/push.
 
 Las cuatro preguntas están respondidas y el owner autorizó la implementación; sin decisiones funcionales pendientes. El wizard está integrado y el coordinador asigna el relevo de UI. Nota factual: core admite escala 2 sin validar moneda; esta pieza asume precio ya en unidad mínima, no afirma que existan precios legacy incompatibles ni los corrige. Lectura defensiva ante un dato fuera de esa precisión, sin escribir ni inventar un precio.
+
+Implementación entregada en `3c1bde98`, producto `8edee752`, backend `1949f358`. Neon focal 1/1 sin skips, tipos y lint merchant aprobados; QA independiente estática de tarea PASS y combinación PASS sobre `8eb19b8c`. Evidencia y límites en [entrega](../factory/0234-costs.md) y [QA](../factory/0234-qa.md). El recorrido visual/funcional en browser queda a cargo del owner. Sin push ni migraciones propias.
