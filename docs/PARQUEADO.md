@@ -11,6 +11,25 @@ conserva).
 Regla al sacar algo de aca: **nada toca codigo sin su spec cerrada.** Varias de estas filas dicen
 explicitamente «necesita spec» — eso es literal.
 
+## PARQUEADO 2026-10-15 — P2: para llevar y packaging
+
+Owner 2026-10-15: «vamos a dejar el tema de packaging de momento, porque no sabemos como se usara ni como impactara».
+Plan: `docs/plan-margen-ganancia-2026-10-14.md` (fila P2). **Ideas exploradas, ninguna decidida como diseño final:**
+- POS: «Nueva orden» abre un modal **Mesa | Para llevar**; para llevar = mismo wizard con un campo de referencia en
+  lugar de la mesa; sin modulo Mesas no hay modal (todo es para llevar). Solo dos modalidades (delivery = para llevar).
+  Orden entera, no por linea. Sin valor por defecto (owner).
+- Stock: la IA marca el insumo como «Envase» al cargarlo y el merchant solo verifica el check. Stock gestiona stock;
+  Recetas no gestiona stock.
+- Recetas: tipo nuevo **Kit** (receta sin producto, solo insumos marcados Envase). Kit por unidad vendida y kit
+  «una vez por orden» (bolsa); las perdidas se corrigen con el ajuste de stock.
+- **Lo que no cerro:** como asignar kits a productos sin friccion. Descartado por el owner: marcar ingredientes vs
+  envases en cada insumo; asignar por categoria (una categoria mezcla kits, p. ej. Desayunos); listas para tildar en el
+  paso 4 (infierno en el telefono). Ultima propuesta de Claude, sin respuesta: la IA asigna sola (receta + nombre +
+  categoria) y los conteos de la pieza 6 delatan errores; alternativa del owner: el cajero elige el kit en el POS.
+- Fuentes: ThrivePOS «Ingredient Usage by Order Type»; Restaurant365 reglas WHEN/THEN por tipo de servicio;
+  teorico vs real con conteos (MarginEdge, R365).
+Mientras siga parqueado el costo de envase es 0 en la ganancia. **Necesita spec** (L2).
+
 ## PARQUEADO 2026-10-15 — Premios como cupones (canje desde la PWA) y rediseño del mostrador
 
 Owner 2026-10-15, al revisar P3 del plan `docs/plan-margen-ganancia-2026-10-14.md`: el canje del premio desde la PWA
