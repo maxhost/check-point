@@ -2,6 +2,8 @@
 import { fileURLToPath } from "node:url";
 import { createViteServer } from "vitest/node";
 import { localDbUrlOrExit } from "../../packages/db/src/local.ts";
+import { sql } from "drizzle-orm";
+import { execFileSync } from "node:child_process";
 
 const mode = process.argv[2];
 if (mode !== "preflight" && mode !== "cutover") {
@@ -31,12 +33,30 @@ try {
   const { preflightR1, cutoverR1 } = await vite.ssrLoadModule(
     "/apps/merchant/src/modules/recipes/server/model/migration.ts",
   );
-  const result = await withDbTransaction(async (tx: unknown) =>
-    mode === "preflight"
-      ? preflightR1(tx)
-      : cutoverR1(tx, { writersDrained: true }),
+  const result = await withDbTransaction(
+    async (tx: { execute: (query: unknown) => Promise<unknown> }) => {
+      await tx.execute(sql`set transaction isolation level repeatable read`);
+      return mode === "preflight"
+        ? preflightR1(tx)
+        : cutoverR1(tx, { writersDrained: true });
+    },
   );
-  console.log(JSON.stringify({ mode, ...result }));
+  console.log(
+    JSON.stringify({
+      environment: "local",
+      sourceSha: execFileSync("git", ["rev-parse", "HEAD"], {
+        cwd: root,
+        encoding: "utf8",
+      }).trim(),
+      workingTreeDirty:
+        execFileSync("git", ["status", "--porcelain"], {
+          cwd: root,
+          encoding: "utf8",
+        }).trim().length > 0,
+      mode,
+      ...result,
+    }),
+  );
 } catch (error) {
   console.error("recipes-r1: fallo", {
     name: error instanceof Error ? error.name : typeof error,
