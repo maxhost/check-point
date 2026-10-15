@@ -35,6 +35,8 @@ import {
   users,
 } from "@mi-pasaporte/db/schema";
 import { openMerchantSession } from "../../../../server/merchant-session";
+import { PERMISSIONS } from "@mi-pasaporte/db/permissions-catalog";
+import { MODULES } from "../../../../modules/registry";
 
 import { GET } from "./route";
 
@@ -152,7 +154,12 @@ describe.skipIf(!integrationEnabled)(
     it("con sesion y negocio `active`: el cuerpo literal del anexo, campo por campo", async () => {
       const response = await GET(sessionRequest(ownerCookie));
       expect(response.status).toBe(200);
-      expect(await response.json()).toEqual({
+      const body = await response.json();
+      // Compatibilidad: los permisos modulares anteriores siguen siendo capacidades del owner.
+      expect(body.membership.permissions).toEqual(
+        expect.arrayContaining(["stock", "recipes", "pos"]),
+      );
+      expect(body).toEqual({
         authenticated: true,
         user: {
           id: seed.userId,
@@ -172,25 +179,16 @@ describe.skipIf(!integrationEnabled)(
           // transitorio del POS ya no existe: el `toEqual` exacto lo prueba.
           enabledModules: [],
         },
-        // Spec 0086 §8 / contrato §6: para un OWNER son **los SIETE**, aunque su fila en la
-        // base los tenga en `'{}'` (el `CHECK 2` lo exige). La API no expone la columna,
-        // expone la CAPACIDAD — y acá la diferencia se ve contra la base de verdad.
+        // Spec 0086 §8 / ADR 0139 §5: para un OWNER es el catálogo core + módulos registrados,
+        // aunque su fila tenga `'{}'`. La API expone capacidad y no la columna almacenada.
         membership: {
           role: "owner",
           status: "active",
           permissions: [
-            "brand",
-            "catalog",
-            "counter",
-            "locations",
-            "loyalty",
-            "marketing",
-            "staff",
-            // Spec 0216 / ADR 0139 §5: el owner tiene tambien los permisos de modulo. Spec 0220:
-            // `pos` salio del core y lo declara el modulo POS (despues de los de la Fase 1).
-            "stock",
-            "recipes",
-            "pos",
+            ...PERMISSIONS,
+            ...MODULES.flatMap((module) =>
+              module.permissions.map((permission) => permission.id),
+            ),
           ],
         },
         // Spec 0189 §D10: el estado de cobro, SIN datos de Stripe.
