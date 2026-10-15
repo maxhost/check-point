@@ -182,7 +182,7 @@ export function ProductEditor({
             value={unitPrice}
             onChange={setUnitPrice}
             placeholder="0.00"
-            description={`En ${currencyCode}`}
+            description={`En ${currencyCode}, sin IVA`}
           />
           <TextField
             label="Precio de costo (opcional)"
