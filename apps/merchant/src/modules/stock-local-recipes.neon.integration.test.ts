@@ -1,8 +1,9 @@
+import { readLibraryRecipe, updateRecipe } from "./recipes/server/library";
 import * as eventPublisher from "../server/module-events/publish";
 import {
   locations,
   moduleResourceVersions,
-  recipeRevisions,
+  independentRecipeRevisions,
   stockItems,
 } from "@mi-pasaporte/db/schema";
 import { moduleStaff, seedProduct } from "./modules-integration-support";
@@ -21,7 +22,6 @@ import { getDb } from "@mi-pasaporte/db";
 import { modulesIntegrationEnabled } from "./modules-integration-support";
 import {
   world,
-  localId,
   productId,
   flourId,
   route,
@@ -37,7 +37,9 @@ describe.skipIf(!modulesIntegrationEnabled)(
   () => {
     it("recipe revision, current lines and pointer rollback together when publication fails", async () => {
       const atomicProduct = await seedProduct(world, "Receta atómica", "10.00");
-      expect((await put("250.000", atomicProduct)).status).toBe(200);
+      const created = await put("250.000", atomicProduct);
+      expect(created.status).toBe(200);
+      const { recipe } = await created.json();
       const pointers = () =>
         getDb()
           .select()
@@ -52,11 +54,11 @@ describe.skipIf(!modulesIntegrationEnabled)(
       const revisions = () =>
         getDb()
           .select()
-          .from(recipeRevisions)
+          .from(independentRecipeRevisions)
           .where(
             and(
-              eq(recipeRevisions.businessId, world.businessId),
-              eq(recipeRevisions.productId, atomicProduct),
+              eq(independentRecipeRevisions.businessId, world.businessId),
+              eq(independentRecipeRevisions.recipeId, recipe.id),
             ),
           );
       const beforePointer = await pointers();
@@ -64,26 +66,24 @@ describe.skipIf(!modulesIntegrationEnabled)(
       const publication = vi
         .spyOn(eventPublisher, "setResourceVersion")
         .mockRejectedValueOnce(new Error("Resource pointer write unavailable"));
-      const failed = await route("PUT", `recipes/${atomicProduct}`, {
-        locationId: localId,
-        lines: [
-          {
-            newItem: { name: "Sal que debe revertirse" },
-            quantity: "1.000",
-            unit: "g",
-          },
-        ],
-      });
-      expect(failed.status).toBe(503);
+      await expect(
+        updateRecipe(world.businessId, recipe.id, {
+          name: recipe.name,
+          expectedRevisionId: recipe.revisionId,
+          lines: [
+            {
+              newItem: { name: "Sal que debe revertirse" },
+              quantity: "1.000",
+              unit: "g",
+            },
+          ],
+        }),
+      ).rejects.toThrow("Resource pointer write unavailable");
       publication.mockRestore();
       expect(await pointers()).toEqual(beforePointer);
       expect(await revisions()).toEqual(beforeRevisions);
-      const read = await route(
-        "GET",
-        `recipes/${atomicProduct}?locationId=${localId}`,
-      );
-      expect(read.status).toBe(200);
-      expect((await read.json()).recipe.lines).toMatchObject([
+      const read = await readLibraryRecipe(world.businessId, recipe.id);
+      expect(read.lines).toMatchObject([
         { itemId: flourId, quantity: "250.000" },
       ]);
       expect(

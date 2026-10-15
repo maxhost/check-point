@@ -1,12 +1,8 @@
 import { withDbTransaction } from "@mi-pasaporte/db";
-import {
-  moduleEvents,
-  moduleEventDeliveries,
-  recipeRevisions,
-} from "@mi-pasaporte/db/schema";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { moduleEvents, moduleEventDeliveries } from "@mi-pasaporte/db/schema";
+import { and, eq, sql } from "drizzle-orm";
 import type { SaleClosedEvent } from "../../../server/module-events/types";
-import { expandRecipes } from "./consumption-snapshot";
+import { capturedConsumption } from "./model/captured";
 import {
   readConsumptionCost,
   type ConsumptionDelivery,
@@ -65,61 +61,35 @@ export async function readSaleConsumptionCost(args: {
           terminalReason: storedDelivery.terminalReason,
         };
       const payload = event.payload as SaleClosedEvent;
-      const ids = [
-        ...new Set(
-          payload.lines.flatMap((line) =>
-            line.resourceVersions
-              .filter(
-                (ref) => ref.providerId === "recipes" && ref.slot === "recipe",
-              )
-              .map((ref) => ref.versionId),
-          ),
-        ),
-      ];
-      const revisions = ids.length
-        ? await tx
-            .select()
-            .from(recipeRevisions)
-            .where(
-              and(
-                eq(recipeRevisions.businessId, args.businessId),
-                inArray(recipeRevisions.id, ids),
-              ),
-            )
-        : [];
-      const byId = new Map(
-        revisions.map((revision) => [revision.id, revision]),
-      );
-      expectedLines = payload.lines.map((line): ExpectedCostLine => {
-        const empty = {
-          sourceLineId: line.sourceLineId,
-          productId: line.productId,
-          consumptions: [],
-        };
-        if (
+      try {
+        const captured = await capturedConsumption(
+          tx,
+          args.businessId,
+          payload,
+        );
+        expectedLines = captured.expectedLines.map((line) =>
           delivery.state === "skipped" &&
           delivery.terminalReason === "modules_disabled"
-        )
-          return { ...empty, recipe: "absent" };
-        const ref = line.resourceVersions.find(
-          (ref) => ref.providerId === "recipes" && ref.slot === "recipe",
+            ? {
+                ...line,
+                recipe: "absent" as const,
+                consumptions: [],
+                roundingOmissions: false,
+              }
+            : line,
         );
-        if (!line.productId || !ref) return { ...empty, recipe: "absent" };
-        const revision = byId.get(ref.versionId);
-        if (!revision || revision.productId !== line.productId)
-          return { ...empty, recipe: "unknown" };
-        const expanded = expandRecipes({ ...payload, lines: [line] }, [
-          revision,
-        ]);
-        return {
-          ...empty,
-          recipe: expanded.length ? "present" : "absent",
-          consumptions: expanded.map(({ itemId, quantity }) => ({
-            itemId,
-            quantity,
-          })),
-        };
-      });
+      } catch {
+        expectedLines = payload.lines.map((line) => ({
+          sourceLineId: line.sourceLineId,
+          productId: line.productId,
+          recipe:
+            delivery.state === "skipped" &&
+            delivery.terminalReason === "modules_disabled"
+              ? "absent"
+              : "unknown",
+          consumptions: [],
+        }));
+      }
     }
     return readConsumptionCost(tx, { ...args, expectedLines, delivery });
   });

@@ -1,283 +1,333 @@
-import { eq } from "drizzle-orm";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { getDb } from "@mi-pasaporte/db";
-import { products, recipeLines } from "@mi-pasaporte/db/schema";
+import { randomUUID } from "node:crypto";
+import { and, eq } from "drizzle-orm";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { getDb, withDbTransaction } from "@mi-pasaporte/db";
 import {
-  type ModuleWorld,
-  api,
-  buy,
+  products,
+  stockItems,
+  independentRecipeRevisions,
+  recipeSaleResolutions,
+  moduleResourceVersions,
+} from "@mi-pasaporte/db/schema";
+import {
+  seedModuleWorld,
   dropModuleWorld,
   enableModules,
-  modulesIntegrationEnabled,
-  newItem,
-  seedModuleWorld,
   seedProduct,
+  newItem,
+  modulesIntegrationEnabled,
+  type ModuleWorld,
 } from "../modules-integration-support";
-
-/**
- * Spec 0210 §Plan 3 — EL MODULO RECETAS contra Neon: PUT + GET con costo y margen, insumo y
- * producto de otro negocio (404), archivados, borrar el producto borra la receta, y aislamiento.
- */
-
-let world: ModuleWorld;
-let other: ModuleWorld;
-
+import {
+  createRecipe,
+  updateRecipe,
+  readLibraryRecipe,
+  archiveRecipe,
+  listLibrary,
+  listRecipeRevisions,
+} from "./server/library";
+import {
+  saveComposition,
+  readComposition,
+  previewComposition,
+  listCompositionRevisions,
+} from "./server/compositions";
+import { publishSaleClosed } from "../../server/module-events/publish";
+import * as publisher from "../../server/module-events/publish";
+let world: ModuleWorld, other: ModuleWorld;
 beforeAll(async () => {
-  world = await seedModuleWorld("Recetas");
-  other = await seedModuleWorld("Recetas ajeno");
+  world = await seedModuleWorld("R1 library");
+  other = await seedModuleWorld("R1 foreign");
   await enableModules(world, ["stock", "recipes"]);
   await enableModules(other, ["stock", "recipes"]);
-}, 240_000);
-
+}, 120_000);
 afterAll(async () => {
   await dropModuleWorld(world);
   await dropModuleWorld(other);
-}, 240_000);
-
-async function linesInDb(productId: string) {
-  return getDb()
-    .select({
-      itemId: recipeLines.itemId,
-      quantity: recipeLines.quantity,
-      position: recipeLines.position,
-    })
-    .from(recipeLines)
-    .where(eq(recipeLines.productId, productId))
-    .orderBy(recipeLines.position);
-}
-
+}, 120_000);
+const make = (name: string, itemId: string, quantity = "1.000") =>
+  createRecipe(world.businessId, { name, lines: [{ itemId, quantity }] });
 describe.skipIf(!modulesIntegrationEnabled)(
-  "Modulo Recetas (spec 0210)",
+  "R1 independent recipe and composition domain",
   () => {
-    it("PUT + GET: lineas en orden, costo, margen y margen % correctos; el core queda intacto", async () => {
-      const harina = await newItem(world, "Harina");
-      const huevo = await newItem(world, "Huevo", "unit");
-      const vainilla = await newItem(world, "Vainilla", "ml");
-      await buy(world, harina.id, { quantity: 25000, totalCost: "30.00" }); // 0.0012 / g
-      await buy(world, huevo.id, { quantity: 30, totalCost: "4.50" }); // 0.15 / u
-      const torta = await seedProduct(world, "Torta", "2.00");
-
-      const put = await api.saveRecipe(world.cookie, torta, {
-        lines: [
-          { itemId: huevo.id, quantity: 2 },
-          { itemId: harina.id, quantity: "200" },
-        ],
+    it("creates without a product, converts quantities and never writes catalog cost", async () => {
+      const item = await newItem(world, "Harina R1");
+      const recipe = await createRecipe(world.businessId, {
+        name: "Pizza independiente",
+        lines: [{ itemId: item.id, quantity: "0.250", unit: "kg" }],
       });
-      expect(put.status).toBe(200);
-      const recipe = (await put.json()).recipe;
-      expect(recipe).toEqual({
-        productId: torta,
-        productName: "Torta",
-        locationId: expect.any(String),
-        unitPrice: "2.00",
-        cost: "0.54",
-        costComplete: true,
-        margin: "1.46",
-        marginPct: "73.0",
-        lineCount: 2,
-        lines: [
-          {
-            itemId: huevo.id,
-            itemName: "Huevo",
-            unit: "unit",
-            itemStatus: "active",
-            quantity: "2.000",
-            unitCost: "0.150000",
-            lineCost: "0.30",
-          },
-          {
-            itemId: harina.id,
-            itemName: "Harina",
-            unit: "g",
-            itemStatus: "active",
-            quantity: "200.000",
-            unitCost: "0.001200",
-            lineCost: "0.24",
-          },
-        ],
-      });
-      const read = await api.recipe(world.cookie, torta);
-      expect(read.status).toBe(200);
-      expect((await read.json()).recipe).toEqual(recipe);
-      expect((await linesInDb(torta)).map((l) => l.position)).toEqual([0, 1]);
-
-      // Un insumo sin compras: suma solo las conocidas, costComplete=false.
-      const withUnknown = await api.saveRecipe(world.cookie, torta, {
-        lines: [
-          { itemId: harina.id, quantity: 200 },
-          { itemId: vainilla.id, quantity: 5 },
-        ],
-      });
-      expect((await withUnknown.json()).recipe).toMatchObject({
-        cost: "0.24",
-        costComplete: false,
-        margin: "1.76",
-        lineCount: 2,
-      });
-
-      // El modulo no escribe `core.product.unit_cost`.
-      const [prod] = await getDb()
-        .select({ unitCost: products.unitCost })
-        .from(products)
-        .where(eq(products.id, torta));
-      expect(prod.unitCost).toBeNull();
-    }, 120_000);
-
-    it("GET /: todos los productos (con y sin receta), por nombre; precio null → margen null", async () => {
-      const sinReceta = await seedProduct(world, "Agua", null);
-      const list = (await (await api.recipes(world.cookie)).json()).recipes;
-      const agua = list.find(
-        (r: { productId: string }) => r.productId === sinReceta,
-      );
-      expect(agua).toEqual({
-        productId: sinReceta,
-        productName: "Agua",
-        locationId: expect.any(String),
-        unitPrice: null,
-        cost: null,
-        costComplete: false,
-        margin: null,
-        marginPct: null,
-        lineCount: 0,
-      });
-      const names = list.map((r: { productName: string }) => r.productName);
-      expect(names).toEqual(
-        [...names].sort((a, b) =>
-          a.toLowerCase().localeCompare(b.toLowerCase()),
-        ),
-      );
-      expect(names).toContain("Torta");
-    }, 120_000);
-
-    it("insumo de OTRO negocio → 404 item_not_found; producto de otro negocio → 404 product_not_found", async () => {
-      const mine = await seedProduct(world, "Cafe", "1.50");
-      const foreignItem = await newItem(other, "Grano ajeno");
-      const foreignProduct = await seedProduct(other, "Producto ajeno", "9.00");
-
-      const r1 = await api.saveRecipe(world.cookie, mine, {
-        lines: [{ itemId: foreignItem.id, quantity: 1 }],
-      });
-      expect(r1.status).toBe(404);
-      expect((await r1.json()).code).toBe("item_not_found");
-      expect(await linesInDb(mine)).toEqual([]);
-
-      const myItem = await newItem(world, "Grano propio");
-      const r2 = await api.saveRecipe(world.cookie, foreignProduct, {
-        lines: [{ itemId: myItem.id, quantity: 1 }],
-      });
-      expect(r2.status).toBe(404);
-      expect((await r2.json()).code).toBe("product_not_found");
-      expect(await linesInDb(foreignProduct)).toEqual([]);
-      const r3 = await api.recipe(world.cookie, foreignProduct);
-      expect(r3.status).toBe(404);
-      expect((await r3.json()).code).toBe("product_not_found");
-    }, 120_000);
-
-    it("archivado NUEVO → 409 item_archived; uno que ya estaba en la receta se conserva", async () => {
-      const p = await seedProduct(world, "Medialuna", "0.80");
-      const manteca = await newItem(world, "Manteca");
-      const levadura = await newItem(world, "Levadura");
-      await api.saveRecipe(world.cookie, p, {
-        lines: [{ itemId: manteca.id, quantity: 10 }],
-      });
-      await api.updateItem(world.cookie, manteca.id, { status: "archived" });
-      await api.updateItem(world.cookie, levadura.id, { status: "archived" });
-
-      const keep = await api.saveRecipe(world.cookie, p, {
-        lines: [{ itemId: manteca.id, quantity: 12 }],
-      });
-      expect(keep.status).toBe(200);
-      expect((await keep.json()).recipe.lines[0]).toMatchObject({
-        itemId: manteca.id,
-        itemStatus: "archived",
-        quantity: "12.000",
-      });
-
-      const add = await api.saveRecipe(world.cookie, p, {
-        lines: [
-          { itemId: manteca.id, quantity: 12 },
-          { itemId: levadura.id, quantity: 1 },
-        ],
-      });
-      expect(add.status).toBe(409);
-      expect((await add.json()).code).toBe("item_archived");
-      expect((await linesInDb(p)).map((l) => [l.itemId, l.quantity])).toEqual([
-        [manteca.id, "12.000"],
+      expect(recipe.lines).toEqual([
+        {
+          itemId: item.id,
+          itemName: item.name,
+          itemStatus: "active",
+          unit: "g",
+          quantity: "250.000",
+        },
       ]);
-    }, 120_000);
-
-    it("validacion del PUT: too_many_lines, duplicate_item, invalid_quantity; lines: [] borra", async () => {
-      const p = await seedProduct(world, "Tostado", "3.00");
-      const jamon = await newItem(world, "Jamon");
-      const many = Array.from({ length: 51 }, () => ({
-        itemId: jamon.id,
-        quantity: 1,
-      }));
-      const cases: [unknown, string][] = [
-        [{ lines: many }, "too_many_lines"],
-        [
-          {
-            lines: [
-              { itemId: jamon.id, quantity: 1 },
-              { itemId: jamon.id, quantity: 2 },
-            ],
-          },
-          "duplicate_item",
-        ],
-        [{ lines: [{ itemId: jamon.id, quantity: 0 }] }, "invalid_quantity"],
-      ];
-      for (const [body, code] of cases) {
-        const r = await api.saveRecipe(world.cookie, p, body);
-        expect(r.status, code).toBe(422);
-        expect((await r.json()).code).toBe(code);
-      }
-      await api.saveRecipe(world.cookie, p, {
-        lines: [{ itemId: jamon.id, quantity: 30 }],
-      });
-      expect(await linesInDb(p)).toHaveLength(1);
-      const cleared = await api.saveRecipe(world.cookie, p, { lines: [] });
-      expect((await cleared.json()).recipe).toMatchObject({
-        lineCount: 0,
-        cost: null,
-        lines: [],
-      });
-      expect(await linesInDb(p)).toEqual([]);
-    }, 120_000);
-
-    it("borrar el producto borra su receta (FK cascade)", async () => {
-      const p = await seedProduct(world, "Efimero", "1.00");
-      const item = await newItem(world, "Insumo efimero");
-      await api.saveRecipe(world.cookie, p, {
-        lines: [{ itemId: item.id, quantity: 1 }],
-      });
-      expect(await linesInDb(p)).toHaveLength(1);
-      await getDb().delete(products).where(eq(products.id, p));
-      expect(await linesInDb(p)).toEqual([]);
-    }, 120_000);
-
-    it("aislamiento: B no lista ni lee las recetas ni los productos de A", async () => {
-      const list = (await (await api.recipes(other.cookie)).json()).recipes;
-      const names = list.map((r: { productName: string }) => r.productName);
-      expect(names).not.toContain("Torta");
-      expect(names).toEqual(["Producto ajeno"]);
-      const [torta] = await getDb()
-        .select({ id: products.id })
-        .from(products)
-        .where(eq(products.businessId, world.businessId));
-      const r = await api.recipe(other.cookie, torta.id);
-      expect(r.status).toBe(404);
-      expect((await r.json()).code).toBe("product_not_found");
-    }, 120_000);
-
-    it("con recipes apagado (stock encendido) las rutas de recetas dan 403 module_disabled", async () => {
+      expect(await readLibraryRecipe(world.businessId, recipe.id)).toEqual(
+        recipe,
+      );
       expect(
-        (await api.setModule(other.cookie, "recipes", { enabled: false }))
-          .status,
-      ).toBe(200);
-      const r = await api.recipes(other.cookie);
-      expect(r.status).toBe(403);
-      expect((await r.json()).code).toBe("module_disabled");
-      expect((await api.items(other.cookie)).status).toBe(200);
-    }, 120_000);
+        (
+          await listLibrary(world.businessId, new URLSearchParams())
+        ).recipes.map((r) => r.id),
+      ).toContain(recipe.id);
+      const productId = await seedProduct(world, "Media pizza", "3.00");
+      const composition = await saveComposition(world.businessId, productId, {
+        isCombo: false,
+        recipes: [{ recipeId: recipe.id, quantity: "0.500" }],
+        expectedRevisionId: null,
+      });
+      expect(composition.recipes[0].quantity).toBe("0.500");
+      const [product] = await getDb()
+        .select()
+        .from(products)
+        .where(eq(products.id, productId));
+      expect(product.unitCost).toBeNull();
+    }, 30_000);
+    it("active names are case insensitive, archival releases the name and history is immutable", async () => {
+      const item = await newItem(world, "Sal R1");
+      const original = await make("Sopa R1", item.id);
+      await expect(make("sOPA r1", item.id)).rejects.toMatchObject({
+        status: 409,
+        code: "recipe_name_taken",
+      });
+      const updated = await updateRecipe(world.businessId, original.id, {
+        name: "Sopa corregida",
+        lines: [{ itemId: item.id, quantity: "2.000" }],
+        expectedRevisionId: original.revisionId,
+      });
+      await getDb()
+        .update(stockItems)
+        .set({ name: "Sal renombrada" })
+        .where(eq(stockItems.id, item.id));
+      const history = await listRecipeRevisions(
+        world.businessId,
+        original.id,
+        new URLSearchParams(),
+      );
+      expect(
+        history.revisions.find((r) => r.id === original.revisionId),
+      ).toMatchObject({
+        name: "Sopa R1",
+        lines: [{ itemName: "Sal R1", quantity: "1.000" }],
+      });
+      await expect(
+        getDb()
+          .update(independentRecipeRevisions)
+          .set({ name: "Prohibido" })
+          .where(eq(independentRecipeRevisions.id, original.revisionId)),
+      ).rejects.toBeDefined();
+      await archiveRecipe(world.businessId, updated.id, {
+        expectedRevisionId: updated.revisionId,
+      });
+      expect((await make("Sopa corregida", item.id)).status).toBe("active");
+    }, 30_000);
+    it("blocks only current usage; old composition and sales do not block archival", async () => {
+      const item = await newItem(world, "Ajo R1");
+      const recipe = await make("Ajo preparado", item.id),
+        productId = await seedProduct(world, "Almuerzo R1", "3.00");
+      const first = await saveComposition(world.businessId, productId, {
+        isCombo: false,
+        recipes: [{ recipeId: recipe.id, quantity: "1.000" }],
+        expectedRevisionId: null,
+      });
+      await expect(
+        archiveRecipe(world.businessId, recipe.id, {
+          expectedRevisionId: recipe.revisionId,
+        }),
+      ).rejects.toMatchObject({
+        code: "recipe_in_use",
+        extra: {
+          products: [
+            {
+              productId,
+              productName: "Almuerzo R1",
+              compositionRevisionId: first.revisionId,
+            },
+          ],
+        },
+      });
+      await saveComposition(world.businessId, productId, {
+        isCombo: false,
+        recipes: [],
+        expectedRevisionId: first.revisionId,
+      });
+      expect(
+        (
+          await archiveRecipe(world.businessId, recipe.id, {
+            expectedRevisionId: recipe.revisionId,
+          })
+        ).status,
+      ).toBe("archived");
+      expect(
+        (
+          await listCompositionRevisions(
+            world.businessId,
+            productId,
+            new URLSearchParams(),
+          )
+        ).revisions,
+      ).toHaveLength(2);
+    }, 30_000);
+    it("combo preview consolidates a shared ingredient and keeps each contribution", async () => {
+      const item = await newItem(world, "Carne R1"),
+        a = await make("Empanada carne R1", item.id, "100.000"),
+        b = await make("Salsa R1", item.id, "50.000"),
+        productId = await seedProduct(world, "Combo R1", "5.00");
+      const body = {
+        isCombo: true,
+        recipes: [
+          { recipeId: a.id, quantity: "12.000" },
+          { recipeId: b.id, quantity: "0.500" },
+        ],
+        expectedRevisionId: null,
+      };
+      const preview = await previewComposition(
+        world.businessId,
+        productId,
+        body,
+      );
+      expect(preview.ingredients).toMatchObject([
+        { itemId: item.id, quantity: "1225.000" },
+      ]);
+      expect(
+        preview.components.map((c) => c.ingredients[0].allocatedQuantity),
+      ).toEqual(["1200.000", "25.000"]);
+      await expect(
+        saveComposition(world.businessId, productId, {
+          ...body,
+          isCombo: false,
+        }),
+      ).rejects.toMatchObject({ code: "combo_required" });
+      await expect(
+        saveComposition(world.businessId, productId, {
+          ...body,
+          recipes: [body.recipes[0], body.recipes[0]],
+        }),
+      ).rejects.toMatchObject({ code: "duplicate_recipe" });
+    }, 30_000);
+    it("fanout changes only recipe revisions, preserves old captured refs and is atomic on failure", async () => {
+      const item = await newItem(world, "Arroz R1"),
+        recipe = await make("Arroz R1 receta", item.id, "10.000"),
+        productId = await seedProduct(world, "Menú arroz R1", "4.00");
+      const composition = await saveComposition(world.businessId, productId, {
+        isCombo: false,
+        recipes: [{ recipeId: recipe.id, quantity: "1.000" }],
+        expectedRevisionId: null,
+      });
+      const previousFlag = process.env.MODULE_EVENTS_ENABLED;
+      process.env.MODULE_EVENTS_ENABLED = "true";
+      let event;
+      try {
+        event = await withDbTransaction((tx) =>
+          publishSaleClosed(tx, {
+            businessId: world.businessId,
+            sourceOrderId: randomUUID(),
+            locationId: world.locationId,
+            closedAt: new Date(),
+            userId: world.ownerId,
+            lines: [{ sourceLineId: randomUUID(), productId, quantity: 1 }],
+          }),
+        );
+      } finally {
+        if (previousFlag === undefined)
+          delete process.env.MODULE_EVENTS_ENABLED;
+        else process.env.MODULE_EVENTS_ENABLED = previousFlag;
+      }
+      expect(event?.eventId).toBeTruthy();
+      const changed = await updateRecipe(world.businessId, recipe.id, {
+        name: recipe.name,
+        lines: [{ itemId: item.id, quantity: "20.000" }],
+        expectedRevisionId: recipe.revisionId,
+      });
+      const current = await readComposition(world.businessId, productId);
+      expect(current.revisionId).toBe(composition.revisionId);
+      expect(current.resolutionId).not.toBe(composition.resolutionId);
+      expect(current.recipes[0].recipeRevisionId).toBe(changed.revisionId);
+      const [old] = await getDb()
+        .select()
+        .from(recipeSaleResolutions)
+        .where(eq(recipeSaleResolutions.id, composition.resolutionId!));
+      expect(old.components[0].recipeRevisionId).toBe(recipe.revisionId);
+      const failure = vi
+        .spyOn(publisher, "setResourceVersion")
+        .mockRejectedValueOnce(new Error("pointer unavailable"));
+      try {
+        await expect(
+          updateRecipe(world.businessId, recipe.id, {
+            name: "Must roll back",
+            lines: [{ itemId: item.id, quantity: "99.000" }],
+            expectedRevisionId: changed.revisionId,
+          }),
+        ).rejects.toThrow("pointer unavailable");
+      } finally {
+        failure.mockRestore();
+      }
+      expect(
+        (await readLibraryRecipe(world.businessId, recipe.id)).revisionId,
+      ).toBe(changed.revisionId);
+    }, 30_000);
+    it("recipe edit and composition creation serialize without losing the new ingredient revision", async () => {
+      const item = await newItem(world, "Lenteja R1"),
+        recipe = await make("Lentejas R1", item.id),
+        productId = await seedProduct(world, "Lentejas plato", "3.00");
+      const [changed] = await Promise.all([
+        updateRecipe(world.businessId, recipe.id, {
+          name: recipe.name,
+          lines: [{ itemId: item.id, quantity: "7.000" }],
+          expectedRevisionId: recipe.revisionId,
+        }),
+        saveComposition(world.businessId, productId, {
+          isCombo: false,
+          recipes: [{ recipeId: recipe.id, quantity: "1.000" }],
+          expectedRevisionId: null,
+        }),
+      ]);
+      expect(
+        (await readComposition(world.businessId, productId)).recipes[0]
+          .recipeRevisionId,
+      ).toBe(changed.revisionId);
+      await getDb().delete(products).where(eq(products.id, productId));
+      expect((await readLibraryRecipe(world.businessId, recipe.id)).id).toBe(
+        recipe.id,
+      );
+    }, 30_000);
+    it("rejects foreign recipes, products and ingredients without leaking usages", async () => {
+      const item = await newItem(world, "Propio R1"),
+        foreignItem = await newItem(other, "Ajeno R1"),
+        recipe = await make("Propia R1", item.id),
+        productId = await seedProduct(other, "Ajeno producto", "1.00");
+      await expect(
+        readLibraryRecipe(other.businessId, recipe.id),
+      ).rejects.toMatchObject({ code: "recipe_not_found" });
+      await expect(
+        createRecipe(world.businessId, {
+          name: "No",
+          lines: [{ itemId: foreignItem.id, quantity: 1 }],
+        }),
+      ).rejects.toMatchObject({ code: "item_not_found" });
+      await expect(
+        saveComposition(other.businessId, productId, {
+          isCombo: false,
+          recipes: [{ recipeId: recipe.id, quantity: "1.000" }],
+          expectedRevisionId: null,
+        }),
+      ).rejects.toMatchObject({ code: "recipe_not_found" });
+      await expect(
+        readComposition(world.businessId, productId),
+      ).rejects.toMatchObject({ code: "product_not_found" });
+      const pointers = await getDb()
+        .select()
+        .from(moduleResourceVersions)
+        .where(
+          and(
+            eq(moduleResourceVersions.businessId, other.businessId),
+            eq(moduleResourceVersions.resourceId, productId),
+          ),
+        );
+      expect(pointers).toEqual([]);
+    }, 30_000);
   },
 );

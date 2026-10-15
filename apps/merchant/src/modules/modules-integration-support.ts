@@ -209,7 +209,7 @@ export const api = {
       cookie,
     ),
   recipes: (cookie: string) =>
-    callModuleRoute("GET", "/api/modules/recipes", cookie),
+    callModuleRoute("GET", "/api/modules/recipes/library", cookie),
   recipe: (cookie: string, productId: string) =>
     callModuleRoute("GET", `/api/modules/recipes/${productId}`, cookie),
   recipeDraft: (cookie: string, productId: string, body: unknown) =>
@@ -229,7 +229,11 @@ export async function newItem(
   name: string,
   unit: "g" | "ml" | "unit" = "g",
 ): Promise<{ id: string; name: string }> {
-  const response = await api.createItem(world.cookie, { name, unit });
+  const response = await api.createItem(world.cookie, {
+    name,
+    unit,
+    locationId: world.locationId,
+  });
   if (response.status !== 201)
     throw new Error(`newItem: ${response.status} ${await response.text()}`);
   return (await response.json()).item;

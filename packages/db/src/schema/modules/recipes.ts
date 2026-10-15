@@ -71,3 +71,22 @@ export const recipeRevisions = recipesSchema.table("revision", {
     .notNull()
     .defaultNow(),
 });
+
+import { createRecipeLibraryTables } from "./recipes-library";
+const library = createRecipeLibraryTables();
+export const recipeEntities = library.recipeEntities;
+export const independentRecipeRevisions = library.independentRecipeRevisions;
+export const independentRecipeLines = library.independentRecipeLines;
+
+import { createRecipeCompositionTables } from "./recipes-compositions";
+const compositions = createRecipeCompositionTables(library);
+export const compositionRevisions = compositions.compositionRevisions;
+export const recipeSaleResolutions = compositions.recipeSaleResolutions;
+export const productCompositions = compositions.productCompositions;
+export const recipeConsumptionSources = compositions.recipeConsumptionSources;
+export const recipeMigrationMappings = compositions.recipeMigrationMappings;
+export type {
+  FrozenRecipeIngredient,
+  RecipeComponent,
+  ResolvedRecipeComponent,
+} from "./recipes-library";

@@ -29,6 +29,26 @@ const movement: CostMovement = {
 const applied = { state: "applied" } as const;
 
 describe("0230 exact consumption valuation and coverage", () => {
+  it("R1 positive ingredients rounded to zero are incomplete without inventing zero cost", () => {
+    const rounded = { ...line, consumptions: [], roundingOmissions: true };
+    expect(summarizeConsumptionCost([rounded], applied, [])).toMatchObject({
+      state: "incompleto",
+      knownCost: null,
+      missingRecipes: [],
+      reasons: ["redondeo_sin_consumo"],
+    });
+    expect(
+      summarizeConsumptionCost(
+        [{ ...line, roundingOmissions: true }],
+        applied,
+        [movement],
+      ),
+    ).toMatchObject({
+      state: "incompleto",
+      knownCost: "8.00",
+      reasons: ["redondeo_sin_consumo"],
+    });
+  });
   it("preserves six decimal costs and rounds once in the currency minimum unit", () => {
     const amount = consumptionAmount("-3.000", "2.666667", "1.000000");
     expect(amount).toBe(8000001000000000n);
