@@ -1,3 +1,4 @@
+import { layoutTicket } from "../escpos/layout";
 import { describe, expect, it } from "vitest";
 import type { PosOrder } from "../../pos-types";
 import type { TicketSettings as ServerSettings } from "../../../server/ticket-settings";
@@ -73,4 +74,63 @@ describe("buildTicket (spec 0184)", () => {
       buildTicket(order, s, { qr: "https://my.checkpass.club/x" }).qr,
     ).toBe("https://my.checkpass.club/x");
   });
+});
+
+it("P1 prints normalized collected total and the complete signed COP identity", () => {
+  const doc = buildTicket(
+    {
+      ...order,
+      business: { ...order.business, currencyCode: "COP" },
+      total: "10",
+      sale: { total: "10.00" },
+      settlement: {
+        gross: "10",
+        discount: "1",
+        roundingAdjustment: "1",
+        collected: "10",
+      },
+    },
+    { showBusinessName: true, showTable: true },
+    { now },
+  );
+  expect(doc.total).toMatch(/10/);
+  expect(doc.summary).toMatchObject({
+    gross: expect.stringMatching(/10/),
+    discount: expect.stringMatching(/1/),
+    roundingAdjustment: expect.stringMatching(/^\+/),
+  });
+  for (const paper of [58, 80] as const) {
+    const rows = layoutTicket(doc, paper)
+      .filter((r) => r.kind === "text")
+      .map((r) => r.text)
+      .join("\n");
+    expect(rows).toContain("Bruto:");
+    expect(rows).toContain("Descuento:");
+    expect(rows).toContain("Ajuste de redondeo: +");
+  }
+});
+it("P1 thermal/browser document prefers collected over gross and preserves legacy sale net", () => {
+  const settings = { showBusinessName: true, showTable: true };
+  expect(
+    buildTicket(
+      { ...order, total: "20.00", sale: { total: "10.00" } },
+      settings,
+    ).total,
+  ).toMatch(/10,00/);
+  expect(
+    buildTicket(
+      {
+        ...order,
+        total: "20.00",
+        sale: { total: "11.00" },
+        settlement: {
+          gross: "20.00",
+          discount: "10.00",
+          roundingAdjustment: "0.00",
+          collected: "10.00",
+        },
+      },
+      settings,
+    ).total,
+  ).toMatch(/10,00/);
 });

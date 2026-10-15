@@ -27,7 +27,23 @@ export function buildTicket(
       unitPrice: money(item.unitPrice),
       lineTotal: money(item.lineTotal),
     })),
-    total: money(order.total),
+    total: money(
+      order.settlement?.collected ?? order.sale?.total ?? order.total,
+    ),
+    ...(order.settlement &&
+    (Number(order.settlement.discount) !== 0 ||
+      Number(order.settlement.roundingAdjustment) !== 0)
+      ? {
+          summary: {
+            gross: money(order.settlement.gross),
+            discount: money(order.settlement.discount),
+            roundingAdjustment:
+              Number(order.settlement.roundingAdjustment) !== 0
+                ? `${Number(order.settlement.roundingAdjustment) > 0 ? "+" : ""}${money(order.settlement.roundingAdjustment)}`
+                : null,
+          },
+        }
+      : {}),
     date: now.toLocaleDateString("es-EC"),
     time: now.toLocaleTimeString("es-EC", {
       hour: "2-digit",

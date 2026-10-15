@@ -84,6 +84,7 @@ async function readSale(
   businessId: string,
   orderId: string,
   closeRequestId: string,
+  settlement: FinancialSettlement | null,
 ): Promise<PosSaleDTO | null> {
   const granted = await readOrderByRequest(businessId, closeRequestId);
   if (!granted || granted.id !== orderId) return null;
@@ -99,12 +100,17 @@ async function readSale(
   const { order } = toResult(granted);
   return {
     consumer: `${who?.firstName ?? ""} ${who?.lastName ?? ""}`.trim(),
-    total: order.total,
-    grossTotal: order.grossTotal,
+    total: settlement?.collected ?? order.total,
+    grossTotal: settlement?.gross ?? order.grossTotal,
     unitsGranted: order.unitsGranted,
     balanceAfter: order.balanceAfter,
     kind: order.kind === "stamps" ? "stamps" : "points",
-    coupon: order.coupon,
+    coupon: order.coupon
+      ? {
+          ...order.coupon,
+          discountAmount: settlement?.discount ?? order.coupon.discountAmount,
+        }
+      : null,
   };
 }
 
@@ -196,7 +202,12 @@ export async function readPosOrder(
       : null,
     sale:
       row.orderId && row.closeRequestId
-        ? await readSale(businessId, row.orderId, row.closeRequestId)
+        ? await readSale(
+            businessId,
+            row.orderId,
+            row.closeRequestId,
+            row.settlement,
+          )
         : null,
   };
 }

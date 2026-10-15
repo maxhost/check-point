@@ -51,6 +51,7 @@ describe.skipIf(!posIntegrationEnabled)(
         "location",
         "note",
         "sale",
+        "settlement",
         "status",
         "tableId",
         "tableLabel",
@@ -58,6 +59,7 @@ describe.skipIf(!posIntegrationEnabled)(
         "version",
       ]);
       expect(Object.keys(order.items[0]).sort()).toEqual([
+        "financialSnapshot",
         "lineId",
         "lineTotal",
         "name",
@@ -74,6 +76,8 @@ describe.skipIf(!posIntegrationEnabled)(
         closedAt: null,
         closedBy: null,
         sale: null,
+        settlement: null,
+        items: [expect.objectContaining({ financialSnapshot: null })],
       });
     }, 120_000);
 

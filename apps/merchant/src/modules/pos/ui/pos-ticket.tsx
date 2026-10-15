@@ -63,8 +63,17 @@ export function PosTicket({
           )}
         </>
       )}
+      {order.settlement &&
+        Number(order.settlement.roundingAdjustment) !== 0 && (
+          <Text>
+            Ajuste de redondeo:{" "}
+            {Number(order.settlement.roundingAdjustment) > 0 ? "+" : ""}
+            {money(order.settlement.roundingAdjustment)}
+          </Text>
+        )}
       <Text variant="label">
-        Total: {money(order.sale?.total ?? order.total)}
+        Total:{" "}
+        {money(order.settlement?.collected ?? order.sale?.total ?? order.total)}
       </Text>
       {order.closedAt && (
         <Text variant="small">

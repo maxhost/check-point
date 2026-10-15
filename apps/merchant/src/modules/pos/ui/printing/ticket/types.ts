@@ -1,3 +1,4 @@
+import type { FinancialSettlement } from "@mi-pasaporte/domain/financial";
 /**
  * Spec 0184 / ADR 0133 — LOS TIPOS DEL TICKET. `TicketDoc` es el UNICO contrato entre capas:
  * `ticket/` lo arma, `escpos/` lo convierte en bytes y la vista HTML del `window.print()` (GPT)
@@ -23,6 +24,11 @@ export type TicketOrder = {
     lineTotal: string;
   }[];
   total: string;
+  sale?: { total: string } | null;
+  settlement?: Pick<
+    FinancialSettlement,
+    "gross" | "discount" | "roundingAdjustment" | "collected"
+  > | null;
 };
 
 export type TicketLine = {
@@ -34,6 +40,11 @@ export type TicketLine = {
 };
 
 export type TicketDoc = {
+  summary?: {
+    gross: string;
+    discount: string;
+    roundingAdjustment: string | null;
+  };
   /** `null` si el comercio apago el bloque. */
   businessName: string | null;
   /** `null` si el comercio apago el bloque o la orden no tiene mesa. */

@@ -1,3 +1,4 @@
+import { assertFinancialSettlement } from "@mi-pasaporte/domain/financial/validate";
 import { and, eq, inArray } from "drizzle-orm";
 import { posOrders, posPaymentMethods } from "@mi-pasaporte/db/schema";
 import type { ModuleResourceProvider } from "../../route-table";
@@ -61,17 +62,28 @@ export const paymentResourceProviders: readonly ModuleResourceProvider[] = [
             inArray(posOrders.id, [...ids]),
           ),
         );
-      return rows.map((row) => ({
-        resourceId: row.id,
-        metadata: {
-          sourceOrderId: row.id,
-          locationId: row.locationId,
-          snapshotPresent: row.status === "closed" && row.settlement !== null,
-          collectedTotal: row.settlement?.collected ?? null,
-          currencyCode: row.settlement?.currencyCode ?? null,
-          minorUnit: row.settlement?.minorUnit ?? null,
-        },
-      }));
+      return rows.map((row) => {
+        let snapshot = null;
+        if (row.status === "closed" && row.settlement !== null) {
+          try {
+            assertFinancialSettlement(row.settlement);
+            snapshot = row.settlement;
+          } catch {
+            // Invalid historical evidence must never manufacture a certain zero.
+          }
+        }
+        return {
+          resourceId: row.id,
+          metadata: {
+            sourceOrderId: row.id,
+            locationId: row.locationId,
+            snapshotPresent: snapshot !== null,
+            collectedTotal: snapshot?.collected ?? null,
+            currencyCode: snapshot?.currencyCode ?? null,
+            minorUnit: snapshot?.minorUnit ?? null,
+          },
+        };
+      });
     },
   },
 ];
