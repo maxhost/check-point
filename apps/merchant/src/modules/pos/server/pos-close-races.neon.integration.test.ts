@@ -1,3 +1,4 @@
+import { closeWithCash } from "./pos-payment-integration-support";
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
@@ -5,7 +6,6 @@ import {
   dropPosWorld,
   openOrder,
   ordersWithItems,
-  pos,
   posIntegrationEnabled,
   posRow,
   seedPosWorld,
@@ -55,8 +55,8 @@ describe.skipIf(!posIntegrationEnabled)(
         version: order.version,
         membershipId: customer.membershipId,
       };
-      const first = await pos.close(world.ownerCookie, order.id, body);
-      const again = await pos.close(world.ownerCookie, order.id, body);
+      const first = await closeWithCash(world.ownerCookie, order.id, body);
+      const again = await closeWithCash(world.ownerCookie, order.id, body);
       expect(first.status).toBe(200);
       expect(again.status).toBe(200);
       expect(await again.json()).toEqual(await first.json());
@@ -76,8 +76,8 @@ describe.skipIf(!posIntegrationEnabled)(
           membershipId: customer.membershipId,
         };
         const [a, b] = await Promise.all([
-          pos.close(world.ownerCookie, order.id, body),
-          pos.close(world.ownerCookie, order.id, body),
+          closeWithCash(world.ownerCookie, order.id, body),
+          closeWithCash(world.ownerCookie, order.id, body),
         ]);
         expect([a.status, b.status]).toEqual([200, 200]);
         const [bodyA, bodyB] = [await a.json(), await b.json()];
@@ -99,8 +99,8 @@ describe.skipIf(!posIntegrationEnabled)(
           membershipId: customer.membershipId,
         });
         const responses = await Promise.all([
-          pos.close(world.ownerCookie, order.id, body()),
-          pos.close(world.ownerCookie, order.id, body()),
+          closeWithCash(world.ownerCookie, order.id, body()),
+          closeWithCash(world.ownerCookie, order.id, body()),
         ]);
         const statuses = responses.map((r) => r.status).sort();
         expect(statuses).toEqual([200, 409]);

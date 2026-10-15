@@ -1,3 +1,4 @@
+import { closeWithCash } from "./pos-payment-integration-support";
 import { randomUUID } from "node:crypto";
 import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -32,7 +33,7 @@ async function closeOrder(
   membershipId?: string,
 ): Promise<string> {
   const order = await openOrder(a, items);
-  const response = await pos.close(a.ownerCookie, order.id, {
+  const response = await closeWithCash(a.ownerCookie, order.id, {
     clientRequestId: randomUUID(),
     version: order.version,
     ...(membershipId ? { membershipId } : {}),

@@ -1,8 +1,19 @@
+import type {
+  FinancialSettlement,
+  FinancialLine,
+} from "@mi-pasaporte/domain/financial";
 import {
   panelRequest,
   PanelRequestError,
 } from "../../../app/backoffice/panel-request";
 import type { CounterProduct } from "../../../app/backoffice/counter/types";
+export type PosPaymentMethod = {
+  id: string;
+  name: string;
+  chargeShape: "none" | "percent" | "fixed" | "percent_and_fixed";
+  isCash: boolean;
+  status: "active" | "archived";
+};
 export type PosLocation = { id: string; name: string };
 export type PosSale = {
   consumer: string;
@@ -24,6 +35,7 @@ export type PosItem = {
   unitPrice: string;
   quantity: number;
   lineTotal: string;
+  financialSnapshot?: FinancialLine | null;
 };
 export type PosOrder = {
   id: string;
@@ -42,6 +54,7 @@ export type PosOrder = {
   closedAt: string | null;
   closedBy: string | null;
   sale: PosSale | null;
+  settlement?: FinancialSettlement | null;
 };
 export type PosSummary = Pick<
   PosOrder,

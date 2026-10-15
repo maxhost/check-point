@@ -4,7 +4,8 @@ import {
   cookieDe,
   permisosIntegrationEnabled,
 } from "../../../server/permissions-integration-support";
-import { getDb } from "@mi-pasaporte/db";
+import { initializePaymentMethods } from "./payment-catalog";
+import { getDb, withDbTransaction } from "@mi-pasaporte/db";
 import {
   businessModules,
   orderItems,
@@ -65,6 +66,9 @@ export async function setPosModule(
 export async function seedPosWorld(label: string): Promise<PosWorld> {
   const world = await seedCycleWorld(label);
   await setPosModule(world.seed.business.id, true);
+  await withDbTransaction((tx) =>
+    initializePaymentMethods(tx, { businessId: world.seed.business.id }),
+  );
   return {
     ...world,
     ownerCookie: await cookieDe(world.seed.userId),

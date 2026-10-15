@@ -1,3 +1,6 @@
+import { paymentRoutes } from "./payment-routes";
+import { initializePaymentMethods } from "./payment-methods";
+import { paymentResourceProviders } from "./payment-resources";
 import { NextResponse } from "next/server";
 import {
   CounterError,
@@ -45,6 +48,7 @@ function optionalLocationId(value: unknown): string | null {
 }
 
 const routes: readonly ModuleRoute[] = [
+  ...paymentRoutes,
   /** `?locationId=` → el catalogo del mostrador SIN los productos sin precio (el POS cobra a precio
    * de catalogo; precio 0 si) + `bestSellingProductIds`. Un local ajeno o archivado → 422. */
   posRoute({
@@ -224,4 +228,6 @@ const routes: readonly ModuleRoute[] = [
 export const server: ModuleServer = {
   routes,
   beforeDisable: posBeforeDisable,
+  onEnable: initializePaymentMethods,
+  resourceProviders: paymentResourceProviders,
 };

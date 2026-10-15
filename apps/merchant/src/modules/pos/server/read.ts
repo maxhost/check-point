@@ -1,3 +1,7 @@
+import type {
+  FinancialSettlement,
+  FinancialLine,
+} from "@mi-pasaporte/domain/financial";
 import { and, asc, eq } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { getDb } from "@mi-pasaporte/db";
@@ -28,6 +32,7 @@ export type PosOrderItemDTO = {
   unitPrice: string;
   quantity: number;
   lineTotal: string;
+  financialSnapshot: FinancialLine | null;
 };
 
 export type PosSaleDTO = {
@@ -62,6 +67,7 @@ export type PosOrderDTO = {
   closedAt: string | null;
   closedBy: string | null;
   sale: PosSaleDTO | null;
+  settlement: FinancialSettlement | null;
 };
 
 const creator = alias(users, "pos_creator");
@@ -124,6 +130,7 @@ export async function readPosOrder(
       closedAt: posOrders.closedAt,
       orderId: posOrders.orderId,
       closeRequestId: posOrders.closeRequestId,
+      settlement: posOrders.settlement,
       creatorName: creator.name,
       creatorEmail: creator.email,
       closerName: closer.name,
@@ -145,6 +152,7 @@ export async function readPosOrder(
       name: posOrderItems.nameSnapshot,
       unitPrice: posOrderItems.unitPriceSnapshot,
       quantity: posOrderItems.quantity,
+      financialSnapshot: posOrderItems.financialSnapshot,
     })
     .from(posOrderItems)
     .where(eq(posOrderItems.posOrderId, id))
@@ -156,7 +164,10 @@ export async function readPosOrder(
     name: line.name,
     unitPrice: Number(line.unitPrice).toFixed(2),
     quantity: line.quantity,
-    lineTotal: lineTotalOf(line.unitPrice, line.quantity),
+    lineTotal:
+      line.financialSnapshot?.money.gross ??
+      lineTotalOf(line.unitPrice, line.quantity),
+    financialSnapshot: line.financialSnapshot,
   }));
 
   return {
@@ -170,9 +181,13 @@ export async function readPosOrder(
         ? { id: row.locationId, name: row.locationName }
         : null,
     note: row.note,
-    business: { name: row.businessName, currencyCode: row.currencyCode },
+    business: {
+      name: row.businessName,
+      currencyCode: row.settlement?.currencyCode ?? row.currencyCode,
+    },
     items,
-    total: totalOf(items),
+    total: row.settlement?.gross ?? totalOf(items),
+    settlement: row.settlement,
     createdAt: row.createdAt.toISOString(),
     createdBy: operatorName(row.creatorName, row.creatorEmail),
     closedAt: row.closedAt ? row.closedAt.toISOString() : null,

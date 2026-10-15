@@ -1,3 +1,4 @@
+import { closeWithCash } from "./pos-payment-integration-support";
 import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -72,7 +73,7 @@ describe.skipIf(!posIntegrationEnabled)(
           items: [],
         }),
         pos.void(b.ownerCookie, order.id),
-        pos.close(b.ownerCookie, order.id, {
+        closeWithCash(b.ownerCookie, order.id, {
           clientRequestId: randomUUID(),
           version: 1,
         }),
@@ -90,7 +91,7 @@ describe.skipIf(!posIntegrationEnabled)(
     it("CASO 8 — cerrar con la membresia de OTRO negocio → 403 `foreign_membership`, la orden sigue abierta", async () => {
       const order = await openOrder(a, [{ productId: a.cafe, quantity: 1 }]);
       const foreign = await scannedCustomer(b);
-      const response = await pos.close(a.ownerCookie, order.id, {
+      const response = await closeWithCash(a.ownerCookie, order.id, {
         clientRequestId: randomUUID(),
         version: order.version,
         membershipId: foreign.membershipId,
@@ -188,7 +189,7 @@ describe.skipIf(!posIntegrationEnabled)(
       expect(open.length).toBeGreaterThanOrEqual(2);
       expect(await posEnabledOf(b.seed.business.id)).toBe(true);
 
-      await pos.close(b.ownerCookie, one.id, {
+      await closeWithCash(b.ownerCookie, one.id, {
         clientRequestId: randomUUID(),
         version: one.version,
       });

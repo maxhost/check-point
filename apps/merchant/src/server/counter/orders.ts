@@ -1,3 +1,4 @@
+import type { DiscountOrigin } from "@mi-pasaporte/domain/financial";
 import { type SQL, sql } from "drizzle-orm";
 import { getDb } from "@mi-pasaporte/db";
 import { rowsOf } from "@mi-pasaporte/domain/server/counter/core";
@@ -5,6 +6,8 @@ import { buildTransactionalBody } from "../wallet/push";
 import { upsertVisitSql } from "@mi-pasaporte/domain/server/customers/projection";
 
 export type GrantItem = {
+  /** Opaque source reference; never a core FK to an optional producer. */
+  sourceLineId?: string;
   productId: string | null;
   nameSnapshot: string;
   unitPrice: string; // numeric(12,2) string
@@ -30,6 +33,8 @@ export type PersistGrantInput = {
 };
 
 export type GrantedOrder = {
+  /** Single authorized decision returned to a caller that persists its own snapshot. */
+  financialDiscount?: { amount: string; origin: DiscountOrigin } | null;
   id: string;
   unitsGranted: number;
   balanceAfter: number;

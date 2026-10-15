@@ -1,3 +1,4 @@
+import { closeWithCash } from "./pos-payment-integration-support";
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -246,7 +247,7 @@ describe.skipIf(!posIntegrationEnabled)(
       await getDb().delete(products).where(eq(products.id, product));
       const customer = await scannedCustomer(world);
 
-      const response = await pos.close(world.ownerCookie, order.id, {
+      const response = await closeWithCash(world.ownerCookie, order.id, {
         clientRequestId: randomUUID(),
         version: order.version,
         membershipId: customer.membershipId,

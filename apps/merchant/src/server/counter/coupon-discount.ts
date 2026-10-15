@@ -20,6 +20,7 @@ import type {
  */
 
 export type DiscountLine = {
+  sourceLineId?: string;
   productId: string | null;
   unitPrice: string;
   quantity: number;
@@ -40,7 +41,7 @@ export type CouponDiscountInput = {
 };
 
 export type CouponDiscountDecision =
-  | { ok: true; discountCents: number }
+  | { ok: true; discountCents: number; targetSourceLineId?: string }
   | { ok: false; status: 409; code: string; message: string };
 
 const toCents = (value: string) => Math.round(Number(value) * 100);
@@ -92,5 +93,11 @@ export function decideCouponDiscount(
       "coupon_quantity",
       "El 2x1 necesita al menos 2 unidades del producto.",
     );
-  return { ok: true, discountCents: toCents(line.unitPrice) };
+  return {
+    ok: true,
+    discountCents: toCents(line.unitPrice),
+    ...(line.sourceLineId === undefined
+      ? {}
+      : { targetSourceLineId: line.sourceLineId }),
+  };
 }

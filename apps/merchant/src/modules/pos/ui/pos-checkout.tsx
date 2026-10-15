@@ -1,6 +1,14 @@
 "use client";
 import { Xmark } from "iconoir-react";
-import { Alert, Button, Dialog, Heading, NumberField, Text } from "../../../ui";
+import {
+  Alert,
+  Button,
+  Dialog,
+  Heading,
+  NumberField,
+  SelectField,
+  Text,
+} from "../../../ui";
 import { formatMoney, unitLabel } from "../../../app/backoffice/counter/types";
 import { PosCoupon } from "./pos-coupon";
 import type { PosPayment } from "./pos-payment";
@@ -94,23 +102,52 @@ export function PosCheckout({
             Reintentar revisión
           </Button>
         )}
-        <NumberField
-          label="Recibido"
-          value={payment.received ?? NaN}
-          minValue={0}
-          clampOnBlur={false}
-          onInput={(event) => {
-            if (event.target instanceof HTMLInputElement)
-              payment.setReceivedRaw(event.target.value);
-          }}
-          errorMessage={payment.receivedError ?? undefined}
-          formatOptions={{ maximumFractionDigits: 2 }}
-          onChange={(value) =>
-            payment.setReceived(Number.isNaN(value) ? null : value)
-          }
-          isDisabled={payment.blocked || busy}
-        />
-        {preview?.missingCents != null && (
+        {preview?.roundingAdjustmentCents !== 0 &&
+          preview?.roundingAdjustmentCents != null && (
+            <Text variant="small">
+              Ajuste de redondeo:{" "}
+              {new Intl.NumberFormat("es", {
+                style: "currency",
+                currency: order.business.currencyCode,
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+                signDisplay: "always",
+              }).format(preview.roundingAdjustmentCents / 100)}
+            </Text>
+          )}
+        {(preview?.netCents ?? 0) > 0 && (
+          <SelectField
+            label="Medio de pago"
+            options={payment.methods.map((method) => ({
+              id: method.id,
+              label: method.name,
+            }))}
+            selectedKey={payment.methodId}
+            onSelectionChange={(key) =>
+              payment.setMethodId(key ? String(key) : null)
+            }
+            isDisabled={payment.blocked || busy}
+          />
+        )}
+        {(preview?.netCents ?? 0) > 0 && payment.selectedMethod?.isCash && (
+          <NumberField
+            label="Recibido"
+            value={payment.received ?? NaN}
+            minValue={0}
+            clampOnBlur={false}
+            onInput={(event) => {
+              if (event.target instanceof HTMLInputElement)
+                payment.setReceivedRaw(event.target.value);
+            }}
+            errorMessage={payment.receivedError ?? undefined}
+            formatOptions={{ maximumFractionDigits: 2 }}
+            onChange={(value) =>
+              payment.setReceived(Number.isNaN(value) ? null : value)
+            }
+            isDisabled={payment.blocked || busy}
+          />
+        )}
+        {payment.selectedMethod?.isCash && preview?.missingCents != null && (
           <Text variant="label">
             {preview.missingCents > 0
               ? `Faltan: ${money(preview.missingCents)}`
@@ -153,7 +190,8 @@ export function PosCheckout({
                 payment.review ||
                 !!payment.clientError ||
                 !!payment.receivedError ||
-                !preview?.canConfirm)
+                !preview?.canConfirm ||
+                ((preview?.netCents ?? 0) > 0 && !payment.selectedMethod))
             }
             onPress={() => void payment.confirm()}
           >

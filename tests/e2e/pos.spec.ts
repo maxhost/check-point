@@ -101,6 +101,23 @@ const resolved: ResolveResponse = {
   rewards: [],
 };
 async function setup(page: Page, enabled = true) {
+  await page.route("**/api/modules/pos/payment-methods", (route) =>
+    route.fulfill({
+      json: {
+        methods: [
+          {
+            id: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+            name: "Efectivo",
+            chargeShape: "none",
+            isCash: true,
+            status: "active",
+          },
+        ],
+        defaultMethodId: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+      },
+    }),
+  );
+
   await page.route("**/api/modules", (route) =>
     route.fulfill({ json: { modules: operationModules(enabled, false) } }),
   );
