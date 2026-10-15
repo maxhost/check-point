@@ -76,8 +76,18 @@ export function buildFinancialAmounts(input: FinancialInput): FinancialAmounts {
     origin?.scope === "line"
       ? lines.map((_, i) => (i === target ? D : 0n))
       : allocateCumulative(D, gross.map(exact));
-  const remainders = allocateCumulative(G - D, remaining.map(exact)),
-    nets = allocateCumulative(N, remaining.map(exact));
+  const aligned = gross.every(
+    (g) => g.n % (g.d * (minorUnit === 0 ? 100n : 1n)) === 0n,
+  );
+  const remainders = aligned
+    ? gross.map((g, i) => toMinor(g, minorUnit) - discounts[i])
+    : allocateCumulative(G - D, remaining.map(exact));
+  const adjustments = aligned
+    ? allocateCumulative(N - (G - D), remaining.map(exact))
+    : [];
+  const nets = aligned
+    ? remainders.map((r, i) => r + adjustments[i])
+    : allocateCumulative(N, remaining.map(exact));
   const originals = { gross: exact(g0), discount: exact(d0), net: exact(n0) };
   const deltas = {
     gross: exact(subtract(minorRational(G, minorUnit), g0)),

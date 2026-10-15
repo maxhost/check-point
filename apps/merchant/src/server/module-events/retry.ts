@@ -3,7 +3,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { getDb, withDbTransaction } from "@mi-pasaporte/db";
 import { moduleEvents, moduleEventDeliveries } from "@mi-pasaporte/db/schema";
 import { SERVER_MODULES } from "../../modules/server-registry";
-import type { SaleClosedEvent } from "./types";
+import { decodeSaleClosedEvent } from "./decode";
 export type RetryOptions = {
   businessId?: string;
   locationId?: string;
@@ -103,7 +103,7 @@ export async function retryModuleEvents(options: RetryOptions = {}) {
           await subscription.handler(tx, {
             id: event.id,
             businessId: event.businessId,
-            payload: event.payload as SaleClosedEvent,
+            payload: decodeSaleClosedEvent(event.payload),
           });
           await tx
             .update(moduleEventDeliveries)

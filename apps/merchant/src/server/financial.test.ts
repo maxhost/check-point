@@ -21,6 +21,19 @@ const lines = (prices: string[]) =>
     quantity: 1,
   }));
 describe("P1 financial snapshot exact settlement", () => {
+  it("preserves already aligned gross amounts instead of moving a cent to another product", () => {
+    const v = buildFinancialAmounts({
+      currencyCode: "USD",
+      lines: lines(["0.01", "0.01"]),
+      discount: { amount: "0.01", origin },
+    });
+    expect(v.lines.map((l) => l.money.gross)).toEqual(["0.01", "0.01"]);
+    expect(v.lines.map((l) => l.money.discount)).toEqual(["0.01", "0.00"]);
+    expect(v.lines.map((l) => l.money.net)).toEqual(["0.00", "0.01"]);
+    expect(
+      v.lines.map((l) => l.money.normalizationAdjustments.gross.numerator),
+    ).toEqual(["0", "0"]);
+  });
   it("preserves COP originals and both distinct adjustments without changing approved net", () => {
     const v = buildFinancialSettlement({
       currencyCode: "COP",

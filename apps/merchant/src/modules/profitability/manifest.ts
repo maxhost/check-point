@@ -4,7 +4,7 @@ import type { ModuleManifest } from "../contract";
 export const manifest: ModuleManifest = {
   id: "profitability",
   name: "Rentabilidad",
-  description: "Costos fijos y del personal de tus locales",
+  description: "Costos fijos, sueldos y comisiones de tus ventas",
   requires: [],
   suggestedFor: BUSINESS_CATEGORIES.map((category) => category.gcid),
   permissions: [

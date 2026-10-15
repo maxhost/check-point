@@ -12,6 +12,8 @@ import type {
   PaymentMetadata,
 } from "./types";
 import type { FinancialSettlement } from "@mi-pasaporte/domain/financial";
+import { assertFinancialSettlement } from "@mi-pasaporte/domain/financial/validate";
+import { decodeSaleClosedEvent } from "./decode";
 export async function setResourceVersion(
   tx: DbTransaction,
   args: {
@@ -142,11 +144,9 @@ export async function publishSaleClosed(
   const financial = args.settlement;
   let payload: SaleClosedEvent = { eventVersion: 1, ...common };
   if (financial) {
+    assertFinancialSettlement(financial);
     if (financial.lines.length !== common.lines.length)
       throw new Error("Invalid financial event lines");
-    const moneyByLine = new Map(
-      financial.lines.map((l) => [l.sourceLineId, l]),
-    );
     payload = {
       ...common,
       eventVersion: 2,
@@ -162,9 +162,11 @@ export async function publishSaleClosed(
         originalNet: financial.originals.net,
         normalizationAdjustments: financial.normalizationAdjustments,
       },
-      lines: common.lines.map((line) => {
-        const frozen = moneyByLine.get(line.sourceLineId);
-        if (!frozen) throw new Error("Missing financial line");
+      lines: financial.lines.map((frozen) => {
+        const line = common.lines.find(
+          (l) => l.sourceLineId === frozen.sourceLineId,
+        );
+        if (!line) throw new Error("Missing financial line");
         return {
           ...line,
           position: frozen.position,
@@ -189,6 +191,7 @@ export async function publishSaleClosed(
       paymentOriginals: financial.paymentOriginals,
     };
   }
+  decodeSaleClosedEvent(payload);
   const [event] = await tx
     .insert(moduleEvents)
     .values({
