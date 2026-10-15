@@ -11,54 +11,30 @@
 
 
 
-## ⇥ ESTADO (2026-10-13, noche) — FASE 2 (POS Y MESAS) + CENTRALIZADOR DE IA EN `dev`; GPT TOMA TODO EL TRABAJO; PUSH UNICO PENDIENTE
+## ⇥ ESTADO (2026-10-15) — PLAN COSTO/MARGEN → SMART MENU: R1, P1 Y P3 CERRADOS CON EL OWNER; PROMPTS LISTOS
 
-**Decision del owner (2026-10-13 noche):** GPT pasa a encargarse de TODO (UI y backend) y actualiza el harness y la
-documentacion para eso. Este es el ultimo bloque de Claude: punto de partida para GPT = **`dev` en la etiqueta local
-`handoff-claude-2026-10-13`** (`bca17ec`; el commit de este handoff va encima). `main` local = `fab728e` (merge de GPT de la
-landing, sin push). `origin/main` = PROD = `4208714`. **Nada pusheado.** Owner: «no vamos a hacer como dije todavia el push,
-lo vamos a hacer con el centralizador de ia tambien» → UN push unico con Fase 2 + centralizador.
+**Sesion de diseño con el owner, sin codigo.** Claude piensa con el owner y prepara prompts; GPT escribe specs e
+implementa (ADR 0144). Fuente de verdad: **`docs/plan-margen-ganancia-2026-10-14.md`** (commit `223337c8`): tabla de
+etapas, decisiones del owner por pieza (secciones «R1 — huecos cerrados», «P1 — decisiones», «P3 — decisiones» con dos
+rondas) y prompts listos para GPT. Investigacion de Ecuador para el catalogo de P1:
+`docs/investigacion-medios-de-pago-ecuador-2026-10-15.md` (fuentes de prensa/proveedores, contradicciones marcadas).
 
-**Hecho y verificado (gate al cerrar sobre `bca17ec`: typecheck exit 0, lint exit 0, `pnpm run test` 283 archivos / 2720
-tests verdes):**
-- **Fase 2 — POS y Mesas como modulos** (spec 0220 + 0222 GPT, ADR 0141). 2a servidor/base `52690f3`…`a46be31`, 2b
-  pantallas GPT `369da93`…`78ba729`, paso final `posEnabled` fuera de la sesion `3dd195c`, frontera H2 `8ee3c02`, Locales
-  H1 `c3c4ca1`. **Revisor adversarial final PASS** (tras FAIL por H1, arreglado). Migracion **0079** (tablas al esquema
-  `pos`, `pos_enabled` → `core.business_module`) aplicada y probada en la base LOCAL (datos iguales, cobro con y sin pase,
-  409 de apagado).
-- **Centralizador de IA** (spec 0224, ADR 0143; absorbe 0142/0223 foto de ticket): `server/ai/`, cada funcion declara su
-  tarea (menu en el core, Stock y Recetas en su carpeta), registro unico `core.ai_request`, **sin `AI_PROVIDER` → error,
-  nunca falso**. `bdd642b` + `cebbb46`. Migraciones **0080** (crea `core.ai_request`) y **0081** (copia el historial y borra
-  `stock.draft_request`, las columnas de uso de `core.catalog_import` y `draft_version`). Suite Neon de la 0081 2/2 en base
-  descartable; las demas suites Neon corrieron en verde antes de que el owner recortara pruebas. 0080/0081 aplicadas en la
-  base LOCAL (82 migraciones; historial copiado: 6 filas). **NO verificado (owner pidio recortar):** mutaciones, revisor
-  adversarial, e2e y la **prueba real con OpenAI** (foto, receta, dictado, menu: el prompt del menu ahora va como `system`).
-- Arreglo de Google Places traido de la rama `sin-gate-email` (`bb87e25`, 0155 H4; 75 tests verdes). Ramas/worktrees
-  viejos borrados (`motor`, `spec-0190`, `glados/*`, `sin-gate-email`, dos en `/private/tmp`); gotchas de `motor`
-  rescatados en `PARQUEADO.md`.
+**Estado de las piezas (leido en git el 2026-10-15, no corri gates):**
+- **0230** (costo de lo vendido) implementada, QA PASS (`docs/factory/0230-0231-qa.md`); **0231** (Rentabilidad: costos
+  fijos y sueldos, backend sin UI) implementada, QA PASS (`docs/factory/0231-qa.md`), ADR 0147 aceptado. Ambas en `main`
+  local (`d1e0710f`); **`main` local va 65 commits adelante de `origin/main`: nada pusheado**. La spec 0231 sigue
+  diciendo `estado: cerrada` (descuido de GPT).
+- **R1** spec 0232 + ADR 0148: GPT redactando en worktree `r1-0232-spec`; le pregunto 3 cosas (archivo, nombres
+  duplicados al migrar, redondeo/procedencia): respuesta sugerida dada al owner, sin confirmar que la envio.
+- **P1** spec 0233 + ADR 0149: GPT pregunto 4–8; respuesta sugerida dada (cambio en la 5: cobrado 0 no pide medio).
+  Owner pidio sumar a la 0233 el **descuento por linea en la version 2 de `sale.closed`** (mensaje para GPT dado).
+- **P3** spec 0234 + ADR 0150: prompt listo, sin lanzar. Implementa despues de P1.
 
-**Que sigue (para GPT; detalle en `docs/PARQUEADO.md` §«PARQUEADO 2026-10-13 — Fase 2 de modulos»):**
-1. Pantallas de la foto (boton «Foto» en Stock y en la receta): contrato en spec 0224 §Encargo a GPT. Sin eso la foto
-   solo existe por API.
-2. QA local con `pnpm dev:local` (owner, en su terminal): POS y Mesas, Locales (crear/renombrar local y abrir «Mesas»
-   sin recargar — el e2e usa un harness que simula `router.refresh()`), dictado y menu con OpenAI real.
-3. Antes del push: `AI_PROVIDER` en Vercel Production/Preview (comparar por HUELLA `STOCK_DRAFT_PROVIDER` vs
-   `CATALOG_EXTRACTION_PROVIDER`; si difieren, decide el owner); dominio `staff.` + DNS + `STAFF_ORIGIN` (spec 0218).
-4. Push unico con OK del owner: `main` ← `merge --ff-only dev`, probar `main` en local, snapshot de Neon, push, deploy
-   `READY`, **0079 → 0080 → 0081 en la misma ventana**, SQL de verificacion (spec 0220 y 0224 §Migracion a PROD; runbook
-   `docs/runbooks/migrar-prod.md`). Rollback = snapshot de Neon + rollback de Vercel juntos.
-5. Decisiones del owner abiertas: descripcion de la PWA (hoy «El punto de venta de tu negocio en CheckPass Club.»; Claude
-   propuso «Tu negocio en CheckPass Club.»); las tres de la 0218.
+**Que sigue:** prompts de **1.3** (despues de cerrar la spec de R1; necesita ADR de enganche «modulo aporta el costo
+del producto» al Catalogo), **P2**, **6** y **SM-datos**; UI pendiente con el owner: Rentabilidad (costos fijos en
+Locales, sueldo en Equipo), Recetas, selector de medio en el POS, Smart Menu + Dashboard (ADR de enganche).
 
-**Gotchas de esta sesion:** e2e con harness fallan al arrancar con «Cannot find module 'vite/package.json'» → `NODE_PATH`
-a `node_modules/.pnpm/node_modules` (en `PARQUEADO.md`); el hook `foreign-staged.sh` bloquea tambien `git commit -- <paths>`
-cuando otro agente tiene archivos staged (su mensaje recomienda justo eso; arreglo denegado por auto-modificacion del
-harness: queda para quien actualice el harness); las suites Neon se corren en una base DESCARTABLE de la rama de CI, nunca
-en `neondb` (la usa la CI del codigo de PROD).
-
-| Descartado | Por que |
-|---|---|
-| Foto de ticket como spec suelta (0223 commiteada tal cual) | owner: se rehace como primer uso del centralizador (0224) |
-| Segundo push para la 0081 | owner: un solo push; separarla solo servia para el rollback de Vercel, que la 0079 ya impide |
-| Falso por defecto sin `AI_PROVIDER` | owner: error, nunca falso |
-| Mutaciones + todas las suites + entorno local en cada entrega | owner: «excesivo»; verificacion minima y enfocada |
+**Gotchas de esta sesion:** comercios de **Ecuador (USD)**; redondeo a la **unidad minima de la moneda**, no
+«centavos» (COP/CLP sin fracciones). Stock y costo son **por local** a proposito; recetas por comercio; compra
+central = una carga por local, sin transferencias. «Todo es un cupon»: el canje de premio hoy NO emite cupon
+(`counter/redemptions.ts`) y todo cupon exige campaña. S1/S2 (comision del profesional, duracion del servicio) fuera.

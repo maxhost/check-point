@@ -6,6 +6,99 @@
 
 
 
+## ESTADO HISTORICO (2026-10-14) — DISEÑO DEL PLAN COSTO/MARGEN → SMART MENU (SOLO PENSAR). SIGUE: PROMPTS GPT DE LAS PIEZAS 2 Y F
+
+**Sesion de diseño con el owner, sin codigo.** Owner: «quiero que me ayudes solo a pensar, no vamos a implementar
+nada». Claude prepara prompts para GPT; GPT escribe specs e implementa (ADR 0144). Todo lo decidido esta en
+**`docs/plan-margen-ganancia-2026-10-14.md`** (leerlo entero al retomar: decisiones del owner, tabla de etapas,
+modelo de recetas independientes y combos, IVA en Ecuador, notas de etapas futuras). **Sin commit**: GPT trabaja sobre
+`dev`; proponer el commit del plan + este estado cuando el owner lo apruebe.
+
+**Hecho por GPT en esta linea (verificado leyendo `estado:` de las specs y `git log`, no corri gates):** spec 0227
+(stock por local + consumo al cobrar, ADR 0145) implementada, QA PASS, en main local; 0228 (costo promedio ponderado,
+ADR 0146) y 0229 (datos fiscales en Marca) implementadas, QA PASS, merge local `898c8e58` / `120ecbc9`.
+
+**Que sigue (pedido del owner tras el clear):**
+1. Preparar el prompt para GPT de la pieza **2 — costo de lo vendido** (cada movimiento de consumo guarda costo
+   promedio del momento × factor, factor = 1 hasta la etapa 6; costo de la venta = suma de sus consumos). Revisar
+   antes el aplicador de consumo de 0227 (`apps/merchant/src/modules/stock/`, evento de cierre en
+   `core.module_event`) y 0228.
+2. Preparar el prompt de la pieza **F — costos fijos por local y staff** (independiente, en paralelo con 2). Revisar
+   antes que hay de staff/locales en el esquema.
+3. Al final, **mostrarle al owner la tabla de etapas** del plan.
+
+**Formato de prompt que el owner aprobo:** reglas (leer X, no editar INDEX/TASKS/estado, sin push, nivel) · orden
+obligatorio: preguntar al owner → spec chica → detenerse · para que sirve (1 linea) · decisiones cerradas · preguntas
+con recomendacion · fuera de alcance · pruebas minimas · entrega. Solo lo pedido (memoria «encargos-gpt-solo-lo-pedido»).
+Revisar el codigo antes de escribirlo para no pasar supuestos falsos.
+
+**Gotchas de esta sesion:** los comercios son de **Ecuador (USD)**, no Argentina — no asumir IVA 21 %/monotributo.
+El cron externo vigente es **cron-job.org** (ADR 0118), no GitHub Actions (medido 2,4–7,8 h de atraso). El cierre POS
+**no guarda medio de pago** y el **cupon se aplica en el cierre** (`grantWithCouponInTx` en `pos/server/close.ts`).
+
+| Descartado | Por que |
+|---|---|
+| FIFO | dos costos distintos para la misma pizza el mismo dia; owner eligio promedio ponderado |
+| Restar IVA a las compras / tasa por insumo | owner: costo = lo pagado («ese dinero se fue»); datos fiscales se guardan sin calcular |
+| Repartir costos fijos en el costo por producto | distorsiona con el volumen; van como punto de equilibrio |
+| «Preparaciones» como entidad, partes dentro de la receta, copiar recetas | owner: inmanejable con ~90 recetas/mes desde el telefono; reemplazado por recetas independientes + producto = (receta, cantidad) |
+| Recetas guardadas A/B/C con una activa | el combo se edita (A→D) y el historial queda en revisiones |
+| Dejar packaging, comisiones, costos fijos para despues | owner: «sacar cosas que necesitaremos en una semana no es ahorrar trabajo»; entran al plan con valor 0 |
+
+## ESTADO HISTORICO (2026-10-13, noche) — FASE 2 (POS Y MESAS) + CENTRALIZADOR DE IA EN `dev`; GPT TOMA TODO EL TRABAJO; PUSH UNICO PENDIENTE
+
+**Decision del owner (2026-10-13 noche):** GPT pasa a encargarse de TODO (UI y backend) y actualiza el harness y la
+documentacion para eso. Este es el ultimo bloque de Claude: punto de partida para GPT = **`dev` en la etiqueta local
+`handoff-claude-2026-10-13`** (`bca17ec`; el commit de este handoff va encima). `main` local = `fab728e` (merge de GPT de la
+landing, sin push). `origin/main` = PROD = `4208714`. **Nada pusheado.** Owner: «no vamos a hacer como dije todavia el push,
+lo vamos a hacer con el centralizador de ia tambien» → UN push unico con Fase 2 + centralizador.
+
+**Hecho y verificado (gate al cerrar sobre `bca17ec`: typecheck exit 0, lint exit 0, `pnpm run test` 283 archivos / 2720
+tests verdes):**
+- **Fase 2 — POS y Mesas como modulos** (spec 0220 + 0222 GPT, ADR 0141). 2a servidor/base `52690f3`…`a46be31`, 2b
+  pantallas GPT `369da93`…`78ba729`, paso final `posEnabled` fuera de la sesion `3dd195c`, frontera H2 `8ee3c02`, Locales
+  H1 `c3c4ca1`. **Revisor adversarial final PASS** (tras FAIL por H1, arreglado). Migracion **0079** (tablas al esquema
+  `pos`, `pos_enabled` → `core.business_module`) aplicada y probada en la base LOCAL (datos iguales, cobro con y sin pase,
+  409 de apagado).
+- **Centralizador de IA** (spec 0224, ADR 0143; absorbe 0142/0223 foto de ticket): `server/ai/`, cada funcion declara su
+  tarea (menu en el core, Stock y Recetas en su carpeta), registro unico `core.ai_request`, **sin `AI_PROVIDER` → error,
+  nunca falso**. `bdd642b` + `cebbb46`. Migraciones **0080** (crea `core.ai_request`) y **0081** (copia el historial y borra
+  `stock.draft_request`, las columnas de uso de `core.catalog_import` y `draft_version`). Suite Neon de la 0081 2/2 en base
+  descartable; las demas suites Neon corrieron en verde antes de que el owner recortara pruebas. 0080/0081 aplicadas en la
+  base LOCAL (82 migraciones; historial copiado: 6 filas). **NO verificado (owner pidio recortar):** mutaciones, revisor
+  adversarial, e2e y la **prueba real con OpenAI** (foto, receta, dictado, menu: el prompt del menu ahora va como `system`).
+- Arreglo de Google Places traido de la rama `sin-gate-email` (`bb87e25`, 0155 H4; 75 tests verdes). Ramas/worktrees
+  viejos borrados (`motor`, `spec-0190`, `glados/*`, `sin-gate-email`, dos en `/private/tmp`); gotchas de `motor`
+  rescatados en `PARQUEADO.md`.
+
+**Que sigue (para GPT; detalle en `docs/PARQUEADO.md` §«PARQUEADO 2026-10-13 — Fase 2 de modulos»):**
+1. Pantallas de la foto (boton «Foto» en Stock y en la receta): contrato en spec 0224 §Encargo a GPT. Sin eso la foto
+   solo existe por API.
+2. QA local con `pnpm dev:local` (owner, en su terminal): POS y Mesas, Locales (crear/renombrar local y abrir «Mesas»
+   sin recargar — el e2e usa un harness que simula `router.refresh()`), dictado y menu con OpenAI real.
+3. Antes del push: `AI_PROVIDER` en Vercel Production/Preview (comparar por HUELLA `STOCK_DRAFT_PROVIDER` vs
+   `CATALOG_EXTRACTION_PROVIDER`; si difieren, decide el owner); dominio `staff.` + DNS + `STAFF_ORIGIN` (spec 0218).
+4. Push unico con OK del owner: `main` ← `merge --ff-only dev`, probar `main` en local, snapshot de Neon, push, deploy
+   `READY`, **0079 → 0080 → 0081 en la misma ventana**, SQL de verificacion (spec 0220 y 0224 §Migracion a PROD; runbook
+   `docs/runbooks/migrar-prod.md`). Rollback = snapshot de Neon + rollback de Vercel juntos.
+5. Decisiones del owner abiertas: descripcion de la PWA (hoy «El punto de venta de tu negocio en CheckPass Club.»; Claude
+   propuso «Tu negocio en CheckPass Club.»); las tres de la 0218.
+
+**Gotchas de esta sesion:** e2e con harness fallan al arrancar con «Cannot find module 'vite/package.json'» → `NODE_PATH`
+a `node_modules/.pnpm/node_modules` (en `PARQUEADO.md`); el hook `foreign-staged.sh` bloquea tambien `git commit -- <paths>`
+cuando otro agente tiene archivos staged (su mensaje recomienda justo eso; arreglo denegado por auto-modificacion del
+harness: queda para quien actualice el harness); las suites Neon se corren en una base DESCARTABLE de la rama de CI, nunca
+en `neondb` (la usa la CI del codigo de PROD).
+
+| Descartado | Por que |
+|---|---|
+| Foto de ticket como spec suelta (0223 commiteada tal cual) | owner: se rehace como primer uso del centralizador (0224) |
+| Segundo push para la 0081 | owner: un solo push; separarla solo servia para el rollback de Vercel, que la 0079 ya impide |
+| Falso por defecto sin `AI_PROVIDER` | owner: error, nunca falso |
+| Mutaciones + todas las suites + entorno local en cada entrega | owner: «excesivo»; verificacion minima y enfocada |
+
+
+
 ## ESTADO HISTORICO (2026-10-13, tarde) — SIGUE LA FASE 2 (POS Y MESAS COMO MODULOS); UN UNICO PUSH AL TERMINARLA
 
 **Decision del owner (2026-10-13, no volver a preguntar): «hacemos clear y vas vos con la fase 2. cuando acabemos pos y
