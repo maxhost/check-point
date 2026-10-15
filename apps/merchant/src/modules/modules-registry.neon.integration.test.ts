@@ -117,6 +117,22 @@ describe.skipIf(!modulesIntegrationEnabled)(
           navigation: [],
           permissions: [],
         },
+        {
+          id: "profitability",
+          name: "Rentabilidad",
+          description: "Costos fijos y del personal de tus locales",
+          requires: [],
+          enabled: false,
+          suggested: true,
+          navigation: [],
+          permissions: [
+            {
+              id: "profitability",
+              label: "Rentabilidad",
+              description: "Ver y editar costos fijos, sueldos y márgenes.",
+            },
+          ],
+        },
       ]);
     }, 120_000);
 
@@ -227,8 +243,9 @@ describe.skipIf(!modulesIntegrationEnabled)(
 
     it("aislamiento: el negocio B no ve encendido lo que encendio A, y su ruta sigue en 403", async () => {
       const r = await (await api.modules(other.cookie)).json();
-      // Spec 0220: cuatro modulos en el registro (stock, recetas, pos, mesas), todos apagados en B.
+      // Spec 0231 adds profitability; all five modules remain disabled in B.
       expect(r.modules.map((m: { enabled: boolean }) => m.enabled)).toEqual([
+        false,
         false,
         false,
         false,

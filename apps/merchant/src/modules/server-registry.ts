@@ -6,6 +6,7 @@ import {
 } from "./recipes/server/routes";
 import { server as pos } from "./pos/server/routes";
 import { server as tables } from "./tables/server/routes";
+import { server as profitability } from "./profitability/server/routes";
 
 /**
  * Spec 0216 / 0220 — ADR 0139 §3 y ADR 0141 §4 — EL REGISTRO DE SERVIDOR: por modulo, su tabla de
@@ -21,4 +22,5 @@ export const SERVER_MODULES: Readonly<Record<string, ModuleServer>> = {
   recipes: { routes: recipes, eventSubscriptions: recipeEvents },
   pos,
   tables,
+  profitability,
 };

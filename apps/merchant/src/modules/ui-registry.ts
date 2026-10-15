@@ -16,6 +16,8 @@ import { RecipesConsole } from "./recipes/ui/recipes-console";
  */
 export type ModuleScreens = {
   screens: Readonly<Record<string, ComponentType>>;
+  /** ADR0147: a module panel receives personnel identity, including people without login. */
+  staffPanel?: ComponentType<{ person: { id: string; name: string } }>;
   /** Spec 0220 / ADR 0141 §3 — el panel que abre el boton del modulo en Locales (si el manifiesto
    * declara `locationAction`). */
   locationPanel?: ComponentType<{ location: { id: string; name: string } }>;
@@ -29,4 +31,5 @@ export const UI_SCREENS: Readonly<Record<string, ModuleScreens>> = {
   recipes: { screens: { "": RecipesConsole } },
   pos: { screens: { "": PosScreen }, settingsPanel: TicketSettings },
   tables: { screens: {}, locationPanel: LocationTables },
+  profitability: { screens: {} },
 };

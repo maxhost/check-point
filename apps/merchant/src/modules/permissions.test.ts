@@ -18,6 +18,7 @@ describe("catalogo valido de permisos (spec 0216)", () => {
       "stock",
       "recipes",
       "pos",
+      "profitability",
     ]);
     expect(PERMISSIONS).not.toContain("pos");
   });

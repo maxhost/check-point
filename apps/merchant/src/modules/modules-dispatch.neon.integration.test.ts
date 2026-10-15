@@ -91,6 +91,7 @@ describe.skipIf(!modulesIntegrationEnabled)(
         "recipes",
         "pos",
         "tables",
+        "profitability",
       ]);
       expect(modules[0].navigation).toEqual([
         { path: "", label: "Stock", icon: "Package", permission: "stock" },
@@ -185,10 +186,11 @@ describe.skipIf(!modulesIntegrationEnabled)(
         expect.arrayContaining(["catalog", "stock", "recipes", "pos"]),
       );
       // Spec 0220: `pos` lo declara el modulo POS, despues de los de la Fase 1.
-      expect(membership.permissions.slice(-3)).toEqual([
+      expect(membership.permissions.slice(-4)).toEqual([
         "stock",
         "recipes",
         "pos",
+        "profitability",
       ]);
     }, 120_000);
 
