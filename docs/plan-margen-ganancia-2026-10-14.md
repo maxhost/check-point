@@ -51,7 +51,7 @@ trabajo, es ignorarlo». Los cupones entran porque ya se aplican en el POS al ve
 | **2** | **Costo de lo vendido:** cada movimiento de consumo guarda el costo promedio del momento; costo de la venta = suma de sus consumos | 1.1 | ✅ spec 0230 implementada (`fe5fb583`, migracion 0085), QA PASS (`docs/factory/0230-0231-qa.md`), en `dev` y `main` local, sin push. Redondeo a la unidad minima de la moneda; estados completo / incompleto / pendiente |
 | **F** | **Costos fijos por local y staff** (alquiler, servicios, sueldos) | — | ✅ 0231 implementada (backend, sin UI) + ADR 0147 aceptado, QA PASS (`docs/factory/0231-qa.md`), en `main` local `d1e0710f`, sin push (2026-10-15). La spec sigue diciendo `estado: cerrada`. Modulo «Rentabilidad» (`profitability`), permiso propio, por local via `locationAction`, sueldo en la ficha de Equipo (tambien personal sin acceso, n locales, reparto igual guardado por local) |
 | **R1** | **Recetas independientes y combos** (ver seccion propia): producto = (receta, cantidad), opcion combo, revisiones en 2 niveles, expansion al cobrar, migracion; el consumo guarda receta y composicion | 0, 2 | ✅ spec 0232 implementada + ADR 0148, QA PASS (`docs/factory/0232-implementation-qa.md`), en `main` local, sin push (2026-10-15). Retiró la UI vieja de Recetas; **recuperada con wizard** (Catálogo | Combo) en `7564d290` (L1, typecheck/lint/22 tests OK; lista sin costo hasta la 1.3; QA del owner en el browser pendiente) |
-| **1.3** | Lectura del costo por receta y por producto (suma × cantidad) | R1, 1.1 | **en curso (GPT, worktree `factory-recipes-margin`)**: costo de receta, precio, ganancia y margen % en la lista de Recetas, por local; sin margen si falta costo; precio del catálogo sin IVA (owner 2026-10-15); costo redondeado una vez, ganancia = precio − costo redondeado. Ficha del Catálogo queda para despues (ADR de enganche) |
+| **1.3** | Lectura del costo por receta y por producto (suma × cantidad) | R1, 1.1 | ✅ spec 0234 implementada, QA PASS (`docs/factory/0234-qa.md`), en `dev` `0ef18bb2`, sin push (2026-10-15): costo de receta, precio, ganancia y margen % en la lista de Recetas por local; sin margen si falta costo; precio del catálogo sin IVA. Ficha del Catálogo queda para despues (ADR de enganche) |
 | **P1** | **Medio de pago y comisiones:** el POS marca el medio al cobrar; en settings, comision por medio (% y/o fijo); sin configurar = 0 | — | ✅ spec 0233 implementada + ADR 0149, QA PASS (`docs/factory/0233-implementation-qa.md`), en `main` local `ff73043b`, sin push (2026-10-15). `sale.closed` v2 con bruto/descuento/neto por linea, pagos y comision congelados, importes a la unidad minima con originales y ajustes. Sin pantallas definitivas. Investigacion Ecuador: `docs/investigacion-medios-de-pago-ecuador-2026-10-15.md` |
 | **P2** | **Para llevar y packaging:** el POS marca la orden «para llevar»; el packaging es stock y se descuenta | R1, P1 (mismo cierre) | a decidir en su spec: packaging por producto (entrada «solo para llevar» en la composicion del producto) y/o por orden (bolsa) |
 | **P3** | **Cupones y recompensas en la ganancia:** el descuento del cupon/recompensa se atribuye a la venta y a sus lineas; producto gratis = ingreso 0 con su costo | 2 | el cupon se aplica hoy en el cierre POS (`grantWithCouponInTx`). A decidir: recompensas canjeadas fuera del POS (mostrador sin lineas de producto) |
@@ -549,7 +549,7 @@ fiscales del procesador, contenido del catálogo de países distintos de Ecuador
 Preguntas hechas y respuestas, paths de la spec y del ADR, hallazgos abiertos y si hace falta migración (no la generes).
 ````
 
-## Prompt pendiente — P3 (spec 0234 + ADR 0150; lanzar cuando el owner lo diga)
+## Prompt pendiente — P3 (spec 0235 + ADR 0150; lanzar cuando el owner lo diga)
 
 ````markdown
 # Encargo: SPEC + ADR de la pieza P3 — premios como cupones y su costo
@@ -564,7 +564,7 @@ coupon-discount,redemptions}.ts`, `apps/merchant/src/modules/pos/server/close.ts
 `apps/merchant/src/server/module-events/{publish,types}.ts`. Del plan `docs/plan-margen-ganancia-2026-10-14.md`: la
 sección «P3 — decisiones del owner» (las dos rondas).
 - No editar `docs/INDEX.md`, `docs/TASKS.md` ni `docs/estado/*`. Sin push. Nivel: **L2** (dinero + fidelización).
-- Números: **spec 0234**, **ADR 0150**.
+- Números: **spec 0235**, **ADR 0150** (0234 la tomó la 1.3).
 - **Orden obligatorio:** (1) si al leer el código falta una decisión de producto, se la preguntás al owner y esperás;
   (2) escribís la spec (`docs/specs/TEMPLATE-CHICA.md`) y el ADR; (3) te detenés. Lo no respondido va como
   *hallazgo a decidir*.
