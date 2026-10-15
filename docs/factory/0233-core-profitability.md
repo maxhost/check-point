@@ -50,3 +50,22 @@ QA detectó que identidad/deltas coherentes no bastaban para validar un cobrado 
 El fixture Stock-local inicializa medios explícitamente y usa `closeWithCash` de prueba, incluido el caso con pase. El test exige v2, importe/pago y referencia composition R1, sin introducir defaults de servidor. Se preparó `module-events.neon.integration.test.ts` con montaje separado en `module-events-integration-support.ts`: POS/provider reales, combo compartiendo insumo, tarifas/revisiones del cierre y valoración Stock separada; v1 legado; fallback cero y positivo sin evento con POS apagado y permiso Rentabilidad; mayúsculas UUID; negativos FK/archivo Efectivo/append-only y evento contradictorio. **Estos cinco casos DB están preparados, todavía no ejecutados en esta continuación.**
 
 Evidencia sin DB: **46/46 unitarios** en los seis archivos focales (finanzas10, comisiones5, decoder5 y fronteras26); Merchant typecheck, ESLint de cambios y `git diff --check`: EXIT0. La extracción de helpers se comprobó con tipos/lint, sin mover oráculos a soporte. Pendiente ejecutar esa tanda real y los cuatro casos Stock-local cuando coordinación reasigne CI y continúe A sobre el cleanup final de B. El cleanup del caso con pase depende de B: sus nuevos pagos inmutables exigen cortar solo la referencia de prueba `posOrders.orderId` antes del cleanup core existente; no borrar pagos ni relajar SQL aplicado.
+
+## Cierre de la integración real
+
+Base final de esta continuación: `f58fac8961b78ec05d1881ebe2f81d524a6a2de5`, que incorpora producto A/B, validator canónico, normalización de UUID, provider POS que valida el snapshot completo y cleanup final de B. El único cambio ejecutable posterior de A es el **fixture** Stock-local: filtra `subscriberId=recipes` al leer/reabrir leases, en lugar de depender de la primera entrega de un evento que ahora también tiene Rentabilidad. No cambió producto, esquema ni SQL aplicado.
+
+Node `24.20.0`, configuración CI seleccionada y recurso reservado exclusivamente durante la ejecución y el teardown:
+
+```sh
+NEON_TEST_ENV_FILE=/private/tmp/checkpass-specs/ci-selected.env tools/neon-test.sh src/modules/module-events.neon.integration.test.ts src/modules/stock-local.neon.integration.test.ts --no-file-parallelism
+```
+
+**9/9, EXIT0, ambos teardowns completos**, sin skips, retries de la suite ni ampliaciones de timeout; duración total 148,61 s. No apareció ningún fallo nuevo en esta tanda.
+
+- Cinco casos de `module-events` usan el **POS y directorio reales**, sin provider inyectado. Una venta v2 de combo conserva composición/procedencia/cantidades al editar la receta después del cierre, tarifa anterior al editar la configuración, costo conocido `12.00` y comisión `0.55`. El posterior promedio Stock no altera el costo congelado. Se procesan realmente ambos deliveries. V1 conserva receta legada y costo `3.50`, sin inventar procedencia ni comisión. Neto cero persistido sin evento sigue legible con POS apagado y solo permiso Rentabilidad; un positivo sin evento sigue sin dato. Se comprobaron UUID con mayúsculas/espacios, referencias cruzadas rechazadas por FK, Efectivo no archivable por SQL, snapshots/pagos inmutables y cero contradictorio rechazado por el reader.
+- Cuatro casos Stock-local conservan cierre POS real, consumo consolidado, idempotencia, retry concurrente, recuperación después de editar/borrar producto, mesa libre ante fallo, módulos apagados y acreditación con pase. El primer caso tardó 27,05 s bajo su presupuesto original de 30 s; no se cambió ese límite. El teardown del caso con pase completó con el cleanup B definitivo.
+
+Esta señal cierra los límites de provider real/cableado que tenían los primeros nueve casos con fixture. No se amplió a familias adicionales ni se repitió una batería global. Merchant typecheck, ESLint y `git diff --check` del ajuste final de fixture: EXIT0. QA puede reutilizar sus unitarios/tipos de `f58fac89` porque el producto permanece idéntico; falta su aceptación y build del SHA final, que corresponden a coordinación/QA independiente.
+
+CI liberada después del wrapper, sin procesos ni mundos propios pendientes de esta corrida. SQL0091/0092 mantienen sus hashes publicados. Esta continuación no operó la app local ni PROD, no activó publicación y no hizo push. El inventario/migración/smoke local que realizó coordinación conserva evidencia separada y su flag de publicación sin cambios.
