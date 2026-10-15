@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { getDb, withDbTransaction } from "@mi-pasaporte/db";
 import {
   locations,
@@ -182,7 +182,12 @@ run("0230 frozen cost and captured sale coverage", { timeout: 60000 }, () => {
         claimToken: randomUUID(),
         claimUntil: new Date("2099-01-01"),
       })
-      .where(eq(moduleEventDeliveries.eventId, s.eventId!));
+      .where(
+        and(
+          eq(moduleEventDeliveries.eventId, s.eventId!),
+          eq(moduleEventDeliveries.subscriberId, "recipes"),
+        ),
+      );
     await recordPurchase(world.businessId, world.ownerId, id, {
       locationId: world.locationId,
       quantity: "4",
@@ -192,8 +197,24 @@ run("0230 frozen cost and captured sale coverage", { timeout: 60000 }, () => {
     await getDb()
       .update(moduleEventDeliveries)
       .set({ state: "pending", claimToken: null, claimUntil: null })
-      .where(eq(moduleEventDeliveries.eventId, s.eventId!));
+      .where(
+        and(
+          eq(moduleEventDeliveries.eventId, s.eventId!),
+          eq(moduleEventDeliveries.subscriberId, "recipes"),
+        ),
+      );
     await apply(s);
+    expect(
+      await getDb()
+        .select({ state: moduleEventDeliveries.state })
+        .from(moduleEventDeliveries)
+        .where(
+          and(
+            eq(moduleEventDeliveries.eventId, s.eventId!),
+            eq(moduleEventDeliveries.subscriberId, "profitability"),
+          ),
+        ),
+    ).toEqual([{ state: "skipped" }]);
     expect(await readSaleConsumptionCost(s)).toMatchObject({
       state: "completo",
       knownCost: "0",

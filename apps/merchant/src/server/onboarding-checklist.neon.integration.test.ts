@@ -11,7 +11,7 @@ const enabled =
 if (enabled) process.env.DATABASE_URL = url;
 
 import { getDb } from "@mi-pasaporte/db";
-import { memberships, users } from "@mi-pasaporte/db/schema";
+import { memberships, staffPersons, users } from "@mi-pasaporte/db/schema";
 import { createStaff } from "./staff-create";
 import {
   type OwnerSeed,
@@ -82,6 +82,10 @@ describe.skipIf(!enabled)("el checklist del onboarding (spec 0085)", () => {
   }, 120_000);
 
   afterAll(async () => {
+    // SPEC0231 links the staff identity to this membership with a restrictive FK.
+    await getDb()
+      .delete(staffPersons)
+      .where(eq(staffPersons.businessId, seed.businessId));
     await getDb()
       .delete(memberships)
       .where(eq(memberships.userId, staffUserId));
