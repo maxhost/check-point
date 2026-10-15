@@ -6,6 +6,7 @@ export * from "./schema/platform-auth";
 export * from "./schema/auth-start";
 export * from "./schema/business";
 export * from "./schema/membership";
+export * from "./schema/staff-person";
 export * from "./schema/onboarding-tour";
 export * from "./schema/billing";
 export * from "./schema/staff-pin";
@@ -34,6 +35,7 @@ export * from "./schema/business-module";
 // los nombra (drizzle lee un solo archivo); ningun otro archivo de `schema/` importa de `modules/`.
 export * from "./schema/modules/stock";
 export * from "./schema/modules/recipes";
+export * from "./schema/modules/profitability";
 // Spec 0220 / ADR 0141 §6: el POS y Mesas.
 export * from "./schema/modules/pos";
 
