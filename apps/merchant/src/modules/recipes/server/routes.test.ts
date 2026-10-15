@@ -223,14 +223,16 @@ describe("R1 HTTP adapters and legacy removal", () => {
     );
   });
 
-  it("keeps the localized locations contract while removing old recipe navigation", async () => {
+  it("keeps the localized locations contract and restored recipe navigation", async () => {
     const locations = { locations: [], defaultLocationId: null };
     h.listLocations.mockResolvedValue(locations);
     expect(await (await request("GET", "locations")).response.json()).toEqual(
       locations,
     );
     expect(h.listLocations).toHaveBeenCalledWith(business.id);
-    expect(manifest.navigation).toEqual([]);
+    expect(manifest.navigation).toEqual([
+      { path: "", label: "Recetas", icon: "Book", permission: "recipes" },
+    ]);
     expect(manifest.requires).toEqual(["stock"]);
   });
 });
