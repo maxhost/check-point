@@ -6,7 +6,12 @@ import {
   moduleResourceVersions,
 } from "@mi-pasaporte/db/schema";
 import { SERVER_MODULES } from "../../modules/server-registry";
-import type { SaleClosedEvent, ResourceVersion } from "./types";
+import type {
+  SaleClosedEvent,
+  ResourceVersion,
+  PaymentMetadata,
+} from "./types";
+import type { FinancialSettlement } from "@mi-pasaporte/domain/financial";
 export async function setResourceVersion(
   tx: DbTransaction,
   args: {
@@ -37,6 +42,8 @@ export async function publishSaleClosed(
   tx: DbTransaction,
   args: {
     businessId: string;
+    settlement?: FinancialSettlement;
+    paymentsMetadata?: readonly PaymentMetadata[];
     sourceOrderId: string;
     locationId: string;
     closedAt: Date;
@@ -77,47 +84,117 @@ export async function publishSaleClosed(
       closedAt: new Date((event.payload as SaleClosedEvent).closedAt),
     };
   }
-  // One statement = one committed visibility point for all pointers and activation.
+  const resources = [
+    ...new Map(
+      [
+        ...args.lines.flatMap((l) =>
+          l.productId
+            ? [{ resourceType: "product", resourceId: l.productId }]
+            : [],
+        ),
+        ...(args.settlement?.payments.map((p) => ({
+          resourceType: "payment_method",
+          resourceId: p.methodId,
+        })) ?? []),
+      ].map((r) => [r.resourceType + "/" + r.resourceId, r]),
+    ).values(),
+  ];
+  // All typed resource pointers and subscriber eligibility share one MVCC visibility point.
+  const resourceValues = resources.length
+    ? sql`values ${sql.join(
+        resources.map(
+          (r) => sql`(${r.resourceType}::text,${r.resourceId}::uuid)`,
+        ),
+        sql`,`,
+      )}`
+    : sql`select null::text,null::uuid where false`;
   const capture = await tx.execute(sql`select clock_timestamp() as captured_at,
- (select coalesce(jsonb_agg(jsonb_build_object('resourceId',resource_id,'providerId',provider_id,'slot',slot,'versionId',version_id)),'[]'::jsonb) from core.module_resource_version where business_id=${args.businessId}::uuid and resource_type='product' and resource_id in (${
-   args.lines.some((l) => l.productId)
-     ? sql.join(
-         args.lines.flatMap((l) =>
-           l.productId ? [sql`${l.productId}::uuid`] : [],
-         ),
-         sql`,`,
-       )
-     : sql`null::uuid`
- })) as versions,
- (select coalesce(jsonb_agg(module_id),'[]'::jsonb) from core.business_module where business_id=${args.businessId}::uuid and enabled=true) as enabled`);
+  (select coalesce(jsonb_agg(jsonb_build_object('resourceType',p.resource_type,'resourceId',p.resource_id,'providerId',p.provider_id,'slot',p.slot,'versionId',p.version_id)),'[]'::jsonb) from core.module_resource_version p join (${resourceValues}) r(resource_type,resource_id) on r.resource_type=p.resource_type and r.resource_id=p.resource_id where p.business_id=${args.businessId}::uuid) as versions,
+  (select coalesce(jsonb_agg(module_id),'[]'::jsonb) from core.business_module where business_id=${args.businessId}::uuid and enabled=true) as enabled`);
   const row = capture.rows[0] as unknown as {
     captured_at: Date | string;
-    versions: (ResourceVersion & { resourceId: string })[];
+    versions: (ResourceVersion & {
+      resourceType: string;
+      resourceId: string;
+    })[];
     enabled: string[];
   };
-  const payload: SaleClosedEvent = {
-    eventVersion: 1,
+  const refs = (resourceType: string, resourceId: string | null) =>
+    row.versions
+      .filter(
+        (v) => v.resourceType === resourceType && v.resourceId === resourceId,
+      )
+      .map(({ providerId, slot, versionId }) => ({
+        providerId,
+        slot,
+        versionId,
+      }));
+  const common = {
     sourceOrderId: args.sourceOrderId,
     locationId: args.locationId,
     closedAt: new Date(row.captured_at).toISOString(),
     userId: args.userId,
     lines: args.lines.map((l) => ({
       ...l,
-      resourceVersions: row.versions
-        .filter((v) => v.resourceId === l.productId)
-        .map(({ providerId, slot, versionId }) => ({
-          providerId,
-          slot,
-          versionId,
-        })),
+      resourceVersions: refs("product", l.productId),
     })),
   };
+  const financial = args.settlement;
+  let payload: SaleClosedEvent = { eventVersion: 1, ...common };
+  if (financial) {
+    if (financial.lines.length !== common.lines.length)
+      throw new Error("Invalid financial event lines");
+    const moneyByLine = new Map(
+      financial.lines.map((l) => [l.sourceLineId, l]),
+    );
+    payload = {
+      ...common,
+      eventVersion: 2,
+      money: {
+        gross: financial.gross,
+        discount: financial.discount,
+        roundingAdjustment: financial.roundingAdjustment,
+        collected: financial.collected,
+        currencyCode: financial.currencyCode,
+        minorUnit: financial.minorUnit,
+        originalGross: financial.originals.gross,
+        originalDiscount: financial.originals.discount,
+        originalNet: financial.originals.net,
+        normalizationAdjustments: financial.normalizationAdjustments,
+      },
+      lines: common.lines.map((line) => {
+        const frozen = moneyByLine.get(line.sourceLineId);
+        if (!frozen) throw new Error("Missing financial line");
+        return {
+          ...line,
+          position: frozen.position,
+          money: frozen.money,
+          discountOrigin: frozen.discountOrigin,
+        };
+      }),
+      payments: financial.payments.map((payment) => {
+        const metadata = args.paymentsMetadata?.find(
+          (m) =>
+            m.paymentId === payment.paymentId &&
+            m.methodId === payment.methodId,
+        );
+        if (!metadata || !metadata.methodProviderId || !metadata.methodName)
+          throw new Error("Missing payment metadata");
+        return {
+          ...payment,
+          ...metadata,
+          resourceVersions: refs("payment_method", payment.methodId),
+        };
+      }),
+      paymentOriginals: financial.paymentOriginals,
+    };
+  }
   const [event] = await tx
     .insert(moduleEvents)
     .values({
       businessId: args.businessId,
       eventType: "sale.closed",
-      eventVersion: 1,
+      eventVersion: payload.eventVersion,
       sourceId: args.sourceOrderId,
       locationId: args.locationId,
       payload,

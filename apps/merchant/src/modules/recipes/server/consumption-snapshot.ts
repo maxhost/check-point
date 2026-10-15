@@ -1,4 +1,4 @@
-import type { SaleClosedEvent } from "../../../server/module-events/types";
+import type { SaleClosedEventV1 } from "../../../server/module-events/types";
 import { formatDecimal, fromDb } from "../../decimal";
 
 type Revision = {
@@ -8,7 +8,7 @@ type Revision = {
 };
 /** The recipe already stores quantity per product unit. Only multiply by sold units. */
 export function expandRecipes(
-  event: SaleClosedEvent,
+  event: Pick<SaleClosedEventV1, "lines">,
   revisions: readonly Revision[],
 ) {
   const byId = new Map(revisions.map((revision) => [revision.id, revision]));
