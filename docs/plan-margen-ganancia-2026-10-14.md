@@ -220,6 +220,34 @@ Reemplaza el enfoque de la 0231 («Rentabilidad»: costos fijos + sueldo en la f
   `/api/staff/people`, ADR 0147) y qué se borra: revisión de Claude pendiente.
 - Sugerencia de Claude sin confirmar: estimar los recurrentes aún no cargados con el último valor, marcados «estimado».
 
+### Revisión de la 0231 para Gastos (Claude, 2026-10-16, leído en el código)
+
+**El modelo no calza.** La 0231 guarda *costos mensuales con vigencia* (`fixed_cost` → `fixed_cost_period` con
+`monthly_total`, `from_month`/`until_month`, reparto `single|equal|manual` → `fixed_cost_allocation` por local). Gastos es
+un *registro de pagos*: cada pago con monto, fecha, mes al que corresponde, local y tipo. Hace falta un modelo nuevo.
+
+- **Se reusa:** la idea y el código del reparto por local (`single|equal|manual`, allocation por local); la aritmética de
+  dinero (`profitability/arithmetic.ts`, helper core `@mi-pasaporte/domain/financial`); las categorías
+  (`rent, gas, electricity, water, other, personnel`) como punto de partida; el permiso propio del módulo.
+- **Se borra (andamiaje sin UI):** tablas `fixed_cost`, `fixed_cost_period`, `fixed_cost_allocation`; rutas `costs`,
+  `costs/:costId`, `costs/:costId/period`, `costs/:costId/stop`, `totals`, `people`, `locations` del módulo;
+  `salary.ts`; la FK de costo → `staff_person`. Del contrato: `staffAction`/`staffPanel` si nadie más los usa (ADR 0147
+  queda parcialmente reemplazado).
+- **Se queda:** `core.staff_person` (Equipo lo usa: `server/staff-create.ts`, `/api/staff/people`). Hallazgo a decidir:
+  la «persona sin acceso» de la 0231 existía para cargarle sueldo; con sueldos como nombre libre en Gastos, ¿se borra?
+- **Se mueve a core con los medios:** `profitability.commission_revision` y `payment_commission` + la suscripción a
+  `sale.closed` (`commissions/apply.ts`), y los medios del comercio (hoy esquema POS). Migración con datos reales (P1 en
+  PROD): L2 mínimo, ADR.
+- **Sin verificar:** si PROD tiene filas en las tablas de la 0231 (sin UI, probablemente ninguna). Requiere autorización
+  para un SELECT de solo lectura.
+
+**Cómo lee Analíticas a los módulos (opciones para el ADR de enganche):**
+- **A — proveedores registrados (recomendación Claude):** cada módulo declara en `SERVER_MODULES` una función que
+  devuelve hechos genéricos (p. ej. «gastos por mes y local», «costo de lo vendido»), igual que hoy declara
+  `eventSubscriptions`. Analíticas las llama sin nombrar módulos. Simple, datos al día.
+- **B — eventos:** cada módulo publica hechos al log del core (`expense.recorded`…) y Analíticas arma su proyección (lo que
+  describe el ADR 0021). Más robusto a escala, bastante más maquinaria (proyecciones, reintentos, correcciones).
+
 ## Notas para las etapas futuras
 
 - **Etapa 2:** congelar `costo promedio × factor vigente` (factor = 1 hasta la etapa 6), para no migrar de nuevo.
