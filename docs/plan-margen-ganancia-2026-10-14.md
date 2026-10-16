@@ -187,6 +187,35 @@ viejos: no hay (PROD limpia). Pieza propia **P3, L2, con ADR**. Abierto: puntos 
 usarse (recomendacion Claude: devolverlos). Hoy el canje NO emite cupon (`counter/redemptions.ts` →
 `core.reward_redemption`) y todo cupon exige campaña (`campaign_coupon.campaign_id` not null).
 
+## F rediseñada — Gastos, Medios y Analíticas (decisiones del owner, 2026-10-15/16)
+
+Reemplaza el enfoque de la 0231 («Rentabilidad»: costos fijos + sueldo en la ficha de Equipo + comisiones).
+
+1. **El módulo es «Gastos», no «Rentabilidad», y solo recibe gastos.** Owner: «pagué de alquiler 900, de agua 20, compré
+   una garrafa por 3.2, pagué a Luis su sueldo 450». Espacio propio en el menú. Registro de pagos dictado o por foto: la
+   IA crea las entradas, el dueño confirma (como Stock y Recetas). Sin carga inicial obligatoria.
+2. Fijos y variables: de acuerdo.
+3. **Mes del gasto:** no se asume el mes en curso; sentido común del rubro (luz, agua y gas = mes anterior; alquiler,
+   internet y sueldos = mes en curso), el dueño confirma o ajusta y el sistema aprende.
+4. **Sueldos en Gastos**, no en la ficha de Equipo. «Luis» es un nombre dentro de Gastos, sin alta en Equipo. Horas
+   extra = otro gasto («Luis horas extras 40»).
+5. **Medios de pago viven en Configuración → Medios de pago**, con la comisión dentro de cada medio. Se configura una
+   vez, no se carga mes a mes.
+6. **Toda la información va a Analíticas (core):** punto de equilibrio, cuánto gané, cuánto perdí, cuántos clientes
+   vinieron esta semana. Coincide con el ADR 0021 (analíticas universales y lentes por rubro), nunca construido.
+7. **Menú: sin agrupar por ahora.** Gastos entra como un ítem más. Agrupar cuando haya 2–3 rubros (una barbería tiene
+   Catálogo pero no Recetas ni Smart Menu). Reordenar el menú = L0.
+
+**Hallazgos a decidir (Claude, no son decisiones del owner):**
+- Hoy los medios de pago son del **módulo POS** (`modules/pos/server/payment-methods.ts`); la comisión la guarda y calcula
+  `profitability` sobre el evento core `sale.closed` y el recurso genérico `payment_method` (no importa al POS). Un
+  comercio sin POS no tendría medios.
+- Cómo lee Analíticas los datos de los módulos sin nombrarlos (core nunca importa módulos): ADR de enganche pendiente
+  (es el mismo que el punto de equilibrio en el Dashboard).
+- Qué se reusa de la 0231 (`fixed_cost`, `_period`, `_allocation`, `staff_person`, rutas `costs`/`totals`,
+  `/api/staff/people`, ADR 0147) y qué se borra: revisión de Claude pendiente.
+- Sugerencia de Claude sin confirmar: estimar los recurrentes aún no cargados con el último valor, marcados «estimado».
+
 ## Notas para las etapas futuras
 
 - **Etapa 2:** congelar `costo promedio × factor vigente` (factor = 1 hasta la etapa 6), para no migrar de nuevo.
