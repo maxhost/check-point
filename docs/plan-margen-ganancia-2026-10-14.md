@@ -195,8 +195,9 @@ Reemplaza el enfoque de la 0231 («Rentabilidad»: costos fijos + sueldo en la f
    una garrafa por 3.2, pagué a Luis su sueldo 450». Espacio propio en el menú. Registro de pagos dictado o por foto: la
    IA crea las entradas, el dueño confirma (como Stock y Recetas). Sin carga inicial obligatoria.
 2. Fijos y variables: de acuerdo.
-3. **Mes del gasto:** no se asume el mes en curso; sentido común del rubro (luz, agua y gas = mes anterior; alquiler,
-   internet y sueldos = mes en curso), el dueño confirma o ajusta y el sistema aprende.
+3. **Mes del gasto = criterio de caja** (owner 2026-10-16, reemplaza lo anterior «luz, agua y gas = mes anterior»): el
+   gasto cuenta en el mes en que sale la plata. «Pagué 15 de luz hoy, eso corresponde a un consumo del mes pasado, pero
+   es un gasto del mes en curso. El dinero sale hoy».
 4. **Sueldos en Gastos**, no en la ficha de Equipo. «Luis» es un nombre dentro de Gastos, sin alta en Equipo. Horas
    extra = otro gasto («Luis horas extras 40»).
 5. **Medios de pago pasan al core, en Comercio (Marca)** (owner 2026-10-16; antes había dicho Configuración → Medios),
@@ -222,16 +223,18 @@ Reemplaza el enfoque de la 0231 («Rentabilidad»: costos fijos + sueldo en la f
 
 ### Revisión de la 0231 para Gastos (Claude, 2026-10-16, leído en el código)
 
-**El modelo no calza.** La 0231 guarda *costos mensuales con vigencia* (`fixed_cost` → `fixed_cost_period` con
-`monthly_total`, `from_month`/`until_month`, reparto `single|equal|manual` → `fixed_cost_allocation` por local). Gastos es
-un *registro de pagos*: cada pago con monto, fecha, mes al que corresponde, local y tipo. Hace falta un modelo nuevo.
+**Corregido el 2026-10-16:** con criterio de caja, la base de la 0231 (monto por mes repartido por local) sirve. Lo que
+no entra hoy: montos que cambian mes a mes (cada pago = editar un período), gastos sueltos (garrafa 3,2) y sueldos (exige
+`staff_person`, un costo por persona: no entra «Luis horas extras 40»). **Recomendación: adaptar las tablas de la 0231**
+(cada pago = fila con fecha y mes; sueldo = nombre libre; sin FK ni único por persona) en vez de un modelo nuevo; la spec
+lo confirma contra el código.
 
 - **Se reusa:** la idea y el código del reparto por local (`single|equal|manual`, allocation por local); la aritmética de
   dinero (`profitability/arithmetic.ts`, helper core `@mi-pasaporte/domain/financial`); las categorías
   (`rent, gas, electricity, water, other, personnel`) como punto de partida; el permiso propio del módulo.
-- **Se borra (andamiaje sin UI):** tablas `fixed_cost`, `fixed_cost_period`, `fixed_cost_allocation`; rutas `costs`,
-  `costs/:costId`, `costs/:costId/period`, `costs/:costId/stop`, `totals`, `people`, `locations` del módulo;
-  `salary.ts`; la FK de costo → `staff_person`. Del contrato: `staffAction`/`staffPanel` si nadie más los usa (ADR 0147
+- **Se adapta o borra (sin UI):** tablas `fixed_cost`, `fixed_cost_period`, `fixed_cost_allocation` y rutas `costs`,
+  `costs/:costId`, `costs/:costId/period`, `costs/:costId/stop`, `totals` (adaptar); `people`, `salary.ts` y la FK de
+  costo → `staff_person` (borrar). Del contrato: `staffAction`/`staffPanel` si nadie más los usa (ADR 0147
   queda parcialmente reemplazado).
 - **Se queda:** `core.staff_person` (Equipo lo usa: `server/staff-create.ts`, `/api/staff/people`). Hallazgo a decidir:
   la «persona sin acceso» de la 0231 existía para cargarle sueldo; con sueldos como nombre libre en Gastos, ¿se borra?
