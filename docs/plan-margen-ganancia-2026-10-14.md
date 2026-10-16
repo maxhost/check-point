@@ -264,6 +264,15 @@ lo confirma contra el código.
 4. **Medios y Gastos NO en paralelo; se cambia el nombre interno del módulo** (`profitability` → nombre de Gastos), porque
    será confuso en el código.
 
+5. **Nombre interno: `expenses`** (owner 2026-10-16).
+
+**PROD leído (solo lectura, autorizado por el owner, 2026-10-16, Neon `main`):** 4 comercios. Tablas de la 0231
+(`fixed_cost`, `_period`, `_allocation`): **0 filas**. `commission_revision` y `payment_commission`: **0**. Módulo
+`profitability`: **ningún comercio lo tiene en `core.business_module`**; **0 miembros** con el permiso `profitability`.
+Medios: `pos.payment_method` **22 filas**, `pos.payment_method_initialization` 4, `pos.order_payment` **2** (pagos reales
+que apuntan a medios), `pos.pos_order` 17. `core.module_event`: 0 (la publicación de eventos está apagada en PROD).
+→ Borrar la 0231 y renombrar el módulo no toca datos reales; mover medios a core **sí** (22 medios + 2 pagos).
+
 ## Notas para las etapas futuras
 
 - **Etapa 2:** congelar `costo promedio × factor vigente` (factor = 1 hasta la etapa 6), para no migrar de nuevo.
