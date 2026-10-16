@@ -196,7 +196,14 @@ function gates(plan: VerifyPlan, base: string): Gate[] {
         .filter((f) => existsSync(f));
       list.push({
         name: `neon related ${app}`,
-        cmd: [neon, "--app", app, "--related", ...files],
+        cmd: [
+          neon,
+          "--app",
+          app,
+          "--related",
+          ...files,
+          "--no-file-parallelism",
+        ],
         skip:
           files.length === 0
             ? plan.docsOnly
