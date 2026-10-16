@@ -251,6 +251,19 @@ lo confirma contra el código.
 - **B — eventos:** cada módulo publica hechos al log del core (`expense.recorded`…) y Analíticas arma su proyección (lo que
   describe el ADR 0021). Más robusto a escala, bastante más maquinaria (proyecciones, reintentos, correcciones).
 
+### Decisiones del owner sobre la revisión (2026-10-16) — mandan sobre la revisión de arriba
+
+1. **Tablas de la 0231: se eliminan** (`fixed_cost`, `fixed_cost_period`, `fixed_cost_allocation` y sus rutas) y se crean
+   tablas nuevas con la forma de Gastos (registro de pagos). Owner: «un cambio pequeño… dejaría tablas sin usar o sin
+   sentido».
+2. **Analíticas = opción C:** cada módulo es dueño de su detalle (con procedencia, para cruces); Analíticas guarda
+   **resúmenes por día** (comercio × local × día × dato) que actualiza con eventos, y el Dashboard lee los resúmenes.
+   **Filtros por fecha clave:** año en curso, últimos 3, 6 y 9 meses. Owner: que entrar al Dashboard no obligue a
+   Postgres a calcular todo en ese momento. Antes del ADR, GPT mide con datos de prueba.
+3. **Personas sin acceso de Equipo: se quedan** (no molestan).
+4. **Medios y Gastos NO en paralelo; se cambia el nombre interno del módulo** (`profitability` → nombre de Gastos), porque
+   será confuso en el código.
+
 ## Notas para las etapas futuras
 
 - **Etapa 2:** congelar `costo promedio × factor vigente` (factor = 1 hasta la etapa 6), para no migrar de nuevo.
