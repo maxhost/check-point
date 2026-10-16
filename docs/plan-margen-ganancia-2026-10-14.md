@@ -199,8 +199,12 @@ Reemplaza el enfoque de la 0231 («Rentabilidad»: costos fijos + sueldo en la f
    internet y sueldos = mes en curso), el dueño confirma o ajusta y el sistema aprende.
 4. **Sueldos en Gastos**, no en la ficha de Equipo. «Luis» es un nombre dentro de Gastos, sin alta en Equipo. Horas
    extra = otro gasto («Luis horas extras 40»).
-5. **Medios de pago viven en Configuración → Medios de pago**, con la comisión dentro de cada medio. Se configura una
-   vez, no se carga mes a mes.
+5. **Medios de pago pasan al core, en Comercio (Marca)** (owner 2026-10-16; antes había dicho Configuración → Medios),
+   con la comisión dentro de cada medio. Se configura una vez. **El POS los consume.** La comisión de cada venta =
+   medio elegido en la venta × su porcentaje; **tiene que quedar congelada** (owner: que un cambio de comisión no
+   recalcule el histórico). Hoy ya es así (ADR 0149): cada cambio de comisión crea una revisión inmutable, la venta
+   captura el id de la revisión vigente al cerrar y el resultado se guarda con su porcentaje
+   (`profitability/server/commissions/apply.ts`). Al mover a core se conserva ese mecanismo.
 6. **Toda la información va a Analíticas (core):** punto de equilibrio, cuánto gané, cuánto perdí, cuántos clientes
    vinieron esta semana. Coincide con el ADR 0021 (analíticas universales y lentes por rubro), nunca construido.
 7. **Menú: sin agrupar por ahora.** Gastos entra como un ítem más. Agrupar cuando haya 2–3 rubros (una barbería tiene
@@ -208,8 +212,8 @@ Reemplaza el enfoque de la 0231 («Rentabilidad»: costos fijos + sueldo en la f
 
 **Hallazgos a decidir (Claude, no son decisiones del owner):**
 - Hoy los medios de pago son del **módulo POS** (`modules/pos/server/payment-methods.ts`); la comisión la guarda y calcula
-  `profitability` sobre el evento core `sale.closed` y el recurso genérico `payment_method` (no importa al POS). Un
-  comercio sin POS no tendría medios.
+  `profitability` sobre el evento core `sale.closed` y el recurso genérico `payment_method` (no importa al POS). Mover
+  medios + comisión a core: ADR (cerrado por el owner el qué; falta el cómo).
 - Cómo lee Analíticas los datos de los módulos sin nombrarlos (core nunca importa módulos): ADR de enganche pendiente
   (es el mismo que el punto de equilibrio en el Dashboard).
 - Qué se reusa de la 0231 (`fixed_cost`, `_period`, `_allocation`, `staff_person`, rutas `costs`/`totals`,
