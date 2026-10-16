@@ -273,6 +273,59 @@ Medios: `pos.payment_method` **22 filas**, `pos.payment_method_initialization` 4
 que apuntan a medios), `pos.pos_order` 17. `core.module_event`: 0 (la publicación de eventos está apagada en PROD).
 → Borrar la 0231 y renombrar el módulo no toca datos reales; mover medios a core **sí** (22 medios + 2 pagos).
 
+## Prompt — encender `MODULE_EVENTS_ENABLED` en PROD (2026-10-16; lanzar cuando el owner lo diga)
+
+```
+# Encargo: encender la publicación de eventos de módulos en PROD
+# Operación, no funcionalidad. Sin código nuevo salvo que algo falle.
+
+## Reglas
+- Leé CLAUDE.md, docs/TRABAJO-EN-PARALELO.md, docs/VERIFICACION.md y la skill gotchas-del-repo.
+- No edites docs/INDEX.md, docs/TASKS.md ni los docs de estado de Claude.
+- Cada paso en PROD (push, variable en Vercel, redeploy) necesita la autorización explícita del owner en ese
+  momento. Pedila paso por paso; no la infieras de este encargo.
+- Suites Neon solo con tools/neon-test.sh. De un .env o de Vercel se imprime la CLAVE y metadatos, nunca el valor.
+- Nivel: operación PROD que toca stock y dinero → piso L2 en verificación (no hace falta spec).
+
+## Orden obligatorio
+1. Revisá y mostrale al owner el plan de pasos de abajo con lo que verificaste. Detenete y esperá su OK.
+2. Ejecutá paso por paso, pidiendo autorización en cada operación PROD.
+
+## Para qué sirve
+Hoy `MODULE_EVENTS_ENABLED` está apagado en PROD (`server/module-events/publish.ts:60`): las ventas cierran pero no
+se guarda `sale.closed` en `core.module_event` (PROD: 0 filas, 2 pagos reales). Sin eventos no se descuenta stock por
+receta, no se congela el costo de lo vendido (0230) ni se calcula la comisión (0233). El owner quiere que quede
+registrando siempre: de ahí salen stock, costos y, más adelante, Analíticas.
+
+## Lo que hay hoy (verificalo)
+- Flag: `process.env.MODULE_EVENTS_ENABLED !== "true"` → no publica. OFF por defecto desde la 0227.
+- Reintentos: `GET /api/internal/module-events/retry` con `Authorization: Bearer CRON_SECRET`. El cron lo configura
+  el OWNER en cron-job.org (ADR 0118); no lo configures por él.
+- `dev` va 16 commits delante de `origin/main`; entre ellos `036615c0` (fix del transaction-timeout en el COMMIT del
+  reintento de Stock). **Tiene que estar en PROD antes de encender.**
+- PROD: 4 comercios; Stock y Recetas activos en 2. Desde el encendido, sus ventas empiezan a descontar insumos.
+
+## Pasos
+1. Subir `dev` a `main` (merge --ff-only, gates locales, push con autorización). Deploy de Vercel `READY` con ese sha.
+2. Confirmar que existen `CRON_SECRET` en Vercel PROD (solo clave y metadatos) y que el owner tiene el job de
+   cron-job.org apuntando a la ruta de reintentos. Si no existe, avisale: lo crea él.
+3. Cargar `MODULE_EVENTS_ENABLED=true` en Vercel Production y redeploy (con autorización).
+4. Pedirle al owner que cierre UNA venta de prueba en el POS de un comercio con Stock+Recetas.
+5. Verificar por SQL de solo lectura en PROD: la fila en `core.module_event` (tipo, versión 2, local, orden), sus
+   filas en `core.module_event_delivery` en estado aplicado, el consumo de stock de esa venta y el resultado de
+   comisión (o «sin configurar», nunca 0 inventado). Llamar una vez a la ruta de reintentos y ver que responde ok.
+6. Si algo falla: volver a poner el flag en `false` (con autorización) y reportar con la evidencia.
+
+## Fuera de alcance
+- No se reprocesan las 17 órdenes anteriores: quedan sin evento (decisión de diseño de 0227/0149).
+- Generalizar `module_event` para eventos de otros módulos (hoy solo `sale.closed`, `location_id` obligatorio): va en
+  el ADR de Analíticas, no acá.
+
+## Entrega
+`docs/factory/release-module-events-<fecha>.md`: sha subido, cada autorización con su hora, resultado SQL de la venta
+de prueba (ids, sin datos personales), estado final del flag. Commit en `dev`, sin push extra.
+```
+
 ## Notas para las etapas futuras
 
 - **Etapa 2:** congelar `costo promedio × factor vigente` (factor = 1 hasta la etapa 6), para no migrar de nuevo.
