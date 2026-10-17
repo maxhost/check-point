@@ -62,7 +62,7 @@ trabajo, es ignorarlo». Los cupones entran porque ya se aplican en el POS al ve
 | **6** | **Costo real por conteos:** conteos periodicos de los insumos clave → factor de merma por insumo (consumo real / teorico) aplicado al costo; reglas en «Notas para las etapas futuras» | 2 (y R1 para el teorico por receta) | **en el plan** (owner 2026-10-14). El ajuste por conteo ya existe en Stock. Entra al costo de lo vendido como `costo promedio × factor` (factor 1 hasta esta pieza) |
 | **EV** | **Eventos de venta encendidos en PROD** (`MODULE_EVENTS_ENABLED`) | 0, 2, P1 | ✅ 2026-10-16: push `5b834ca0`, flag en Vercel Production, redeploy READY; venta de prueba en F5 → 1 `sale.closed` v2 con 2 entregas (leído por SQL 00:39 UTC). Cron de reintentos en cron-job.org cada 1 h (owner). Doc `docs/factory/release-module-events-2026-10-16.md` (GPT: faltaba la llamada a reintentos y el cierre) |
 | **N** | **Espacio core «Negocio»:** Medios de pago (+comisión), Regional y Fiscal (mudados desde Marca); permiso `business`, ruta `/backoffice/business`; medios al core, POS consume; comisión calculada en la transacción de cierre | P1 | spec 0235 + ADR 0150 escritos por GPT (`209f5937`), **sin revisar por Claude, sin implementar**. Respuestas del owner a las 4 preguntas dadas |
-| **G** | **Gastos** (módulo `expenses`, renombra `profitability`): registro de pagos dictado/foto, criterio de caja, sueldos como nombre libre; tablas nuevas, se borra la 0231 | N (en serie) | decisiones del owner en «F rediseñada»; **prompt pendiente** (4 preguntas: estimados, permiso, local por defecto, corregir/borrar) |
+| **G** | **Gastos** (módulo `expenses`, renombra `profitability`): registro de pagos dictado/foto, criterio de caja, sueldos como nombre libre; tablas nuevas, se borra la 0231 | N (en serie) | decisiones del owner cerradas (2026-10-16, «Preguntas de G»); **prompt listo** (spec 0236 + ADR 0151), se lanza con N integrado |
 | **AN** | **Analíticas core** (ADR 0021): opción C — cada módulo dueño de su detalle + resúmenes por día; filtros año/3/6/9 meses; generalizar `module_event` para otros módulos | EV, N, G | **ADR pendiente** (GPT mide con datos de prueba). Absorbe SM-datos y el punto de equilibrio |
 
 **Regla transversal a decidir en las specs:** lo que es por orden (comision, cupon sobre el total, bolsa) se reparte
@@ -279,11 +279,13 @@ que apuntan a medios), `pos.pos_order` 17. `core.module_event`: 0 (la publicaci�
 
 ### Preguntas de G — respuestas del owner (2026-10-16)
 
-1. **Estimados / punto de equilibrio: ABIERTA.** Owner: con criterio de caja, el 15 del mes faltan alquiler, internet y
-   sueldos → «tu punto de equilibrio son $120» es falso. Propuesta de Claude (sin confirmar): el punto de equilibrio del
-   mes en curso usa, por **concepto** (categoría + nombre normalizado: «alquiler», «personal · Luis»), lo pagado este mes
-   si ya se pagó y si no el promedio de los últimos meses, marcado «estimado»; al cerrar el mes queda el real. Para G
-   implica guardar un concepto estable por gasto. El cálculo vive en AN.
+1. **Punto de equilibrio del mes en curso (owner de acuerdo con la propuesta de Claude, 2026-10-16).** Owner: con
+   criterio de caja, el 15 del mes faltan alquiler, internet y sueldos → «tu punto de equilibrio son $120» sería falso.
+   Queda: Analíticas lo calcula por **concepto** (categoría + nombre normalizado: «alquiler», «personal · Luis»); si el
+   concepto ya se pagó este mes usa lo real, si no el promedio de los últimos meses marcado «estimado»; los gastos
+   sueltos entran por su promedio mensual; al cerrar el mes queda el real. Primer mes sin historia: «se calcula al
+   cerrar tu primer mes con gastos», nunca un número falso. **Para G:** cada gasto guarda un concepto estable (la IA
+   reconoce «pagué a Luis», «sueldo Luis» y «Luis 450» como el mismo). El cálculo vive en AN.
 2. **Permiso propio** (`expenses`) además del owner.
 3. **Local:** cada gasto va a un local o a «todo el negocio»; por defecto el local donde está el dueño. Sin reparto
    `equal/manual`.
@@ -293,8 +295,94 @@ que apuntan a medios), `pos.pos_order` 17. `core.module_event`: 0 (la publicaci�
    ese momento) y después se descarta.
 7. **G publica eventos** (`expense.recorded/updated/deleted`) desde ya, para los resúmenes por día de AN.
 8. **Fijo / variable lo marca la IA**, no lo elige el dueño ni lo deduce la categoría: lo que se consume (agua, gas) es
-   variable; lo que no aparece de la nada (alquiler) es fijo. Se muestra como un check. Abierto: si el dueño puede
-   corregirlo.
+   variable; lo que no aparece de la nada (alquiler) es fijo. Se muestra como un check **que el dueño puede corregir
+   sin estar obligado** (owner de acuerdo, 2026-10-16).
+
+## Prompt — Gastos (spec 0236 + ADR 0151; 2026-10-16; lanzar cuando N esté integrado)
+
+```
+# Encargo: SPEC chica + ADR — módulo Gastos (`expenses`, reemplaza a `profitability`)
+# Solo documentos. Nada de código ni migración generada en este encargo.
+
+## Reglas
+- Leé CLAUDE.md, docs/TRABAJO-EN-PARALELO.md, docs/VERIFICACION.md, docs/MODULOS.md, la spec 0235 y el ADR 0150
+  (tal como quedaron integrados). Del plan `docs/plan-margen-ganancia-2026-10-14.md` solo: «F rediseñada — Gastos,
+  Medios y Analíticas» con sus subsecciones, incluida «Preguntas de G — respuestas del owner».
+- No edites docs/INDEX.md, docs/TASKS.md ni los docs de estado de Claude. Sin push.
+- Nivel L2 (dinero + migración a PROD): spec CHICA (`docs/specs/TEMPLATE-CHICA.md`) + ADR. Números: **spec 0236,
+  ADR 0151** (verificá que sigan libres).
+- Arrancá recién con N (0235) integrado en `dev`: los dos tocan `profitability`.
+
+## Orden obligatorio
+1. Verificá «Lo que hay hoy» contra el código. Si aparece una decisión de producto que no está abajo, preguntale al
+   owner (con tu recomendación) y esperá. No hay preguntas abiertas conocidas.
+2. Escribí la spec y el ADR.
+3. Detenete y entregá. No implementes.
+
+## Para qué sirve
+El dueño registra lo que paga («pagué de alquiler 900, de agua 20, compré una garrafa por 3.2, pagué a Luis su sueldo
+450») dictando o con una foto; la IA arma las entradas y el dueño confirma. Es la fuente de gastos para el punto de
+equilibrio y lo que el comercio gana o pierde, que calculará Analíticas (pieza AN, después, con su propio ADR).
+
+## Lo que hay hoy (leído en el código el 2026-10-16; verificalo después de N)
+- Módulo `apps/merchant/src/modules/profitability/` (label «Rentabilidad»): costos fijos de la 0231 (`fixed_cost`,
+  `fixed_cost_period`, `fixed_cost_allocation`, rutas `costs*` y `totals`, `salary.ts` con FK a `staff_person`,
+  `arithmetic.ts`, `intervals.ts`). N ya le sacó las comisiones.
+- **PROD (leído 2026-10-16):** tablas de la 0231 con **0 filas**; ningún comercio tiene el módulo encendido; 0 miembros
+  con el permiso `profitability`.
+- IA por módulo (spec 0224 / ADR 0143): cada módulo declara sus tareas (`modules/stock/ai-tasks.ts`,
+  `modules/recipes/ai-tasks.ts`) sobre `server/ai/task.ts`; el borrador se valida contra el negocio después
+  (`modules/stock/draft.ts`). La entrada dictada/foto de Stock (`stock/ui/stock-input-modal.tsx`) es el modelo a seguir.
+- Eventos: `server/module-events/publish.ts` hoy solo publica `sale.closed` (tipo fijo en `types.ts`); encendidos en
+  PROD desde el 2026-10-16.
+
+## Decisiones del owner (no se reabren)
+1. Módulo **Gastos**, id interno **`expenses`** (renombra `profitability`). Solo gastos. Ítem propio del menú, sin
+   agrupar. Sin carga inicial obligatoria.
+2. **Las tablas de la 0231 se eliminan** con sus rutas y código (también `salary.ts` y la FK a `staff_person`); se
+   crean tablas nuevas de registro de pagos. Las personas sin acceso de Equipo se quedan.
+3. Registro **dictado o por foto**: la IA crea las entradas, el dueño confirma (como Stock y Recetas).
+4. **Criterio de caja:** el gasto cuenta en el mes en que sale la plata.
+5. **Sueldos como nombre libre** dentro de Gastos («Luis 450», «Luis horas extras 40»), sin alta en Equipo.
+6. **Concepto estable por gasto** (categoría + nombre normalizado: «alquiler», «personal · Luis»): la IA reconoce
+   «pagué a Luis», «sueldo Luis» y «Luis 450» como el mismo concepto. Lo necesita AN para estimar lo no pagado del mes.
+7. **Categorías fijas + «otro» con texto libre.**
+8. **Fijo / variable lo marca la IA** (lo que se consume, como agua o gas, es variable; el alquiler es fijo), visible
+   como un check que el dueño **puede corregir sin estar obligado**. No lo deduce la categoría.
+9. **Local:** cada gasto va a un local o a «todo el negocio»; por defecto el local donde está el dueño. Sin reparto
+   `equal/manual`.
+10. **Editar y borrar libremente solo dentro del mes en curso**; los meses pasados quedan congelados.
+11. **Foto:** no se guarda como comprobante. Se conserva hasta que el gasto se guarda (por si hay que reanalizarla en
+    ese momento) y después se descarta. Nada en R2 de forma permanente.
+12. **Permiso propio `expenses`** además del owner (los sueldos son sensibles).
+13. **Publica eventos desde ya** (`expense.recorded`, `expense.updated`, `expense.deleted`) para los resúmenes por día
+    de AN, aunque AN todavía no exista.
+14. Fuera de G: estimados y punto de equilibrio (AN los calcula con el concepto y el check fijo/variable).
+
+## La spec y el ADR tienen que dejar escrito
+- Esquema nuevo (gasto: fecha de pago, monto y moneda del comercio, categoría, concepto, nombre libre, fijo/variable,
+  local o todo el negocio, quién lo cargó) y migración: borrar tablas 0231, renombrar módulo y permiso, sin filas que
+  migrar (verificá de nuevo en PROD con autorización del owner antes de implementar).
+- Cómo la IA empareja el concepto con los conceptos ya usados por el comercio (como `itemId` en Stock) y qué pasa si
+  se equivoca (el dueño lo corrige al confirmar).
+- «Mes en curso» según la zona horaria del comercio; qué pasa al registrar una fecha de un mes pasado (hallazgo a
+  decidir con el owner: con meses congelados, recomendación = no se permite).
+- Cómo se generaliza `module_event` para publicar `expense.*` (mínimo necesario; sin construir Analíticas). Si exige
+  más que eso, decilo como hallazgo.
+- Dónde vive la foto mientras dura el borrador y cómo se descarta.
+- Qué se borra (rutas, tablas, código, textos «Rentabilidad», permiso viejo) sin redirects a rutas borradas.
+- Pruebas mínimas y enfocadas: alta confirmada desde un borrador, concepto reconocido entre dos pagos, edición/borrado
+  bloqueado en mes pasado, permiso (owner sí; staff solo con `expenses`), aislamiento entre comercios, evento
+  publicado. No suites enteras.
+
+## Fuera de alcance
+Analíticas, punto de equilibrio, estimados, Smart Menu, medios de pago y comisiones (ya en N), reparto entre locales,
+comprobantes guardados, gastos recurrentes automáticos.
+
+## Entrega
+`docs/specs/0236-...md` y `docs/adr/0151-...md` en `dev`, con las decisiones del owner citadas. Sin push. Lista de
+hallazgos a decidir aparte, sin escribirlos como decisión del owner.
+```
 
 ## Prompt — encender `MODULE_EVENTS_ENABLED` en PROD (2026-10-16; lanzar cuando el owner lo diga)
 
