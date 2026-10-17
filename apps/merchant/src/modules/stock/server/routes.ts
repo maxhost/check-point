@@ -29,13 +29,14 @@ async function readLocal(businessId: string, request: Request) {
   );
   // Reads remain available while durable consumption retries are pending or fail.
   await retryModuleEvents({
+    eventTypes: ["sale.closed"],
     businessId,
     locationId: location.id,
     budgetMs: 1000,
   }).catch(() => {});
   return {
     locationId: location.id,
-    pending: await pendingSummary(businessId, location.id),
+    pending: await pendingSummary(businessId, location.id, ["sale.closed"]),
   };
 }
 export const routes: readonly ModuleRoute[] = [

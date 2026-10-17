@@ -66,9 +66,14 @@ describe.skipIf(!modulesIntegrationEnabled)(
           group by 1 order by 1`),
       );
       // 0235 moves methods/initialization and both commission tables into core.
-      // POS retains operational orders/payments; profitability retains its three cost tables.
+      // POS retains operational orders/payments; expenses owns concepts, payments and revisions.
       // Mesas no tiene esquema propio (ADR 0141 §6), asi que `tables` no aparece.
       expect(result.rows).toEqual([
+        {
+          schema: "expenses",
+          tables: 3,
+          names: ["concept", "expense", "expense_revision"],
+        },
         {
           schema: "pos",
           tables: 5,
@@ -79,11 +84,6 @@ describe.skipIf(!modulesIntegrationEnabled)(
             "pos_order_item",
             "ticket_settings",
           ],
-        },
-        {
-          schema: "profitability",
-          tables: 3,
-          names: ["fixed_cost", "fixed_cost_allocation", "fixed_cost_period"],
         },
         {
           schema: "recipes",
@@ -100,7 +100,7 @@ describe.skipIf(!modulesIntegrationEnabled)(
         tx.execute<{ schema: string; name: string }>(sql`
         select n.nspname as schema, c.relname as name from pg_namespace n
         join pg_class c on c.relnamespace=n.oid and c.relkind='r'
-        where n.nspname in ('core','pos','profitability')
+        where n.nspname in ('core','pos','expenses')
           and c.relname = any(${textArray(["payment_method", "payment_method_initialization", "commission_revision", "payment_commission"])})
         order by c.relname, n.nspname`),
       );

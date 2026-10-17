@@ -673,6 +673,13 @@
       "when": 1792199447355,
       "tag": "0095_commission_total_precision",
       "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "7",
+      "when": 1792209824323,
+      "tag": "0096_expenses_paid_register",
+      "breakpoints": true
     }
   ]
 }

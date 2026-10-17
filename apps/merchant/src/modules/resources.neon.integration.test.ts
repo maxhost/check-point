@@ -56,8 +56,8 @@ const methods = new Map<string, ModuleResource[]>(),
 beforeAll(async () => {
   world = await seedModuleWorld("P1 commissions");
   other = await seedModuleWorld("P1 other");
-  await enableModules(world, ["profitability"]);
-  await enableModules(other, ["profitability"]);
+  await enableModules(world, ["expenses"]);
+  await enableModules(other, ["expenses"]);
   methods.set(
     world.businessId,
     Object.entries(methodIds).map(([shape, resourceId]) => ({
@@ -369,7 +369,7 @@ describe.skipIf(!modulesIntegrationEnabled)(
         .where(
           and(
             eq(businessModules.businessId, world.businessId),
-            eq(businessModules.moduleId, "profitability"),
+            eq(businessModules.moduleId, "expenses"),
           ),
         );
       const positive = await sale([
@@ -386,7 +386,7 @@ describe.skipIf(!modulesIntegrationEnabled)(
         total: "0.00",
         payments: [],
       });
-      await enableModules(world, ["profitability"]);
+      await enableModules(world, ["expenses"]);
       await drain(positive.eventId!);
       expect(await read(positive.sourceOrderId)).toMatchObject({
         total: "0.00",
@@ -450,14 +450,14 @@ describe.skipIf(!modulesIntegrationEnabled)(
       });
     }, 30000);
     it("onEnable shares rollback with activation and is not rerun by idempotent enable", async () => {
-      await setModuleEnabled(other.businessId, "profitability", {
+      await setModuleEnabled(other.businessId, "expenses", {
         enabled: false,
       });
-      const original = registry.profitability,
+      const original = registry.expenses,
         resourceId = randomUUID();
       let calls = 0,
         fail = true;
-      registry.profitability = {
+      registry.expenses = {
         ...original,
         onEnable: async (tx, { businessId }) => {
           calls++;
@@ -474,7 +474,7 @@ describe.skipIf(!modulesIntegrationEnabled)(
       };
       try {
         await expect(
-          setModuleEnabled(other.businessId, "profitability", {
+          setModuleEnabled(other.businessId, "expenses", {
             enabled: true,
           }),
         ).rejects.toThrow("hook failed");
@@ -490,20 +490,20 @@ describe.skipIf(!modulesIntegrationEnabled)(
           .where(
             and(
               eq(businessModules.businessId, other.businessId),
-              eq(businessModules.moduleId, "profitability"),
+              eq(businessModules.moduleId, "expenses"),
             ),
           );
         expect(state.enabled).toBe(false);
         fail = false;
-        await setModuleEnabled(other.businessId, "profitability", {
+        await setModuleEnabled(other.businessId, "expenses", {
           enabled: true,
         });
-        await setModuleEnabled(other.businessId, "profitability", {
+        await setModuleEnabled(other.businessId, "expenses", {
           enabled: true,
         });
         expect(calls).toBe(2);
       } finally {
-        registry.profitability = original;
+        registry.expenses = original;
       }
     }, 30000);
   },

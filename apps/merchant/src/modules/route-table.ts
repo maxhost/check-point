@@ -40,15 +40,6 @@ export type BeforeDisable = (
   businessId: string,
 ) => Promise<ModuleError | null>;
 
-/** Internal months are first-of-month ISO dates; callback shares the caller's transaction. */
-export type StaffLocationsChange = {
-  businessId: string;
-  personId: string;
-  fromMonth: string;
-  untilMonth: string | null;
-  locationIds: readonly string[];
-};
-
 /** Lo que un modulo aporta a `server-registry.ts`: sus rutas y, si las tiene, sus reglas. */
 export type ModuleServer = {
   routes: readonly ModuleRoute[];
@@ -59,11 +50,6 @@ export type ModuleServer = {
   resourceProviders?: readonly ModuleResourceProvider[];
   beforeDisable?: BeforeDisable;
   eventSubscriptions?: readonly EventSubscription[];
-  /** Maintains existing derived data even when the contributor module is disabled. */
-  staffLocationsChanged?: (
-    tx: DbTransaction,
-    change: StaffLocationsChange,
-  ) => Promise<void>;
 };
 export type ModuleResource = {
   resourceId: string;

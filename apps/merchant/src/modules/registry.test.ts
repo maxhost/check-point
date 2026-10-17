@@ -46,7 +46,7 @@ describe("registro de modulos", () => {
       "recipes",
       "pos",
       "tables",
-      "profitability",
+      "expenses",
     ]);
     expect(moduleById("recipes")?.requires).toEqual(["stock"]);
     expect(dependentsOf("stock").map((m) => m.id)).toEqual(["recipes"]);
@@ -99,6 +99,6 @@ describe("registro de modulos", () => {
     for (const id of ids) expect(shape.test(id), id).toBe(true);
     const all = [...PERMISSIONS, ...ids];
     expect(new Set(all).size).toBe(all.length);
-    expect(ids).toEqual(["stock", "recipes", "pos", "profitability"]);
+    expect(ids).toEqual(["stock", "recipes", "pos", "expenses"]);
   });
 });

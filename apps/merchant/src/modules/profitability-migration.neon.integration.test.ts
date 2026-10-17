@@ -7,9 +7,6 @@ import {
   sessions,
   staffPersons,
   staffLocationPeriods,
-  profitabilityFixedCosts,
-  profitabilityFixedCostPeriods,
-  profitabilityFixedCostAllocations,
 } from "@mi-pasaporte/db/schema";
 import { and, eq, sql } from "drizzle-orm";
 import {
@@ -35,15 +32,13 @@ const laterObjects = sql`select
   (select md5(coalesce(string_agg(t::text,'|' order by t.id),'')) from core.payment_commission t) as payment_commission_hash`;
 
 run(
-  "0231 six-table migration and strict monthly boundaries (isolated DDL)",
+  "0231 historical staff identity migration and retained monthly boundaries (isolated DDL)",
   { timeout: 60000 },
   () => {
     let world: Awaited<ReturnType<typeof staffPeopleWorld>>,
       userId: string,
       personId: string,
-      periodId: string,
-      costId: string,
-      costPeriodId: string;
+      periodId: string;
     beforeAll(async () => {
       world = await staffPeopleWorld();
       userId = await seedMember({
@@ -66,25 +61,6 @@ run(
         })
         .returning();
       periodId = period.id;
-      const [cost] = await getDb()
-        .insert(profitabilityFixedCosts)
-        .values({ businessId: world.business.id, kind: "rent" })
-        .returning();
-      costId = cost.id;
-      const [cp] = await getDb()
-        .insert(profitabilityFixedCostPeriods)
-        .values({
-          businessId: world.business.id,
-          costId,
-          fromMonth: "2026-01-01",
-          label: "Alquiler",
-          monthlyTotal: "100",
-          currencyCode: "COP",
-          minorUnit: 0,
-          distribution: "single",
-        })
-        .returning();
-      costPeriodId = cp.id;
     });
     afterAll(async () => limpiarNegocios([world.business.id], world.users));
 
@@ -136,10 +112,6 @@ run(
           // Replay only the 0086 cost/staff boundary. The later commission objects
           // moved to core in 0235 and remain intact, including the sale header trigger.
           await tx.execute(sql`
-            drop table profitability.fixed_cost_allocation;
-            drop table profitability.fixed_cost_period;
-            drop table profitability.fixed_cost;
-            drop schema profitability;
             drop table core.staff_location_assignment;
             drop table core.staff_location_period;
             drop table core.staff_person
@@ -166,12 +138,14 @@ run(
               .from(staffLocationPeriods)
               .where(eq(staffLocationPeriods.businessId, world.business.id)),
           ).toEqual([]);
+          // Historical 0231 replay still creates empty costs; 0236 retires these tables.
           expect(
-            await tx
-              .select()
-              .from(profitabilityFixedCosts)
-              .where(eq(profitabilityFixedCosts.businessId, world.business.id)),
-          ).toEqual([]);
+            (
+              await tx.execute(
+                sql`select count(*)::int as n from profitability.fixed_cost`,
+              )
+            ).rows,
+          ).toEqual([{ n: 0 }]);
           expect(
             await tx
               .select()
@@ -195,7 +169,7 @@ run(
         laterBefore.rows,
       );
     });
-    it("measures the NULL Infinity loophole and rejects nonfinite dates, malformed months and monetary values", async () => {
+    it("measures the NULL Infinity loophole and retains staff finite-month and permission constraints", async () => {
       const sample = await getDb().execute(
         sql`select extract(day from 'infinity'::date) as day, ((extract(day from 'infinity'::date)=1) is not false) as would_pass`,
       );
@@ -212,36 +186,7 @@ run(
             .set(change)
             .where(eq(staffLocationPeriods.id, periodId)),
         ).rejects.toBeDefined();
-      await expect(
-        getDb()
-          .update(profitabilityFixedCosts)
-          .set({ endMonth: "infinity" })
-          .where(eq(profitabilityFixedCosts.id, costId)),
-      ).rejects.toBeDefined();
-      for (const change of [
-        { fromMonth: "infinity" },
-        { untilMonth: "infinity" },
-        { monthlyTotal: "NaN" },
-        { monthlyTotal: "Infinity" },
-        { monthlyTotal: "-0.01" },
-        { monthlyTotal: "0.25" },
-        { minorUnit: 3 },
-      ])
-        await expect(
-          getDb()
-            .update(profitabilityFixedCostPeriods)
-            .set(change)
-            .where(eq(profitabilityFixedCostPeriods.id, costPeriodId)),
-        ).rejects.toBeDefined();
-      for (const monthlyAmount of ["NaN", "Infinity", "-0.01"])
-        await expect(
-          getDb().insert(profitabilityFixedCostAllocations).values({
-            businessId: world.business.id,
-            periodId: costPeriodId,
-            locationId: world.locations[0],
-            monthlyAmount,
-          }),
-        ).rejects.toBeDefined();
+      // Costs were retired by 0236; money validation now belongs to expenses server integration.
       await expect(
         getDb()
           .update(memberships)

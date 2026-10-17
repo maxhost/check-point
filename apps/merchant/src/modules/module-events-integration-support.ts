@@ -36,7 +36,7 @@ export async function setupModuleEventWorld() {
     );
     await setModuleEnabled(owner.businessId, "pos", { enabled: true });
   }
-  for (const id of ["stock", "recipes", "profitability"])
+  for (const id of ["stock", "recipes", "expenses"])
     await setModuleEnabled(world.businessId, id, { enabled: true });
   const [cash] = await getDb()
     .select()

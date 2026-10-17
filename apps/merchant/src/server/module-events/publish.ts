@@ -1,11 +1,7 @@
 import { and, eq, sql } from "drizzle-orm";
 import type { DbTransaction } from "@mi-pasaporte/db";
-import {
-  moduleEvents,
-  moduleEventDeliveries,
-  moduleResourceVersions,
-} from "@mi-pasaporte/db/schema";
-import { SERVER_MODULES } from "../../modules/server-registry";
+import { moduleEvents, moduleResourceVersions } from "@mi-pasaporte/db/schema";
+import { appendModuleEvent } from "./append";
 import type {
   SaleClosedEvent,
   ResourceVersion,
@@ -159,31 +155,16 @@ export async function publishSaleClosed(
     };
   }
   decodeSaleClosedEvent(payload);
-  const [event] = await tx
-    .insert(moduleEvents)
-    .values({
-      businessId: args.businessId,
-      eventType: "sale.closed",
-      eventVersion: payload.eventVersion,
-      sourceId: args.sourceOrderId,
-      locationId: args.locationId,
-      payload,
-    })
-    .returning({ id: moduleEvents.id });
-  for (const [subscriberId, server] of Object.entries(SERVER_MODULES))
-    for (const subscription of server.eventSubscriptions ?? []) {
-      if (subscription.eventType !== "sale.closed") continue;
-      const eligible = [subscriberId, ...subscription.requiredModules].every(
-        (id) => row.enabled.includes(id),
-      );
-      await tx.insert(moduleEventDeliveries).values({
-        eventId: event.id,
-        subscriberId,
-        state: eligible ? "pending" : "skipped",
-        terminalReason: eligible ? null : "modules_disabled",
-      });
-    }
-  return { eventId: event.id, closedAt: new Date(payload.closedAt) };
+  const { eventId } = await appendModuleEvent(tx, {
+    businessId: args.businessId,
+    eventType: "sale.closed",
+    eventVersion: payload.eventVersion,
+    sourceId: args.sourceOrderId,
+    locationId: args.locationId,
+    payload,
+    enabledModuleIds: row.enabled,
+  });
+  return { eventId, closedAt: new Date(payload.closedAt) };
 }
 
 export type ResourceCapture = {

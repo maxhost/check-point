@@ -3,7 +3,7 @@ import { manifest as stock } from "./stock/manifest";
 import { manifest as recipes } from "./recipes/manifest";
 import { manifest as pos } from "./pos/manifest";
 import { manifest as tables } from "./tables/manifest";
-import { manifest as profitability } from "./profitability/manifest";
+import { manifest as expenses } from "./expenses/manifest";
 
 /**
  * Spec 0210 / 0216 — ADR 0138 §1 y ADR 0139 §3 — EL REGISTRO DE MANIFIESTOS: una de las tres
@@ -21,7 +21,7 @@ export const MODULES: readonly ModuleManifest[] = [
   recipes,
   pos,
   tables,
-  profitability,
+  expenses,
 ];
 
 export function moduleById(id: unknown): ModuleManifest | null {
