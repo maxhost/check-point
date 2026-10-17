@@ -311,7 +311,25 @@ export async function readInbox(
 ): Promise<AnalyticsInboxResponse> {
   const policy = options.policy ?? ANALYTICS_POLICY;
   return withDbTransaction(async (tx) => {
-    await lockAnalyticsBusiness(tx, businessId);
+    if (!(await lockAnalyticsBusiness(tx, businessId, true))) {
+      const [business] = await tx
+        .select({ timezone: businesses.timezone })
+        .from(businesses)
+        .where(eq(businesses.id, businessId));
+      if (!business)
+        fail(404, "business_not_found", "No encontramos el negocio.");
+      // Busy snapshots have no exposure/expiry side effects and never serve stale content.
+      return {
+        contractVersion: 2,
+        policyVersion: policy.version,
+        timezone: business.timezone,
+        state: "preparing",
+        preparedAt: null,
+        nextReminderAt: null,
+        refreshAfterMs: policy.operation.fallbackWaitMs,
+        cards: [],
+      };
+    }
     return readInTransaction(tx, businessId, viewer, now, policy);
   });
 }
