@@ -17,7 +17,7 @@ import { localDay } from "@mi-pasaporte/domain/analytics/date";
 import { selectCards } from "@mi-pasaporte/domain/analytics/weights";
 import type {
   CardCandidate,
-  InboxCard,
+  LegacyInboxCard as InboxCard,
 } from "@mi-pasaporte/domain/analytics/types";
 import {
   AnalyticsError,
