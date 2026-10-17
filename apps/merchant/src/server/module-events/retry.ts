@@ -1,11 +1,8 @@
-import { paymentStorageReady } from "../business/storage";
 import { randomUUID } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { getDb, withDbTransaction, type DbTransaction } from "@mi-pasaporte/db";
 import { moduleEvents, moduleEventDeliveries } from "@mi-pasaporte/db/schema";
 import { SERVER_MODULES } from "../../modules/server-registry";
-import { commissionSubscriptions } from "../business/commission-history";
-import { historicalHandlerKey } from "../business/historical-handler";
 import { decodeSaleClosedEvent } from "./decode";
 export type RetryOptions = {
   businessId?: string;
@@ -148,26 +145,9 @@ export async function applyClaimedDelivery(
     .select()
     .from(moduleEvents)
     .where(eq(moduleEvents.id, delivery.event_id));
-  const declared = SERVER_MODULES[
+  const subscription = SERVER_MODULES[
     delivery.subscriber_id
   ]?.eventSubscriptions?.find((s) => s.eventType === event.eventType);
-  // Existing unrelated deliveries retain their original query budget. Only the
-  // migrated capability or a missing producer needs historical dispatch metadata.
-  const compatibility =
-    !declared ||
-    (declared.resourceType === "payment_method" &&
-      declared.slot === "commission");
-  let key: string | null = null;
-  if (compatibility) {
-    await paymentStorageReady(tx);
-    key = await historicalHandlerKey(
-      tx,
-      delivery.subscriber_id,
-      event.eventType,
-    );
-  }
-  const subscription =
-    key === "commission_snapshot" ? commissionSubscriptions[0] : declared;
   if (!subscription) throw new Error("Subscriber unavailable");
   await subscription.handler(tx, {
     id: event.id,

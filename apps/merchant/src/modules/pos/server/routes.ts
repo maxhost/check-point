@@ -1,5 +1,4 @@
 import { paymentRoutes } from "./payment-routes";
-import { initializePaymentMethods } from "./payment-methods";
 import { paymentResourceProviders } from "./payment-resources";
 import { NextResponse } from "next/server";
 import {
@@ -228,6 +227,5 @@ const routes: readonly ModuleRoute[] = [
 export const server: ModuleServer = {
   routes,
   beforeDisable: posBeforeDisable,
-  onEnable: initializePaymentMethods,
   resourceProviders: paymentResourceProviders,
 };

@@ -15,7 +15,7 @@ import {
   dropPosWorld,
 } from "./pos/server/pos-integration-support";
 import { closeWithCash } from "./pos/server/pos-payment-integration-support";
-import { initializePaymentMethods } from "./pos/server/payment-catalog";
+import { initializePaymentMethods } from "../server/business/payment-catalog";
 import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { getDb, withDbTransaction } from "@mi-pasaporte/db";

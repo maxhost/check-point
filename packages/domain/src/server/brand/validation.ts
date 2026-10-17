@@ -1,6 +1,3 @@
-import { isIanaTimezone } from "../timezone";
-import { isSupportedCurrency } from "../../lib/currencies";
-import { validateVatPatch } from "./vat";
 import { BrandError, colorPattern, type LogoAction } from "./core";
 
 function nonEmpty(value: unknown, field: string) {
@@ -21,10 +18,7 @@ function color(value: unknown, field: string) {
   return value.toUpperCase();
 }
 
-export function validateBrandInput(
-  value: unknown,
-  legacyBusinessFields = false,
-) {
+export function validateBrandInput(value: unknown) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new BrandError(422, "Los datos de marca no son válidos.");
   }
@@ -61,7 +55,6 @@ export function validateBrandInput(
     );
   }
   if (
-    !legacyBusinessFields &&
     [
       "timezone",
       "currencyCode",
@@ -74,24 +67,7 @@ export function validateBrandInput(
       422,
       "La configuración regional y fiscal se gestiona en Negocio.",
     );
-  const regional: { timezone?: string; currencyCode?: string } = {};
-  let vat = {} as ReturnType<typeof validateVatPatch>;
-  if (legacyBusinessFields) {
-    if (input.timezone !== undefined) {
-      if (typeof input.timezone !== "string" || !isIanaTimezone(input.timezone))
-        throw new BrandError(422, "La zona horaria no es válida.");
-      regional.timezone = input.timezone;
-    }
-    if (input.currencyCode !== undefined) {
-      if (!isSupportedCurrency(input.currencyCode))
-        throw new BrandError(422, "La moneda no es válida.");
-      regional.currencyCode = input.currencyCode;
-    }
-    vat = validateVatPatch(input);
-  }
   return {
-    regional,
-    vat,
     name: nonEmpty(input.name, "El nombre"),
     brandPrimaryColor: color(input.brandPrimaryColor, "El color primario"),
     brandComplementaryColor: color(

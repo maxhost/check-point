@@ -1,4 +1,3 @@
-import { paymentStorageReady } from "../../../server/business/storage";
 import { freezeSaleCommission } from "../../../server/business/commission-close";
 import { captureSaleResources } from "../../../server/module-events/publish";
 import {
@@ -223,12 +222,7 @@ export async function closePosOrder(
           settlement.collected
       )
         throw new Error("Accreditation net conflict");
-      const coreCommission = await paymentStorageReady(tx);
-      const paymentsMetadata = paymentMetadata(
-        settlement,
-        methods,
-        coreCommission ? "core" : "pos",
-      );
+      const paymentsMetadata = paymentMetadata(settlement, methods, "core");
       const storedSettlement = {
         ...settlement,
         payments: settlement.payments.map((payment) => ({
@@ -244,7 +238,7 @@ export async function closePosOrder(
         id,
         settlement,
         methods,
-        coreCommission ? "core" : "pos",
+        "core",
       );
 
       if (!row.locationId)
@@ -253,16 +247,13 @@ export async function closePosOrder(
           "location_required",
           "La orden necesita un local válido.",
         );
-      const capture = coreCommission
-        ? await captureSaleResources(tx, {
-            businessId: business.id,
-            settlement,
-            lines,
-          })
-        : undefined;
+      const capture = await captureSaleResources(tx, {
+        businessId: business.id,
+        settlement,
+        lines,
+      });
       const event = await publishSaleClosed(tx, {
         capture,
-        coreCommission,
         businessId: business.id,
         sourceOrderId: id,
         locationId: row.locationId,
@@ -276,17 +267,16 @@ export async function closePosOrder(
           quantity,
         })),
       });
-      if (coreCommission)
-        await freezeSaleCommission(tx, {
-          businessId: business.id,
-          sourceProviderId: "pos",
-          sourceOrderId: id,
-          locationId: row.locationId,
-          settlement,
-          paymentsMetadata,
-          capture: capture!,
-          eventId: event?.eventId ?? null,
-        });
+      await freezeSaleCommission(tx, {
+        businessId: business.id,
+        sourceProviderId: "pos",
+        sourceOrderId: id,
+        locationId: row.locationId,
+        settlement,
+        paymentsMetadata,
+        capture,
+        eventId: event?.eventId ?? null,
+      });
       const closedAt = event?.closedAt ?? now;
       const [closed] = await tx
         .update(posOrders)

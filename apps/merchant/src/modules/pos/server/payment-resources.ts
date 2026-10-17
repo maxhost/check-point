@@ -1,5 +1,3 @@
-import { paymentStorageReady } from "../../../server/business/storage";
-import { legacyPaymentTables } from "./payment-legacy";
 import { assertFinancialSettlement } from "@mi-pasaporte/domain/financial/validate";
 import { and, eq, inArray } from "drizzle-orm";
 import { posOrders } from "@mi-pasaporte/db/schema";
@@ -7,46 +5,6 @@ import type { ModuleResourceProvider } from "../../route-table";
 
 /** Public metadata only, available to authorized consumers even when POS is off. */
 export const paymentResourceProviders: readonly ModuleResourceProvider[] = [
-  {
-    resourceType: "payment_method",
-    list: async (tx, businessId) => {
-      if (await paymentStorageReady(tx)) return [];
-      const rows = await tx
-        .select()
-        .from(legacyPaymentTables.methods)
-        .where(eq(legacyPaymentTables.methods.businessId, businessId));
-      return rows.map((row) => ({
-        resourceId: row.id,
-        metadata: {
-          name: row.name,
-          chargeShape: row.chargeShape,
-          status: row.status,
-          isCash: row.isCash,
-        },
-      }));
-    },
-    read: async (tx, businessId, ids) => {
-      if ((await paymentStorageReady(tx)) || !ids.length) return [];
-      const rows = await tx
-        .select()
-        .from(legacyPaymentTables.methods)
-        .where(
-          and(
-            eq(legacyPaymentTables.methods.businessId, businessId),
-            inArray(legacyPaymentTables.methods.id, [...ids]),
-          ),
-        );
-      return rows.map((row) => ({
-        resourceId: row.id,
-        metadata: {
-          name: row.name,
-          chargeShape: row.chargeShape,
-          status: row.status,
-          isCash: row.isCash,
-        },
-      }));
-    },
-  },
   {
     resourceType: "sale_settlement",
     read: async (tx, businessId, ids) => {

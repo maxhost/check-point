@@ -5,7 +5,6 @@ import {
   settlementMetadata,
   type SaleCommissionDTO,
 } from "./commission-read-support";
-import { businessStorageReady } from "./storage";
 import { withDbTransaction } from "@mi-pasaporte/db";
 import {
   locations,
@@ -105,12 +104,6 @@ export async function readSaleCommissions(
     }
     // Legacy events do not carry a producer field. Match only the frozen producer
     // from existing payment snapshots; otherwise do not guess a foreign source.
-    if (!(await businessStorageReady(tx)))
-      throw new BusinessError(
-        503,
-        "business_unavailable",
-        "La actualización de Negocio está en curso.",
-      );
     const origins = await tx
       .select()
       .from(historicalEventHandlers)

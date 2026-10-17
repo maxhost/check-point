@@ -1,4 +1,3 @@
-import { resultingBrandVat } from "./brand/vat";
 import { randomUUID } from "node:crypto";
 import { and, asc, eq } from "drizzle-orm";
 import { sql } from "drizzle-orm";
@@ -199,9 +198,8 @@ export async function saveBrand(
   value: unknown,
   /** Spec 0086 §10: ver {@link ownerBusiness}. Opcional = comportamiento viejo. */
   businessId?: string,
-  legacyBusinessFields = false,
 ) {
-  const input = validateBrandInput(value, legacyBusinessFields);
+  const input = validateBrandInput(value);
   const business = await ownerBusiness(userId, businessId);
   if (!business) throw new BrandError(403, "No tienes un negocio como owner.");
 
@@ -256,9 +254,6 @@ export async function saveBrand(
     .update(businesses)
     .set({
       name: input.name,
-      ...(legacyBusinessFields
-        ? { ...input.regional, ...resultingBrandVat(business, input.vat) }
-        : {}),
       brandPrimaryColor: input.brandPrimaryColor,
       brandComplementaryColor: input.brandComplementaryColor,
       brandAccentColor: input.brandAccentColor,
