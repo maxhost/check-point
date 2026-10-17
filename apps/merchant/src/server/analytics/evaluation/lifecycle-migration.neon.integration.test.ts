@@ -11,6 +11,9 @@ const business = uuid("analytics-lifecycle-legacy-business");
 const row = (id: string) => uuid("analytics-lifecycle-legacy:" + id);
 const prepare = process.env.ANALYTICS_LIFECYCLE_LEGACY_PREPARE === "1";
 const verify = process.env.ANALYTICS_LIFECYCLE_LEGACY_VERIFY === "1";
+// Explicit recovery oracle: the first post run executed global cleanup before this file.
+const afterCleanup =
+  process.env.ANALYTICS_LIFECYCLE_VERIFY_AFTER_CLEANUP === "1";
 describe.skipIf(!permisosIntegrationEnabled || (!prepare && !verify))(
   "0101 controlled legacy transition, two explicit wrapper phases",
   () => {
@@ -73,13 +76,15 @@ describe.skipIf(!permisosIntegrationEnabled || (!prepare && !verify))(
       30000,
     );
     it.runIf(verify)(
-      "preserves identity/age/ignored periods and money without inventing resolution",
+      afterCleanup
+        ? "verifies the existing post-transition state after the recorded cleanup interference"
+        : "preserves identity/age/ignored periods and money without inventing resolution",
       async () => {
         const db = getDb();
         const contents = await db.execute(
           sql`select id,card_key,subject_key,day::text,episode_started_at,expires_at,policy_version,period from analytics.card_candidate where business_id=${business} order by card_key`,
         );
-        expect(contents.rows).toHaveLength(6);
+        expect(contents.rows).toHaveLength(afterCleanup ? 5 : 6);
         expect(contents.rows.find((c) => c.card_key === "8")).toMatchObject({
           id: row("stock-new"),
           card_key: "8",
@@ -93,9 +98,20 @@ describe.skipIf(!permisosIntegrationEnabled || (!prepare && !verify))(
             ),
           ).toISOString(),
         ).toBe("2026-10-13T05:00:00.000Z");
-        const oldOrigin = contents.rows.find(
-          (c) => c.id === row("cost-origin-only"),
-        )!;
+        const oldOrigin = afterCleanup
+          ? (
+              await db.execute(
+                sql`select status,remind_at,episode_started_at,expires_at from analytics.card_state where business_id=${business} and candidate_id=${row("cost-origin-only")}`,
+              )
+            ).rows[0]
+          : contents.rows.find((c) => c.id === row("cost-origin-only"))!;
+        if (afterCleanup) {
+          expect(oldOrigin.status).toBe("expired");
+          expect(oldOrigin.remind_at).toBeNull();
+          expect(
+            contents.rows.some((c) => c.id === row("cost-origin-only")),
+          ).toBe(false);
+        }
         expect(
           new Date(String(oldOrigin.episode_started_at)).toISOString(),
         ).toBe("2026-01-01T05:00:00.000Z");
@@ -125,10 +141,15 @@ describe.skipIf(!permisosIntegrationEnabled || (!prepare && !verify))(
           status: "open",
           context: { legacyOriginalStatus: "accepted" },
         });
-        for (const key of ["5", "6", "9"])
-          expect(controls.rows.find((c) => c.card_key === key)?.status).toBe(
-            "open",
-          );
+        for (const id of [
+          "cost-unknown",
+          "cost-invalid-origin",
+          "margin-new",
+          "count",
+        ])
+          expect(
+            controls.rows.find((c) => c.candidate_id === row(id))?.status,
+          ).toBe("open");
         expect(JSON.stringify(controls.rows)).not.toContain("LEGACY-CONTENT");
         expect(JSON.stringify(controls.rows)).not.toContain(
           "NEVER-COPY-TO-CONTROL",
@@ -141,7 +162,8 @@ describe.skipIf(!permisosIntegrationEnabled || (!prepare && !verify))(
           "LIFECYCLE_LEGACY_VERIFIED",
           JSON.stringify({
             business,
-            remainingContent: 6,
+            remainingContent: afterCleanup ? 5 : 6,
+            afterRecordedCleanup: afterCleanup,
             controls: controls.rows.length,
             metricAmountMinor: 1234,
           }),

@@ -18,6 +18,7 @@ import {
   lockAnalyticsBusiness,
 } from "../lifecycle";
 import * as actions from "../actions";
+import { evaluateBusiness } from "./index";
 const business = randomUUID(),
   other = randomUUID(),
   actor = randomUUID();
@@ -141,6 +142,43 @@ describe.skipIf(!permisosIntegrationEnabled)(
       await getDb()
         .delete(businesses)
         .where(sql`${businesses.id} in (${business},${other})`);
+    }, 30000);
+    it("does not queue reads or repeated evaluations behind an in-flight business writer", async () => {
+      await clear();
+      const item = await makeCard();
+      let release!: () => void, ready!: () => void;
+      const readyPromise = new Promise<void>((r) => (ready = r));
+      const releasePromise = new Promise<void>((r) => (release = r));
+      let committed = false;
+      const holding = withDbTransaction(async (tx) => {
+        await lockAnalyticsBusiness(tx, business);
+        ready();
+        await releasePromise;
+      }).then(() => {
+        committed = true;
+      });
+      await readyPromise;
+      try {
+        const result = await readInbox(business, viewer, now);
+        expect(committed).toBe(false);
+        expect(result).toMatchObject({
+          state: "preparing",
+          cards: [],
+          nextReminderAt: null,
+          refreshAfterMs: ANALYTICS_POLICY.operation.fallbackWaitMs,
+          timezone: "America/Guayaquil",
+          policyVersion: ANALYTICS_POLICY.version,
+        });
+        expect(await evaluateBusiness(business, now)).toBe(false);
+        expect(committed).toBe(false);
+      } finally {
+        release();
+        await holding;
+      }
+      expect((await control(item.id)).shownDays).toBe(0);
+      expect((await readInbox(business, viewer, now)).cards[0].id).toBe(
+        item.id,
+      );
     }, 30000);
     it("keeps identity across midnight and does not invalidate a version by repeated exposure", async () => {
       await clear();
@@ -382,7 +420,8 @@ describe.skipIf(!permisosIntegrationEnabled)(
       await readyPromise;
       try {
         const result = await cleanupInbox(now, { batchSize: 1 });
-        expect(result.deleted).toBe(1);
+        // Cleanup is global; assert our two IDs below, not an unrelated global count.
+        expect(result.deleted).toBeGreaterThanOrEqual(1);
         expect(result.skipped).toBeGreaterThanOrEqual(1);
         expect(
           await getDb()

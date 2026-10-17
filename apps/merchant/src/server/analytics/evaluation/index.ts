@@ -54,7 +54,7 @@ export async function evaluateBusiness(
 ): Promise<boolean> {
   const connecting = performance.now();
   return withDbTransaction(async (tx) => {
-    await lockAnalyticsBusiness(tx, businessId);
+    if (!(await lockAnalyticsBusiness(tx, businessId, true))) return false;
     options.trace?.("transaction_connection", performance.now() - connecting);
     const claimStarted = performance.now();
     const budget = Math.max(1, Math.floor(options.budgetMs ?? 20_000));

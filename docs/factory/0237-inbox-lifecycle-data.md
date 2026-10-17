@@ -57,3 +57,21 @@ Neones focales escritos, todavía no ejecutados a este checkpoint: transición p
 ### Corrección del origen sin timestamp antes de DB
 
 El hash `42698d…` anterior tampoco se aplicó. Lectura QA encontró que un hecho 5/9 con originDay válido y sin originObservedAt podía rejuvenecerse con el día reciente de preparación. La transición ahora usa esa fecha de origen en la zona del comercio antes de c.day, validando calendario/timestamp con pg_input_is_valid además del formato. SQL SHA-256 `dfb581e66cddd45ddcad7b400de57db86f372cf4de53c57bc9d7aaf9625f191b`. La fixture añade origen antiguo sin timestamp y origen imposible 2026-02-31; verifica ancla/caducidad desde el primero y fallback prudente del segundo. Todavía sin ninguna operación DB ni aplicación de 0101: pendiente lectura QA de este SQL final.
+
+
+### Primera aplicación real de 0101 y fallo de aislamiento entre fixtures
+
+Fuente exacta `f33a99f7afb6e656b79d84ef55c2f7ee0c3d7483`, Node24.20.0, solo replay privado migration.env por tools/neon-test.sh. SQL dfb581… aplicado una vez EXIT0; no editarlo en adelante. Antes, prepare1PASS/verify1SKIP (otra fase no seleccionada), fixture sintética propia10candidatas/5controles/métrica1234. Journal completo SHA256 `d55e693032f1dc4a0ead296946f2ca81f4ece58af5433dc576f573bbb7935225`, copia externa `/private/tmp/checkpass-analytics-perf/lifecycle-journal-before-0101.json`; finally restauró bytes exactos. El prepare quedó en transcript de herramientas y resumen explícitamente no crudo `/private/tmp/analytics-lifecycle-0101-pre-summary.log`.
+
+Primer post `/private/tmp/analytics-lifecycle-0101-post.log`: **7PASS/2FAIL/1SKIP**, conservado. Vitest ejecutó servicios antes de verificar legado aunque no hubo paralelismo. Cleanup global legítimamente borró el hecho sintético de enero, vencido en abril, además de la fixture disponible: el test de servicios esperaba deleted1 y recibió2; el verificador posterior esperaba6contenidos y recibió5. Los otros siete servicios pasaron, incluyendo rollback y carrera CAS. No se observó ni se afirma haber observado6contenidos antes de cleanup. No se modifica SQL/ledger ni se repite transición para esconder este fallo.
+
+La comprobación posterior ofrece un modo de recuperación explícito ANALYTICS_LIFECYCLE_VERIFY_AFTER_CLEANUP=1: exige cinco contenidos y control original de enero con status expired, inicio enero y vencimiento abril, contenido ausente y métricas intactas. Certifica estado posterior existente y efecto del cleanup registrado; no se lo llama replay de migración. Se ejecutará primero, con teardown de su comercio, antes de servicios en wrapper separado.
+
+
+### Verificación posterior y servicio no bloqueante
+
+Fuente4f064020: recovery verify1PASS/1faseSKIP en `/private/tmp/analytics-lifecycle-0101-recovery-verify.log`: origenJan1/expiryApr1 del control exacto, status expired/remindAtnull y contenido ausente; otroscinco contenidos y métrica1234 preservados. Teardown propio completado. Es estado posterior tras interferencia registrada; el FAIL inicial continúa documentado.
+
+Fuente `fd5e6ae1`:9/9 servicios Neon PASS sin skips/retries en `/private/tmp/analytics-lifecycle-services-fd5e6ae1.log`, incluyendo fairness con identidades propias y nuevo caso de lectura/admisión no bloqueante. readInbox usa trybusinesslock: si ocupado devuelve preparing/cardsvacías/nextReminderAtnull/snapshotvigente/TZ, sin exposición ni contenido viejo. evaluateBusiness ocupado devuelvefalse y no encola otra evaluación. El caso real sostiene businesslock, observa ambos resultados antes de liberar, shownDays0; no es benchmark ni afirmaPASSrendimiento. SQL0101dfb/journalintactos; no nueva aplicación ni alteración de migración.
+
+Checkpoint técnico de etiquetas: seis claves action_view_day/view_calculation/view_customer/view_campaign_results/edit_product_price/view_modules centralizadas y validadas en config.texts, para resolver acciones con el mismo snapshot (B conserva sus permisos/hrefs/declaraciones). A3 funcional completo aún pendiente.

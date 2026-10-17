@@ -233,6 +233,12 @@ export const ANALYTICS_POLICY_CONFIG: AnalyticsPolicyConfig = {
     },
   ],
   texts: {
+    action_view_day: "Ver el día",
+    action_view_calculation: "Ver el cálculo",
+    action_view_customer: "Ver cliente",
+    action_view_campaign_results: "Ver resultados",
+    action_edit_product_price: "Revisar precio",
+    action_view_modules: "Ver módulos",
     periodDay: "Datos del {{from}}",
     periodRange: "Datos del {{from}} al {{to}}",
   },
