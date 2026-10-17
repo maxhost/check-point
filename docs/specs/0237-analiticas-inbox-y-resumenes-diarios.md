@@ -203,8 +203,9 @@ alimentan**: sin POS no hay ventas, sin Recetas no hay costo; Analíticas lo dic
 
 `packages/domain/src/analytics/weights.ts` concentra los coeficientes iniciales (se ajustan con uso, ADR0152 §3):
 
-- **Plata** `p = min(3, monto en juego / venta diaria promedio de 28 días)`; sin ventas, `monto / 20 USD`
-  equivalentes en la moneda del comercio. Tarjetas sin monto usan el `p` fijo de la tabla de §3.4.
+- **Plata** `p = min(3, monto en juego / venta diaria promedio de 28 días)`; sin ventas, `monto / 20`
+  unidades mayores de la moneda del comercio, sin conversión. Aclaración expresa del owner durante AN-1
+  (2026-10-17): «Sí, 20 en la moneda del comercio». Tarjetas sin monto usan el `p` fijo de la tabla de §3.4.
 - **Urgencia** `u ∈ [0,2; 1]`, por tarjeta (§3.4).
 - **Novedad** `n`: 1 si es nueva o su `fingerprint` cambió de forma material; si ya se mostró igual, `0,6^días
   mostrada`; **0** si se descartó o aceptó y el `fingerprint` no cambió. Material = otro sujeto o monto en otro
