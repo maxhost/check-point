@@ -174,9 +174,22 @@ une a las ventas por (ciudad del local, día local); no se copia a cada venta.
   siguiente) | máxima | mínima | lluvia | condición | fuente | cuándo se tomó. Owner: los dos, «nos sirve para
   optimizarlo porque uno puede ser que diga lluvia en la mañana y medimos al día siguiente si realmente llovió». El
   pronóstico no se puede recuperar después: se guarda en el momento.
-- **Fuente de clima:** candidata WeatherAPI.com (plan gratis declarado con uso comercial; **verificar sus términos y
-  que dé observado del día anterior antes de implementar**). Open-Meteo gratis queda descartado: sus términos (leídos el
-  2026-10-16) dicen «You may only use the free API services for non-commercial purposes».
+- **Fuente de clima: Visual Crossing, plan gratis** (owner, 2026-10-16). Verificado por Claude el 2026-10-16 en su
+  página de planes y sus términos: uso comercial sí; 1.000 registros por día (2 por ciudad por día ≈ 500 ciudades);
+  atribución obligatoria en el plan gratis; «The data produced by the Service Components may be stored in any
+  database». Restricción: sin plan Enterprise no se comparte el dato crudo con terceros; la v1 no le muestra clima al
+  comerciante, y **antes de mostrarlo en una tarjeta se revisan sus términos** (permiten resultados derivados propios,
+  no repetir el pronóstico crudo). Su API no se probó (exige clave): la spec la prueba primero.
+  - **Plan B: Open-Meteo Standard (pago).** Datos con licencia CC BY 4.0; el gratis es solo no comercial (términos
+    leídos el 2026-10-16: «You may only use the free API services for non-commercial purposes»); precio no visible en
+    su página. Probado para Cuenca con la API gratis de evaluación.
+  - **Descartado: WeatherAPI.com.** Gratis comercial y 100.000 llamadas por mes, pero su histórico «is made up of
+    forecast data and not from actuals»: el observado sería otro pronóstico y no sirve para medir si el pronóstico
+    acertó. Además sus términos limitan guardar pronósticos («forecast data — maximum 24 hours»).
+  - **«Observado» = estimación posterior del modelo, no una estación:** en Cuenca no hay observación de estación
+    disponible (la estación Mariscal Lamar dejó de reportar a NOAA el 2023-11-03, listado ISD leído el 2026-10-16).
+    Igual mide cuánto se equivoca el pronóstico de la mañana. No hay comparación independiente de precisión entre
+    proveedores para esta zona.
 - **`eventos_calendario`:** fecha | alcance (país, provincia, zona o ciudad) | tipo (feriado, feriado trasladado,
   pago — décimos, quincena —, clases, fecha comercial, **deportivo**) | nombre | fuente (regla o curado).
   - Feriados: reglas nacionales con traslado (librería `holidays`) + **curado** con feriados locales y decretos
