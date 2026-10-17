@@ -329,14 +329,35 @@ export function buildCandidates(
                 ...card.context,
                 calculationKey: canonicalContext({
                   parameters: Object.fromEntries(
-                    Object.entries(rule.parameters).filter(
-                      ([key]) => !["urgency", "fixedPlata"].includes(key),
+                    Object.entries(rule.parameters).filter(([key]) =>
+                      (
+                        ({
+                          goal: ["closingPhaseDays"],
+                          expenses: ["missingFixedDays"],
+                          margin: [
+                            "salesDays",
+                            "minimumSales",
+                            "medianRatio",
+                            "impactDays",
+                          ],
+                          "unknown-cost": [
+                            "salesDays",
+                            "minimumCoverage",
+                            "impactDays",
+                          ],
+                        })[
+                          rule.handler as
+                            "goal" | "expenses" | "margin" | "unknown-cost"
+                        ] ?? []
+                      ).includes(key),
                     ),
                   ),
-                  ...(["goal", "expenses"].includes(rule.handler)
+                  ...(rule.handler === "goal"
                     ? { finance: policy.finance }
                     : {}),
-                  materialBucketBase: policy.weights.materialBucketBase,
+                  ...(rule.handler !== "expenses"
+                    ? { materialBucketBase: policy.weights.materialBucketBase }
+                    : {}),
                 }),
               },
             }

@@ -26,6 +26,7 @@ import {
 } from "@mi-pasaporte/domain/analytics/history";
 import { summarizeCustomerPromoHistory } from "@mi-pasaporte/domain/analytics/customer-promo-history";
 import { summarizeStockHistory } from "@mi-pasaporte/domain/analytics/stock-history";
+import { validDay } from "@mi-pasaporte/domain/analytics/date";
 import { calculateGoal } from "@mi-pasaporte/domain/analytics/cards/index";
 export class AnalyticsError extends Error {
   constructor(
@@ -65,7 +66,13 @@ export function inputStatement(
   now = new Date(),
   locationId?: string,
   policy: AnalyticsPolicy = ANALYTICS_POLICY,
+  originDayOverride?: string,
 ) {
+  if (originDayOverride && !validDay(originDayOverride))
+    throw new Error("Día factual inválido.");
+  const today = originDayOverride
+    ? sql`${originDayOverride}::date`
+    : sql`(${now.toISOString()}::timestamptz at time zone timezone)::date`;
   const windows = policyWindows(policy);
   const revenueDays = Math.max(windows.recentDays, windows.sameWeekdays * 7);
   const factIds = policy.rules
@@ -78,7 +85,7 @@ export function inputStatement(
       )})`
     : sql`false`;
   const location = locationId ? sql`and m.location_id=${locationId}` : sql``;
-  return sql`with b as (select id,currency_code,timezone,(${now.toISOString()}::timestamptz at time zone timezone)::date today from core.business where id=${businessId}),
+  return sql`with b as (select id,currency_code,timezone,${today} today from core.business where id=${businessId}),
     account_money as materialized (select m.location_id,m.day,m.metric,m.dimension_kind,m.dimension_id,m.currency_code,m.minor_unit,m.amount_minor,m.count from analytics.daily_metric m,b where m.business_id=${businessId} and m.metric in ('revenue','expense_fixed','expense_variable') and m.day<=b.today ${location}),
     same_days as (select distinct m.day from account_money m,b where m.metric='revenue' and (m.count>0 or m.amount_minor>0) and m.day<b.today and extract(dow from m.day)=extract(dow from b.today) order by m.day desc limit ${windows.sameWeekdays}),
     fixed_months as (select (max(m.day) filter(where m.amount_minor>0))::date as day,m.dimension_id,sum(m.amount_minor)::text amount,m.currency_code,m.minor_unit,

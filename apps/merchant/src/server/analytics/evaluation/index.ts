@@ -13,6 +13,7 @@ import {
   carryFactCandidate,
   restoreFactCandidates,
   needsFactOriginSnapshot,
+  factOriginDay,
 } from "@mi-pasaporte/domain/analytics/cards/stock";
 import { buildCustomerPromoCandidates } from "@mi-pasaporte/domain/analytics/cards/customer-promo";
 import { buildCandidates } from "@mi-pasaporte/domain/analytics/cards/index";
@@ -237,6 +238,11 @@ export async function evaluateBusiness(
                 new Date(fact.occurredAt),
                 undefined,
                 policy,
+                factOriginDay(
+                  contextRecord(state.context),
+                  fact,
+                  input.timezone,
+                ),
               ),
             )
           ).rows[0],
