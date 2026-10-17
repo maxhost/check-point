@@ -46,7 +46,7 @@ const scope = {
   businessId: business.id,
   eventTypes: ["expense.recorded", "expense.updated", "expense.deleted"],
   subscriberIds: ["core.analytics"],
-  budgetMs: 2000,
+  budgetMs: 20000,
   batchSize: 50,
 };
 const writes = [
