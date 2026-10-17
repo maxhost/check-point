@@ -94,6 +94,7 @@ export async function setupLifecycle(page: Page) {
   const fixture = {
     inbox: lifecycleEnvelope([informative, actionable]),
     reads: 0,
+    holdRead: null as Promise<void> | null,
     writes: [] as { decision: string; body: Record<string, unknown> }[],
     nextError: null as { status: number; code: string; error: string } | null,
   };
@@ -101,7 +102,9 @@ export async function setupLifecycle(page: Page) {
     const request = route.request();
     if (request.method() === "GET") {
       fixture.reads += 1;
-      return route.fulfill({ json: fixture.inbox });
+      const snapshot = structuredClone(fixture.inbox);
+      await fixture.holdRead;
+      return route.fulfill({ json: snapshot });
     }
     const parts = new URL(request.url()).pathname.split("/");
     const id = parts.at(-2);
