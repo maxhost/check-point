@@ -381,7 +381,7 @@ AN-3 suma clientes y promos. «Cuánto ahorraste» no tiene medición en la v1 (
     de los intervalos entre esos días y ≥ mediana + 7; última visita en 90 días → «Juan solía venir cada 12 días.
     Su última visita fue hace 25 días.» Para esta tarjeta, varias visitas en la misma fecha local cuentan como
     un solo día visitado; las operaciones y sus importes se conservan completos (owner, 2026-10-17).
-    `p` = gasto promedio por día visitado × días de visita esperados perdidos del mes. Acción: mandar cupón si Marketing permite uno a un cliente; si no, ver cliente (verificar, H5).
+    `p` = gasto promedio por día visitado × días de visita esperados perdidos del mes. Acción: «Ver cliente»; H5 verificado en AN-3: Marketing no ofrece envío manual individual.
   - **12 Resultado de promo,** el día después de `ends_at` o de pasar a `ended`: «El cupón 20% te costó $30 en
     descuentos y vino con $140 en ventas en los mismos tickets.» Sin decir que el cupón las causó. Acción: ver
     resultados de la campaña (existente).
@@ -414,7 +414,7 @@ AN-1:
   cobertura < 80%.
 - [x] Histórico con los 5 períodos y filtro de local; comparativa anual oculta sin período previo completo.
 - [x] Clima de Cuenca (pronóstico y observado, proveedor simulado) y calendario de Ecuador guardados por las rutas
-  internas; nada visible. Prueba real de API diferida a AN-3 por el owner; clave local disponible según su reporte.
+  internas; nada visible. Prueba real de API cerrada en AN-3: una petición Cuenca, queryCost=2, forecast/observed persistidos.
 - [ ] Medición en rama Neon (§Pruebas 9) dentro del criterio. **Diferida por el owner** al cerrar AN-1 local:
   último frío 2.082,39 ms; no cumple ≤1 s.
 - [x] Aislamiento: comercio B no ve ni toca tarjetas, histórico ni locales de A; permiso `analytics` respetado.
@@ -424,7 +424,12 @@ cerrar esto e integrarlo en main local para poder avanzar al AN-2». Se acepta A
 el requisito de rendimiento conserva su umbral y queda pendiente, sin declararlo PASS. [Handoff QA](../factory/0237-an1-qa.md)
 y [contrato de ejecución](../factory/0237-an1-contract.md). Esta autorización alcanza `main` local; no push, deploy ni PROD.
 
-AN-2 y AN-3: sus tarjetas con el mismo criterio y sus eventos atómicos con el movimiento/anulación.
+AN-2: implementada con QA PASS en `672e7e1c`, [handoff](../factory/0237-an2-handoff.md).
+
+AN-3: implementada con QA PASS de entregas y combinación `1713d942`; eventos atómicos, tarjetas 10/11/12,
+histórico clientes/promos, UUIDv5 y snapshots de campaña. Tarjeta 11 por ≥4 días distintos, H5 «Ver cliente».
+Prueba real de clima 1/1 PASS (una llamada, queryCost=2), contexto invisible. [Handoff](../factory/0237-an3-handoff.md)
+y [QA](../factory/0237-an3-qa.md). Main local autorizado por el owner tras QA; sin push, deploy ni PROD.
 
 ## Pruebas pertinentes
 
@@ -463,10 +468,8 @@ tarjeta con sus bordes.
 
 - **Rendimiento AN-1:** optimizaciones pausadas por decisión expresa del owner al autorizar el cierre y `main` local.
   Fríos reales: 12.767,59 → 4.795,88 → 2.082,39 ms TOTAL; §Pruebas 9 sigue sin cumplir, no se reduce su umbral.
-- **Prueba real de Visual Crossing** (H4): el owner informa el 2026-10-17 que la clave ya está en
-  `apps/merchant/.env.local` y difiere la prueba real hasta AN-3. No se leyó la clave ni se llamó la API en este cierre.
-  El proveedor simulado queda validado. La carga de `VISUAL_CROSSING_API_KEY` en Vercel sigue siendo del owner.
-- **«Mandar cupón» a un cliente** (H5, tarjeta 11): se verifica en AN-3 si Marketing lo permite; si no, «ver cliente».
+- **Operación del clima:** la prueba real H4 quedó cerrada en AN-3. La carga de `VISUAL_CROSSING_API_KEY`
+  en Vercel y cron remoto siguen siendo operaciones posteriores del owner; no se ejecutaron en este encargo.
 
 ## Handoff y abierto
 

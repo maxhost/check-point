@@ -43,3 +43,7 @@ Writer solo `docs/factory/0237-an3-qa.md`, artefactos externos si necesarios. Le
 - A amplía scope a `server/marketing/plan-brake.ts` para cubrir las escrituras de estado internas del ciclo de campaña, preservando su comportamiento.
 
 - Pausa por mediana cero cerrada por aprobación expresa del owner: «El conteo es por días… Si tenemos4 visitas en un día eso cuenta como una… aprobado». Se reanuda todo el flujo con≥4 días distintos para tarjeta11, sin reducir métricas históricas de operaciones. Mantener pausa ante cualquier contradicción nueva.
+
+## Cierre verificado
+
+Candidato `1713d942`, entregas A `99eac508` / B `ef3b4227` y QA independiente PASS de entregas/combinación. Hábito de la tarjeta 11 une días entre locales del comercio; métricas históricas conservan operaciones. Reconciliación de la 12 por delivery genérica tras grupos realmente aplicados, incluso con run ready. Una 0099, anteriores intactas. Clima real ejecutado después de las 06 h: gate normal, sin override, una petición/queryCost=2; datos persistidos y secreto no impreso. Handoffs `0237-an3-{events,product,qa,handoff}.md` y prueba textual durable. A amplió paths a `analytics-translators.test.ts` para corregir selección posicional obsoleta sin quitar assertions y `docs/factory/0237-an3-weather-proof.txt`. Main local autorizado después de QA; no push ni PROD.
