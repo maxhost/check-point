@@ -6,6 +6,11 @@ import {
   analyticsEvaluationRuns as runs,
   businesses,
 } from "@mi-pasaporte/db/schema";
+import type { AnalyticsFact } from "@mi-pasaporte/domain/analytics/metrics";
+import {
+  buildFactCandidates,
+  carryFactCandidate,
+} from "@mi-pasaporte/domain/analytics/cards/stock";
 import { buildCandidates } from "@mi-pasaporte/domain/analytics/cards/index";
 import { localDay } from "@mi-pasaporte/domain/analytics/date";
 import { selectCards } from "@mi-pasaporte/domain/analytics/weights";
@@ -73,7 +78,12 @@ export async function evaluateBusiness(
       performance.now() - claimStarted,
     );
     const calculating = performance.now();
-    const cards = buildCandidates(input, input.states);
+    const cards = [
+      ...buildCandidates(input, input.states),
+      ...input.factCards
+        .map((card) => carryFactCandidate(input, card, input.states))
+        .filter((card): card is CardCandidate => card !== null),
+    ];
     options.trace?.("pure_calculation", performance.now() - calculating);
     const writing = performance.now();
     const rows = cards.map((card) => ({
@@ -83,14 +93,7 @@ export async function evaluateBusiness(
       amount_minor: card.amountMinor === null ? null : String(card.amountMinor),
       currency_code: card.currencyCode,
       minor_unit: card.minorUnit,
-      parameters: {
-        sender: card.sender,
-        title: card.title,
-        body: card.body,
-        quality: card.quality,
-        actionKey: card.actionKey,
-        actionHref: card.actionHref,
-      },
+      parameters: card,
       fingerprint: card.fingerprint,
       location_id: card.locationId,
     }));
@@ -101,6 +104,69 @@ export async function evaluateBusiness(
     options.trace?.("persistence_round_trips", performance.now() - writing);
     return true;
   });
+}
+/** Called inside the ingestion transaction only after a new source revision was applied. */
+export async function evaluateAnalyticsFacts(
+  tx: DbTransaction,
+  context: {
+    businessId: string;
+    eventId: string;
+    capturedAt: string;
+    facts: readonly AnalyticsFact[];
+    now?: Date;
+  },
+) {
+  if (!context.facts.length) return;
+  const now = context.now ?? new Date();
+  const clock = await tx
+    .select({ timezone: businesses.timezone })
+    .from(businesses)
+    .where(eq(businesses.id, context.businessId))
+    .limit(1);
+  if (!clock[0]) return;
+  const day = localDay(now, clock[0].timezone);
+  await tx.execute(
+    sql`select pg_advisory_xact_lock(hashtextextended(${evaluationLockKey(context.businessId, day)},0))`,
+  );
+  const snapshot = await tx.execute(inputStatement(context.businessId, now));
+  const input = inputFromRow(snapshot.rows[0]);
+  const cards = buildFactCandidates(
+    input,
+    context.facts,
+    context.eventId,
+    (instant) => localDay(new Date(instant), clock[0]!.timezone),
+    input.states,
+  );
+  for (const card of cards) {
+    const values = {
+      weight: String(card.weight),
+      amountMinor: card.amountMinor === null ? null : BigInt(card.amountMinor),
+      currencyCode: card.currencyCode,
+      minorUnit: card.minorUnit,
+      parameters: card,
+      fingerprint: card.fingerprint,
+      locationId: card.locationId,
+    };
+    await tx
+      .insert(candidates)
+      .values({
+        ...values,
+        businessId: context.businessId,
+        day,
+        cardKey: card.cardKey,
+        subjectKey: card.subjectKey,
+      })
+      .onConflictDoUpdate({
+        target: [
+          candidates.businessId,
+          candidates.day,
+          candidates.cardKey,
+          candidates.subjectKey,
+        ],
+        set: values,
+        setWhere: sql`coalesce(${candidates.parameters}->>'originObservedAt','') <= ${card.originObservedAt ?? ""}`,
+      });
+  }
 }
 export async function evaluateDueBusinesses(now = new Date()) {
   const deadline = Date.now() + 20_000;

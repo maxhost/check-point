@@ -46,8 +46,24 @@ export function resolveAction(
       active.permission ??
       navigation?.permission ??
       active.module.permissions[0]?.id;
+    let destination = active.href;
+    if (href) {
+      try {
+        const base = new URL(active.href, "https://internal.invalid");
+        const requested = new URL(href, "https://internal.invalid");
+        if (
+          requested.origin === base.origin &&
+          !requested.hash &&
+          (requested.pathname === base.pathname ||
+            requested.pathname.startsWith(`${base.pathname}/`))
+        )
+          destination = requested.pathname + requested.search;
+      } catch {
+        /* Invalid captured links fall back to the declared action. */
+      }
+    }
     return permission && permitted(permission)
-      ? { label: active.label, href: active.href }
+      ? { label: active.label, href: destination }
       : null;
   }
   return viewer.role === "owner"

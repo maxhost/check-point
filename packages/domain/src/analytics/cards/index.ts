@@ -1,3 +1,4 @@
+import { buildStockCandidates } from "./stock";
 import {
   addDays,
   addMonths,
@@ -584,5 +585,5 @@ export function buildCandidates(
       });
     }
   }
-  return candidates;
+  return [...candidates, ...buildStockCandidates(input, states)];
 }
