@@ -26,6 +26,13 @@ export type AnalyticsGauge = {
 export type AnalyticsInput = {
   timezone?: string;
   factCards?: readonly CardCandidate[];
+  readWindows?: {
+    recentDays: number;
+    closedMonths: number;
+    sameWeekdays: number;
+    anomalyDays: number;
+  };
+  factSnapshots?: readonly { eventId: string; input: AnalyticsInput }[];
   today: string;
   firstSaleDay?: string | null;
   firstSaleDays?: readonly { locationId: string | null; day: string }[];

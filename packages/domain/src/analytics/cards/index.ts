@@ -1,3 +1,4 @@
+import { canonicalContext } from "./context";
 import { add, rational } from "../../financial/rational";
 import {
   ANALYTICS_POLICY,
@@ -320,7 +321,27 @@ export function buildCandidates(
         rule.handler === "count-gap"
       )
         return [];
-      return buildRuleCandidates(input, states, policy, rule);
+      return buildRuleCandidates(input, states, policy, rule).map((card) =>
+        ["goal", "expenses", "margin", "unknown-cost"].includes(rule.handler)
+          ? {
+              ...card,
+              context: {
+                ...card.context,
+                calculationKey: canonicalContext({
+                  parameters: Object.fromEntries(
+                    Object.entries(rule.parameters).filter(
+                      ([key]) => !["urgency", "fixedPlata"].includes(key),
+                    ),
+                  ),
+                  ...(["goal", "expenses"].includes(rule.handler)
+                    ? { finance: policy.finance }
+                    : {}),
+                  materialBucketBase: policy.weights.materialBucketBase,
+                }),
+              },
+            }
+          : card,
+      );
     });
 }
 function buildRuleCandidates(
@@ -790,7 +811,11 @@ function buildRuleCandidates(
           context: {
             kind: "unknown-cost",
             product: unknown[0]!.id,
-            material: materialFingerprint(unknown[0]!.id, revenue, policy),
+            material: materialFingerprint(
+              unknown[0]!.id,
+              sumIntegers([unknown[0]!.revenue, -unknown[0]!.knownRevenue]),
+              policy,
+            ),
             missingUnits: unknown[0]!.units - unknown[0]!.knownUnits,
             knownUnits: unknown[0]!.knownUnits,
           },

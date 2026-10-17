@@ -12,6 +12,7 @@ import {
   buildFactCandidates,
   carryFactCandidate,
   restoreFactCandidates,
+  needsFactOriginSnapshot,
 } from "@mi-pasaporte/domain/analytics/cards/stock";
 import { buildCustomerPromoCandidates } from "@mi-pasaporte/domain/analytics/cards/customer-promo";
 import { buildCandidates } from "@mi-pasaporte/domain/analytics/cards/index";
@@ -205,6 +206,50 @@ export async function evaluateBusiness(
         (await tx.execute(inputStatement(businessId, now, undefined, policy)))
           .rows[0],
       );
+    const origins = new Map<string, Input>();
+    for (const state of input.states) {
+      const observed = contextRecord(
+          contextRecord(state.context).sourceFact ??
+            contextRecord(state.context).observed,
+        ),
+        fact = observed.fact as AnalyticsFact | undefined;
+      const rule = policy.rules.find(
+        (r) =>
+          r.id === state.cardKey &&
+          r.enabled &&
+          (r.handler === "cost-rise" || r.handler === "count-gap"),
+      );
+      if (
+        !rule ||
+        !fact ||
+        typeof observed.eventId !== "string" ||
+        !needsFactOriginSnapshot(rule, observed) ||
+        origins.has(observed.eventId)
+      )
+        continue;
+      origins.set(
+        observed.eventId,
+        inputFromRow(
+          (
+            await tx.execute(
+              inputStatement(
+                businessId,
+                new Date(fact.occurredAt),
+                undefined,
+                policy,
+              ),
+            )
+          ).rows[0],
+        ),
+      );
+    }
+    input = {
+      ...input,
+      factSnapshots: [...origins].map(([eventId, input]) => ({
+        eventId,
+        input,
+      })),
+    };
     options.trace?.(
       "claim_and_summary_round_trip",
       performance.now() - started,
@@ -336,13 +381,13 @@ export async function evaluateDueBusinesses(
     ? sql`exists(select 1 from analytics.campaign_snapshot c where c.business_id=b.id and (least(c.ends_at,c.ended_at) at time zone b.timezone)::date in (${sql.join(
         campaignDelays.map(
           (days) =>
-            sql`((${now.toISOString()}::timestamptz at time zone b.timezone)::date-${days})`,
+            sql`((${now.toISOString()}::timestamptz at time zone b.timezone)::date-${days}::int)`,
         ),
         sql`,`,
       )}))`
     : sql`false`;
   const due = await getDb().execute(
-    sql`select b.id from core.business b where b.status='active' and extract(hour from ${now.toISOString()}::timestamptz at time zone b.timezone)>=${policy.operation.earliestEvaluationHour} and not exists(select 1 from analytics.evaluation_run r where r.business_id=b.id and r.day=(${now.toISOString()}::timestamptz at time zone b.timezone)::date and r.status='ready' and r.policy_version=${policy.version}) and (exists(select 1 from analytics.daily_metric m where m.business_id=b.id and m.day>=(${now.toISOString()}::timestamptz at time zone b.timezone)::date-${policy.operation.recentActivityDays}) or not exists(select 1 from analytics.daily_metric m where m.business_id=b.id) or exists(select 1 from analytics.card_state s where s.business_id=b.id and s.status in ('open','snoozed')) or ${campaignDue}) order by b.id limit ${policy.operation.evaluationBatchSize}`,
+    sql`select b.id from core.business b where b.status='active' and extract(hour from ${now.toISOString()}::timestamptz at time zone b.timezone)>=${policy.operation.earliestEvaluationHour} and not exists(select 1 from analytics.evaluation_run r where r.business_id=b.id and r.day=(${now.toISOString()}::timestamptz at time zone b.timezone)::date and r.status='ready' and r.policy_version=${policy.version}) and (exists(select 1 from analytics.daily_metric m where m.business_id=b.id and m.day>=(${now.toISOString()}::timestamptz at time zone b.timezone)::date-${policy.operation.recentActivityDays}::int) or not exists(select 1 from analytics.daily_metric m where m.business_id=b.id) or exists(select 1 from analytics.card_state s where s.business_id=b.id and s.status in ('open','snoozed')) or ${campaignDue}) order by b.id limit ${policy.operation.evaluationBatchSize}`,
   );
   for (const row of due.rows) {
     if (Date.now() >= deadline) {
