@@ -1,0 +1,13 @@
+# 0236 — QA de revisión simplificada
+
+**PASS de entregas A/B y combinación local** sobre `f0f93b2d1e76b7ca7b952675729975647197c993`, base `994ff28cfd138d2a16dc3d151f3a13312d3b695f`. Task `gastos-review-qa`; alcance L1 de presentación según [contrato](0236-review-contract.md) y addendum SPEC0236. Sin cambios de backend/HTTP/esquema/eventos.
+
+Revisión independiente focal de fuente y evidencia compatible, sin nuevos gates:
+
+- A, entrega `1b11225d44c696d1741991c38e87ae88a30b4429`, fuente `063007ee779f85f04c28424b2237d41909805cd2`: [handoff](0236-review-calendar.md) cotejado con la revisión estática temprana. DateField usa día sin hora/UTC ni mínimo implícito; conserva calendario, segmentos y props. DateTimeField mantiene minute por defecto y hora/minuto.
+- B, entrega `2e7f9b83f8d8685fca86c843db193538197a33f2`, fuente `0dda1f66de5d63fd60a968e480972b95700a00d9`: [handoff](0236-review-ui.md) y diff revisados. Una introducción; categoría/concepto bajo corrección; falta de categoría visible. El nombre reconocido conserva ID y corregirlo desasocia solo esa línea. Detalle propuesto/histórico conservado y vacío usa `name=conceptName`. Local heredado con excepciones por línea, pendiente sin null implícito y global solo por `business` explícito. Fijo, foto/reanálisis/errores y edición histórica mantienen sus contratos.
+- Coordinador comprobó identidad exacta del kit combinado con A y de UI/tests con la fuente probada B, además de diff-check EXIT0. Sin defectos bloqueantes identificados.
+
+Evidencia reutilizada: Node24.20.0; lockfile sin cambios, SHA256 `a63b2a852e32abcd70ae19f57c8784524f56037d91447a42ca71ba08b7f0cce0`. A: tipos/lint/formato EXIT0 y Chromium real 2/2, sin skips/retries, día pasado/teclado/min y compatibilidad datetime. B: tipos/lint/formato/guard EXIT0 y browser 12/12 en 7,6s, sin skips/retries, con DateField real. Sus dos casos nuevos comprueban calendario pasado, herencia/excepción local, concepto corregido, detalle conservado/vacío y asociación existente; permanecen los oráculos de dinero/lote/retry/fotos/permisos/historia. Primera corrida B 8/10 con dos fallos de selectores: corregidos sin relajar payloads; no se atribuye PASS a esa ejecución.
+
+Reutilizada la tanda visual posterior al análisis de B a 390/1280, referenciada en su handoff; sin nuevas capturas ni ciclos de pulido. El harness prueba componentes/kit y payloads interceptados, no API autenticada ni DB, que permanecen fuera del ajuste. Sin nuevas pruebas/builds, DB/env/PROD, agentes extra ni cambios al producto. Sin procesos propios; checkout limpio antes de añadir únicamente este informe. Factory accept/integración/cleanup corresponden al coordinador.
