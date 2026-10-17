@@ -42,7 +42,6 @@ const patch = (cookie: string, body: unknown) =>
 
 const brandInput = (name: string, revision: number) => ({
   name,
-  timezone: "America/Guayaquil",
   brandPrimaryColor: "#176548",
   brandComplementaryColor: "#2D8B68",
   brandAccentColor: "#E78132",

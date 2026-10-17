@@ -4,7 +4,10 @@ import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { getDb } from "@mi-pasaporte/db";
 import { stockItems, stockItemLocations } from "@mi-pasaporte/db/schema";
-import { ownerBusiness, saveBrand } from "@mi-pasaporte/domain/server/brand";
+import {
+  readConfiguration,
+  saveConfiguration,
+} from "../server/business/configuration";
 import { listCatalog } from "@mi-pasaporte/domain/server/catalog";
 import { listConsumerPrograms } from "@mi-pasaporte/domain/server/consumer/programs";
 import { integrationEnabled as enabled } from "../server/counter-integration-support";
@@ -15,16 +18,6 @@ import {
   dropPosWorld,
   openOrder,
 } from "./pos/server/pos-integration-support";
-
-const brandInput = (revision: number) => ({
-  name: "Fiscal invariant",
-  timezone: "America/Guayaquil",
-  brandPrimaryColor: "#176548",
-  brandComplementaryColor: "#2D8B68",
-  brandAccentColor: "#E78132",
-  revision,
-  logoAction: "keep" as const,
-});
 
 describe.skipIf(!enabled)(
   "fiscal settings are inert for current calculations and public consumers",
@@ -71,10 +64,14 @@ describe.skipIf(!enabled)(
         };
         const saleBefore = await close();
         expect(saleBefore.total).toBe("9.00");
-        const current = (await ownerBusiness(world.seed.userId))!;
-        await saveBrand(world.seed.userId, {
-          ...brandInput(current.brandRevision),
-          name: current.name,
+        const fiscal = await readConfiguration(businessId, "fiscal");
+        const savedFiscal = await saveConfiguration(businessId, "fiscal", {
+          ...fiscal,
+          chargesVat: true,
+          saleVatRate: "100.00",
+          recoversPurchaseVat: true,
+        });
+        expect(savedFiscal).toMatchObject({
           chargesVat: true,
           saleVatRate: "100.00",
           recoversPurchaseVat: true,
