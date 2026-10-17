@@ -1,10 +1,13 @@
 import { expect, test } from "@playwright/test";
 import {
   choose,
+  changePaymentLocation,
+  setPaymentDay,
   completeManual,
   conceptId,
   expenseImage,
   localId,
+  secondLocalId,
   openRegistration,
   setupExpenses,
   startExpensesHarness,
@@ -14,6 +17,169 @@ import {
 let harness: Awaited<ReturnType<typeof startExpensesHarness>>;
 test.beforeAll(async () => {
   harness = await startExpensesHarness();
+});
+
+test("Revisión compacta hereda local, conserva excepciones y permite calendario pasado y detalle vacío", async ({
+  page,
+}) => {
+  await setupExpenses(page);
+  await page.route("**/api/modules/expenses/entries/draft", (route) =>
+    route.fulfill({
+      json: {
+        draft: {
+          lines: [
+            {
+              ...textDraft.lines[0],
+              conceptId: null,
+              conceptName: "",
+              name: "Garrafa",
+              category: null,
+              locationId: null,
+              isFixed: false,
+            },
+            { ...textDraft.lines[0], locationId: secondLocalId },
+          ],
+          unparsed: [],
+        },
+      },
+    }),
+  );
+  const writes: Record<string, unknown>[] = [];
+  await page.route(/\/api\/modules\/expenses\/entries$/, (route) => {
+    writes.push(route.request().postDataJSON());
+    return route.fulfill({ status: 201, json: { expenses: [] } });
+  });
+  const dialog = await openRegistration(page, harness.url);
+  await dialog
+    .getByRole("textbox", { name: "Describe tus pagos", exact: true })
+    .fill("Una garrafa y el sueldo de Luis en Norte");
+  await dialog.getByRole("button", { name: "Analizar", exact: true }).click();
+  const first = dialog.getByRole("region", { name: "Pago 1", exact: true });
+  const second = dialog.getByRole("region", { name: "Pago 2", exact: true });
+  await expect(
+    dialog.getByText("Revisa y corrige los pagos antes de confirmar.", {
+      exact: true,
+    }),
+  ).toHaveCount(1);
+  await expect(
+    dialog.getByRole("heading", { name: "Revisa los pagos", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    first.getByRole("textbox", { name: "Qué pagaste", exact: true }),
+  ).toHaveValue("Garrafa");
+  await expect(first.getByRole("button", { name: /Categoría/ })).toBeVisible();
+  await expect(second.getByRole("button", { name: /Categoría/ })).toHaveCount(
+    0,
+  );
+  await expect(first.getByText("Local: Centro", { exact: true })).toBeVisible();
+  await expect(second.getByText("Local: Norte", { exact: true })).toBeVisible();
+  await expect(
+    first.getByRole("button", { name: /Local del pago/ }),
+  ).toHaveCount(0);
+  await expect(
+    second.getByRole("textbox", { name: "Detalle (opcional)", exact: true }),
+  ).toHaveCount(0);
+  await expect(second.getByText(/Texto reconocido:/)).toHaveCount(0);
+  await expect(
+    dialog.getByRole("button", { name: "Confirmar 2 pagos", exact: true }),
+  ).toBeDisabled();
+  await choose(page, first, "Categoría", "Otro");
+  await first
+    .getByRole("button", { name: "Editar detalle", exact: true })
+    .click();
+  await first
+    .getByRole("textbox", { name: "Detalle (opcional)", exact: true })
+    .fill("");
+  await second
+    .getByRole("textbox", { name: "Qué pagaste", exact: true })
+    .fill("Luis horas extras");
+  await second
+    .getByRole("button", { name: "Editar detalle", exact: true })
+    .click();
+  await expect(
+    second.getByRole("textbox", { name: "Detalle (opcional)", exact: true }),
+  ).toHaveValue("Sueldo Luis");
+  await first.getByRole("button", { name: /^Abrir calendario/ }).click();
+  const calendar = page.getByRole("dialog").filter({
+    has: page.getByRole("button", { name: "Mes anterior", exact: true }),
+  });
+  await calendar
+    .getByRole("button", { name: "Mes anterior", exact: true })
+    .click();
+  await calendar
+    .getByRole("button", { name: /, 29 de septiembre de 2026/ })
+    .click();
+  await dialog
+    .getByRole("button", { name: "Confirmar 2 pagos", exact: true })
+    .click();
+  await expect(dialog).toHaveCount(0);
+  expect(writes).toHaveLength(1);
+  expect(writes[0]).toMatchObject({
+    expectedCurrencyCode: "USD",
+    lines: [
+      {
+        paidOn: "2026-09-29",
+        amountMinor: "45000",
+        category: "other",
+        conceptId: null,
+        conceptName: "Garrafa",
+        name: "Garrafa",
+        isFixed: false,
+        locationId: localId,
+      },
+      {
+        paidOn: "2026-10-16",
+        amountMinor: "45000",
+        category: "personnel",
+        conceptId: null,
+        conceptName: "Luis horas extras",
+        name: "Sueldo Luis",
+        isFixed: true,
+        locationId: secondLocalId,
+      },
+    ],
+  });
+});
+
+test("Elegir concepto existente completa Qué pagaste y categoría sin reescribir el detalle", async ({
+  page,
+}) => {
+  await setupExpenses(page);
+  const writes: Record<string, unknown>[] = [];
+  await page.route(/\/api\/modules\/expenses\/entries$/, (route) => {
+    writes.push(route.request().postDataJSON());
+    return route.fulfill({ status: 201, json: { expenses: [] } });
+  });
+  const dialog = await openRegistration(page, harness.url, "Manual");
+  const line = dialog.getByRole("region", { name: "Pago 1", exact: true });
+  await line
+    .getByRole("textbox", { name: "Monto (USD)", exact: true })
+    .fill("10");
+  await choose(page, line, "Concepto", "Personal · Luis");
+  await expect(
+    line.getByRole("textbox", { name: "Qué pagaste", exact: true }),
+  ).toHaveValue("Luis");
+  await expect(
+    line.getByText("Personal · Concepto reconocido", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    line.getByRole("textbox", { name: "Detalle (opcional)", exact: true }),
+  ).toHaveCount(0);
+  await dialog
+    .getByRole("button", { name: "Confirmar pago", exact: true })
+    .click();
+  await expect(dialog).toHaveCount(0);
+  expect(writes[0]).toMatchObject({
+    lines: [
+      {
+        category: "personnel",
+        conceptId,
+        conceptName: "Luis",
+        name: "Luis",
+        locationId: localId,
+      },
+    ],
+  });
 });
 test.afterAll(async () => {
   if (harness) await harness.close();
@@ -64,7 +230,7 @@ test("Dictado propone conceptos; corrección completa y lote único, retry usa m
     .fill("Pagué a Luis 450 y Luis horas extras 40");
   await dialog.getByRole("button", { name: "Analizar", exact: true }).click();
   await expect(
-    dialog.getByRole("heading", { name: "Revisa los pagos", exact: true }),
+    dialog.getByRole("region", { name: "Pago 1", exact: true }),
   ).toBeVisible();
   expect(writes).toEqual([]);
   expect(drafts).toEqual([
@@ -72,22 +238,27 @@ test("Dictado propone conceptos; corrección completa y lote único, retry usa m
   ]);
   const first = dialog.getByRole("region", { name: "Pago 1", exact: true });
   const second = dialog.getByRole("region", { name: "Pago 2", exact: true });
-  await expect(first).toContainText("Concepto reconocido: Luis");
-  await expect(second).toContainText("Concepto reconocido: Luis");
+  await expect(
+    first.getByRole("textbox", { name: "Qué pagaste", exact: true }),
+  ).toHaveValue("Luis");
+  await expect(
+    second.getByRole("textbox", { name: "Qué pagaste", exact: true }),
+  ).toHaveValue("Luis");
   await expect(
     first.getByRole("checkbox", { name: /^Gasto fijo/ }),
   ).toBeChecked();
   await expect(
     second.getByRole("checkbox", { name: /^Gasto fijo/ }),
   ).not.toBeChecked();
+  await second
+    .getByRole("button", { name: "Cambiar concepto", exact: true })
+    .click();
   await choose(page, second, "Concepto", "Nuevo concepto");
   await second
-    .getByRole("textbox", { name: "Nombre del concepto", exact: true })
+    .getByRole("textbox", { name: "Qué pagaste", exact: true })
     .fill("Luis horas extras");
-  await second
-    .getByRole("textbox", { name: "Fecha de pago", exact: true })
-    .fill("2026-07-31");
-  await choose(page, second, "Local del pago", "Todo el negocio");
+  await setPaymentDay(page, second, "2026-07-31");
+  await changePaymentLocation(page, second, "Todo el negocio");
   await second.getByRole("checkbox", { name: /^Gasto fijo/ }).focus();
   await page.keyboard.press("Space");
   await expect(
@@ -193,7 +364,7 @@ test("Foto retiene archivos tras análisis y guardado fallidos; reanálisis y AC
   await expect(dialog).toContainText("pagos.png");
   await dialog.getByRole("button", { name: "Analizar", exact: true }).click();
   await expect(
-    dialog.getByRole("heading", { name: "Revisa los pagos", exact: true }),
+    dialog.getByRole("region", { name: "Pago 1", exact: true }),
   ).toBeVisible();
   await dialog
     .getByRole("textbox", { name: "Monto (USD)", exact: true })
@@ -223,7 +394,7 @@ test("Foto retiene archivos tras análisis y guardado fallidos; reanálisis y AC
     .click();
   await dialog.getByRole("button", { name: "Analizar", exact: true }).click();
   await expect(
-    dialog.getByRole("heading", { name: "Revisa los pagos", exact: true }),
+    dialog.getByRole("region", { name: "Pago 1", exact: true }),
   ).toBeVisible();
   await dialog
     .getByRole("button", { name: "Confirmar pago", exact: true })
@@ -297,10 +468,9 @@ test("IA incierta no inventa pagos globales ni permite confirmar fragmentos sin 
   await dialog
     .getByRole("textbox", { name: "Monto (USD)", exact: true })
     .fill("5");
-  await dialog
-    .getByRole("textbox", { name: "Fecha de pago", exact: true })
-    .fill("2026-02-30");
-  await choose(page, dialog, "Local del pago", "Centro");
+  await expect(
+    dialog.getByText("Local: Centro", { exact: true }),
+  ).toBeVisible();
   await dialog
     .getByRole("checkbox", {
       name: "He revisado estos fragmentos",
@@ -311,9 +481,7 @@ test("IA incierta no inventa pagos globales ni permite confirmar fragmentos sin 
   await expect(
     dialog.getByRole("button", { name: "Confirmar pago", exact: true }),
   ).toBeDisabled();
-  await dialog
-    .getByRole("textbox", { name: "Fecha de pago", exact: true })
-    .fill("2026-02-28");
+  await setPaymentDay(page, dialog, "2026-02-28");
   await expect(
     dialog.getByRole("button", { name: "Confirmar pago", exact: true }),
   ).toBeEnabled();
@@ -396,14 +564,32 @@ for (const width of [390, 1280]) {
   }, info) => {
     await setupExpenses(page);
     await page.setViewportSize({ width, height: 900 });
-    const dialog = await openRegistration(page, harness.url, "Manual");
-    await completeManual(page, dialog);
+    await page.route("**/api/modules/expenses/entries/draft", (route) =>
+      route.fulfill({ json: { draft: textDraft } }),
+    );
+    const dialog = await openRegistration(page, harness.url);
+    await dialog
+      .getByRole("textbox", { name: "Describe tus pagos", exact: true })
+      .fill("Pagué el sueldo de Luis 450");
+    await dialog.getByRole("button", { name: "Analizar", exact: true }).click();
     await expect(
       dialog.getByRole("button", { name: "Confirmar pago", exact: true }),
     ).toBeEnabled();
     await expect(
       dialog.getByRole("textbox", { name: "Monto (USD)", exact: true }),
     ).toBeVisible();
+    await expect(
+      dialog.getByRole("textbox", { name: "Qué pagaste", exact: true }),
+    ).toHaveValue("Luis");
+    await expect(dialog.getByRole("button", { name: /Categoría/ })).toHaveCount(
+      0,
+    );
+    await expect(
+      dialog.getByRole("button", { name: /Local del pago/ }),
+    ).toHaveCount(0);
+    await expect(
+      dialog.getByRole("textbox", { name: "Detalle (opcional)", exact: true }),
+    ).toHaveCount(0);
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= window.innerWidth,

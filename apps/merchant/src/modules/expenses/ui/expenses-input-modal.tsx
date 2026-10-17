@@ -247,7 +247,7 @@ export function ExpensesInputModal({
       title="Registrar gasto"
       description={
         editing
-          ? "Revisa cada pago y corrige lo que necesites antes de confirmar el lote."
+          ? "Revisa y corrige los pagos antes de confirmar."
           : "Ingresa tus pagos por audio, foto o a mano. Nada se registra hasta que confirmes."
       }
       onClose={close}
@@ -446,13 +446,6 @@ export function ExpensesInputModal({
               void save();
             }}
           >
-            <div className="grid gap-2">
-              <Heading level={2}>Revisa los pagos</Heading>
-              <Text variant="muted">
-                Se guardarán juntos. El check de gasto fijo es una propuesta que
-                puedes corregir.
-              </Text>
-            </div>
             {unparsed.length > 0 && (
               <Alert
                 kind="warning"

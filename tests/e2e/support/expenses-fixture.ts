@@ -220,12 +220,41 @@ export async function completeManual(page: Page, dialog: Locator) {
     .getByRole("textbox", { name: "Monto (USD)", exact: true })
     .fill("3,20");
   await line
-    .getByRole("textbox", { name: "Nombre del concepto", exact: true })
+    .getByRole("textbox", { name: "Qué pagaste", exact: true })
     .fill("Garrafa");
   await line
-    .getByRole("textbox", { name: "Nombre del pago", exact: true })
+    .getByRole("button", { name: "Añadir detalle", exact: true })
+    .click();
+  await line
+    .getByRole("textbox", { name: "Detalle (opcional)", exact: true })
     .fill("Compra de garrafa");
   return line;
+}
+
+export async function changePaymentLocation(
+  page: Page,
+  parent: Locator,
+  option: string,
+) {
+  const change = parent.getByRole("button", {
+    name: "Cambiar local",
+    exact: true,
+  });
+  if (await change.count()) await change.click();
+  await choose(page, parent, "Local del pago", option);
+}
+
+/** Type the actual accessible date segments, without assigning hidden input or React state. */
+export async function setPaymentDay(page: Page, parent: Locator, day: string) {
+  const [year, month, date] = day.split("-");
+  for (const [name, value] of [
+    [/año/i, year],
+    [/mes/i, month],
+    [/día/i, date],
+  ] as const) {
+    await parent.getByRole("spinbutton", { name }).focus();
+    await page.keyboard.type(String(Number(value)));
+  }
 }
 
 export async function expenseImage(page: Page) {
