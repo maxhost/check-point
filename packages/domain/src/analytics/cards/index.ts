@@ -340,11 +340,7 @@ export function buildCandidates(
                             "medianRatio",
                             "impactDays",
                           ],
-                          "unknown-cost": [
-                            "salesDays",
-                            "minimumCoverage",
-                            "impactDays",
-                          ],
+                          "unknown-cost": ["salesDays"],
                         })[
                           rule.handler as
                             "goal" | "expenses" | "margin" | "unknown-cost"

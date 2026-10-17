@@ -19,6 +19,7 @@ import type {
 import {
   ANALYTICS_POLICY,
   ANALYTICS_RULE_DEFINITIONS,
+  ANALYTICS_POLICY_LIMITS,
   policyText,
   type AnalyticsPolicy,
 } from "@mi-pasaporte/domain/analytics/policy/index";
@@ -619,8 +620,18 @@ export async function cleanupInbox(
   const maximumCampaignDelay = ANALYTICS_RULE_DEFINITIONS.find(
     (r) => r.handler === "campaign",
   )!.parameters.emissionDelayDays.maximum!;
-  const campaignDeletionProof = sql`(s.context->'observed'->>'kind'<>'campaign' or case when pg_input_is_valid(s.context->'observed'->'cycle'->>'finish','date') then (s.context->'observed'->'cycle'->>'finish')::date+${maximumCampaignDelay}::int < (select (${now.toISOString()}::timestamptz at time zone b.timezone)::date from core.business b where b.id=s.business_id) else false end)`;
-  const controlProof = sql`((s.context->'observed'->>'kind' in ('count-gap','campaign') and exists(select 1 from analytics.source_revision r where r.business_id=s.business_id and r.source_key=s.context->'observed'->>'sourceKey' and r.source_revision>=case when s.context->'observed'->>'sourceRevision' ~ '^[0-9]+$' then (s.context->'observed'->>'sourceRevision')::numeric else null end)) or (s.context->'observed'->>'kind'='goal' and s.subject_key ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' and pg_input_is_valid(s.subject_key,'date') and s.subject_key<(select to_char((${now.toISOString()}::timestamptz at time zone b.timezone)::date,'YYYY-MM-01') from core.business b where b.id=s.business_id)))`;
+  const campaignDeletionProof = sql`(s.context->'observed'->>'kind' is distinct from 'campaign' or (case when pg_input_is_valid(s.context->'observed'->'cycle'->>'finish','date') then (s.context->'observed'->'cycle'->>'finish')::date+${maximumCampaignDelay}::int < (select (${now.toISOString()}::timestamptz at time zone b.timezone)::date from core.business b where b.id=s.business_id) else false end and case when pg_input_is_valid(left(s.context->>'factCursor',24),'timestamptz') then left(s.context->>'factCursor',24)::timestamptz+${ANALYTICS_POLICY_LIMITS.lifetimeDays}*interval '24 hours'<${now.toISOString()}::timestamptz else false end))`;
+  const retiredCustomerIds = [
+    ...new Set([
+      "11",
+      ...policy.rules.filter((r) => r.handler === "customers").map((r) => r.id),
+    ]),
+  ];
+  const retiredCustomer = sql`s.card_key in (${sql.join(
+    retiredCustomerIds.map((id) => sql`${id}`),
+    sql`,`,
+  )})`;
+  const controlProof = sql`((s.context->'observed'->>'kind' in ('count-gap','campaign') and exists(select 1 from analytics.source_revision r where r.business_id=s.business_id and r.source_key=s.context->'observed'->>'sourceKey' and r.source_revision>=case when s.context->'observed'->>'sourceRevision' ~ '^[0-9]+$' then (s.context->'observed'->>'sourceRevision')::numeric else null end)) or (s.context->'observed'->>'kind'='goal' and s.subject_key ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' and pg_input_is_valid(s.subject_key,'date') and s.subject_key<(select to_char((${now.toISOString()}::timestamptz at time zone b.timezone)::date,'YYYY-MM-01') from core.business b where b.id=s.business_id)) or ${retiredCustomer})`;
   const attemptedControls = new Set<string>();
   while (performance.now() < deadline) {
     const progressed = await withDbTransaction(async (tx) => {
@@ -667,7 +678,7 @@ export async function cleanupInbox(
         result.deleted += deleted.rows.length;
         if (!deleted.rows.length)
           await tx.execute(
-            sql`update analytics.card_state s set context=jsonb_build_object('compacted',true,'observed',jsonb_build_object('kind','campaign','cycle',s.context->'observed'->'cycle','snapshot',s.context->'observed'->'snapshot','sourceKey',s.context->'observed'->'sourceKey','sourceRevision',s.context->'observed'->'sourceRevision')),context_version=md5(s.context::text),updated_at=${now.toISOString()}::timestamptz where s.business_id=${businessId} and s.candidate_id=${id}::uuid and ${controlProof} and s.context->'observed'->>'kind'='campaign' and s.revision=${Number(locked.rows[0].revision)} and s.context_version=${String(locked.rows[0].context_version)} and s.expires_at<${now.toISOString()}::timestamptz and s.remind_at is null and not exists(select 1 from analytics.card_candidate c where c.business_id=s.business_id and c.id=s.candidate_id)`,
+            sql`update analytics.card_state s set acted_by=null,last_operation_id=null,last_operation_digest=null,reminder_consumed_at=null,shown_days=0,fingerprint='compacted',context=jsonb_build_object('compacted',true,'factCursor',s.context->'factCursor','observed',jsonb_build_object('kind','campaign','cycle',s.context->'observed'->'cycle','snapshot',s.context->'observed'->'snapshot','sourceKey',s.context->'observed'->'sourceKey','sourceRevision',s.context->'observed'->'sourceRevision')),context_version=md5(s.context::text),updated_at=${now.toISOString()}::timestamptz where s.business_id=${businessId} and s.candidate_id=${id}::uuid and ${controlProof} and s.context->'observed'->>'kind'='campaign' and s.revision=${Number(locked.rows[0].revision)} and s.context_version=${String(locked.rows[0].context_version)} and s.expires_at<${now.toISOString()}::timestamptz and s.remind_at is null and not exists(select 1 from analytics.card_candidate c where c.business_id=s.business_id and c.id=s.candidate_id)`,
           );
       }
       return true;

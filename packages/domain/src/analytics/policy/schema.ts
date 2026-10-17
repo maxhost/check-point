@@ -1,4 +1,4 @@
-import { ANALYTICS_TEXT_FIELDS } from "./rules";
+import { ANALYTICS_TEXT_FIELDS, ANALYTICS_POLICY_LIMITS } from "./rules";
 import type { AnalyticsCardCategory, InboxDecision } from "../types";
 
 export type AnalyticsRuleHandler =
@@ -100,7 +100,12 @@ export function validatePolicy(
     config.finance.minimumCoverage > 1
   )
     throw new Error("Política inválida: finance.minimumCoverage.");
-  positive(config.lifetime.days, "lifetime.days", 3650, true);
+  positive(
+    config.lifetime.days,
+    "lifetime.days",
+    ANALYTICS_POLICY_LIMITS.lifetimeDays,
+    true,
+  );
   positive(config.weights.minimum, "weights.minimum");
   positive(config.weights.maximumCards, "weights.maximumCards", 100, true);
   positive(

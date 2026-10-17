@@ -951,6 +951,8 @@ it("rebases a closed calculated subject when capture parameters change, while la
     ...text.rules.find((r) => r.id === "7")!.parameters,
     normalUrgency: 0.4,
     riskUrgency: 0.9,
+    minimumCoverage: 0.5,
+    impactDays: 14,
   };
   expect(
     simulateAnalytics(
@@ -1067,4 +1069,66 @@ it("requires a newly applied campaign cursor after closure, and does not renew a
     startedAt: "2026-10-20T12:00:00.000Z",
     expiresAt: "2027-01-18T12:00:00.000Z",
   });
+});
+
+it("inspects the configured catalog without assuming the initial balance", () => {
+  const input = simulationFixture(),
+    copy = structuredClone(input);
+  const report = simulateAnalytics(input, [], now, ANALYTICS_POLICY);
+  expect(report.policyVersion).toBe(ANALYTICS_POLICY.version);
+  expect(input).toEqual(copy);
+  console.log(
+    "ANALYTICS_CATALOG_INSPECTION",
+    JSON.stringify({
+      policyVersion: report.policyVersion,
+      rules: report.rules,
+      candidates: report.candidates.map((c) => ({
+        cardKey: c.cardKey,
+        subjectKey: c.subjectKey,
+        reason: c.reason,
+        components: c.components,
+        expiresAt: c.expiresAt,
+      })),
+      order: report.order,
+      unavailableFacts: report.unavailableFacts,
+    }),
+  );
+});
+
+it("does not absorb new expense evidence when only urgency, closing-phase, or unrelated finance parameters change", () => {
+  const beforeInput = simulationFixture();
+  beforeInput.metrics = beforeInput.metrics.filter(
+    (r) => !r.metric.startsWith("expense_"),
+  );
+  const before = buildCandidates(beforeInput).find((c) => c.cardKey === "4")!;
+  const c = config();
+  c.weights.materialBucketBase = 3;
+  c.finance.salesDays = 56;
+  c.finance.minimumCoverage = 0.9;
+  c.rules.find((r) => r.id === "4")!.parameters = {
+    ...c.rules.find((r) => r.id === "4")!.parameters,
+    closingPhaseDays: 5,
+    normalUrgency: 0.4,
+    closingUrgency: 0.9,
+    fixedPlata: 2,
+  };
+  const afterInput = {
+    ...beforeInput,
+    metrics: [
+      ...beforeInput.metrics,
+      row("2026-10-25", "expense_fixed", 1000, 0, "rent"),
+    ],
+  };
+  const after = buildCandidates(afterInput, [], createAnalyticsPolicy(c)).find(
+    (c) => c.cardKey === "4",
+  )!;
+  expect(after.context!.calculationKey).toBe(before.context!.calculationKey);
+  expect(
+    canReopenContext(
+      "expenses",
+      { observed: before.context },
+      after.context!,
+      now,
+    ),
+  ).toBe(true);
 });

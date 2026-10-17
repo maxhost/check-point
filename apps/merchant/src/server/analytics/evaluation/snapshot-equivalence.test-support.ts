@@ -4,7 +4,7 @@ import { expect } from "vitest";
 import { addDays } from "@mi-pasaporte/domain/analytics/date";
 import { sql } from "drizzle-orm";
 import { getDb } from "@mi-pasaporte/db";
-import { inputStatement, inputFromRow } from "../queries";
+import { inputStatement, inputFromRow, safeMoney } from "../queries";
 import {
   buildCandidates,
   calculateGoal,
@@ -98,6 +98,39 @@ export async function assertSnapshotEquivalence(
       ].includes(extra.metric),
     ).toBe(false);
   }
+  const rawExtras = await getDb().execute(
+    sql`select m.day::text,m.metric,case when m.metric in ('stock_consumption','units_sold') then m.location_id else null end as "locationId",m.dimension_id as "dimensionId",m.currency_code as "currencyCode",m.minor_unit as "minorUnit",sum(m.amount_minor)::text as "amountMinor",sum(m.quantity)::text as quantity,sum(m.count)::text as count from analytics.daily_metric m join core.business b on b.id=m.business_id where m.business_id=${businessId} and m.day between (${now.toISOString()}::timestamptz at time zone b.timezone)::date-45 and (${now.toISOString()}::timestamptz at time zone b.timezone)::date-29 and m.metric not in ('revenue','expense_fixed','expense_variable','visits','promo_discount','promo_sales','promo_cost','voided_tickets') ${locationId ? sql`and m.location_id=${locationId}` : sql``} group by m.day,m.metric,case when m.metric in ('stock_consumption','units_sold') then m.location_id else null end,m.dimension_id,m.currency_code,m.minor_unit`,
+  );
+  const expectedExtras = rawExtras.rows
+    .map((r) => ({
+      day: String(r.day),
+      metric: String(r.metric),
+      locationId: r.locationId ? String(r.locationId) : null,
+      dimensionId: r.dimensionId ? String(r.dimensionId) : null,
+      currencyCode: String(r.currencyCode),
+      minorUnit: Number(r.minorUnit),
+      amountMinor: safeMoney(String(r.amountMinor)),
+      quantity: Number(r.quantity),
+      count: safeMoney(String(r.count)),
+    }))
+    .filter((r) => !legacyMetricKeys.has(metricKey(r)));
+  const completeBag = (rows: typeof compact.metrics) =>
+    rows
+      .map((r) =>
+        JSON.stringify([
+          r.day,
+          r.metric,
+          r.locationId,
+          r.dimensionId,
+          r.amountMinor,
+          r.currencyCode,
+          r.minorUnit,
+          r.quantity,
+          r.count,
+        ]),
+      )
+      .sort();
+  expect(completeBag(extras)).toEqual(completeBag(expectedExtras));
   expect(compact.readWindows).toEqual({
     recentDays: 45,
     closedMonths: 3,

@@ -75,6 +75,8 @@ export function inputStatement(
     : sql`(${now.toISOString()}::timestamptz at time zone timezone)::date`;
   const windows = policyWindows(policy);
   const revenueDays = Math.max(windows.recentDays, windows.sameWeekdays * 7);
+  // Keep the reference aggregation intact; extending its hash aggregate changes tie-observable row order.
+  const baseDays = policy.weights.averageDailyDays;
   const factIds = policy.rules
     .filter((r) => r.handler === "cost-rise" || r.handler === "count-gap")
     .map((r) => r.id);
@@ -93,17 +95,25 @@ export function inputStatement(
       from account_money m,b where m.metric='expense_fixed' and m.day<date_trunc('month',b.today)
       group by date_trunc('month',m.day),m.dimension_id,m.currency_code,m.minor_unit having sum(m.amount_minor)>0),
     metric_rows as (
-      select m.* from b join analytics.daily_metric m on m.business_id=b.id and m.day between b.today-${windows.recentDays}::int and b.today where (m.metric<>'expense_fixed' or m.day>=date_trunc('month',b.today)) ${location}
-      union all select m.* from b join analytics.daily_metric m on m.business_id=b.id and m.day>=date_trunc('month',b.today) and m.day<b.today-${windows.recentDays}::int where m.metric='expense_fixed' ${location}
-      union all select m.* from b join analytics.daily_metric m on m.business_id=b.id and m.day>=date_trunc('month',b.today)-${windows.closedMonths}*interval '1 month' and m.day<b.today-${windows.recentDays}::int where m.metric='expense_variable' ${location}
-      union all select m.* from b join analytics.daily_metric m on m.business_id=b.id and m.day>=b.today-${revenueDays}::int and m.day<b.today-${windows.recentDays}::int where m.metric='revenue' ${location}
-      union all select m.* from b join analytics.daily_metric m on m.business_id=b.id and m.day<b.today-${windows.recentDays}::int where m.metric in ('visits','promo_discount','promo_sales','promo_cost') ${location}
-      union all select m.* from b join analytics.daily_metric m on m.business_id=b.id and m.day>=b.today-${windows.anomalyDays}::int and m.day<b.today-${windows.recentDays}::int where m.metric='voided_tickets' ${location}
-      union all select m.* from b join same_days sd on true join analytics.daily_metric m on m.business_id=b.id and m.day=sd.day where m.day<b.today-${windows.recentDays}::int and m.metric='units_sold' ${location}
+      select m.* from b join analytics.daily_metric m on m.business_id=b.id and m.day between b.today-${baseDays}::int and b.today where (m.metric<>'expense_fixed' or m.day>=date_trunc('month',b.today)) ${location}
+      union all select m.* from b join analytics.daily_metric m on m.business_id=b.id and m.day>=date_trunc('month',b.today) and m.day<b.today-${baseDays}::int where m.metric='expense_fixed' ${location}
+      union all select m.* from b join analytics.daily_metric m on m.business_id=b.id and m.day>=date_trunc('month',b.today)-${windows.closedMonths}*interval '1 month' and m.day<b.today-${baseDays}::int where m.metric='expense_variable' ${location}
+      union all select m.* from b join analytics.daily_metric m on m.business_id=b.id and m.day>=b.today-${revenueDays}::int and m.day<b.today-${baseDays}::int where m.metric='revenue' ${location}
+      union all select m.* from b join analytics.daily_metric m on m.business_id=b.id and m.day<b.today-${baseDays}::int where m.metric in ('visits','promo_discount','promo_sales','promo_cost') ${location}
+      union all select m.* from b join analytics.daily_metric m on m.business_id=b.id and m.day>=b.today-${windows.anomalyDays}::int and m.day<b.today-${baseDays}::int where m.metric='voided_tickets' ${location}
+      union all select m.* from b join same_days sd on true join analytics.daily_metric m on m.business_id=b.id and m.day=sd.day where m.day<b.today-${baseDays}::int and m.metric='units_sold' ${location}
       union all select m.* from b join same_days sd on true join analytics.daily_metric m on m.business_id=b.id and m.day=sd.day where m.day<b.today-${revenueDays}::int and m.metric='revenue' ${location}),
-    metrics as (select m.day::text,m.metric,case when m.day=b.today-1 or m.metric in ('stock_consumption','units_sold','revenue','voided_tickets','visits','promo_discount','promo_sales','promo_cost') then m.location_id else null end as "locationId",m.dimension_id as "dimensionId",sum(m.amount_minor)::text as "amountMinor",m.currency_code as "currencyCode",m.minor_unit as "minorUnit",sum(m.quantity)::text as quantity,sum(m.count)::int as count
+    reference_metrics as materialized (select m.day::text,m.metric,case when m.day=b.today-1 or m.metric in ('stock_consumption','units_sold','revenue','voided_tickets','visits','promo_discount','promo_sales','promo_cost') then m.location_id else null end as "locationId",m.dimension_id as "dimensionId",sum(m.amount_minor)::text as "amountMinor",m.currency_code as "currencyCode",m.minor_unit as "minorUnit",sum(m.quantity)::text as quantity,sum(m.count)::int as count
       from metric_rows m,b group by m.day,m.metric,case when m.day=b.today-1 or m.metric in ('stock_consumption','units_sold','revenue','voided_tickets','visits','promo_discount','promo_sales','promo_cost') then m.location_id else null end,m.dimension_id,m.currency_code,m.minor_unit
-      union all select day::text,'expense_fixed',null,dimension_id,amount,currency_code,minor_unit,'0',0 from fixed_months where rank<=${windows.closedMonths})
+      union all select day::text,'expense_fixed',null,dimension_id,amount,currency_code,minor_unit,'0',0 from fixed_months where rank<=${windows.closedMonths}),
+    extended_metric_rows as (
+      select m.* from analytics.daily_metric m,b where m.business_id=b.id and m.day>=b.today-${windows.recentDays}::int and m.day<b.today-${baseDays}::int
+      and m.metric not in ('expense_fixed','revenue','visits','promo_discount','promo_sales','promo_cost')
+      and (m.metric<>'expense_variable' or m.day<date_trunc('month',b.today)-${windows.closedMonths}*interval '1 month')
+      and (m.metric<>'voided_tickets' or m.day<b.today-${windows.anomalyDays}::int)
+      and (m.metric<>'units_sold' or not exists(select 1 from same_days sd where sd.day=m.day)) ${location}),
+    extended_metrics as (select m.day::text,m.metric,case when m.metric in ('stock_consumption','units_sold','voided_tickets') then m.location_id else null end as "locationId",m.dimension_id as "dimensionId",sum(m.amount_minor)::text as "amountMinor",m.currency_code as "currencyCode",m.minor_unit as "minorUnit",sum(m.quantity)::text as quantity,sum(m.count)::int as count from extended_metric_rows m group by m.day,m.metric,case when m.metric in ('stock_consumption','units_sold','voided_tickets') then m.location_id else null end,m.dimension_id,m.currency_code,m.minor_unit),
+    metrics as (select * from reference_metrics union all select * from extended_metrics)
     select b.currency_code as "currencyCode",b.timezone,b.today::text,${JSON.stringify(windows)}::jsonb as "readWindows",
       (select min(day)::text from account_money where metric='revenue' and (count>0 or amount_minor>0)) as "firstSaleDay",
       coalesce((select jsonb_agg(jsonb_build_object('locationId',location_id,'day',day)) from (select location_id,min(day)::text AS day from account_money where metric='revenue' and (count>0 or amount_minor>0) group by location_id) first_sales),'[]'::jsonb) as "firstSaleDays",
