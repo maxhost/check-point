@@ -1,40 +1,39 @@
-import { lockAnalyticsBusiness } from "../lifecycle";
 import { and, eq, sql } from "drizzle-orm";
 import { getDb, withDbTransaction, type DbTransaction } from "@mi-pasaporte/db";
 import {
-  analyticsCardCandidates as candidates,
   analyticsCardStates as states,
-  analyticsEvaluationRuns as runs,
   businesses,
 } from "@mi-pasaporte/db/schema";
-import type { AnalyticsFact } from "@mi-pasaporte/domain/analytics/metrics";
+import type {
+  AnalyticsFact,
+  MetricEvent,
+} from "@mi-pasaporte/domain/analytics/metrics";
 import {
   buildFactCandidates,
   carryFactCandidate,
+  restoreFactCandidates,
 } from "@mi-pasaporte/domain/analytics/cards/stock";
 import { buildCustomerPromoCandidates } from "@mi-pasaporte/domain/analytics/cards/customer-promo";
 import { buildCandidates } from "@mi-pasaporte/domain/analytics/cards/index";
+import { contextRecord } from "@mi-pasaporte/domain/analytics/cards/context";
 import { localDay } from "@mi-pasaporte/domain/analytics/date";
-import { selectCards } from "@mi-pasaporte/domain/analytics/weights";
-import type {
-  CardCandidate,
-  LegacyInboxCard as InboxCard,
-} from "@mi-pasaporte/domain/analytics/types";
 import {
-  AnalyticsError,
-  inputStatement,
-  inputFromRow,
-  safeMoney,
-} from "../queries";
-import { actionContext, type AnalyticsViewer } from "../actions";
+  ANALYTICS_POLICY,
+  type AnalyticsPolicy,
+} from "@mi-pasaporte/domain/analytics/policy/index";
+import type { CardCandidate } from "@mi-pasaporte/domain/analytics/types";
+import { AnalyticsError, inputStatement, inputFromRow } from "../queries";
+import { lockAnalyticsBusiness } from "../lifecycle";
+import { syncInboxCandidates } from "../lifecycle/sync";
+import { metricTranslators } from "../ingestion/registry";
+export { readInbox } from "../lifecycle";
 export const evaluationLockKey = (businessId: string, day: string) =>
   `analytics:evaluate:${businessId}:${day}`;
 export async function businessDay(businessId: string, now = new Date()) {
   const [business] = await getDb()
     .select({ timezone: businesses.timezone })
     .from(businesses)
-    .where(eq(businesses.id, businessId))
-    .limit(1);
+    .where(eq(businesses.id, businessId));
   if (!business)
     throw new AnalyticsError(
       404,
@@ -43,105 +42,211 @@ export async function businessDay(businessId: string, now = new Date()) {
     );
   return localDay(now, business.timezone);
 }
-/** One atomic claim: readers see the previous completed day until this transaction commits. */
+type Input = ReturnType<typeof inputFromRow>;
+/** Only structured IDs of existing legacy facts; never scan/backfill event history or source tables. */
+async function recoverLegacyFacts(
+  tx: DbTransaction,
+  businessId: string,
+  input: Input,
+  now: Date,
+  policy: AnalyticsPolicy,
+) {
+  for (const card of input.factCards) {
+    const control = input.states.find(
+        (s) => s.cardKey === card.cardKey && s.subjectKey === card.subjectKey,
+      ),
+      context = contextRecord(control?.context);
+    if (
+      !control ||
+      context.legacyRecoveryAttempted ||
+      contextRecord(context.observed).fact
+    )
+      continue;
+    const eventId =
+      card.originObservedAt?.slice(25) ?? card.subjectKey.split(":")[0];
+    if (!/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(eventId))
+      continue;
+    const event = await tx.execute(
+      sql`select e.id,e.event_type,e.event_version,e.payload,e.created_at from core.module_event e join core.module_event_delivery d on d.event_id=e.id and d.subscriber_id='core.analytics' and d.state='applied' where e.business_id=${businessId} and e.id=${eventId}::uuid`,
+    );
+    const raw = event.rows[0];
+    let restored: CardCandidate | undefined;
+    if (raw) {
+      const translator = metricTranslators().find(
+        (t) => t.eventType === raw.event_type,
+      );
+      if (translator) {
+        let facts: readonly AnalyticsFact[] = [];
+        let sourceKey: string | undefined, sourceRevision: number | undefined;
+        try {
+          const translation = translator.translate({
+            id: eventId,
+            businessId,
+            eventType: String(raw.event_type),
+            eventVersion: Number(raw.event_version),
+            payload: raw.payload,
+            capturedAt: new Date(String(raw.created_at)).toISOString(),
+          } satisfies MetricEvent);
+          facts = translation.facts ?? [];
+          sourceKey = translation.sourceKey;
+          sourceRevision = translation.sourceRevision;
+        } catch {
+          /* Incomplete legacy evidence never becomes an invented fact. */
+        }
+        const relevant = facts.filter(
+          (f) =>
+            card.subjectKey ===
+            (f.kind === "unit_cost_change"
+              ? `${f.locationId}:${f.itemId}:${f.productId}`
+              : `${eventId}:${f.itemId}`),
+        );
+        if (relevant.length) {
+          const original = inputFromRow(
+            (
+              await tx.execute(
+                inputStatement(
+                  businessId,
+                  new Date(relevant[0].occurredAt),
+                  undefined,
+                  policy,
+                ),
+              )
+            ).rows[0],
+          );
+          restored = buildFactCandidates(
+            original,
+            relevant,
+            eventId,
+            (instant) => localDay(new Date(instant), input.timezone!),
+            [],
+            policy,
+          ).find(
+            (c) =>
+              c.cardKey === card.cardKey && c.subjectKey === card.subjectKey,
+          );
+        }
+        if (restored)
+          restored = {
+            ...restored,
+            context: { ...restored.context, sourceKey, sourceRevision },
+          };
+      }
+    }
+    await tx
+      .update(states)
+      .set({
+        context: {
+          ...context,
+          legacyRecoveryAttempted: true,
+          ...(restored?.context
+            ? {
+                observed: {
+                  ...restored.context,
+                  fact: {
+                    occurredAt: contextRecord(restored.context.fact).occurredAt,
+                  },
+                  emission: undefined,
+                },
+                sourceFact: restored.context,
+                factCursor: restored.originObservedAt,
+                originDay: restored.originDay,
+              }
+            : {}),
+        },
+      })
+      .where(
+        and(
+          eq(states.businessId, businessId),
+          eq(states.candidateId, control.candidateId!),
+        ),
+      );
+  }
+}
 export async function evaluateBusiness(
   businessId: string,
   now = new Date(),
   options: {
     budgetMs?: number;
-    trace?: (stage: string, milliseconds: number) => void;
+    trace?: (stage: string, ms: number) => void;
+    policy?: AnalyticsPolicy;
   } = {},
 ): Promise<boolean> {
-  const connecting = performance.now();
+  const policy = options.policy ?? ANALYTICS_POLICY,
+    connecting = performance.now();
   return withDbTransaction(async (tx) => {
     if (!(await lockAnalyticsBusiness(tx, businessId, true))) return false;
     options.trace?.("transaction_connection", performance.now() - connecting);
-    const claimStarted = performance.now();
-    const budget = Math.max(1, Math.floor(options.budgetMs ?? 20_000));
-    const result =
-      await tx.execute(sql`with business_clock as materialized (select (${now.toISOString()}::timestamptz at time zone timezone)::date as day from core.business where id=${businessId}),
-      settings as materialized (select set_config('statement_timeout',${String(Math.max(1, budget - 100))},true),set_config('transaction_timeout',${String(budget)},true)),
-      acquired as materialized (select business_clock.day,pg_try_advisory_xact_lock(hashtextextended('analytics:evaluate:'||${businessId}||':'||business_clock.day::text,0)) ok from business_clock,settings),
-      inserted as (insert into analytics.evaluation_run(business_id,day,status,claimed_at) select ${businessId}::uuid,day,'preparing',${now.toISOString()}::timestamptz from acquired where ok on conflict do nothing returning business_id),
-      existing as (select r.business_id from analytics.evaluation_run r,acquired where acquired.ok and r.business_id=${businessId} and r.day=acquired.day and r.status<>'ready' for update of r skip locked),
-      claim as materialized (select business_clock.day::text as day,exists(select business_id from inserted union all select business_id from existing) claimed from business_clock)
-      select claim.day,claim.claimed,case when claim.claimed then (select row_to_json(snapshot) from (${inputStatement(businessId, now)}) snapshot) else null end payload from claim`);
-    const claimed = result.rows[0];
-    if (!claimed)
-      throw new AnalyticsError(
-        404,
-        "business_not_found",
-        "No encontramos el negocio.",
+    const started = performance.now(),
+      budget = Math.max(
+        1,
+        Math.floor(options.budgetMs ?? policy.operation.evaluationBudgetMs),
       );
-    if (!claimed.claimed) return false;
-    const day = String(claimed.day);
-    const input = inputFromRow(claimed.payload as Record<string, unknown>);
+    const result = await tx.execute(
+      sql`with b as materialized(select (${now.toISOString()}::timestamptz at time zone timezone)::date day from core.business where id=${businessId}),settings as materialized(select set_config('statement_timeout',${String(Math.max(1, budget - 100))},true),set_config('transaction_timeout',${String(budget)},true)),claim as(insert into analytics.evaluation_run(business_id,day,status,claimed_at,policy_version) select ${businessId}::uuid,b.day,'preparing',${now.toISOString()}::timestamptz,${policy.version} from b,settings on conflict(business_id,day) do update set status='preparing',claimed_at=excluded.claimed_at,policy_version=excluded.policy_version where analytics.evaluation_run.status<>'ready' or analytics.evaluation_run.policy_version<>excluded.policy_version returning day) select day::text from claim`,
+    );
+    if (!result.rows[0]) return false;
+    let input = inputFromRow(
+      (await tx.execute(inputStatement(businessId, now, undefined, policy)))
+        .rows[0],
+    );
+    await recoverLegacyFacts(tx, businessId, input, now, policy);
+    // Recovering structured facts is a one-time transition, followed by the normal summary snapshot.
+    if (
+      input.factCards.some(
+        (c) =>
+          contextRecord(
+            input.states.find(
+              (s) => s.cardKey === c.cardKey && s.subjectKey === c.subjectKey,
+            )?.context,
+          ).legacy,
+      )
+    )
+      input = inputFromRow(
+        (await tx.execute(inputStatement(businessId, now, undefined, policy)))
+          .rows[0],
+      );
     options.trace?.(
       "claim_and_summary_round_trip",
-      performance.now() - claimStarted,
+      performance.now() - started,
     );
     const calculating = performance.now();
     const cards = [
-      ...buildCandidates(input, input.states),
-      ...input.factCards
-        .map((card) => carryFactCandidate(input, card, input.states))
-        .filter((card): card is CardCandidate => card !== null),
+      ...buildCandidates(input, input.states, policy),
+      ...restoreFactCandidates(input, input.states, policy),
     ];
     options.trace?.("pure_calculation", performance.now() - calculating);
     const writing = performance.now();
-    const rows = cards.map((card) => ({
-      card_key: card.cardKey,
-      subject_key: card.subjectKey,
-      weight: String(card.weight),
-      amount_minor: card.amountMinor === null ? null : String(card.amountMinor),
-      currency_code: card.currencyCode,
-      minor_unit: card.minorUnit,
-      parameters: card,
-      fingerprint: card.fingerprint,
-      location_id: card.locationId,
-    }));
-    await tx.execute(sql`with saved as (insert into analytics.card_candidate(business_id,day,card_key,subject_key,weight,amount_minor,currency_code,minor_unit,parameters,fingerprint,location_id)
-      select ${businessId}::uuid,${day}::date,c.card_key,c.subject_key,c.weight,c.amount_minor,c.currency_code,c.minor_unit,c.parameters,c.fingerprint,c.location_id
-      from jsonb_to_recordset(${JSON.stringify(rows)}::jsonb) as c(card_key text,subject_key text,weight numeric,amount_minor bigint,currency_code text,minor_unit int,parameters jsonb,fingerprint text,location_id uuid) on conflict do nothing returning id)
-      update analytics.evaluation_run set status='ready',prepared_at=clock_timestamp() where business_id=${businessId} and day=${day}::date`);
+    await syncInboxCandidates(tx, businessId, input, cards, now, policy);
+    await tx.execute(
+      sql`update analytics.evaluation_run set status='ready',policy_version=${policy.version},prepared_at=clock_timestamp() where business_id=${businessId} and day=${input.today}::date`,
+    );
     options.trace?.("persistence_round_trips", performance.now() - writing);
     return true;
   });
 }
-/** Reconciles only today's campaign reports after a new lifecycle or promo summary contribution.
- * Called inside ingestion's transaction; preserves candidate IDs and all card_state history.
- */
 export async function reconcileCampaignCandidates(
   tx: DbTransaction,
   businessId: string,
   now = new Date(),
+  policy: AnalyticsPolicy = ANALYTICS_POLICY,
 ) {
   await lockAnalyticsBusiness(tx, businessId);
-  await tx.execute(
-    sql`select pg_advisory_xact_lock(hashtextextended('analytics:evaluate:'||${businessId}||':'||(${now.toISOString()}::timestamptz at time zone timezone)::date::text,0)) from core.business where id=${businessId}`,
+  const input = inputFromRow(
+    (await tx.execute(inputStatement(businessId, now, undefined, policy)))
+      .rows[0],
   );
-  const result = await tx.execute(inputStatement(businessId, now));
-  const input = inputFromRow(result.rows[0]);
-  const cards = buildCustomerPromoCandidates(input, input.states).filter(
-    (card) => card.cardKey === "12",
+  await syncInboxCandidates(
+    tx,
+    businessId,
+    input,
+    buildCustomerPromoCandidates(input, input.states, policy).filter((c) =>
+      policy.rules.some((r) => r.id === c.cardKey && r.handler === "campaign"),
+    ),
+    now,
+    policy,
+    ["campaign"],
   );
-  const rows = cards.map((card) => ({
-    subject_key: card.subjectKey,
-    weight: String(card.weight),
-    amount_minor: card.amountMinor === null ? null : String(card.amountMinor),
-    currency_code: card.currencyCode,
-    minor_unit: card.minorUnit,
-    parameters: card,
-    fingerprint: card.fingerprint,
-    location_id: card.locationId,
-  }));
-  await tx.execute(sql`with fresh as materialized (select * from jsonb_to_recordset(${JSON.stringify(rows)}::jsonb) as c(subject_key text,weight numeric,amount_minor bigint,currency_code text,minor_unit int,parameters jsonb,fingerprint text,location_id uuid)),
-    saved as (insert into analytics.card_candidate(business_id,day,card_key,subject_key,weight,amount_minor,currency_code,minor_unit,parameters,fingerprint,location_id)
-      select ${businessId}::uuid,${input.today}::date,'12',subject_key,weight,amount_minor,currency_code,minor_unit,parameters,fingerprint,location_id from fresh
-      on conflict(business_id,day,card_key,subject_key) do update set weight=excluded.weight,amount_minor=excluded.amount_minor,currency_code=excluded.currency_code,minor_unit=excluded.minor_unit,parameters=excluded.parameters,fingerprint=excluded.fingerprint,location_id=excluded.location_id returning id)
-    delete from analytics.card_candidate where business_id=${businessId} and day=${input.today}::date and card_key='12' and not exists(select 1 from fresh where fresh.subject_key=analytics.card_candidate.subject_key)`);
 }
-/** Called inside the ingestion transaction only after a new source revision was applied. */
 export async function evaluateAnalyticsFacts(
   tx: DbTransaction,
   context: {
@@ -150,109 +255,95 @@ export async function evaluateAnalyticsFacts(
     capturedAt: string;
     facts: readonly AnalyticsFact[];
     now?: Date;
+    sourceKey?: string;
+    sourceRevision?: number;
   },
+  policy: AnalyticsPolicy = ANALYTICS_POLICY,
 ) {
   if (!context.facts.length) return;
   await lockAnalyticsBusiness(tx, context.businessId);
   const now = context.now ?? new Date();
-  const clock = await tx
-    .select({ timezone: businesses.timezone })
-    .from(businesses)
-    .where(eq(businesses.id, context.businessId))
-    .limit(1);
-  if (!clock[0]) return;
-  const day = localDay(now, clock[0].timezone);
-  await tx.execute(
-    sql`select pg_advisory_xact_lock(hashtextextended(${evaluationLockKey(context.businessId, day)},0))`,
+  const input = inputFromRow(
+    (
+      await tx.execute(
+        inputStatement(context.businessId, now, undefined, policy),
+      )
+    ).rows[0],
   );
-  const snapshot = await tx.execute(inputStatement(context.businessId, now));
-  const input = inputFromRow(snapshot.rows[0]);
   const cards: CardCandidate[] = [];
-  const dayOf = (instant: string) =>
-    localDay(new Date(instant), clock[0]!.timezone);
-  const factDays = [
-    ...new Set(context.facts.map((fact) => dayOf(fact.occurredAt))),
-  ];
-  for (const originDay of factDays) {
-    const facts = context.facts.filter(
-      (fact) => dayOf(fact.occurredAt) === originDay,
+  for (const fact of context.facts) {
+    const original = inputFromRow(
+      (
+        await tx.execute(
+          inputStatement(
+            context.businessId,
+            new Date(fact.occurredAt),
+            undefined,
+            policy,
+          ),
+        )
+      ).rows[0],
     );
-    // A delayed delivery uses sales before the fact, never sales from its future.
-    const factSnapshot =
-      originDay === day
-        ? input
-        : inputFromRow(
-            (
-              await tx.execute(
-                inputStatement(
-                  context.businessId,
-                  new Date(facts[0]!.occurredAt),
-                ),
-              )
-            ).rows[0],
-          );
-    for (const card of buildFactCandidates(
-      factSnapshot,
-      facts,
-      context.eventId,
-      dayOf,
-      input.states,
-    )) {
-      const current = carryFactCandidate(input, card, input.states);
-      if (current) cards.push(current);
-    }
-  }
-  for (const card of cards) {
-    const previous = input.factCards.find(
-      (c) => c.cardKey === card.cardKey && c.subjectKey === card.subjectKey,
+    cards.push(
+      ...buildFactCandidates(
+        original,
+        [fact],
+        context.eventId,
+        (instant) => localDay(new Date(instant), input.timezone),
+        [],
+        policy,
+        new Map(),
+        true,
+      )
+        .map((c) => {
+          const captured = {
+            ...c,
+            context: {
+              ...c.context,
+              sourceKey: context.sourceKey,
+              sourceRevision: context.sourceRevision,
+            },
+          };
+          return policy.rules.find((r) => r.id === c.cardKey)?.enabled
+            ? carryFactCandidate(input, captured, [], policy)
+            : captured;
+        })
+        .filter((c): c is CardCandidate => c !== null),
     );
-    if (
-      previous?.originObservedAt &&
-      card.originObservedAt &&
-      previous.originObservedAt > card.originObservedAt
-    )
-      continue;
-    const values = {
-      weight: String(card.weight),
-      amountMinor: card.amountMinor === null ? null : BigInt(card.amountMinor),
-      currencyCode: card.currencyCode,
-      minorUnit: card.minorUnit,
-      parameters: card,
-      fingerprint: card.fingerprint,
-      locationId: card.locationId,
-    };
-    await tx
-      .insert(candidates)
-      .values({
-        ...values,
-        businessId: context.businessId,
-        day,
-        cardKey: card.cardKey,
-        subjectKey: card.subjectKey,
-      })
-      .onConflictDoUpdate({
-        target: [
-          candidates.businessId,
-          candidates.day,
-          candidates.cardKey,
-          candidates.subjectKey,
-        ],
-        set: values,
-        setWhere: sql`coalesce(${candidates.parameters}->>'originObservedAt','') <= ${card.originObservedAt ?? ""}`,
-      });
   }
+  await syncInboxCandidates(
+    tx,
+    context.businessId,
+    input,
+    cards,
+    now,
+    policy,
+    ["cost-rise", "count-gap"],
+    false,
+  );
 }
-export async function evaluateDueBusinesses(now = new Date()) {
-  const deadline = Date.now() + 20_000;
-  let processed = 0;
-  let skipped = 0;
-  const due = await getDb()
-    .execute(sql`select b.id from core.business b where b.status = 'active'
-    and ((${now.toISOString()}::timestamptz at time zone b.timezone)::time >= time '03:00')
-    and not exists (select 1 from analytics.evaluation_run e where e.business_id=b.id and e.day=(${now.toISOString()}::timestamptz at time zone b.timezone)::date and e.status='ready')
-    and (exists (select 1 from analytics.daily_metric m where m.business_id=b.id and m.day >= ((${now.toISOString()}::timestamptz at time zone b.timezone)::date - 35))
-      or not exists(select 1 from analytics.daily_metric m where m.business_id=b.id)
-      or exists(select 1 from analytics.campaign_snapshot c where c.business_id=b.id and (least(c.ends_at,c.ended_at) at time zone b.timezone)::date=((${now.toISOString()}::timestamptz at time zone b.timezone)::date-1))) order by b.id limit 20`);
+export async function evaluateDueBusinesses(
+  now = new Date(),
+  policy: AnalyticsPolicy = ANALYTICS_POLICY,
+) {
+  const deadline = Date.now() + policy.operation.evaluationBudgetMs;
+  let processed = 0,
+    skipped = 0;
+  const campaignDelays = policy.rules
+    .filter((r) => r.enabled && r.handler === "campaign")
+    .map((r) => r.parameters.emissionDelayDays);
+  const campaignDue = campaignDelays.length
+    ? sql`exists(select 1 from analytics.campaign_snapshot c where c.business_id=b.id and (least(c.ends_at,c.ended_at) at time zone b.timezone)::date in (${sql.join(
+        campaignDelays.map(
+          (days) =>
+            sql`((${now.toISOString()}::timestamptz at time zone b.timezone)::date-${days})`,
+        ),
+        sql`,`,
+      )}))`
+    : sql`false`;
+  const due = await getDb().execute(
+    sql`select b.id from core.business b where b.status='active' and extract(hour from ${now.toISOString()}::timestamptz at time zone b.timezone)>=${policy.operation.earliestEvaluationHour} and not exists(select 1 from analytics.evaluation_run r where r.business_id=b.id and r.day=(${now.toISOString()}::timestamptz at time zone b.timezone)::date and r.status='ready' and r.policy_version=${policy.version}) and (exists(select 1 from analytics.daily_metric m where m.business_id=b.id and m.day>=(${now.toISOString()}::timestamptz at time zone b.timezone)::date-${policy.operation.recentActivityDays}) or not exists(select 1 from analytics.daily_metric m where m.business_id=b.id) or exists(select 1 from analytics.card_state s where s.business_id=b.id and s.status in ('open','snoozed')) or ${campaignDue}) order by b.id limit ${policy.operation.evaluationBatchSize}`,
+  );
   for (const row of due.rows) {
     if (Date.now() >= deadline) {
       skipped++;
@@ -261,6 +352,7 @@ export async function evaluateDueBusinesses(now = new Date()) {
     if (
       await evaluateBusiness(String(row.id), now, {
         budgetMs: Math.max(1, deadline - Date.now()),
+        policy,
       })
     )
       processed++;
@@ -268,173 +360,12 @@ export async function evaluateDueBusinesses(now = new Date()) {
   }
   return { processed, skipped };
 }
-async function selectedCandidates(
-  tx: DbTransaction,
-  businessId: string,
-  day: string,
-) {
-  const [rows, previous] = await Promise.all([
-    tx
-      .select()
-      .from(candidates)
-      .where(
-        and(eq(candidates.businessId, businessId), eq(candidates.day, day)),
-      ),
-    tx.select().from(states).where(eq(states.businessId, businessId)),
-  ]);
-  return selectCards(
-    rows.map((c) => {
-      const state = previous.find(
-        (s) => s.cardKey === c.cardKey && s.subjectKey === c.subjectKey,
-      );
-      return {
-        ...c,
-        weight:
-          state &&
-          state.fingerprint === c.fingerprint &&
-          state.status !== "shown"
-            ? 0
-            : Number(c.weight),
-      };
-    }),
+/** Legacy clients must reload v2; navigation is never reinterpreted as a decision. */
+export async function actOnCard(..._legacy: unknown[]): Promise<never> {
+  void _legacy;
+  throw new AnalyticsError(
+    409,
+    "inbox_contract_changed",
+    "Recarga el inbox para continuar.",
   );
-}
-export async function readInbox(
-  businessId: string,
-  viewer: AnalyticsViewer,
-  now = new Date(),
-  allowYesterday = false,
-) {
-  const today = await businessDay(businessId, now);
-  const db = getDb();
-  const [run] = await db
-    .select()
-    .from(runs)
-    .where(and(eq(runs.businessId, businessId), eq(runs.day, today)))
-    .limit(1);
-  const ready = run?.status === "ready";
-  let day = today;
-  if (!ready && !allowYesterday)
-    return {
-      state: "preparing" as const,
-      preparedAt: null,
-      cards: [] as InboxCard[],
-    };
-  if (!ready && allowYesterday) {
-    const old = await db.execute(
-      sql`select day from analytics.evaluation_run where business_id=${businessId} and day=${today}::date - 1 and status='ready' limit 1`,
-    );
-    if (old.rows[0]) day = String(old.rows[0].day).slice(0, 10);
-    else
-      return {
-        state: "preparing" as const,
-        preparedAt: null,
-        cards: [] as InboxCard[],
-      };
-  }
-  const resolve = await actionContext(businessId, viewer);
-  const cards = await withDbTransaction(async (tx) => {
-    await lockAnalyticsBusiness(tx, businessId);
-    await tx.execute(
-      sql`select pg_advisory_xact_lock(hashtextextended(${evaluationLockKey(businessId, day)}, 0))`,
-    );
-    const selected = await selectedCandidates(tx, businessId, day);
-    for (const card of selected) {
-      await tx
-        .insert(states)
-        .values({
-          businessId,
-          cardKey: card.cardKey,
-          subjectKey: card.subjectKey,
-          fingerprint: card.fingerprint,
-          status: "shown",
-          shownDays: 1,
-          lastShownDay: today,
-        })
-        .onConflictDoUpdate({
-          target: [states.businessId, states.cardKey, states.subjectKey],
-          set: {
-            fingerprint: card.fingerprint,
-            status: "shown",
-            lastShownDay: today,
-            shownDays: sql`case when ${states.fingerprint} <> ${card.fingerprint} then 1 when ${states.lastShownDay} <> ${today} then ${states.shownDays} + 1 else ${states.shownDays} end`,
-            updatedAt: now,
-          },
-        });
-    }
-    return selected.map((card) => {
-      const p = card.parameters as Pick<
-        CardCandidate,
-        "sender" | "title" | "body" | "quality" | "actionKey" | "actionHref"
-      >;
-      return {
-        id: card.id,
-        cardKey: card.cardKey,
-        sender: p.sender,
-        title: p.title,
-        body: p.body,
-        quality: p.quality,
-        amountAtStake:
-          card.amountMinor === null
-            ? null
-            : {
-                amountMinor: safeMoney(card.amountMinor),
-                currencyCode: card.currencyCode,
-                minorUnit: card.minorUnit,
-              },
-        action: resolve(p.actionKey, p.actionHref),
-      } satisfies InboxCard;
-    });
-  });
-  return {
-    state: ready ? ("ready" as const) : ("preparing" as const),
-    preparedAt: run?.preparedAt?.toISOString() ?? null,
-    cards,
-  };
-}
-export async function actOnCard(
-  businessId: string,
-  userId: string,
-  id: string,
-  status: "accepted" | "dismissed",
-  viewer: AnalyticsViewer,
-  now = new Date(),
-) {
-  const today = await businessDay(businessId, now);
-  await withDbTransaction(async (tx) => {
-    await lockAnalyticsBusiness(tx, businessId);
-    await tx.execute(
-      sql`select pg_advisory_xact_lock(hashtextextended(${evaluationLockKey(businessId, today)}, 0))`,
-    );
-    const selected = await selectedCandidates(tx, businessId, today);
-    const card = selected.find((c) => c.id === id);
-    if (!card)
-      throw new AnalyticsError(
-        404,
-        "card_not_found",
-        "No encontramos esa tarjeta de hoy.",
-      );
-    await tx
-      .insert(states)
-      .values({
-        businessId,
-        cardKey: card.cardKey,
-        subjectKey: card.subjectKey,
-        fingerprint: card.fingerprint,
-        status,
-        shownDays: 1,
-        lastShownDay: today,
-        actedBy: userId,
-      })
-      .onConflictDoUpdate({
-        target: [states.businessId, states.cardKey, states.subjectKey],
-        set: {
-          status,
-          fingerprint: card.fingerprint,
-          actedBy: userId,
-          updatedAt: now,
-        },
-      });
-  });
-  return { cards: (await readInbox(businessId, viewer, now)).cards };
 }

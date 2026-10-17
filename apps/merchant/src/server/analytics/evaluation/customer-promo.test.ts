@@ -77,25 +77,27 @@ describe("AN-3 cards", () => {
     metrics[0]!.count = 20;
     expect(card(input(metrics), "10")).toBeUndefined();
   });
-  it("11 has four visits, strict twice median, +7 inclusive, last90 inclusive and estimated loss", () => {
+  it("parks11 even for a formerly qualifying habitual while preserving cohort history", () => {
     const i = input(
       ["2026-08-19", "2026-08-31", "2026-09-12", "2026-09-24"].map((day) =>
         row(day, "visits", 1, 101, id),
       ),
     );
-    expect(card(i, "11")?.amountMinor).toBe(202);
-    expect(card({ ...i, today: "2026-10-19" }, "11")).toBeDefined(); // missed Oct6 and Oct18
-    expect(card({ ...i, today: "2026-10-18" }, "11")).toBeUndefined();
-    expect(card({ ...i, today: "2026-12-23" }, "11")).toBeDefined();
-    expect(card({ ...i, today: "2026-12-24" }, "11")).toBeUndefined();
-    expect(card({ ...i, metrics: i.metrics.slice(1) }, "11")).toBeUndefined();
-    const short = input(
-      ["2026-10-01", "2026-10-04", "2026-10-07", "2026-10-10"].map((day) =>
-        row(day, "visits", 1, 100, id),
-      ),
-    );
-    expect(card({ ...short, today: "2026-10-19" }, "11")).toBeUndefined();
-    expect(card(short, "11")).toBeDefined();
+    expect(customerCohorts(i)[0]).toMatchObject({
+      visitDays: 4,
+      visits: 4,
+      medianDays: 12,
+      spentMinor: 404,
+      lastDay: "2026-09-24",
+    });
+    for (const today of [
+      "2026-10-18",
+      "2026-10-19",
+      "2026-10-20",
+      "2026-12-23",
+      "2026-12-24",
+    ])
+      expect(card({ ...i, today }, "11")).toBeUndefined();
   });
   it("11 uses four distinct dates and averages spending per visited day", () => {
     const i = input([
@@ -113,7 +115,11 @@ describe("AN-3 cards", () => {
       ...i,
       metrics: [...i.metrics, row("2026-08-20", "visits", 1, 100, id)],
     };
-    expect(card(four, "11")?.amountMinor).toBe(250);
+    expect(card(four, "11")).toBeUndefined();
+    expect(customerCohorts(four)[0]).toMatchObject({
+      visitDays: 4,
+      spentMinor: 500,
+    });
     expect(
       card(input([row("2026-09-01", "visits", 4, 400, id, "local", 4)]), "11"),
     ).toBeUndefined();
@@ -126,7 +132,7 @@ describe("AN-3 cards", () => {
       row("2026-09-25", "visits", 1, 100, id),
       row("2026-09-25", "visits", 1, 100, id, "north"),
     ]);
-    expect(card(i, "11")).toMatchObject({ locationId: null, amountMinor: 250 });
+    expect(card(i, "11")).toBeUndefined();
     expect(customerCohorts(i)[0]).toMatchObject({
       visitDays: 4,
       visits: 5,
@@ -151,29 +157,30 @@ describe("AN-3 cards", () => {
         row(day, "visits", 1, 0, id),
       ),
     );
-    expect(card(i, "11")?.amountMinor).toBe(0);
+    expect(card(i, "11")).toBeUndefined();
+    expect(customerCohorts(i)[0]).toMatchObject({
+      spentMinor: 0,
+      allAmountsKnown: true,
+    });
     expect(
-      card(
-        { ...i, metrics: i.metrics.map((r) => ({ ...r, quantity: 0 })) },
-        "11",
-      )?.amountMinor,
-    ).toBeNull();
-    expect(
-      card(
-        {
-          ...i,
-          currencyCode: "COP",
-          minorUnit: 0,
-          metrics: i.metrics.map((r) => ({
-            ...r,
-            currencyCode: "COP",
-            minorUnit: 0,
-            amountMinor: 101,
-          })),
-        },
-        "11",
-      )?.amountMinor,
-    ).toBe(202);
+      customerCohorts({
+        ...i,
+        metrics: i.metrics.map((r) => ({ ...r, quantity: 0 })),
+      })[0].allAmountsKnown,
+    ).toBe(false);
+    const cop = {
+      ...i,
+      currencyCode: "COP",
+      minorUnit: 0,
+      metrics: i.metrics.map((r) => ({
+        ...r,
+        currencyCode: "COP",
+        minorUnit: 0,
+        amountMinor: 101,
+      })),
+    };
+    expect(card(cop, "11")).toBeUndefined();
+    expect(customerCohorts(cop)[0].spentMinor).toBe(404);
   });
   it("12 occurs only next local day of earliest finish, uses snapshot window and no causal claim", () => {
     const i = {

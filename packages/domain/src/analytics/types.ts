@@ -24,6 +24,8 @@ export type AnalyticsGauge = {
   eventId: string;
 };
 export type AnalyticsInput = {
+  timezone?: string;
+  factCards?: readonly CardCandidate[];
   today: string;
   firstSaleDay?: string | null;
   firstSaleDays?: readonly { locationId: string | null; day: string }[];
@@ -100,6 +102,7 @@ export type CardState = {
   episodeStartedAt?: string;
   expiresAt?: string;
   remindAt?: string | null;
+  decidedAt?: string | null;
   revision?: number;
   shownDays: number;
   lastShownDay: string | null;
@@ -126,6 +129,9 @@ export type InboxCard = {
 
 /** Campaign instants are converted by the reader to business-local YYYY-MM-DD dates. */
 export type AnalyticsCampaign = {
+  sourceKey?: string;
+  sourceRevision?: number;
+  finishOccurredAt?: string | null;
   campaignId: string;
   label: string;
   status: string;
@@ -161,6 +167,9 @@ export type AnalyticsInboxCommand = {
 };
 export type AnalyticsCleanupResult = {
   cutoff: string;
+  eligible: number;
+  processed: number;
+  completedAt: string | null;
   deleted: number;
   skipped: number;
   budgetExhausted: boolean;
