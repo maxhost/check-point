@@ -33,3 +33,34 @@ DB asignada: replay protegido mediante `tools/neon-test.sh` y
 reset/ledger, seed global, verify, mutaciones, push o deploy. Se conserva el
 presupuesto real de 2000 ms del intento; una aplicación que no quepa se informará
 como resultado real, sin drenar después con cron/retry para fabricar aprobación.
+
+## Primera ejecución real: FAIL
+
+Checkpoint de test `beac70c4`; fuente combinada inmóvil de la corrida
+`d93599f79ddd03d4aa9bcc991680771c52252436` (A `263790be`). Node 24.20.0.
+Comando autorizado, exclusivamente ese archivo y sin paralelismo:
+
+```sh
+NEON_TEST_ENV_FILE=/private/tmp/checkpass-0237/migration.env \
+  tools/neon-test.sh --app merchant \
+  src/modules/expenses/server/immediate.neon.integration.test.ts \
+  --no-file-parallelism
+```
+
+Log crudo:
+`/private/tmp/checkpass-expenses-immediate/expenses-immediate-b-neon-d93599f7.log`.
+Wrapper EXIT 1; **un test ejecutado, un FAIL, cero skips/retries**. Vitest duró
+15,42 s; el caso 9,36 s. El wrapper realizó su paso idempotente de migraciones
+existentes; B no creó/cambió migraciones, ledger ni configuración.
+
+El POST respondió 201 y dejó evento/core pendiente con resumen aún vacío. Tras
+ejecutar el único callback after esperado, la delivery quedó `processing`,
+`attempts:1`, en vez de `applied` (línea 180 del test). La cadena no llegó a los
+asserts de edición/borrado. No se afirma PASS del procesamiento inmediato ni de
+esa parte no ejecutada. El resultado es compatible con un presupuesto agotado
+después del claim; la causa exacta requiere evaluación del coordinador/A.
+
+Se avisó inmediatamente a coordinador, A y QA. No se aumentó el presupuesto de
+2000 ms, cambió expectativa ni ejecutó drenaje posterior/cron/retry para ocultar
+el fallo. Setup y teardown concluyeron sin errores de hooks; el runner terminó.
+El recurso DB continúa reservado hasta la indicación del coordinador.
