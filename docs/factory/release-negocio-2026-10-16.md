@@ -25,3 +25,9 @@ Antes de migrar, un fallo detiene publicación/corte. Después del movimiento, n
 ## Evidencia y resultado
 
 Preparación en curso. SHA final, gates, confirmación de pausa, baseline, push, migración, deploy y verificación se agregan con resultados observados; ningún PASS ni hora de ejecución se presupone.
+
+QA independiente aceptó identidad y plan de65b5f443, fuente idéntica27a3befb, sin certificar precondiciones PROD. Lecturas PROD solo lectura02:15:39 y02:17:35UTC:93 migraciones,4 comercios,22 medios,4 pagos con provider pos,0 revisiones/resultados; deliveryprofitability skipped1 y recipes applied1, sin claims ni obligaciones de comisión; sin writers activos observados. Son instantáneas previas, no sustituyen la comprobación después de pausar cron. Baseline definitivo se captura antes del corte.
+
+Primer verify se detuvo antes de build/navegador para completar orígenes locales explícitos; DB local ya guardada. Segundo verify con orígenes/proveedores locales: tipos6/6, lint, guardiaUI32 y formato PASS; unitarios2914PASS/2FAIL/1328skipped (DB excluida aquí). Fallos de contrato obsoleto: fixture cropped aún enviaba timezone a Marca; lista exacta de permisos omitía business. Build4apps PASS antes de detener la tanda durante navegador para corregir esos dos tests; navegador parcial y Neon no certificados por esa tanda. Ningún fallo de red/DNS ni bypass.
+
+Ampliación nominal factory previa a editar: cropped-input-validation.test.ts y staff-permissions.test.ts. Solo se retira timezone del fixture de Marca y se añade business a la lista exacta de ocho; assertions y negativos conservados. Selección corregida63/63 PASS,1,52s; tiposMerchant posterior EXIT0, formato/diff PASS. El pre-push ejecutará verify completo sobre el SHA corregido antes de transmitir el commit; no se declara verify verde a partir de una corrección focal. Artifacts next-env generados se restauran exactamente; logs reales en /private/tmp/checkpass-negocio-release/.

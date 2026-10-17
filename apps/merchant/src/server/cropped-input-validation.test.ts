@@ -22,7 +22,6 @@ import {
 
 const brandBase = {
   name: "La Craft Beer Garden",
-  timezone: "America/Guayaquil",
   brandPrimaryColor: "#176548",
   brandComplementaryColor: "#2D8B68",
   brandAccentColor: "#E78132",

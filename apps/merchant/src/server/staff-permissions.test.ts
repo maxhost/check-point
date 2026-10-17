@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 /**
  * Spec 0086 §1/§4/§5 — **EL CATALOGO PURO Y LAS REGLAS ANTI-ESCALADA**, sin base y sin HTTP.
  *
- * Acá viven las decisiones que son funciones puras: el conjunto cerrado de los siete, la
+ * Acá viven las decisiones que son funciones puras: el conjunto cerrado de permisos, la
  * normalizacion, quien pasa el paso 3, que permisos ve la API para cada rol, y R1/R3. Lo que
  * necesita una fila —R4, `staff_not_found`, el aislamiento por negocio— vive en
  * `staff-permissions.neon.integration.test.ts`, porque un doble de `getDb` probaria el doble.
@@ -23,15 +23,17 @@ import {
   parsePermissions,
 } from "./staff-permissions";
 
-describe("el catálogo de los siete permisos (spec 0086 §1)", () => {
-  /** EL CONJUNTO EXACTO, no «al menos». Un octavo valor que entrara sin discutirlo
+describe("el catálogo de los ocho permisos (spec 0235)", () => {
+  /** EL CONJUNTO EXACTO, no «al menos». Un valor que entrara sin discutirlo
    * rompería acá **y** el `CHECK` de contención de la migración 0041, que lee esta misma
    * lista: son la misma fuente de verdad a propósito. */
   // Spec 0169: `pos` entró al catálogo (eran OCHO). Spec 0220 / ADR 0141 (2026-10-13): `pos` salió
   // del core y lo declara el módulo POS (`modules/permissions.test.ts`); el core vuelve a SIETE.
-  it("son EXACTAMENTE siete y en el orden del catálogo", () => {
+  // Spec 0235: `business` agrega acceso delegado a Negocio; ahora son OCHO.
+  it("son EXACTAMENTE ocho y en el orden del catálogo", () => {
     expect([...PERMISSIONS]).toEqual([
       "brand",
+      "business",
       "catalog",
       "counter",
       "locations",
@@ -101,8 +103,8 @@ describe("el paso 3 de la escalera, puro (spec 0086 §2)", () => {
 
 describe("lo que la API devuelve como `permissions` (spec 0086 §8)", () => {
   /** **La API no expone la columna, expone la CAPACIDAD**, y acá la diferencia importa: la
-   * fila del owner está vacía por `CHECK` y el cuerpo devuelve los siete. */
-  it("para un OWNER son los SIETE aunque su fila esté vacía", () => {
+   * fila del owner está vacía por `CHECK` y el cuerpo devuelve todo el catálogo. */
+  it("para un OWNER son los OCHO aunque su fila esté vacía", () => {
     expect(permissionsForRole("owner", [])).toEqual([...PERMISSIONS]);
     expect(permissionsForRole("owner", null)).toEqual([...PERMISSIONS]);
   });
