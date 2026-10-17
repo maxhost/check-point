@@ -1,0 +1,21 @@
+# 0237 — Recuperación del rendimiento de evaluación
+
+Encargo del owner 2026-10-17: reabrir solo el pendiente de rendimiento AN-1 sobre AN-1/AN-2/AN-3 integradas. Un implementador dedicado investiga y optimiza con cuidado; coordinador explica el housekeeping (punto 3), sin implementarlo por este encargo. Base dev/main `5afa5294aa844d260313cfc3673f6f69265e0254`.
+
+## Alcance e invariantes
+
+Objetivo: TOTAL evaluateBusiness ≤1000 ms en frío, con conexión, claim/lecturas, cálculo, persistencia y commit incluidos. No restar red/conexión, no precalentar objetivo, no escoger el mejor intento, no mover trabajo fuera del reloj ni bajar carga/CU/umbrales o falsear resultados. Conservar todos los intentos, etapas, SQL/planes, SHAs, parámetros, tamaño de dataset y resultados. La referencia anterior de 2082,39 ms procede de AN-1, no representa una medición nueva de AN-3.
+
+Métodos autorizados: mejorar consultas, índices, agrupaciones, filtros y transferencia de datos redundantes conservando exactamente métricas, ventanas, dinero/null, tarjetas, RLS/tenant, atomicidad/idempotencia y locks/concurrencia. Sin nuevas tablas, particionado, desnormalización, vistas materializadas, columnas/tipos/relaciones nuevos, borrados de datos reales ni cambios de arquitectura o producto. No modificar migraciones 0097–0099; si un índice requiere DDL versionado, proponerlo al coordinador y usar como máximo una migración nueva exclusivamente de índices, asignada antes de escribirla. Cambios de conexiones/transacciones requieren justificar equivalencia y regresiones.
+
+No PROD (ni lectura), push/deploy, llamadas clima, verify global ni mutaciones. No INDEX/TASKS/estado Claude. No solucionar CI compartida ni housekeeping por extensión automática. Si surge contradicción material con la spec, preguntar al owner y parar todo. Un resultado >1000 es FAIL: informar y detener nuevas mediciones frías; entregar diagnóstico para acordar el siguiente paso, sin bucles de reintento. EXPLAIN en caliente no es evidencia del objetivo frío.
+
+## Flujo y reservas
+
+Coordinador reserva contrato/estado. Un implementador en worktree propio desde dev: `analytics-performance`, ruta `/private/tmp/checkpass-analytics-perf/analytics-performance`; entrega `docs/factory/0237-performance-events.md`. QA independiente antes de integración, reutilizando evidencia compatible. No subdelegación. Main local solo tras QA PASS; sin publicación. No tocar root checkout desde workers.
+
+Writer autorizado: `apps/merchant/src/server/analytics/queries/index.ts`, `apps/merchant/src/server/analytics/evaluation/index.ts`, tests focales existentes de evaluation y `docs/factory/0237-performance-events.md`. No alterar dominio/pesos/copias por housekeeping ni tooling/kit/guardias; ampliaciones explícitas por coordinador.
+
+Node24. DB solo `tools/neon-test.sh`; perf exclusiva `/private/tmp/checkpass-0237/perf.env`, recurso `db:analytics-perf` (proyecto/endpoint en perf-resource.json). Wrapper aplica migraciones pendientes: inventariar estáticamente antes, preservar volumen 29,2M y auxiliares, no replay/reset global/seed/ANALYZE global. Se autoriza aplicar las migraciones locales pendientes 0098/0099 únicamente a esta DB efímera si el ledger es compatible, mediante migrador del wrapper. Si hash incompatible, parar e informar; no reparar ledger ni editar migraciones. Reset estrictamente del run/candidatas del comercio sintético/día de medición, conservando métricas. La rama de prueba puede reactivarse/suspenderse para enfriar; no operar otras ramas. Test funcional en replay válido migration.env requiere reserva serial previa por coordinador.
+
+Primera fase sin DB: recuperar evidencia anterior, analizar consultas actuales y proponer hipótesis/plan de medición. Informar al coordinador antes de la primera operación DB. No garantía ficticia de alcanzar 1s: entregar PASS real o bloqueo/FAIL explicado. QA verifica equivalencia, honestidad de medición e identidad del candidato.

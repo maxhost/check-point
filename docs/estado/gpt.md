@@ -3,7 +3,11 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — ANALÍTICAS 0237 AN-3 EN MAIN LOCAL CON QA PASS (2026-10-17)
+## ESTADO — RENDIMIENTO ANALÍTICAS REABIERTO POR EL OWNER (2026-10-17)
+
+Owner reabre el pendiente 1: un agente investiga/optimiza consultas, índices, agrupaciones y filtros para ≤1 s frío con resultados exactos. Prohíbe nuevas tablas/rediseño de DB y atajos que escondan trabajo o falseen evidencia. [Contrato vigente](../factory/0237-performance-contract.md), base dev/main `5afa5294`. Coordinador explica el punto 3 con ejemplos; no implementa housekeeping ni CI por ahora. Sin push/deploy/PROD, llamadas clima, verify global ni mutaciones. Si aparece contradicción, preguntar y parar hasta respuesta. Se preparará un worktree propio con factory y QA independiente al tener candidato; Node24/DB wrapper exclusivo. Todos los diferidos restantes siguen conservados. AN-3 cerrada como describe el corte histórico siguiente.
+
+## HISTÓRICO — ANALÍTICAS 0237 AN-3 EN MAIN LOCAL CON QA PASS (2026-10-17)
 
 AN-3 implementada sobre AN-1/AN-2. **QA independiente PASS de entregas y combinación `1713d9423d3761a05daebeef660ddeb8502cd788`**, informe `3e901602fa5354186be53cd9d4660e4286c4fbc5` integrado en dev y main local. [Handoff de cierre](../factory/0237-an3-handoff.md), [QA](../factory/0237-an3-qa.md), [contrato](../factory/0237-an3-contract.md). Main local avanzó por fast-forward autorizado hasta el cierre `7465914c`, conservando AN-1/AN-2. Este ajuste posterior solo documenta el retiro ya verificado; dev y main recibirán también este cierre documental, con producto idéntico al candidato QA. Sin push, deploy, operaciones PROD, verify global ni mutaciones. INDEX/TASKS/estado Claude y archivos ajenos sin seguimiento preservados.
 
