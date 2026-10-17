@@ -38,3 +38,6 @@ Writer solo `docs/factory/0237-an3-qa.md`, artefactos externos si necesarios. Le
 - H5 confirmado: no envío manual individual de cupón; acción11 «Ver cliente». El destino Customers existente usa permiso `counter`, que conserva el nuevo detalle específico, con tenant y reader restringido.
 - Clima: una petición real del proveedor por rango ayer/hoy (dos registros), ruta interna GET real autenticada. El harness puede inyectar el gate mínimo de hora0 en el runner real, sin bypass HTTP/flag y conservando now/fetchedAt reales; proveedor/DB reales. No se fabrica una captura futura.
 - CI remoto main `db3175d` sigue rojo por aserción histórica de conteo; no se corre verify global ni se afirma corregida la publicación. Se preserva mientras no se prepare push autorizado.
+
+- Instrucción posterior del owner: ante una contradicción nueva se presenta la pregunta y se PARA todo el trabajo hasta su respuesta. No continuar trabajo independiente durante esa espera. Las aclaraciones anteriores están resueltas.
+- A amplía scope a `server/marketing/plan-brake.ts` para cubrir las escrituras de estado internas del ciclo de campaña, preservando su comportamiento.
