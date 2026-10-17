@@ -60,8 +60,8 @@ trabajo, es ignorarlo». Los cupones entran porque ya se aplican en el POS al ve
 | **6** | **Costo real por conteos:** conteos periodicos de los insumos clave → factor de merma por insumo (consumo real / teorico) aplicado al costo; reglas en «Notas para las etapas futuras» | 2 (y R1 para el teorico por receta) | **en el plan** (owner 2026-10-14). El ajuste por conteo ya existe en Stock. Entra al costo de lo vendido como `costo promedio × factor` (factor 1 hasta esta pieza) |
 | **EV** | **Eventos de venta encendidos en PROD** (`MODULE_EVENTS_ENABLED`) | 0, 2, P1 | ✅ 2026-10-16: push `5b834ca0`, flag en Vercel Production, redeploy READY; venta de prueba en F5 → 1 `sale.closed` v2 con 2 entregas (leído por SQL 00:39 UTC). Cron de reintentos en cron-job.org cada 1 h (owner). Doc `docs/factory/release-module-events-2026-10-16.md` (GPT: faltaba la llamada a reintentos y el cierre) |
 | **N** | **Espacio core «Negocio»:** Medios de pago (+comisión), Regional y Fiscal (mudados desde Marca); permiso `business`, ruta `/backoffice/business`; medios al core, POS consume; comisión calculada en la transacción de cierre | P1 | ✅ **local** (GPT, 2026-10-16): spec 0235 `implementada`, QA PASS (`docs/factory/0235-qa.md`), en `main` local `e2cd4544`, **sin push ni migración PROD**. Para publicar: puente `e5eaa741` → migraciones 0093–0095 en PROD → drenaje → retiro de compatibilidad (worker en curso). CI de `origin/main` rojo (deadlock Stock / teardown permisos), worker arreglándolo |
-| **G** | **Gastos** (módulo `expenses`, renombra `profitability`): registro de pagos dictado/foto, criterio de caja, sueldos como nombre libre; tablas nuevas, se borra la 0231 | N (en serie) | decisiones del owner cerradas (2026-10-16, «Preguntas de G»); **prompt listo** (spec 0236 + ADR 0151), se lanza con N integrado |
-| **AN** | **Analíticas core** (ADR 0021): opción C — cada módulo dueño de su detalle + resúmenes por día; filtros año/3/6/9 meses; generalizar `module_event` para otros módulos | EV, N, G | **ADR pendiente** (GPT mide con datos de prueba). Absorbe SM-datos y el punto de equilibrio |
+| **G** | **Gastos** (módulo `expenses`, renombra `profitability`): registro de pagos dictado/foto, criterio de caja, sueldos como nombre libre; tablas nuevas, se borra la 0231 | N (en serie) | decisiones del owner cerradas (2026-10-16, «Preguntas de G»); prompt escrito (spec 0236 + ADR 0151). **Se lanza después del ADR de AN** (la forma de los eventos `expense.*` la define AN; revisar la decisión 13 y el ítem de `module_event` del prompt contra ese ADR) |
+| **AN** | **Analíticas core**: lo que el dueño abre cada mañana (ver «AN — visión del owner»). Base expansible por rubro; ADR 0021 como antecedente | EV, N, G (implementación) | **diseño con el owner en curso** (próxima sesión). Su ADR va **antes de la spec de G**. Absorbe SM-datos y el punto de equilibrio (por concepto, «Preguntas de G» 1) |
 
 **Regla transversal a decidir en las specs:** lo que es por orden (comision, cupon sobre el total, bolsa) se reparte
 entre las lineas para la rentabilidad por producto. Recomendacion: proporcional al importe de cada linea.
@@ -295,6 +295,26 @@ que apuntan a medios), `pos.pos_order` 17. `core.module_event`: 0 (la publicaci�
 8. **Fijo / variable lo marca la IA**, no lo elige el dueño ni lo deduce la categoría: lo que se consume (agua, gas) es
    variable; lo que no aparece de la nada (alquiler) es fijo. Se muestra como un check **que el dueño puede corregir
    sin estar obligado** (owner de acuerdo, 2026-10-16).
+
+## AN — visión del owner (2026-10-16) — diseñar juntos, no está cerrado
+
+Owner: «analíticas lo vamos a pensar no solo desde lo que nos dan los comercios de restauración, necesitamos pensarlo
+como una base expansible a diferentes categorías y rubros, porque es lo que le permitirá accionar al dueño de un
+negocio, desde un odontólogo, una cafetería, una panadería, un barbero, un taller mecánico, etc. La analítica es lo que
+el dueño de un comercio local abre cada mañana antes de abrir las puertas y ve "hoy espero que suceda esto, necesito
+preparar esto, tengo que lograr esto antes de esto"». También: «esto no será tan simple como crees».
+
+**Orden corregido (2026-10-16):** N (terminar CI y publicación) → **diseño de AN (ADR, con el owner)** → G (spec +
+implementación, eventos con la forma del ADR de AN) → AN (implementación) → Smart Menu → 6. El diseño de AN no toca
+código: corre mientras se termina N. Error de Claude: el prompt de G mandaba resolver los eventos dentro de G, o sea
+diseñar la entrada de Analíticas sin Analíticas.
+
+**Ya decidido que entra en AN:** opción C (cada módulo dueño de su detalle + resúmenes por día; filtros año en curso,
+3/6/9 meses; Dashboard sin calcular todo al entrar) y punto de equilibrio por concepto con estimados («Preguntas de G» 1).
+
+**Preguntas abiertas que Claude ya tenía (para la sesión de diseño):** qué muestra la primera versión; ventas
+anteriores al 2026-10-16 (eventos apagados: ¿backfill o desde el encendido?); «clientes que vinieron esta semana» sale
+de pases/sellos (core), ¿entra?
 
 ## Prompt — Gastos (spec 0236 + ADR 0151; 2026-10-16; lanzar cuando N esté integrado)
 
