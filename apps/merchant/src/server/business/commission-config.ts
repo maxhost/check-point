@@ -48,6 +48,7 @@ export function paymentMetadata(resource: {
   return {
     providerId: resource.providerId,
     methodId: resource.resourceId,
+    isCash: resource.metadata.isCash === true,
     name,
     status: status as string,
     chargeShape: chargeShape as ChargeShape,

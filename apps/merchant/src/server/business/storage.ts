@@ -4,7 +4,7 @@ import type { DbTransaction } from "@mi-pasaporte/db";
 export async function paymentStorageReady(tx: DbTransaction) {
   await tx.execute(sql`select pg_advisory_xact_lock_shared(2350150)`);
   const result = await tx.execute(
-    sql`select to_regclass('core.sale_commission') is not null as ready`,
+    sql`select to_regclass('core.payment_method') is not null as ready`,
   );
   return result.rows[0]?.ready === true;
 }
