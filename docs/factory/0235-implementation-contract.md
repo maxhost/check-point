@@ -56,3 +56,9 @@ Chequeo inicial obligatorio `pnpm ci:status` observó main `5b834ca0` rojo en ru
 ## Aceptación
 
 Se cumplen los ocho grupos focales de0235 y el despliegue compatible de0150, con conservación de datos y fronteras. El owner debe poder probar Negocio local integrado, POS selector/cobro y Marca sin Regional/Fiscal. La entrega local incluye migración y rollout revisables; **PROD permanece sin modificar durante esta implementación**.
+
+## Correcciones focales de QA durante implementación
+
+B5338f9de recibió FAIL acotado: respuesta tardía de PUT comisión podía reemplazar el estado archivado actual; actualizar solo la comisión sobre la fila vigente. Otra carrera permitía que un fijo editado en una moneda se guardara nominalmente en otra tras cambiar Regional. Precisión HTTP: `expectedCurrencyCode` requerido si fixed no es null, comparación bajo el lock de business-config común a Regional y comisión; conflicto409 sin revisión ni importe nuevo. UI conserva borrador y recuperación explícita, sin conversión automática. Nuevos oráculos focales, sin repetir suites ajenas. No cambia decisiones de producto ni el cierre no bloqueante.
+
+0093 mueve tablas;0094 completa el origen opaco del registro histórico. Distinguir storage core disponible tras0093 de disponibilidad de las nuevas lecturas de histórico tras0094. La fase intermedia nunca debe intentar tablas POS que ya fueron movidas. Se prueba GET/cierre POS operativo en ese intervalo y reader histórico protegido ante columna ausente. No se reescribe una migración ya aplicada en CI.

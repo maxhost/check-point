@@ -57,6 +57,8 @@ La función de comisión devuelve un resultado tipado para **todas las condicion
 
 Una falla técnica DB de lectura/escritura/COMMIT revierte venta, pagos, acreditación, comisión y evento en conjunto. No guardar una venta durable y un resultado inventado para esconder esa falla. La implementación debe demostrar cierre persistido ante condiciones de negocio y rollback total ante error DB inducido; un test puro de aritmética no prueba ese cableado.
 
+La edición de un fijo no nulo envía `expectedCurrencyCode`, la moneda vista por quien lo edita. Configurar comisión y modificar Regional comparten el lock de configuración del negocio: la expectativa monetaria se compara antes de guardar la revisión, y si cambió devuelve409 `commission_currency_conflict` sin cambios. Así una carrera no convierte silenciosamente un fijo USD en uno EUR nominal. Esta precisión técnica aplica integridad a la decisión vigente; no establece una política general de conversión ni añade un rechazo al cierre.
+
 ### 3. Calidad del dato y lectores
 
 Conservar `FrozenCommissionResult` con `commission`, `originalCommission`, `normalizationAdjustment`, `configured`, `reasons`; reader agrega estado completo/incompleto/pendiente y total/original/ajuste. Razones conocidas continúan `commission_unconfigured`, `commission_currency_mismatch`; agregar una razón explícita de configuración/referencia inaplicable al manejar ese caso. No confundir presencia de tarifa (`configured`) con resultado utilizable.
