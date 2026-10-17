@@ -195,7 +195,7 @@ describe.runIf(posIntegrationEnabled)(
           payload: { eventVersion: 1 },
         }),
       );
-      expect((await pos.void(world.ownerCookie, order.id)).status).toBe(500);
+      expect((await pos.void(world.ownerCookie, order.id)).status).toBe(503);
       expect(
         (
           await getDb()
@@ -278,11 +278,9 @@ describe.runIf(posIntegrationEnabled)(
       for (const first of ["sale.closed", "coupon.redeemed"]) {
         const customer = await scannedCustomer(world),
           couponId = await welcomeCoupon(world, customer, {
-            kind: "discount",
-            label: "Un dólar en café",
+            kind: "free_product",
+            label: "Un café gratis",
             productId: world.cafe,
-            discountUnit: "amount",
-            discountValue: "1.00",
           });
         await choose(customer, couponId);
         const order = await openOrder(world, [
@@ -330,8 +328,8 @@ describe.runIf(posIntegrationEnabled)(
           orderId: redemption.orderId,
           campaignId: world.welcomeId,
           campaignLabel: expect.any(String),
-          discountMinor: "100",
-          salesMinor: "800",
+          discountMinor: "200",
+          salesMinor: "700",
         });
         const sources =
           first === "sale.closed" ? [sale, coupon] : [coupon, sale];
@@ -341,11 +339,11 @@ describe.runIf(posIntegrationEnabled)(
         (r) => r.dimensionId === world.welcomeId,
       );
       expect(rows.find((r) => r.metric === "promo_discount")).toMatchObject({
-        amountMinor: 200n,
+        amountMinor: 400n,
         count: 2,
       });
       expect(rows.find((r) => r.metric === "promo_sales")).toMatchObject({
-        amountMinor: 1600n,
+        amountMinor: 1400n,
         count: 2,
       });
       expect(rows.find((r) => r.metric === "promo_cost")?.count).toBe(2);

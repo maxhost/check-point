@@ -27,29 +27,6 @@ export type OrderVoided = {
 };
 export const metricTranslators: readonly MetricTranslator[] = [
   {
-    eventType: "pos.order.voided",
-    translate(event) {
-      const p = event.payload as OrderVoided;
-      return {
-        sourceKey: `voided:${p.sourceOrderId}`,
-        sourceRevision: 1,
-        rows: [
-          {
-            metric: "voided_tickets",
-            locationId: p.locationId,
-            occurredAt: p.voidedAt,
-            dimensionKind: "none",
-            dimensionId: null,
-            amountMinor: p.amountMinor,
-            currencyCode: p.currencyCode,
-            minorUnit: p.minorUnit,
-            count: 1,
-          },
-        ],
-      };
-    },
-  },
-  {
     eventType: "sale.closed",
     translate(event) {
       const p = decodeSaleClosedEvent(event.payload);
@@ -145,6 +122,29 @@ export const metricTranslators: readonly MetricTranslator[] = [
         sourceRevision: 1,
         rows,
         additionalSources,
+      };
+    },
+  },
+  {
+    eventType: "pos.order.voided",
+    translate(event) {
+      const p = event.payload as OrderVoided;
+      return {
+        sourceKey: `voided:${p.sourceOrderId}`,
+        sourceRevision: 1,
+        rows: [
+          {
+            metric: "voided_tickets",
+            locationId: p.locationId,
+            occurredAt: p.voidedAt,
+            dimensionKind: "none",
+            dimensionId: null,
+            amountMinor: p.amountMinor,
+            currencyCode: p.currencyCode,
+            minorUnit: p.minorUnit,
+            count: 1,
+          },
+        ],
       };
     },
   },

@@ -18,6 +18,28 @@ export type CommissionFrozen = {
 };
 export const coreMetricTranslators: readonly MetricTranslator[] = [
   {
+    eventType: "sale.commission.frozen",
+    translate(event) {
+      const p = event.payload as CommissionFrozen;
+      return {
+        sourceKey: `sale.commission.frozen:${p.sourceOrderId}`,
+        sourceRevision: 1,
+        rows: [
+          {
+            metric: "payment_commission",
+            locationId: p.locationId,
+            occurredAt: p.closedAt,
+            dimensionKind: "none",
+            dimensionId: null,
+            amountMinor: p.amountMinor,
+            currencyCode: p.currencyCode,
+            minorUnit: p.minorUnit,
+          },
+        ],
+      };
+    },
+  },
+  {
     eventType: "visit.recorded",
     translate(event) {
       const p = event.payload as VisitRecorded;
@@ -98,28 +120,6 @@ export const coreMetricTranslators: readonly MetricTranslator[] = [
         sourceRevision: 1,
         rows: [],
         campaignSnapshots: [p],
-      };
-    },
-  },
-  {
-    eventType: "sale.commission.frozen",
-    translate(event) {
-      const p = event.payload as CommissionFrozen;
-      return {
-        sourceKey: `sale.commission.frozen:${p.sourceOrderId}`,
-        sourceRevision: 1,
-        rows: [
-          {
-            metric: "payment_commission",
-            locationId: p.locationId,
-            occurredAt: p.closedAt,
-            dimensionKind: "none",
-            dimensionId: null,
-            amountMinor: p.amountMinor,
-            currencyCode: p.currencyCode,
-            minorUnit: p.minorUnit,
-          },
-        ],
       };
     },
   },
