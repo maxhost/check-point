@@ -11,6 +11,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { core } from "./_schemas";
+import { analyticsCities } from "./analytics-context";
 import { users } from "./auth";
 
 const SLUG_PLACEHOLDER = sql`'b-' || substr(replace(gen_random_uuid()::text, '-', ''), 1, 20)`;
@@ -224,6 +225,7 @@ export const locations = core.table(
     countryCode: text("country_code").notNull(),
     status: text("status").notNull().default("active"),
     activeVerificationId: uuid("active_verification_id"),
+    cityId: uuid("city_id").references(() => analyticsCities.id),
     addressSnapshot: jsonb("address_snapshot").notNull(),
     hoursVersion: integer("hours_version").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true })

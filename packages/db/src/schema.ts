@@ -43,3 +43,6 @@ export * from "./schema/modules/expenses";
 export * from "./schema/modules/pos";
 
 export * from "./schema/module-event";
+
+export * from "./schema/analytics-context";
+export * from "./schema/analytics";

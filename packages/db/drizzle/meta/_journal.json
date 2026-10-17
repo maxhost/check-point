@@ -680,6 +680,13 @@
       "when": 1792209824323,
       "tag": "0096_expenses_paid_register",
       "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "7",
+      "when": 1792213123591,
+      "tag": "0097_analytics_an1",
+      "breakpoints": true
     }
   ]
 }

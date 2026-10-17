@@ -10,6 +10,7 @@ export default defineConfig({
   schemaFilter: [
     "merchant_auth",
     "core",
+    "analytics",
     "consumer",
     "platform_auth",
     // Spec 0210 / ADR 0138: un esquema Postgres por modulo.
