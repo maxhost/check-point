@@ -83,3 +83,8 @@ transporte que conserva operationId/cuerpo, y recordatorio durante una mutación
 El resto conserva la evidencia 19/19 de `cfe0c788`, sin declarar que esos casos se
 volvieron a ejecutar. Types UI aislados/lint focal/diff-check sin errores. Sin DB,
 rutas nuevas ni certificación de servicios A2.
+
+QA pidió una barrera explícita en el oráculo del finally viejo: antes del doble
+foco ahora se espera la respuesta del GET anterior, `response.finished()` y dos
+frames del navegador para completar consumo/promesas. Solo se repitió ese caso:
+**1/1 PASS**, sin cambiar el producto ni ejecutar ninguna mutación del hook.

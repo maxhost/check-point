@@ -264,7 +264,20 @@ test("an obsolete read cannot release the newer read's focus coalescing", async 
   };
   await page.getByRole("button", { name: "Solucionado" }).click();
   await expect.poll(() => fixture.reads).toBe(3);
+  const oldResponse = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/api/analytics/inbox") &&
+      response.request().method() === "GET",
+  );
   releaseOld();
+  await (await oldResponse).finished();
+  // Let the completed body and its promise chain settle before triggering focus.
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      }),
+  );
   await page.evaluate(() => {
     window.dispatchEvent(new Event("focus"));
     window.dispatchEvent(new Event("focus"));
