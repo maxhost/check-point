@@ -377,9 +377,11 @@ AN-3 suma clientes y promos. «Cuánto ahorraste» no tiene medición en la v1 (
   - **10 Anulaciones:** tickets anulados en 7 días por local > max(3, media + 2 desvíos de las 8 semanas previas) →
     «Esta semana se anularon 9 tickets en Centro ($64 cargados), el triple de lo normal.» Requiere el mes mínimo.
     Acción: ver anulados (la declara POS).
-  - **11 Habitual que se va:** ≥ 4 visitas, días desde la última > 2 × su mediana de intervalo y ≥ mediana + 7,
-    última visita en 90 días → «Juan venía cada 12 días; van 25.» `p` = gasto promedio por visita × visitas
-    perdidas del mes. Acción: mandar cupón si Marketing permite uno a un cliente; si no, ver cliente (verificar, H5).
+  - **11 Habitual que se va:** ≥ 4 días distintos con visitas, días desde el último día visitado > 2 × la mediana
+    de los intervalos entre esos días y ≥ mediana + 7; última visita en 90 días → «Juan solía venir cada 12 días.
+    Su última visita fue hace 25 días.» Para esta tarjeta, varias visitas en la misma fecha local cuentan como
+    un solo día visitado; las operaciones y sus importes se conservan completos (owner, 2026-10-17).
+    `p` = gasto promedio por día visitado × días de visita esperados perdidos del mes. Acción: mandar cupón si Marketing permite uno a un cliente; si no, ver cliente (verificar, H5).
   - **12 Resultado de promo,** el día después de `ends_at` o de pasar a `ended`: «El cupón 20% te costó $30 en
     descuentos y vino con $140 en ventas en los mismos tickets.» Sin decir que el cupón las causó. Acción: ver
     resultados de la campaña (existente).
