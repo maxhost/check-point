@@ -3,7 +3,21 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — SPECS0228/0229 INTEGRADAS EN MAIN LOCAL; QA PASS (2026-10-14)
+## ESTADO — SPEC0235 EN IMPLEMENTACIÓN; EVENTOS PROD ON VERIFICADO (2026-10-16)
+
+Owner pidió lanzar implementación de Negocio después de aprobar las cuatro decisiones de [0235](../specs/0235-negocio-y-medios-de-pago-core.md)/[0150](../adr/0150-negocio-y-comisiones-core.md). Diseño documental `209f5937` con QA PASS; preparación/contrato `48d024c0`, ampliaciones `defe8f6f`. [Contrato de implementación](../factory/0235-implementation-contract.md). Sin implementación integrada todavía: dev tiene documentos; main local/remoto registrado en5b834ca0. No push, migración PROD ni deploy autorizados para0235.
+
+A `/root/spec_negocio_0235`: taskfactory `spec-negocio-0235`, rama del mismo nombre, worktree `/private/tmp/checkpass-spec-negocio-20261016/spec-negocio-0235`; continúa base48d024c0 con foundation compartida00624614, backend/esquema/API/migración preparada y pruebas CI focales. Reserva exclusiva `db:modules-ci`, configuración seleccionada `/private/tmp/checkpass-recipes-margin/0234-ci.env`, solo wrapperNeon y DDL serial. Ampliación nominal de domain/server/brand aprobada; no UI/kit/guardia/PROD. Código aún en progreso, no PASS funcional declarado.
+
+B `/root/negocio_ui_0235`: taskfactory/rama `negocio-ui-0235`, worktree `/private/tmp/checkpass-negocio-0235/negocio-ui-0235`; base refrescada00624614 tras FF de tipos, stash propio reaplicado y retirado sin trabajo ajeno. UI Negocio/Marca/nav y regresiones en progreso; permisos de recursos43120/43121 y loopback efímero para harness incumbente, sin DB. No toca Settings/servidor/esquema/kit. QA `/root/qa_release_plan` hizo preflight estático sin bloqueantes y esperará entregas congeladas; no ejecutó DB/suites ni implementó.
+
+CI inicial obligatoria de main5b834ca0: ROJO run38971334745 en Unit+Neon, Stock consumo637 (completed10<10) y teardown permisos86 DELETEbusiness. Causas no certificadas: el test Stock tiene esperas mínimas1s frente budget2s, plausible dependencia de latencia; teardown carece de pgcode para diagnosticar. No aflojar oráculos ni publicar candidato con este baseline sin resolver/acordar. No sondear después CI ni ejecutar suites globales por ceremonia.
+
+Operación previa de eventos terminada: [informe](../factory/release-module-events-2026-10-16.md), commit localdev `d60711a3`, sin push adicional. PROD Merchant READY `dpl_E4woBdcen3SBacSJeiDYFcUH3jpC`, SHA5b834ca0, aliasbusiness.checkpass.club. Owner cargó flag y redeploy personalmente; ON efectivo por venta `dc07d3c5-829b-4bb1-8ffc-ec3e81c3d5b8`, evento v2 `ad308b1c-a753-4aea-9b58-9e353703efb4`, recipesapplied, tres consumos/costos congelados0.6761ARS, profitabilityskipped/modules_disabled y comisión «sin configurar». Retry único autorizado17oct00:42:03UTC ejecutadoHTTP200/ok0contadores; SQL posterior8conjuntosidénticos sin duplicados. Cron horario configurado por owner. Worktree release retirado con factorycleanup; evidencias externas preservadas. Ninguna autorización PROD de esa operación se traslada a0235.
+
+Siguiente: recibir commits/handoffs A/B, QA de entrega y combinación focal, integrar dev y habilitar prueba local con DB local protegida cuando esquema/candidato estén listos. No marcar implementada ni avanzar/publicar por inferencia. Preservar assets/skills/config ajenos sin seguimiento y commits documentales de Claude0752d249 sin editarlos.
+
+## HISTÓRICO — SPECS0228/0229 INTEGRADAS EN MAIN LOCAL; QA PASS (2026-10-14)
 
 Owner autorizó continuar el [handoff0228/0229](../handoff-0228-0229-implementacion.md) automáticamente hasta QA pasado, con dos implementadores y QA independiente. Producto congelado `07393f2cacbad43cc3d92fd98b028ab1f8ff8a70`, A `bc9b29bd674452e11f70943f06850be0d2bb277e`, B `4b25cfabf857c480400c475f4aaa2d4a61579b35`; [QA independiente](../factory/0228-0229-qa.md), [A](../factory/0228-stock.md), [B](../factory/0229-brand.md), [fichas](../factory/0228-0229-contract.md). Owner autorizó el merge a main local: «si autorizo el merge a main local». Candidato `9b7b323fb96a908dacf8bdd6bfe64adceaf08fd7` integrado por fast-forward desde `39d00edfca6347773c03a015a2ffcd1a1d38b0dd`, sin cambiar la rama dev del checkout principal. Cierre posterior sólo documental; ningún push ni operación PROD autorizados.
 
