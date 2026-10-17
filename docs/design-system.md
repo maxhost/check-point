@@ -313,6 +313,14 @@ Propósito: navegar. Envuelve `next/link` (navegación del cliente y prefetch in
 
 Propósito: hora (`"HH:mm"`) y fecha+hora (`"YYYY-MM-DDTHH:mm"`) con segmentos de React Aria (decisión del owner, ADR 0123, enmienda 0161). Idioma `es-419` y 24 h fijos, sin depender del navegador. El valor entra y sale como el texto del input nativo que reemplazan (`""` = vacío): las pantallas no cambian su lógica ni su zona horaria. `DateTimeField` suma un botón «Abrir calendario» (el día se elige en el calendario; la hora, en los segmentos) y acepta `min`. `TimeField` acepta `hideLabel` (horarios semanales). Props comunes: `label`, `value`, `onChange`, `description?`, `errorMessage?`, `isDisabled?`, `isRequired?`, `name?`, `tourAnchor?`. En un e2e no se usa `fill`: foco en el segmento (`spinbutton`) y teclado.
 
+### `DateField`
+
+Propósito: elegir un día de pago sin hora mediante calendario y segmentos editables. Reutiliza el calendario de `DateTimeField`; `value` y `min` son `YYYY-MM-DD`, `""` representa vacío y no hay conversión UTC. Sin `min` permite fechas pasadas. Usa los mismos tokens, labels y estados del kit. Props: `label`, `value`, `onChange`, `min?`, `description?`, `errorMessage?`, `isDisabled?`, `isRequired?`, `name?`, `tourAnchor?`, `className?`. El botón «Abrir calendario» permite seleccionar un día; los segmentos permiten teclado. `DateTimeField` conserva su comportamiento de fecha y hora por defecto.
+
+```tsx
+<DateField label="Fecha de pago" value={paidOn} onChange={setPaidOn} />
+```
+
 ### `SearchField`
 
 Propósito: buscar. Lupa a la izquierda y botón «Borrar búsqueda» (solo con texto); Escape vacía. Rol `searchbox`. Props: `label`, `value`, `onChange`, `hideLabel?`, `placeholder?`, `description?`, `errorMessage?`, `onSubmit?`, `autoFocus?`, `maxLength?`, `isDisabled?`, `tourAnchor?`.
