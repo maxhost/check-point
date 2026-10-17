@@ -48,7 +48,7 @@ function fixture(): AnalyticsInput {
     metrics.push(row(day, "revenue", revenue, null, 0, 10));
     for (const id of ["coffee", "pizza"])
       metrics.push(
-        row(day, "product_revenue", revenue / 2, id),
+        row(day, "product_revenue", revenue / 2, id, 0, 5),
         row(day, "units_sold", 0, id, 5),
         row(day, "units_with_cost", 0, id, 5),
         row(day, "cost_of_goods", revenue / 4, id),
@@ -253,4 +253,97 @@ describe("AN-1 history, dates and completeness", () => {
     expect(validDay("2026-02-30")).toBe(false);
     expect(validDay("2026-02-28")).toBe(true);
   });
+});
+
+it("history uses full revenue less recorded goods and commission while showing partial coverage", () => {
+  const input = fixture();
+  input.metrics = [
+    row("2026-10-19", "revenue", 10000),
+    row("2026-10-19", "product_revenue", 10000, "coffee"),
+    row("2026-10-19", "units_sold", 0, "coffee", 10),
+    row("2026-10-19", "units_with_cost", 0, "coffee", 5),
+    row("2026-10-19", "cost_of_goods", 2000, "coffee"),
+    row("2026-10-19", "payment_commission", 1000),
+  ];
+  expect(buildHistory(input, "month")).toMatchObject({
+    grossProfitMinor: 7000,
+    coverage: 0.5,
+    resultMinor: null,
+  });
+});
+it("learning invitation appears at most once in seven days across all weekdays", () => {
+  const input = fixture();
+  input.metrics = input.metrics.filter((r) => r.day >= "2026-10-10");
+  const state: CardState = {
+    cardKey: "2",
+    subjectKey: "learning:2026-10-19",
+    fingerprint: "x",
+    status: "shown",
+    shownDays: 1,
+    lastShownDay: "2026-10-19",
+  };
+  expect(buildCandidates(input, [state]).some((c) => c.cardKey === "2")).toBe(
+    false,
+  );
+  expect(
+    buildCandidates({ ...input, today: "2026-10-26" }, [state]).some(
+      (c) => c.cardKey === "2",
+    ),
+  ).toBe(true);
+});
+it("end-of-month goal multiplier survives urgency bounds", () => {
+  const input = fixture();
+  const card = buildCandidates({ ...input, today: "2026-10-25" }).find(
+    (c) => c.cardKey === "3",
+  )!;
+  expect(card.weightMultiplier).toBe(1.5);
+  expect(cardWeight({ ...card, fixedPlata: 1 }, 10000)).toBeCloseTo(
+    (1 - 7 / 31) * 1.5,
+  );
+});
+it("fixed estimates take the last three paid months even across gaps, ignoring residual zero rows", () => {
+  const input = fixture();
+  input.metrics = input.metrics.filter((r) => !r.metric.startsWith("expense_"));
+  (input.metrics as AnalyticsMetric[]).push(
+    row("2026-05-01", "expense_fixed", 10000, "rent"),
+    row("2026-09-01", "expense_fixed", 30000, "rent"),
+    row("2026-10-01", "expense_fixed", 0, "rent"),
+  );
+  expect(calculateGoal(input).concepts[0]).toMatchObject({
+    amountMinor: 20000,
+    estimated: true,
+  });
+});
+it("low-margin median includes known products with fewer than ten sales", () => {
+  const input = fixture();
+  input.metrics = [];
+  for (const [id, units, profit] of [
+    ["target", 10, 100],
+    ["a", 1, 1000],
+    ["b", 1, 1000],
+  ] as const)
+    (input.metrics as AnalyticsMetric[]).push(
+      row("2026-10-19", "product_revenue", profit * units, id, 0, units),
+      row("2026-10-19", "units_sold", 0, id, units),
+      row("2026-10-19", "units_with_cost", 0, id, units),
+      row("2026-10-19", "cost_of_goods", 0, id),
+    );
+  expect(
+    buildCandidates(input).find((c) => c.cardKey === "6")?.subjectKey,
+  ).toBe("target");
+});
+it("includes uncatalogued sales in coverage and missing-cost cards", () => {
+  const input = fixture();
+  input.metrics = [
+    row("2026-10-19", "revenue", 10000, null, 0, 10),
+    row("2026-10-19", "product_revenue", 5000, "coffee", 0, 5),
+    row("2026-10-19", "product_revenue", 5000, null, 0, 5),
+    row("2026-10-19", "units_sold", 0, "coffee", 5),
+    row("2026-10-19", "units_sold", 0, null, 5),
+    row("2026-10-19", "units_with_cost", 0, "coffee", 5),
+  ];
+  expect(buildHistory(input, "month").coverage).toBe(0.5);
+  expect(
+    buildCandidates(input).find((c) => c.cardKey === "7")?.subjectKey,
+  ).toBe("unlisted");
 });

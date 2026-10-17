@@ -34,7 +34,12 @@ export function cardWeight(
           ? averageDailyMinor
           : WEIGHTS.noSalesDailyMajor * 10 ** card.minorUnit),
     );
-  return p * Math.max(0.2, Math.min(1, card.urgency)) * n;
+  return (
+    p *
+    Math.max(0.2, Math.min(1, card.urgency)) *
+    (card.weightMultiplier ?? 1) *
+    n
+  );
 }
 export function selectCards<
   T extends { cardKey: string; subjectKey: string; weight: number },

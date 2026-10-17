@@ -12,6 +12,7 @@ export type AnalyticsMetric = {
 export type AnalyticsLabel = { kind: string; id: string; label: string };
 export type AnalyticsInput = {
   today: string;
+  firstSaleDay?: string | null;
   metrics: readonly AnalyticsMetric[];
   labels: readonly AnalyticsLabel[];
   locations: readonly { id: string; name: string }[];
@@ -33,6 +34,7 @@ export type CardCandidate = {
   actionHref?: string;
   urgency: number;
   fixedPlata?: number;
+  weightMultiplier?: number;
   fingerprint: string;
   weight: number;
   locationId: string | null;

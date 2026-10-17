@@ -28,6 +28,7 @@ export type ProductSummary = {
   revenue: number;
   units: number;
   knownUnits: number;
+  salesCount: number;
   cost: number;
   profitPerUnit: number | null;
 };
@@ -38,21 +39,19 @@ export function products(
   const ids = [
     ...new Set(
       rows
-        .filter(
-          (r) =>
-            r.dimensionId &&
-            [
-              "product_revenue",
-              "units_sold",
-              "cost_of_goods",
-              "units_with_cost",
-            ].includes(r.metric),
+        .filter((r) =>
+          [
+            "product_revenue",
+            "units_sold",
+            "cost_of_goods",
+            "units_with_cost",
+          ].includes(r.metric),
         )
-        .map((r) => r.dimensionId!),
+        .map((r) => r.dimensionId ?? "unlisted"),
     ),
   ];
   return ids.map((id) => {
-    const product = rows.filter((r) => r.dimensionId === id);
+    const product = rows.filter((r) => (r.dimensionId ?? "unlisted") === id);
     const revenue = sum(product, "product_revenue");
     const units = sum(product, "units_sold", "quantity");
     const knownUnits = sum(product, "units_with_cost", "quantity");
@@ -61,10 +60,11 @@ export function products(
       id,
       label:
         input.labels.find((l) => l.kind === "product" && l.id === id)?.label ??
-        "Producto",
+        (id === "unlisted" ? "Producto sin catálogo" : "Producto"),
       revenue,
       units,
       knownUnits,
+      salesCount: sum(product, "product_revenue", "count"),
       cost,
       profitPerUnit:
         knownUnits > 0 && units > 0
@@ -78,7 +78,7 @@ export function contribution(
   rows: readonly AnalyticsMetric[],
 ) {
   const product = products(input, rows);
-  const units = product.reduce((n, p) => n + p.units, 0);
+  const units = sum(rows, "units_sold", "quantity");
   const knownUnits = product.reduce(
     (n, p) => n + Math.min(p.units, p.knownUnits),
     0,
@@ -133,24 +133,33 @@ export function calculateGoal(input: AnalyticsInput): GoalCalculation {
   const c = contribution(input, recent);
   const concepts = [
     ...new Set(
-      [...closed, ...current]
+      [...metrics.filter((r) => r.day < start), ...current]
         .filter((r) => r.metric === "expense_fixed")
         .map((r) => r.dimensionId ?? "unknown"),
     ),
   ].map((id) => {
     const thisMonth = current.filter(
       (r) =>
-        r.metric === "expense_fixed" && (r.dimensionId ?? "unknown") === id,
+        r.metric === "expense_fixed" &&
+        (r.dimensionId ?? "unknown") === id &&
+        r.amountMinor > 0,
     );
     const previous = new Map<string, number>();
-    for (const row of closed.filter(
+    for (const row of metrics.filter(
       (r) =>
-        r.metric === "expense_fixed" && (r.dimensionId ?? "unknown") === id,
+        r.day < start &&
+        r.metric === "expense_fixed" &&
+        (r.dimensionId ?? "unknown") === id,
     ))
       previous.set(
         row.day.slice(0, 7),
         (previous.get(row.day.slice(0, 7)) ?? 0) + row.amountMinor,
       );
+    const paidMonths = [...previous.entries()]
+      .filter(([, amount]) => amount > 0)
+      .sort(([a], [b]) => b.localeCompare(a))
+      .slice(0, 3)
+      .map(([, amount]) => amount);
     return {
       id,
       label:
@@ -158,8 +167,8 @@ export function calculateGoal(input: AnalyticsInput): GoalCalculation {
         "Gasto fijo",
       amountMinor: thisMonth.length
         ? sum(thisMonth, "expense_fixed")
-        : previous.size
-          ? [...previous.values()].reduce((n, v) => n + v, 0) / previous.size
+        : paidMonths.length
+          ? paidMonths.reduce((n, v) => n + v, 0) / paidMonths.length
           : 0,
       estimated: !thisMonth.length,
     };
@@ -169,9 +178,9 @@ export function calculateGoal(input: AnalyticsInput): GoalCalculation {
     concepts.reduce((n, c) => n + c.amountMinor, 0) + variable,
   );
   const monthRevenueMinor = sum(current, "revenue");
-  const closedMonth = closed.some(
-    (r) => r.metric.startsWith("expense_") && r.amountMinor > 0,
-  );
+  const closedMonth = metrics
+    .filter((r) => r.day < start)
+    .some((r) => r.metric.startsWith("expense_") && r.amountMinor > 0);
   const weekdays = new Set(
     recent
       .filter((r) => r.metric === "revenue" && r.amountMinor > 0)
@@ -283,10 +292,12 @@ export function buildCandidates(
       urgency: 1,
     });
   }
-  const first = metrics
-    .filter((r) => r.metric === "revenue" && r.amountMinor > 0)
-    .map((r) => r.day)
-    .sort()[0];
+  const first =
+    input.firstSaleDay ??
+    metrics
+      .filter((r) => r.metric === "revenue" && r.amountMinor > 0)
+      .map((r) => r.day)
+      .sort()[0];
   const sameDays = [
     ...new Set(
       metrics
@@ -342,10 +353,19 @@ export function buildCandidates(
         quality: "observed",
         actionKey: null,
       });
-  } else if (first) {
+  } else if (
+    first &&
+    !states.some(
+      (s) =>
+        s.cardKey === "2" &&
+        s.subjectKey.startsWith("learning:") &&
+        s.lastShownDay &&
+        daysBetween(s.lastShownDay, today) < 7,
+    )
+  ) {
     add({
       cardKey: "2",
-      subjectKey: String(weekday(today)),
+      subjectKey: `learning:${today}`,
       sender: "Ventas",
       title: "Conociendo tus ventas",
       body: `Necesito ${Math.max(1, 4 - sameDays.length)} ${dayName} más${daysBetween(first, today) < 28 ? " y completar 28 días desde tu primera venta" : ""} para decirte qué se vende los ${dayName}.`,
@@ -372,8 +392,8 @@ export function buildCandidates(
       title: "Tu meta de hoy",
       body: `Hoy necesitas vender ${money(goal.targetMinor)} para cubrir el mes: te faltan ${money((goal.breakEvenMinor ?? 0) - goal.monthRevenueMinor)} en ${goal.remainingDays} días de venta.`,
       amountMinor: Math.round(gap),
-      urgency:
-        (1 - daysLeft / Number(monthEnd(today).slice(8))) * (lastTen ? 1.5 : 1),
+      urgency: 1 - daysLeft / Number(monthEnd(today).slice(8)),
+      weightMultiplier: lastTen ? 1.5 : 1,
       quality: goal.estimated ? "estimated" : "observed",
       actionKey: "view_calculation",
       actionHref: "/backoffice/analytics?period=month#calculo",
@@ -414,9 +434,13 @@ export function buildCandidates(
   }
   const recentProducts = products(input, recent);
   const known = recentProducts.filter(
-    (p) => p.units >= 10 && p.profitPerUnit !== null,
+    (p) => p.salesCount >= 10 && p.profitPerUnit !== null,
   );
-  const profitMedian = median(known.map((p) => p.profitPerUnit!));
+  const profitMedian = median(
+    recentProducts
+      .filter((p) => p.profitPerUnit !== null)
+      .map((p) => p.profitPerUnit!),
+  );
   for (const p of known.filter(
     (p) => p.profitPerUnit! < 0 || p.profitPerUnit! < profitMedian / 2,
   )) {
@@ -461,7 +485,12 @@ export function buildCandidates(
       actionKey: "set_product_cost",
     });
   }
-  if (ready && known.length >= 2) {
+  const costedProducts = recentProducts.filter((p) => p.profitPerUnit !== null);
+  if (
+    ready &&
+    costedProducts.length >= 2 &&
+    sum(recent, "revenue", "count") >= 10
+  ) {
     const expected = median(
       sameDays.map((day) =>
         sum(
@@ -471,7 +500,7 @@ export function buildCandidates(
       ),
     );
     if (expected < average * 0.75) {
-      const best = [...known]
+      const best = [...costedProducts]
         .sort((a, b) => b.profitPerUnit! - a.profitPerUnit!)
         .slice(0, 2);
       add({

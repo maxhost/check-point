@@ -17,7 +17,10 @@ export function historyRange(today: string, period: HistoryPeriod) {
     annualTo: addMonths(to, -12),
   };
 }
-function summarize(input: AnalyticsInput, rows: readonly AnalyticsMetric[]) {
+export function summarizeHistory(
+  input: AnalyticsInput,
+  rows: readonly AnalyticsMetric[],
+) {
   const c = contribution(input, rows);
   const tickets = rows
     .filter((r) => r.metric === "revenue")
@@ -32,13 +35,19 @@ function summarize(input: AnalyticsInput, rows: readonly AnalyticsMetric[]) {
     revenueMinor: Math.round(c.revenue),
     tickets,
     averageTicketMinor: tickets ? Math.round(c.revenue / tickets) : 0,
-    grossProfitMinor: Math.round(c.grossProfit),
+    grossProfitMinor: Math.round(c.revenue - c.goods - c.commission),
     coverage: c.coverage,
     fixedExpensesMinor,
     variableExpensesMinor,
     resultMinor:
       c.coverage >= 0.8
-        ? Math.round(c.grossProfit - fixedExpensesMinor - variableExpensesMinor)
+        ? Math.round(
+            c.revenue -
+              c.goods -
+              c.commission -
+              fixedExpensesMinor -
+              variableExpensesMinor,
+          )
         : null,
     topProducts: products(input, rows)
       .sort((a, b) => b.revenue - a.revenue || a.id.localeCompare(b.id))
@@ -62,8 +71,8 @@ export function buildHistory(
     : input.metrics;
   const within = (from: string, to: string) =>
     rows.filter((r) => r.day >= from && r.day <= to);
-  const current = summarize(input, within(range.from, range.to));
-  const previous = summarize(
+  const current = summarizeHistory(input, within(range.from, range.to));
+  const previous = summarizeHistory(
     input,
     within(range.previousFrom, range.previousTo),
   );
@@ -86,7 +95,7 @@ export function buildHistory(
             previous.revenueMinor
           : null,
     },
-    annual: annualComplete ? summarize(input, annualRows) : null,
+    annual: annualComplete ? summarizeHistory(input, annualRows) : null,
     goal: calculateGoal({ ...input, metrics: rows }),
     locations: input.locations,
   };
@@ -104,7 +113,7 @@ export function buildDay(
     locationId: locationId ?? null,
     currencyCode: input.currencyCode,
     minorUnit: input.minorUnit,
-    ...summarize(input, rows),
+    ...summarizeHistory(input, rows),
     products: products(input, rows)
       .sort((a, b) => b.revenue - a.revenue)
       .map((p) => ({
