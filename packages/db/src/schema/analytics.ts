@@ -157,6 +157,7 @@ export const analyticsCardCandidates = analytics.table(
   },
   (t) => [
     index("analytics_candidate_expiry_idx").on(t.expiresAt, t.id),
+    index("analytics_candidate_started_idx").on(t.episodeStartedAt, t.id),
     uniqueIndex("analytics_card_candidate_unique").on(
       t.businessId,
       t.cardKey,

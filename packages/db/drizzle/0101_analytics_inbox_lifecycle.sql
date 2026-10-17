@@ -22,6 +22,9 @@ ALTER TABLE "analytics"."evaluation_run" ADD COLUMN "policy_version" text DEFAUL
 -- never the runtime cleanup predicate. Runtime reductions use the effective expires_at.
 WITH normalized AS (
  SELECT c.id,
+   CASE WHEN c.card_key='1' AND c.subject_key ~ '^\d{4}-\d{2}-\d{2}$' THEN c.subject_key::date
+        WHEN c.card_key IN ('5','9') AND c.parameters->>'originDay' ~ '^\d{4}-\d{2}-\d{2}$' THEN (c.parameters->>'originDay')::date
+        ELSE c.day END AS target_day,
    CASE WHEN c.card_key='1' THEN 'summary'
         WHEN c.card_key='2' THEN CASE WHEN c.subject_key LIKE 'learning:%' THEN 'learning' ELSE 'forecast' END
         WHEN c.card_key='13' THEN 'slow-day' ELSE c.subject_key END AS subject,
@@ -30,15 +33,15 @@ WITH normalized AS (
         ELSE c.day::timestamp AT TIME ZONE b.timezone END AS proven_start
  FROM analytics.card_candidate c JOIN core.business b ON b.id=c.business_id
 ), anchored AS (
- SELECT n.id,n.subject,
+ SELECT n.id,n.subject,n.target_day,
    CASE WHEN c.card_key IN ('1','2','13') THEN n.proven_start
         ELSE min(n.proven_start) OVER(PARTITION BY c.business_id,c.card_key,n.subject) END AS started
  FROM normalized n JOIN analytics.card_candidate c ON c.id=n.id
 )
-UPDATE analytics.card_candidate c SET subject_key=a.subject,episode_started_at=a.started,
- expires_at=a.started+interval '90 days',
+UPDATE analytics.card_candidate c SET subject_key=a.subject,day=a.target_day,episode_started_at=a.started,
+ expires_at=a.started+interval '2160 hours',
  category=CASE WHEN c.card_key IN ('1','2','9','12','13') THEN 'informational' ELSE 'actionable' END,
- period=jsonb_build_object('from',c.day::text,'to',c.day::text)
+ period=jsonb_build_object('from',a.target_day::text,'to',a.target_day::text)
 FROM anchored a WHERE c.id=a.id;
 --> statement-breakpoint
 WITH ranked AS (
@@ -61,11 +64,18 @@ WITH normalized AS (
 INSERT INTO analytics.card_state(business_id,card_key,subject_key,fingerprint,status,shown_days,last_shown_day,acted_by,updated_at,
  candidate_id,policy_version,context_version,context,episode_started_at,expires_at)
 SELECT s.business_id,s.card_key,s.subject,s.fingerprint,
- CASE WHEN s.status='dismissed' AND NOT(s.card_key='1' AND c.day::text>s.subject_key) THEN 'ignored' ELSE 'open' END,
+ CASE WHEN s.status='dismissed' AND (
+ c.id IS NULL OR
+ (s.card_key='1' AND s.subject_key ~ '^\d{4}-\d{2}-\d{2}$' AND c.day::text<=s.subject_key) OR
+ (s.card_key='9' AND c.subject_key=s.subject_key AND c.subject_key ~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}:' AND EXISTS(
+   SELECT 1 FROM core.module_event e JOIN core.module_event_delivery d ON d.event_id=e.id
+   WHERE e.business_id=s.business_id AND e.id=CASE WHEN c.subject_key ~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}:' THEN left(c.subject_key,36)::uuid ELSE NULL END
+    AND d.subscriber_id='core.analytics' AND d.state='applied'))
+ ) THEN 'ignored' ELSE 'open' END,
  s.shown_days,s.last_shown_day,s.acted_by,s.updated_at,coalesce(c.id,s.candidate_id),'legacy','legacy',
- jsonb_strip_nulls(jsonb_build_object('legacy',true,'legacyFingerprint',s.fingerprint,'legacyAnchorAt',transaction_timestamp(),
+ jsonb_strip_nulls(jsonb_build_object('legacy',true,'legacyFingerprint',s.fingerprint,'legacyOriginalStatus',s.status,'legacyDecisionPeriod',CASE WHEN s.card_key='1' THEN s.subject_key ELSE NULL END,'legacyAnchorAt',transaction_timestamp(),
  'legacyOriginObservedAt',c.parameters->>'originObservedAt','legacyOriginDay',c.parameters->>'originDay')),
- coalesce(c.episode_started_at,s.episode_started_at),coalesce(c.expires_at,s.episode_started_at+interval '90 days')
+ coalesce(c.episode_started_at,s.episode_started_at),coalesce(c.expires_at,s.episode_started_at+interval '2160 hours')
 FROM selected s LEFT JOIN analytics.card_candidate c ON c.business_id=s.business_id AND c.card_key=s.card_key AND c.subject_key=s.subject
 WHERE s.rank=1
 ON CONFLICT(business_id,card_key,subject_key) DO UPDATE SET candidate_id=excluded.candidate_id,status=excluded.status,
@@ -90,6 +100,7 @@ WHERE c.business_id=s.business_id AND c.card_key=s.card_key AND c.subject_key=s.
 --> statement-breakpoint
 DELETE FROM analytics.card_candidate WHERE card_key='11';
 --> statement-breakpoint
+CREATE INDEX "analytics_candidate_started_idx" ON "analytics"."card_candidate" USING btree ("episode_started_at","id");--> statement-breakpoint
 CREATE INDEX "analytics_candidate_expiry_idx" ON "analytics"."card_candidate" USING btree ("expires_at","id");--> statement-breakpoint
 CREATE UNIQUE INDEX "analytics_state_candidate_unique" ON "analytics"."card_state" USING btree ("candidate_id");--> statement-breakpoint
 CREATE INDEX "analytics_state_reminder_idx" ON "analytics"."card_state" USING btree ("remind_at","candidate_id");--> statement-breakpoint

@@ -511,13 +511,37 @@ export async function cleanupInbox(
     budgetExhausted: false,
   };
   const attempted = new Set<string>();
+  const busyBusinesses = new Set<string>();
   while (performance.now() < deadline) {
     const progress = await withDbTransaction(async (tx) => {
+      const attemptedFilter = attempted.size
+        ? sql`and id not in (${sql.join(
+            [...attempted].map((id) => sql`${id}::uuid`),
+            sql`,`,
+          )})`
+        : sql``;
+      const busyFilter = busyBusinesses.size
+        ? sql`and business_id not in (${sql.join(
+            [...busyBusinesses].map((id) => sql`${id}::uuid`),
+            sql`,`,
+          )})`
+        : sql``;
       const rows = await tx.execute(
-        sql`select id,business_id from analytics.card_candidate where least(expires_at,episode_started_at+${policy.lifetime.days}*interval '1 day')<${now.toISOString()}::timestamptz order by expires_at,id limit ${batch} for update skip locked`,
+        sql`select id,business_id from analytics.card_candidate where (expires_at<${now.toISOString()}::timestamptz or episode_started_at<${now.toISOString()}::timestamptz-${policy.lifetime.days}*interval '24 hours') ${attemptedFilter} ${busyFilter} order by expires_at,id limit ${batch}`,
       );
       if (!rows.rows.length) return false;
-      let changed = false;
+      const businessIds = [
+        ...new Set(rows.rows.map((row) => String(row.business_id))),
+      ].sort();
+      const acquired = await tx.execute(
+        sql`with ordered as materialized(select business_id from (values ${sql.join(
+          businessIds.map((id) => sql`(${id}::uuid)`),
+          sql`,`,
+        )}) b(business_id) order by business_id) select business_id,pg_try_advisory_xact_lock(hashtextextended('analytics:lifecycle:'||business_id::text,0)) acquired from ordered`,
+      );
+      for (const lock of acquired.rows)
+        if (lock.acquired !== true)
+          busyBusinesses.add(String(lock.business_id));
       for (const row of rows.rows) {
         const id = String(row.id),
           businessId = String(row.business_id);
@@ -527,7 +551,14 @@ export async function cleanupInbox(
           result.budgetExhausted = true;
           break;
         }
-        if (!(await lockAnalyticsBusiness(tx, businessId, true))) {
+        if (busyBusinesses.has(businessId)) {
+          result.skipped++;
+          continue;
+        }
+        const available = await tx.execute(
+          sql`select id from analytics.card_candidate where business_id=${businessId} and id=${id} for update skip locked`,
+        );
+        if (!available.rows.length) {
           result.skipped++;
           continue;
         }
@@ -539,10 +570,9 @@ export async function cleanupInbox(
           );
         if (control && (await expireContent(tx, control, now, policy))) {
           result.deleted++;
-          changed = true;
         }
       }
-      return changed;
+      return true;
     });
     if (!progress) break;
   }
