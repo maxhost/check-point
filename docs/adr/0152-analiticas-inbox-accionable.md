@@ -278,9 +278,10 @@ Esta decisión sustituye las formulaciones anteriores de aceptación/descarte co
 modificar el patrón de eventos del ADR0153 ni el histórico de negocio. La
 [spec0237 §3.7–§3.10](../specs/0237-analiticas-inbox-y-resumenes-diarios.md) contiene reglas y pruebas;
 el [adversarial](../factory/0237-inbox-lifecycle-adversarial.md) requiere resolver el catálogo y la transición del
-legado antes de código. Solo sigue consultado al owner el tratamiento de novedad al vencer un recordatorio
-accionable dentro de su vigencia inicial de 90 días. El parqueo de 11 retira la pregunta de reaviso individual. No se atribuyen
-respuestas ni se autoriza implementar con celdas pendientes. Aprobación documental no autoriza PROD ni publicación.
+legado antes de código. El owner aprueba que al vencer el recordatorio la misma tarjeta vuelva a competir con
+novedad renovada, una vez por vencimiento; no garantiza cupo, no extiende caducidad ni reinicia el decaimiento
+temporal del hecho. Política inicial snooze.noveltyOnDue=reset. El parqueo de 11 retira el reaviso individual.
+Producto cerrado; implementación tras QA documental y base congelada. Aprobación documental no autoriza PROD ni publicación.
 
 ## Consecuencias
 

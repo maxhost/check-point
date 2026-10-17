@@ -1,12 +1,12 @@
 # 0237 — Contrato de implementación del ciclo de avisos
 
-Encargo actual: revisar spec y plan; **no iniciar implementación, DB ni cron remoto en esta tarea documental**. Producto AN-1/AN-2/AN-3 en main local `5afa5294`; último borrador de retención `e6061e1b`. Mandan [spec0237 §3](../specs/0237-analiticas-inbox-y-resumenes-diarios.md) y ADR0152/0153. La propuesta `5d6e265b` y el [adversarial](0237-inbox-lifecycle-adversarial.md) `3819d497` son antecedentes: las excepciones de retención de ese diseño quedan sustituidas por la respuesta posterior del owner, no son el contrato vigente.
+Encargo autorizado: implementar el ciclo de avisos con dos implementadores y QA independiente tras revisión documental. La aprobación final del owner cierra producto. Sin cron remoto, push, deploy ni PROD. Producto AN-1/AN-2/AN-3 en main local `5afa5294`; último borrador de retención `e6061e1b`. Mandan [spec0237 §3](../specs/0237-analiticas-inbox-y-resumenes-diarios.md) y ADR0152/0153. La propuesta `5d6e265b` y el [adversarial](0237-inbox-lifecycle-adversarial.md) `3819d497` son antecedentes: las excepciones de retención de ese diseño quedan sustituidas por la respuesta posterior del owner, no son el contrato vigente.
 
 ## Reserva documental
 
 Coordinador writer único de docs/specs/0237-analiticas-inbox-y-resumenes-diarios.md, addendum de docs/adr/0152-analiticas-inbox-accionable.md, este contrato y docs/estado/gpt.md. No INDEX/TASKS/estado Claude. Preservar informes y fallos anteriores; no reescribir evidencia histórica.
 
-## Decisiones vigentes y puntos pendientes
+## Decisiones de producto cerradas
 
 - Una tarjeta vigente por asunto, sin copias por recálculo. Navegar no cierra. Cerrar elimina texto inmediatamente y conserva solo el último control necesario para evitar repetición sin datos nuevos.
 - Categorías explícitas: informativa, accionable y Marketing. Informativa: Visto/Ignorar, sin Solucionado ni snooze. Accionable: Solucionado/Ignorar/Recordarme luego dentro de su vigencia. Marketing queda reservado a la tarjeta 11 parqueada, sin avisos activos en este encargo.
@@ -14,7 +14,15 @@ Coordinador writer único de docs/specs/0237-analiticas-inbox-y-resumenes-diario
 - **Corrección del owner:** el máximo de 90 días también alcanza pendientes y pospuestos. No hay excepción por edad ni fechas a 180 días. El inicio del episodio queda fijo; actualizar texto, volver a exponer o posponer no reinician el plazo. El lector excluye vencidos sin esperar el cron. El job semanal elimina contenido viejo, conservando únicamente control compacto necesario y datos de negocio.
 - **Tarjeta 11 parqueada:** dejar de generar/exponer, incluso candidatas existentes y fallback. Conservar eventos, métricas e histórico de clientes. No nuevas reglas de ausencia, veinte tarjetas individuales, audiencia agregada ni enviar cupón. La futura tarjeta depende de Marketing y de una decisión de presentación; no es trabajo de este encargo.
 
-El owner exige política única configurable y confirma archivos versionados por ahora, con documentación clara de funcionamiento, modificación e impacto. Pantalla futura fuera de alcance. Sigue pendiente el default de novedad al vencer snooze accionable; centralizarlo no equivale a aprobar un valor. **No anunciar el plan lanzable ni empezar código con ese default pendiente.** QA documental permanece en pausa; solo se incorpora el requisito recibido y se concreta su arquitectura común. Ante otra contradicción material, preguntar y parar.
+El owner exige política única configurable y confirma archivos versionados documentados, sin pantalla ahora.
+Última respuesta: «Aprobado con esa aclaración al llegar al recordatorio vuelve a competir». Default central
+`snooze.noveltyOnDue = "reset"`: novedad1 una vez por vencimiento, mismo ID y expiresAt; nuevas exposiciones decaen.
+No se reinician decaimiento por edad del hecho, monto, urgencia ni reglas de elegibilidad; mantiene mínimo de peso,
+prioridad y máximo de5. No garantiza aparecer ni renueva el plazo. Retry/lectura/recalcular no repiten el reset.
+
+No quedan decisiones de producto pendientes. Gate previo a código: QA documental de spec/contrato sobre SHA
+congelado y preparación de base/worktrees. Si surge otra contradicción material, preguntar y parar. El requisito
+de rendimiento y las operaciones de publicación conservan sus límites; esta aprobación no significa PASS frío.
 
 ## Investigación de Marketing solicitada por el owner
 
@@ -83,7 +91,7 @@ Coordinador integra serialmente; hasta dos implementadores y QA independiente, s
 
 ## Secuencia y checkpoint
 
-1. Resolver default de novedad; congelar política en archivos, guía, spec y HTTP. QA documental sobre fuente exacta, con centralización de todos los parámetros y retirada de las antiguas excepciones de edad.
+1. Congelar política en archivos, guía, spec y HTTP con novedad aprobada y completar QA documental. QA documental sobre fuente exacta, con centralización de todos los parámetros y retirada de las antiguas excepciones de edad.
 2. Fijar base compatible con 0100, SHAs/paths/factory y recurso DB serial; Node24, replay válido, sin writers.
 3. A entrega checkpoint congelado con catálogo/validación/versionado de política, inventario de parámetros, 0101, tipos/contextos, edad/estado/locks y servicios. B parte de ese SHA con factory refrescada antes de editar. No HTTP/UI inventados por cada agente.
 4. A completa evaluación, ingesta, fuentes5/9, late12, parqueo11 y legado; B implementa HTTP, UI/decisiones/fechas y wrapper de cleanup sobre servicio común.
@@ -98,7 +106,7 @@ HTTP de spec §3.5 es la única interfaz A/B. Version incluye contexto, polític
 
 Acciones/evaluación/delivery/cleanup comparten locks por comercio/asunto que sobreviven medianoche, con orden único y CAS. Revalidar caducidad antes de mostrar o posponer. Cron semanal es limpieza, no scheduler de cada recordatorio: cliente refresca al vencimiento y al foco, sin polling nuevo ni notificaciones OS/email/push.
 
-Unit: misma ID entre días/eventos/snooze; cierre, contexto repetido/ajeno/viejo, reapertura8 pertinente, categorías, resumen renovable, prioridades, cortes de edad y ranking de recordatorio según respuesta. 11 no genera ni se expone desde candidato guardado/fallback; visitas/histórico no cambian. Cada test cubre un invariante, no la forma del código.
+Unit: misma ID entre días/eventos/snooze; cierre, contexto repetido/ajeno/viejo, reapertura8 pertinente, categorías, resumen renovable, prioridades, cortes de edad y ranking de recordatorio con reset de novedad una vez al vencer, sin cupo garantizado ni extensión de vida. 11 no genera ni se expone desde candidato guardado/fallback; visitas/histórico no cambian. Cada test cubre un invariante, no la forma del código.
 
 Neon focal por tools/neon-test.sh: cerrarA/publicarB, doble snooze con retry antiguo, cleanup/snooze, medianoche, recuperación de stock intradiaria normal/fuera de orden, datos5/9 tras borrar texto, late12 sin duplicación, tenant/permisos y Stock. Cleanup prueba igualdad/justo después de90d, pendientes/pospuestos antiguos eliminados, remindAt fuera del plazo rechazado, inicio no renovado por lectura/actualización/snooze, ancla legacy única, rollback/ocupados/backlog y no resurrección al reevaluar. GET no muestra vencidos aunque cron no corra. No toca histórico/métricas/ingesta. El antiguo caso snooze12 se sustituye por rechazo de snooze informativo y late12 sin copias por la decisión del owner, no para ocultar fallos.
 
@@ -108,6 +116,6 @@ Autor: unit focales, tipos Merchant/lint paths y guardia UI contra base congelad
 
 ## Evidencia y entrega
 
-Fase actual solo documentos: diff--check, enlaces/paths, coherencia y secciones originales no afectadas, Node24. Archivos confirmados; no ampliar a almacenamiento/UI de edición por adelantado. Informe futuro de QA documental en docs/factory/0237-inbox-lifecycle-plan-qa.md; todavía no hay PASS ni implementación. No DB, migración, servidor, cron o benchmark para aprobar texto.
+Fase actual solo documentos: diff--check, enlaces/paths, coherencia y secciones originales no afectadas, Node24. Archivos confirmados; no ampliar a almacenamiento/UI de edición por adelantado. Informe futuro de QA documental en docs/factory/0237-inbox-lifecycle-plan-qa.md; no afirmar PASS ni implementación hasta disponer de evidencia sobre fuente exacta. No DB, migración, servidor, cron o benchmark para aprobar texto.
 
 Entregas futuras: base/source/delivery SHAs, archivos/contrato, pruebas realmente corridas, fallos/casos no seleccionados, migración/hash, recursos/procesos y pendientes. Handoff de coordinador docs/factory/0237-inbox-lifecycle-handoff.md. Rendimiento y CI/PROD/clima/ciudades/«cuánto ahorraste» conservan sus diferidos; no se certifican por el ciclo funcional.

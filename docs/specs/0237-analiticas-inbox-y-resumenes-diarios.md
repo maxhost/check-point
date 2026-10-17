@@ -1,7 +1,7 @@
 ---
 spec: 0237
 fecha: 2026-10-17
-estado: en revisión
+estado: cerrada
 resumen: Analíticas en tres etapas — resúmenes diarios por evento, inbox de hasta 5 tarjetas en el Dashboard, histórico en números y contexto externo guardado — para que el dueño accione cada mañana sin que abrir la pantalla calcule nada.
 disjunta: no; G (0236) y N (0235) ya integradas en dev; comparte module_event, contrato de módulos, permisos, Dashboard y el corte de conteo de Stock
 archivos: packages/db (esquema analytics, core.location.city_id, migraciones); packages/domain/src/analytics; apps/merchant/src/server/analytics; server/module-events; modules/{pos,recipes,expenses,stock}; app/backoffice (Dashboard, analytics); rutas api/analytics e api/internal/analytics; permissions-catalog
@@ -20,9 +20,9 @@ postergación y retención de 90 días/semanal de §3.7–§3.10. Sustituyen la 
 original. La funcionalidad integrada anterior conserva sus handoffs y sus límites; esta revisión todavía no está
 implementada. El owner confirmó categorías informativa/accionable y resumen diario renovable sin postergación.
 La tarjeta 11 queda parqueada por dependencia de Marketing. El owner sustituye la excepción de pendientes/pospuestos
-por una caducidad máxima de 90 días para todo aviso. Solo sigue pendiente la novedad al vencer un recordatorio
-accionable. El centralizador queda definido como archivos versionados y bien documentados, sin pantalla por
-ahora. No se lanza código mientras el default de novedad siga sin resolver. [Contrato de implementación](../factory/0237-inbox-lifecycle-contract.md),
+por una caducidad máxima inicial de 90 días para todo aviso. Al vencer un recordatorio, el owner aprueba que
+la misma tarjeta vuelva a competir con novedad renovada, sin extender su vida. El centralizador son archivos
+versionados y documentados, sin pantalla por ahora. Producto cerrado; QA documental e implementación pendientes. [Contrato de implementación](../factory/0237-inbox-lifecycle-contract.md),
 [adversarial](../factory/0237-inbox-lifecycle-adversarial.md).
 
 ## Problema
@@ -260,10 +260,12 @@ alimentan**: sin POS no hay ventas, sin Recetas no hay costo; Analíticas lo dic
 
 #### 3.2 Peso, novedad y tope
 
-**Pendiente del owner:** al vencer un recordatorio accionable, renovar la novedad para recuperar elegibilidad o
-mantener el decaimiento anterior. El ejemplo inicial de QA era una informativa con peso base 0,1 y dos exposiciones,
-que quedaba en 0,036 bajo el mínimo 0,05. La nueva regla elimina la postergación informativa, pero no resuelve
-esa interacción entre novedad y recordatorio para accionables de peso bajo. No implementar una política implícita.
+**Aprobado por el owner:** al vencer Recordarme luego, la misma tarjeta vuelve a competir con novedad 1,
+sin penalización de exposiciones anteriores. El reset ocurre una sola vez por recordatorio, no en cada lectura,
+día o reevaluación. Nuevas exposiciones reales vuelven a decaer normalmente. No modifica el monto, la urgencia,
+el decaimiento temporal propio del hecho, las condiciones de elegibilidad, el mínimo de peso o el máximo de cinco.
+No garantiza un lugar, no crea otra tarjeta y no extiende expiresAt. Se declara centralmente como
+`snooze.noveltyOnDue = "reset"` en la política inicial. Un retry viejo no vuelve a renovar la novedad.
 
 `packages/domain/src/analytics/weights.ts` mantiene los coeficientes y dinero exacto:
 
@@ -788,7 +790,8 @@ Pruebas adicionales de esta revisión:
 
 12. Unit por cada tipo: contexto/episodio, dato relevante/ajeno/viejo, ventana de emisión distinta de vigencia,
     pospuesto accionable dentro de su caducidad y exclusión de 11 por decisión del owner. Ningún clock/hash global reabre8.
-    Categorías/capacidades: informativa rechaza resolve/snooze; resumen sin marcar renueva la misma ID, marcado
+    Snooze vencido renueva novedad una vez, vuelve a competir sin garantizar cupo y no extiende caducidad;
+    lecturas/retries posteriores no reinician novedad. Categorías/capacidades: informativa rechaza resolve/snooze; resumen sin marcar renueva la misma ID, marcado
     permite el siguiente período, una versión anterior no retira el nuevo y nunca se acumula anteayer con ayer.
 13. Neon focal: cerrar A mientras se publica B no cierra B; retry del POST tras borrar contenido es idempotente;
     posponer accionable compite con cleanup; delivery tardía de 12 actualiza sin duplicar. Medianoche no libera exclusión. Reposición y consumo intradiarios se
