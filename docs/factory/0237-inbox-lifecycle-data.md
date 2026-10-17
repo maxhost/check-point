@@ -1,5 +1,28 @@
 # 0237 — Ciclo del inbox, datos/dominio/servidor (A)
 
+## Cierre del implementador A — candidato local, pendiente QA independiente
+
+Fuente final de producto **d07265cd571dae727da103e359622686903979c8**. Esta entrega añade solamente la documentación de cierre sobre esa fuente; factory registra el SHA final de entrega. El coordinador integra en dev y decide el pase local a main tras QA. Worker no hizo push, deploy, lectura/operaciónPROD, benchmark, nuevo replay ni nueva aplicación de0101. El worktree se retiene limpio; no se retira ni se mueve main.
+
+Ciclo completo implementado: identidad estable por asunto, cierre sin copiar contenido, exposición real diaria/POST, snooze único acotado, expiración efectiva de todo contenido, comparadores causales/rebaseline de cálculo, fuentes5/9 independientes del texto y ancladas al origen, recuperación stock intradiaria/fuera de orden/apagada, campañas12 con fuente nueva demostrada,11parqueada, política central/versionada/validada/compuesta y guía española con simulación pura verificable. Los ejemplos de balance no alteran dinero/métricas ni garantizan cupos.
+
+Evidencia acumulada por fuente (no se afirma una ejecución global de todos los casos bajo un único SHA):
+
+| Fuente | Verificación real | Resultado/log |
+|---|---|---|
+| e677375992eb81e558b0add5ff4e3b40d94d133e, puros sin cambios posteriores | Cinco archivos unit, Node24.20.0 |72/72 PASS, `/private/tmp/analytics-lifecycle-a3-final-unit.log`|
+| 7da87404d07dee11b8b2fa5f1081687f07a45da2 | Cinco suites Neon seriales,33seleccionadas |32PASS/1FAIL preservado (oráculo díaCOP); `/private/tmp/analytics-lifecycle-a3-neon-7da87404.log`|
+| e677375992eb81e558b0add5ff4e3b40d94d133e | COP corregido+recoverycalificado+12real |3seleccionadas PASS/15filtradas, EXIT0,34.11s; `/private/tmp/analytics-lifecycle-a3-focal-e6773759.log`|
+| d07265cd571dae727da103e359622686903979c8 | Recoveryantiguo conocido pero actualmente bajo umbral |1seleccionada PASS/9filtradas, EXIT0,6.71s; `/private/tmp/analytics-lifecycle-a3-threshold-d07265cd.log`|
+| d07265cd571dae727da103e359622686903979c8 | Merchant typecheck+lint focal final |EXIT0, `/private/tmp/analytics-lifecycle-a3-delivery-types-d07265cd.log` y `analytics-lifecycle-a3-delivery-lint-d07265cd.log`|
+
+Todos los wrapper usaron exclusivamente `NEON_TEST_ENV_FILE=/private/tmp/checkpass-0237/migration.env tools/neon-test.sh`, sin DATABASE_URL del entorno raíz. Hubo teardown de fixtures propias y fuente inmóvil durante cada corrida; ninguna seleccionada quedó saltada, ningún retry se convierte en PASS. Las filtradas no son PASS. El último wrapper terminóEXIT0 y no se hacen más operaciones DB tras él. Se liberan recursos `db:analytics-lifecycle-replay` y `migration:0101` por factory sin queries.
+
+Migración única **0101**, SQL SHA-256 **dfb581e66cddd45ddcad7b400de57db86f372cf4de53c57bc9d7aaf9625f191b**, aplicada una vez desde38da41b0/f33a99f7; nunca reescrita ni reaplicada por reparación.0097–0100/ledger preservados. Preparación transicional excepcional, restauración exacta del journal, primer7PASS/2FAIL/1fasefiltrada e interferencia entre fixtures propias están conservados más abajo, junto al primerA3 **21PASS/12FAIL/33** de b60db5c2116c20018727b048885260b45c5c0466. El éxito posterior no oculta esos fallos.
+
+Límites explícitos: se conserva baseline cuando cálculo y datos cambian juntos sin separación demostrable; no backfill de hechos antes ineligibles sin detalle capturado; snapshots insuficientes de origen se informan, nunca son cero.12 retiene cursor mínimo hasta que las dos fronteras máximas demostradas permitan podarlo; no conserva contenido90+. Recuperación no demuestra edad desconocida: solo acorta con hecho identificado válido. Rendimiento frío **FAIL1817.621042ms** permanece diferido, sin observación nueva ni mejora declarada; cron remoto, PROD y publicación quedan fuera.
+
+
 Base común `65b5152e7897ab55023f36358add4df0bd49cb7f`, rama `analytics-lifecycle-data`, worktree `/private/tmp/checkpass-analytics-perf/analytics-performance`. Factory task histórica `analytics-performance`, reutilizada por asignación del coordinador. El WIP de diagnóstico `a900bde2` queda fuera de esta base, preservado en su ref y copias externas. Este encargo no optimiza ni mide rendimiento: el FAIL frío anterior sigue abierto.
 
 ## Checkpoint A1: fundamento, no entrega funcional del ciclo
@@ -119,3 +142,6 @@ Fuente previa a estos tres focales:72/72 unit PASS `/private/tmp/analytics-lifec
 Fuente congelada **e6773759**: wrapper focal real, **3 seleccionadas PASS /15 no seleccionadas**,34.11s, EXIT0/teardown completo, sin retries. Log `/private/tmp/analytics-lifecycle-a3-focal-e6773759.log`. Cierra COP por identidad/período/dinero, recuperación legada calificada y ciclo12real con revisiones/traductor/reconciliación/replay/cierre tardío. Las15 filtradas no se declaran PASS.
 
 Último borde técnico QA: la edad demostrada viene del hecho relevante traducido e identificado, aunque el umbral actual impida reconstruir una candidata. Se extrae su fecha válida antes de evaluar elegibilidad; no se infiere desde texto, peso o candidata resultante. Se añade variante below-threshold con ventas originales y weeklySalesRatio1: demuestra explícitamente que el traductor+builder actual emite0, pero se acorta origen/expiry, retira contenido/reminder y conserva movimiento/métrica. Tipo/lint focal EXIT0 `/private/tmp/analytics-lifecycle-a3-threshold-types.log`/`a3-threshold-lint.log`. Se ejecutará solo esa variante afectada; COP/ciclo12 no se repiten por ceremonia.
+
+
+Última comprobación real: **d07265cd571dae727da103e359622686903979c8**, variante `below-threshold`,1PASS/9no seleccionadas, EXIT0/teardowncompleto en6.71s; evidencia `/private/tmp/analytics-lifecycle-a3-threshold-d07265cd.log`. Precondición builder0 demostrada, origenJun1/expiryAug30/ID/revisión conservados, contenido/reminder retirados y métrica de conteo intacta. No hubo más DB/API después. Tipos/lint final sobre esa fuenteEXIT0 en logs de delivery. Entrega documental/factory sigue sin autodeclararQA independiente ni PASS de combinación.
