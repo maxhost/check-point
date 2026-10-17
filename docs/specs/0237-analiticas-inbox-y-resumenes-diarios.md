@@ -21,7 +21,8 @@ original. La funcionalidad integrada anterior conserva sus handoffs y sus límit
 implementada. El owner confirmó categorías informativa/accionable y resumen diario renovable sin postergación.
 La tarjeta 11 queda parqueada por dependencia de Marketing. El owner sustituye la excepción de pendientes/pospuestos
 por una caducidad máxima de 90 días para todo aviso. Solo sigue pendiente la novedad al vencer un recordatorio
-accionable; no se lanza código mientras esté sin resolver. [Contrato de implementación](../factory/0237-inbox-lifecycle-contract.md),
+accionable. Además está consultada la superficie del centralizador de políticas: archivo versionado o consola
+interna editable. No se lanza código mientras estos puntos estén sin resolver. [Contrato de implementación](../factory/0237-inbox-lifecycle-contract.md),
 [adversarial](../factory/0237-inbox-lifecycle-adversarial.md).
 
 ## Problema
@@ -92,6 +93,11 @@ reconstruir ventas anteriores a los eventos). Del 2026-10-17 (plan, «AN — dec
     ni exponer la tarjeta 11, tampoco candidatas ya guardadas. No crear veinte avisos por veinte clientes ni una
     campaña agregada nueva en este encargo. Se conservan eventos, métricas e histórico de clientes. La futura
     presentación agregada y la acción de campaña/cupón dependen de Marketing y quedan parqueadas.
+12. **Política central configurable (requisito crucial del owner):** todas las decisiones de tarjetas — pesos,
+    umbrales, ventanas, frecuencia, vigencia, eliminación, categoría, decisiones y acciones — pertenecen a un
+    catálogo único de Analíticas. No repartir parámetros de producto entre evaluadores, SQL, HTTP y UI. Cambiar
+    el balance o habilitar/deshabilitar una regla soportada no requiere editar todos esos lugares (§3.11).
+    Las cifras de esta revisión son los valores iniciales aprobados; no constantes duplicadas del motor.
 
 ## Etapas
 
@@ -231,7 +237,7 @@ alimentan**: sin POS no hay ventas, sin Recetas no hay costo; Analíticas lo dic
 - Se mantiene la evaluación diaria por `GET /api/internal/analytics/evaluate` (Bearer `CRON_SECRET`, cron-job.org,
   ADR0118), cada 30 min de 00:00 a 08:00 America/Guayaquil. Claim por comercio/día con SKIP LOCKED, presupuesto de 20 s
   y exclusión de evaluaciones concurrentes. `evaluation_run` registra trabajo, no la vigencia del inbox.
-- La tarjeta 11 está fuera del catálogo activo por decisión del owner, sin flag ni variable de entorno. Evaluación
+- La tarjeta 11 está deshabilitada en el catálogo de reglas por decisión del owner, sin flag ni variable de entorno. Evaluación
   y lectura omiten su generación/exposición; la transición elimina su contenido anterior sin tocar datos de clientes.
 - Evaluar lee solo resúmenes/contexto de Analíticas, calcula las funciones puras y sincroniza los asuntos. Una
   tarjeta activa/pospuesta conserva `id` entre días, deliveries y recordatorios. Un recálculo idéntico no inserta
@@ -317,7 +323,7 @@ totales; las métricas auxiliares no vuelven a sumarse allí.
 #### 3.5 HTTP (core)
 
 Contrato v2 del inbox, sin flag ni variable de entorno. `id` persistente identifica la tarjeta; `version` opaca
-identifica el contexto y la revisión de decisión/recordatorio que vio el usuario; cambiar estado o remindAt
+identifica el contexto, la política relevante y la revisión de decisión/recordatorio que vio el usuario; cambiar estado o remindAt
 invalida comandos anteriores, aunque los datos de negocio coincidan. Una lectura/exposición no cambia esa revisión
 por sí sola. Las decisiones envían `{ expectedVersion, operationId }`; posponer añade
 `remindAt`, ISO8601 con zona/offset convertido a instante UTC, futuro válido y no posterior a `expiresAt` del
@@ -326,7 +332,7 @@ conservando el instante elegido si después cambia la zona.
 
 | Ruta | Contrato |
 |---|---|
-| `GET /api/analytics/inbox` | 200 `{ contractVersion:2,state,preparedAt,nextReminderAt,cards:[{ id,version,cardKey,category,expiresAt,sender,title,body,period,quality,amountAtStake,action,decisions }] }`. `category` distingue `informational`, `actionable` y `marketing`; esta última queda reservada, sin tarjetas activas en este encargo. `expiresAt` es la caducidad del episodio y determina el máximo del recordatorio. `period` indica origen y se muestra si no corresponde a hoy/ayer. `nextReminderAt` es el mínimo instante estrictamente futuro de pospuestos accionables vigentes/autorizados, o null; los ya debidos van en cards, no en ese campo. |
+| `GET /api/analytics/inbox` | 200 `{ contractVersion:2,policyVersion,state,preparedAt,nextReminderAt,cards:[{ id,version,cardKey,category,expiresAt,sender,title,body,period,quality,amountAtStake,action,decisions }] }`. `category` distingue `informational`, `actionable` y `marketing`; esta última queda reservada, sin tarjetas activas en este encargo. `expiresAt` es la caducidad del episodio y determina el máximo del recordatorio. `period` indica origen y se muestra si no corresponde a hoy/ayer. `nextReminderAt` es el mínimo instante estrictamente futuro de pospuestos accionables vigentes/autorizados, o null; los ya debidos van en cards, no en ese campo. |
 | `POST /api/analytics/inbox/:id/resolve` | Solucionado: 200 `{ cards,nextReminderAt }`, elimina contenido y guarda control/decisión sin afirmar resolución observada. |
 | `POST /api/analytics/inbox/:id/ignore` | Ignorar: mismo cierre técnico, motivo distinto; no cambia stock ni datos de negocio. |
 | `POST /api/analytics/inbox/:id/seen` | Visto para informes; mismo contrato de cierre, permitido según capacidades del tipo. |
@@ -410,7 +416,8 @@ Cada comparador declara sus métricas/dimensiones/período, orden de la fuente y
 El esquema concreto se diseña dentro de las tablas actuales; no inventar observaciones que el evento no capturó.
 Los umbrales originales de emisión de §3.4/§6/§7 se conservan para las tarjetas activas. El tope de 90 días de
 §3.10 aplica a todas las filas; ninguna mención de vigencia o condición persistente da permanencia indefinida.
-La tarjeta 11 es una excepción de alcance explícita: queda parqueada.
+La tarjeta 11 es una excepción de alcance explícita: queda parqueada. Los valores iniciales de cada regla se
+definen en la política central de §3.11; no copiar esta tabla como literales independientes en cada evaluador.
 
 | Tarjeta | Asunto / evidencia pertinente | Vigencia y reaparición después del cierre |
 |---|---|---|
@@ -494,6 +501,79 @@ se conserva el resto y se informa budgetExhausted; siguiente corrida retoma. Med
 último éxito sin exponer datos personales. Bajo backlog/fallos puede quedar una fila física vieja hasta la siguiente
 limpieza, pero nunca visible ni pospuesta activamente después de su vigencia. No habilitar esta ruta sobre el modelo
 legado sin completar su transición y pruebas.
+
+#### 3.11 Política central de tarjetas
+
+**Requisito del owner, todavía sin implementar.** Un único catálogo de políticas reúne la información y las
+acciones de cada tarjeta. El motor de Analíticas sigue siendo core y siempre está activo: habilitar/deshabilitar
+una regla es configuración de su catálogo, no activar un módulo, un switch de servicio o una variable de entorno.
+La tarjeta 11 figura allí deshabilitada/parqueada; cambiar pesos de otras no la habilita indirectamente.
+
+Contrato de dominio propuesto: `AnalyticsPolicy` validada y versionada + registro `AnalyticsRuleDefinition`, con
+un snapshot inmutable por evaluación/delivery/comando. Los nombres de archivos definitivos dependen de la
+superficie consultada, pero se reserva packages/domain/src/analytics/policy/ para tipos, validación, defaults y
+catálogo. No implementar dos fuentes de verdad. La elección pendiente es archivo central versionado o consola
+interna editable por el owner de la plataforma; no se presupone una pantalla ni ajustes por comercio.
+
+| Área centralizada | Parámetros y decisiones que debe controlar |
+|---|---|
+| Global | Versión, máximo de tarjetas, peso mínimo, normalización de monto, topes, urgencia y desempate/prioridad. |
+| Por regla | ID estable, nombre/propósito, categoría, habilitada/parqueada, evaluador registrado, sujeto, evidencia, ventana de emisión/validez y criterio de cambio pertinente. |
+| Elegibilidad | Días/ocurrencias mínimos, cobertura, ventanas de historia, períodos comparables, cuantiles, umbrales absolutos/relativos y condiciones soportadas. |
+| Peso y frecuencia | Peso base/multiplicador, urgencia, decaimiento, frecuencia máxima, enfriamiento y comportamiento al vencer snooze. |
+| Ciclo | Reapertura soportada, renovación diaria, tiempo de vida finito, fechas de recordatorio, expiración y limpieza. |
+| Presentación/acciones | Remitente, claves de textos/plantillas con sus campos, decisiones permitidas y claves de navegación registradas con permiso. |
+| Operación | Cadencia deseada de evaluación/cleanup, presupuesto y lote; el cron externo debe quedar documentado y concordante, sin configurarlo remotamente en este encargo. |
+
+Ejemplo con los defaults actuales: la regla 8 declara mínimo de historia 28 días, consumo P25/P75, riesgo de
+agotamiento ≤4 días, prioridad crítica ≤1 día, peso base 1 y acción `record_purchase`. Para probar 3 días en lugar
+de 4 se cambia esa entrada; el evaluador, el lector y las consultas reciben la misma política. Lo mismo vale para
+el umbral 0,05, el máximo de 5 tarjetas, los decaimientos 0,6/0,7 y la vigencia inicial de 90 días: valores centrales,
+no copias en diferentes archivos. Los defaults conservan el comportamiento aprobado salvo las revisiones explícitas.
+
+El registro admite agregar/quitar reglas soportadas en un solo punto. Reutilizar evaluadores, condiciones,
+plantillas y acciones registrados permite componer reglas sin editar selección, HTTP o UI. Una regla con cálculo,
+datos o acción realmente nuevos requiere implementar y probar ese componente y registrarlo; el catálogo no
+inventa métricas ni ejecuta SQL/JavaScript arbitrarios. Las acciones siguen las claves de §3.3 y sus permisos reales;
+configurar un botón no crea un envío de cupón ni habilita Marketing apagado. No convertir esto en un lenguaje de
+programación general o en nuevas tablas de hechos/historial.
+
+Todos los consumidores reciben el mismo snapshot: evaluadores puros, derivación de ventanas SQL, ponderación,
+selección, ciclo, API, UI y cleanup. No basta mover WEIGHTS y dejar umbrales/acciones en los builders. Las consultas
+cargan lo que exigen las reglas habilitadas; no conservar un filtro fijo de 28 días si la política pide otra ventana.
+Lecturas ligeras del inbox no pasan a calcular métricas pesadas. Las fórmulas financieras exactas, moneda/null,
+aislamiento, permisos, deduplicación y corte Stock son invariantes del sistema, no opciones desactivables.
+
+La validación rechaza IDs/handlers/acciones inexistentes, referencias circulares, números no finitos, períodos
+inválidos, TTL indefinido, combinaciones de categoría/decisiones incompatibles y ventanas incoherentes. Un error
+no publica una configuración parcial ni vuelve silenciosamente a otros defaults. La versión identifica el conjunto
+completo; un cambio de políticas no cuenta como una venta/consumo nuevo y no borra decisiones atendidas ni reinicia
+la edad de un episodio. Al deshabilitar una regla se retira su contenido de lectura/sincronización sin borrar sus
+datos numéricos; al reactivarla no se ignora la memoria de lo atendido.
+
+Las candidatas/control retienen la referencia de política aplicada, sin duplicar el catálogo en cada aviso ni
+crear un log por evaluación. La versión de acción del inbox incorpora la política relevante: una decisión vista
+con capacidades antiguas no actúa sobre una configuración incompatible. Un cambio válido se aplica al revalidar
+con el mismo snapshot; no mezclar pesos de una versión con limpieza/acciones de otra. `policyVersion` del DTO
+identifica ese snapshot, también en una simulación.
+
+Cambiar la política exige reevaluar los avisos afectados aunque el evaluation_run del día ya esté ready bajo otra
+versión. Conservar ese marcador como trabajo, sin crear copias ni reiniciar decisiones/edad. GET no recalcula
+historia pesada: si el contenido no es compatible con la política elegida, no lo etiqueta con una versión nueva;
+lo excluye y comunica preparación mientras se realiza la reevaluación. Regla deshabilitada o aviso vencido no
+reaparece durante esa transición. Registrar la versión aplicada en las tablas existentes de trabajo/control,
+sin otra tabla de notificaciones o evaluación.
+
+La vigencia inicial es 90 días. Si una revisión reduce el plazo, revalidar también los episodios existentes. Si lo
+amplía, rige para episodios nuevos; no extender ni resucitar los ya atendidos/vencidos, ni prorrogar el episodio
+por recalcular o posponer. Cleanup usa la caducidad efectiva de cada episodio; no un 90 duplicado que ignore la
+política. Una variación de frecuencia de cron en el catálogo no se presenta como desplegada si el scheduler remoto
+no fue sincronizado con autorización; distinguir frecuencia de mostrar tarjetas de la operación del scheduler.
+
+Debe poder simularse el mismo snapshot de datos con dos políticas sin escribir avisos, decisiones o métricas:
+mostrar elegibilidad, motivo, componentes del peso, orden y vencimiento. Prueba de aceptación: variar peso,
+umbral, frecuencia, acción y TTL desde una única política altera los resultados esperados en todas las capas;
+inhabilitar una regla evita nueva generación y exposición persistida, sin copias ni pérdida de histórico.
 
 ### 4. Histórico en números
 
@@ -637,7 +717,8 @@ y [QA](../factory/0237-an3-qa.md). Main local autorizado por el owner tras QA; s
 
 Revisión de ciclo de avisos (posterior, todavía no implementada):
 
-- [ ] Catálogo §3.8 cerrado por el owner y contratos v2 implementados sin ambigüedad de navegación/cierre.
+- [ ] Catálogo §3.8 y política única §3.11 cerrados e implementados; pesos/umbrales/frecuencia/ciclo/acciones sin parámetros dispersos.
+- [ ] Validación/versionado/simulación de política; dos balances coherentes entre evaluadores, consultas, API y cleanup.
 - [ ] Una ID por asunto vigente/pospuesto, sin crecimiento diario artificial; fuentes 5/9 y llegada tardía12 seguras.
 - [ ] Reapertura pertinente y controles anti-replay; stock posterior/recuperación, condiciones temporales y snoozes.
 - [ ] Migración conservadora del legado, permisos/tenant/Stock/dinero/histórico intactos y carreras con CAS/locks.
@@ -694,6 +775,10 @@ Pruebas adicionales de esta revisión:
     métricas ni revisiones y no recrear el aviso vencido mañana con la misma información.
 15. Migración/replay aislado: tablas existentes/punteros conservados, hashes previos intactos y 0100 coordinada;
     sin sembrar/reparar/replay global de CI compartida. Solo tools/neon-test.sh/Node24 en DB reservada.
+16. Política: defaults equivalentes a las tarjetas activas aprobadas; variar solo el catálogo para alterar peso,
+    elegibilidad, frecuencia, acción y expiración. Validación negativa, versión incompatible, regla deshabilitada
+    con contenido guardado, consultas con ventana cambiada, reducción de TTL sin resurrección al ampliarlo,
+    simulación sin escrituras y mismo snapshot de política entre capas. Superficie de edición según decisión pendiente.
 
 ## Pendientes que no bloquean
 
