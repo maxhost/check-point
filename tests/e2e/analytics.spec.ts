@@ -81,3 +81,28 @@ test("history has five periods and local filter, suppresses incomplete annual co
     page.getByText("En el mismo período del año anterior", { exact: false }),
   ).toHaveCount(0);
 });
+
+test("after dismissing every card, historical business has no new-business invitation", async ({
+  page,
+}) => {
+  const fixture = await setupAnalytics(page);
+  await page.goto(harness.url);
+  await expect(page.getByRole("article")).toHaveCount(5);
+  while (await page.getByRole("button", { name: /^Descartar / }).count()) {
+    const writes = fixture.writes.length;
+    await page
+      .getByRole("button", { name: /^Descartar / })
+      .first()
+      .click();
+    await expect.poll(() => fixture.writes.length).toBe(writes + 1);
+    await expect(
+      page
+        .getByRole("button", { name: /^Descartar / })
+        .and(page.getByRole("button", { disabled: true })),
+    ).toHaveCount(0);
+  }
+  await expect(
+    page.getByText("Hoy no tengo nada para avisarte."),
+  ).toBeVisible();
+  await expect(page.getByText(/empieza a contar|desde hoy/)).toHaveCount(0);
+});

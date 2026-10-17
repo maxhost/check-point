@@ -1,3 +1,4 @@
+import { sumIntegers, moneyRatio } from "./money";
 import { addDays, addMonths, daysBetween, monthStart } from "./date";
 import { calculateGoal, contribution, products } from "./cards/index";
 import type { AnalyticsInput, AnalyticsMetric } from "./types";
@@ -24,30 +25,31 @@ export function summarizeHistory(
   const c = contribution(input, rows);
   const tickets = rows
     .filter((r) => r.metric === "revenue")
-    .reduce((n, r) => n + r.count, 0);
+    .map((r) => r.count);
+  const ticketCount = sumIntegers(tickets);
   const expense = (metric: string) =>
-    rows
-      .filter((r) => r.metric === metric)
-      .reduce((n, r) => n + r.amountMinor, 0);
-  const fixedExpensesMinor = expense("expense_fixed");
-  const variableExpensesMinor = expense("expense_variable");
+    rows.filter((r) => r.metric === metric).map((r) => r.amountMinor);
+  const fixedExpensesMinor = sumIntegers(expense("expense_fixed"));
+  const variableExpensesMinor = sumIntegers(expense("expense_variable"));
   return {
     revenueMinor: Math.round(c.revenue),
-    tickets,
-    averageTicketMinor: tickets ? Math.round(c.revenue / tickets) : 0,
-    grossProfitMinor: Math.round(c.revenue - c.goods - c.commission),
+    tickets: ticketCount,
+    averageTicketMinor: ticketCount
+      ? moneyRatio(BigInt(c.revenue), BigInt(ticketCount))
+      : 0,
+    grossProfitMinor: sumIntegers([c.revenue, -c.goods, -c.commission]),
     coverage: c.coverage,
     fixedExpensesMinor,
     variableExpensesMinor,
     resultMinor:
       c.coverage >= 0.8
-        ? Math.round(
-            c.revenue -
-              c.goods -
-              c.commission -
-              fixedExpensesMinor -
-              variableExpensesMinor,
-          )
+        ? sumIntegers([
+            c.revenue,
+            -c.goods,
+            -c.commission,
+            -fixedExpensesMinor,
+            -variableExpensesMinor,
+          ])
         : null,
     topProducts: products(input, rows)
       .sort((a, b) => b.revenue - a.revenue || a.id.localeCompare(b.id))

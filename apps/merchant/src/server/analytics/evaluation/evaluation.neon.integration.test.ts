@@ -17,6 +17,7 @@ import {
   analyticsDimensionLabels as labels,
   locations,
   memberships,
+  businesses,
   users,
 } from "@mi-pasaporte/db/schema";
 const callbacks = vi.hoisted(() => ({ all: [] as (() => Promise<void>)[] }));
@@ -27,8 +28,9 @@ vi.mock("next/server", async (original) => ({
   },
 }));
 import { evaluateBusiness, readInbox, actOnCard } from "./index";
-import { readInput, readHistory } from "../queries";
+import { readInput, readHistory, readDay } from "../queries";
 import { inboxGET, historyGET, dayGET, cardPOST, evaluateGET } from "../http";
+import { calculateGoal } from "@mi-pasaporte/domain/analytics/cards/index";
 import { localDay, addDays } from "@mi-pasaporte/domain/analytics/date";
 const businessA = randomUUID(),
   businessB = randomUUID(),
@@ -320,6 +322,9 @@ describe.skipIf(!permisosIntegrationEnabled)(
       expect(state.rows[0]?.n).toBe(1);
     }, 30000);
     it("bounded windows retain current fixed/variable expenses, distant paid concepts and sparse weekdays", async () => {
+      const baselineMonthRevenue = calculateGoal(
+        await readInput(businessA, new Date("2026-10-31T08:00:00Z")),
+      ).monthRevenueMinor;
       const concept = randomUUID();
       await getDb().insert(labels).values({
         businessId: businessA,
@@ -331,6 +336,17 @@ describe.skipIf(!permisosIntegrationEnabled)(
       await getDb()
         .insert(metrics)
         .values([
+          {
+            businessId: businessA,
+            locationId: localA,
+            day: "2026-10-01",
+            metric: "revenue",
+            dimensionKind: "none",
+            amountMinor: 1100n,
+            currencyCode: "USD",
+            minorUnit: 2,
+            count: 1,
+          },
           ...[
             ["2026-05-05", 3000],
             ["2026-09-20", 2000],
@@ -402,7 +418,16 @@ describe.skipIf(!permisosIntegrationEnabled)(
         new Date("2026-10-31T08:00:00Z"),
       );
       expect(input.firstSaleDay).toBe("2026-07-04");
+      expect(
+        input.metrics.filter(
+          (r) => r.metric === "revenue" && r.day === "2026-10-01",
+        ),
+      ).toHaveLength(1);
+      expect(calculateGoal(input).monthRevenueMinor).toBe(
+        baselineMonthRevenue + 1100,
+      );
       for (const [metric, day, amount] of [
+        ["revenue", "2026-10-01", 1100],
         ["expense_fixed", "2026-10-01", 1100],
         ["expense_variable", "2026-10-01", 600],
         ["expense_variable", "2026-07-01", 900],
@@ -417,6 +442,45 @@ describe.skipIf(!permisosIntegrationEnabled)(
           (r) => r.metric === "units_sold" && r.day === "2026-07-04",
         )?.quantity,
       ).toBe(10);
+    }, 30000);
+    it("uses canonical COP units across real summary, candidate, history and day", async () => {
+      await getDb()
+        .update(businesses)
+        .set({ currencyCode: "COP" })
+        .where(eq(businesses.id, businessB));
+      const copDay = "2027-03-10";
+      await getDb().insert(metrics).values({
+        businessId: businessB,
+        day: "2027-03-09",
+        metric: "revenue",
+        dimensionKind: "none",
+        amountMinor: 40n,
+        currencyCode: "COP",
+        minorUnit: 0,
+        count: 1,
+      });
+      const now = new Date(`${copDay}T08:00:00Z`);
+      const input = await readInput(businessB, now);
+      expect(input.minorUnit).toBe(0);
+      expect(input.firstSaleDay).toBe("2027-03-09");
+      expect(await evaluateBusiness(businessB, now)).toBe(true);
+      const rows = await getDb()
+        .select()
+        .from(candidates)
+        .where(
+          and(eq(candidates.businessId, businessB), eq(candidates.day, copDay)),
+        );
+      expect(rows.find((r) => r.cardKey === "1")).toMatchObject({
+        amountMinor: 40n,
+        minorUnit: 0,
+        currencyCode: "COP",
+      });
+      expect(
+        await readHistory(businessB, "month", undefined, now),
+      ).toMatchObject({ minorUnit: 0, revenueMinor: 40 });
+      expect(
+        await readDay(businessB, "2027-03-09", undefined, now),
+      ).toMatchObject({ minorUnit: 0, revenueMinor: 40 });
     }, 30000);
   },
 );

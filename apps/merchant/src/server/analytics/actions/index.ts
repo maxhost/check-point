@@ -1,8 +1,7 @@
 import { MODULES } from "../../../modules/registry";
 import { enabledModuleIds } from "../../../modules/activation";
-import type { ModuleManifest } from "../../../modules/contract";
 export type AnalyticsViewer = { role: string; permissions: readonly string[] };
-type ActionManifest = ModuleManifest & {
+type ActionManifest = (typeof MODULES)[number] & {
   analyticsActions?: readonly {
     key: string;
     label: string;
