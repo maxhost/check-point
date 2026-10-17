@@ -60,6 +60,8 @@ Alta captura moneda/unidad del comercio. La escritura exige `expectedCurrencyCod
 
 ### 3. IA y foto durante el borrador
 
+La simplificación posterior de revisión autorizada por el owner conserva este modelo y HTTP: campo principal «Qué pagaste», clasificación/asociación corregibles bajo «Cambiar concepto», detalle opcional para la persona (fallback al concepto si queda vacío) y local heredado con cambio explícito. Calendario de día sin hora; una sola introducción. La UI no expone todos los campos internos como pasos obligatorios. [Alcance y asignación del calendario al kit](../factory/0236-review-contract.md).
+
 `expenses/ai-tasks.ts` declara tareas síncronas para texto y foto mediante AiTask, con esquema estricto y proveedor/configuración genéricos. El camino síncrono existente usa `store:false`; no usar background con retención para estas fotos. El servidor arma contexto únicamente con conceptos, categorías, locales y contexto regional del comercio. Como `itemId` en Stock, la IA devuelve `conceptId` de la lista cuando reconoce uno; si no, `conceptId:null` y nombre propuesto. «Pagué a Luis», «sueldo Luis» y «Luis 450» deben devolver el mismo concepto de personal ya existente.
 
 El normalizador posterior valida IDs y compatibilidad categoría/concepto contra el comercio. Una respuesta de IA no autoriza una FK ajena ni crea pagos. La revisión muestra monto, día, concepto/nombre, categoría, local y check fijo/variable; el dueño corrige coincidencias erróneas o elige un concepto nuevo antes de confirmar. La confirmación revalida todo; resuelve carreras de conceptos por la unicidad normalizada sin duplicar. No exige revisar el check para avanzar.
