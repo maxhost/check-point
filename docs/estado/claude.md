@@ -16,7 +16,7 @@
 **Sesión de diseño, sin código de producto de Claude.** Fuente de verdad: **`docs/plan-margen-ganancia-2026-10-14.md`**
 → tabla de etapas (al día), «Preguntas de G — respuestas del owner», «AN — visión del owner», «Prompt — Gastos».
 
-**Próxima sesión: diseñar AN juntos con el owner** (él lo pidió; «no será tan simple como crees»). Analíticas como
+**Próxima sesión: diseñar AN juntos con el owner** (lo pidió el owner; «no será tan simple como crees»). Analíticas como
 base expansible por rubro (odontólogo, cafetería, barbero, taller…): lo que el dueño abre cada mañana — «hoy espero
 que suceda esto, necesito preparar esto, tengo que lograr esto antes de esto». Antecedente: ADR 0021. Leer la sección
 «AN — visión del owner» del plan antes de proponer nada; las 3 preguntas abiertas están ahí.
