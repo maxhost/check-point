@@ -1,3 +1,4 @@
+import { businessHttp } from "../../../server/business/http";
 import { NextResponse } from "next/server";
 import type { ModuleRoute, ModuleServer } from "../../route-table";
 import { ModuleError } from "../../errors";
@@ -22,6 +23,39 @@ async function body(request: Request): Promise<Record<string, unknown>> {
 }
 
 const handlers: readonly ModuleRoute[] = [
+  // Temporary ADR0150 administration bridge: core owns permission and calculation.
+  {
+    method: "GET",
+    path: "commissions",
+    permission: "business",
+    failure: "No pudimos leer las comisiones.",
+    handler: async ({ request }) => {
+      const response = await businessHttp(request, ["payment-methods"]);
+      if (!response.ok) return response;
+      const data = await response.json();
+      return NextResponse.json({
+        methods: data.methods.map(
+          (method: { commission: unknown }) => method.commission,
+        ),
+      });
+    },
+  },
+  {
+    method: "PUT",
+    path: "commissions/:methodId",
+    permission: "business",
+    failure: "No pudimos guardar la comisión.",
+    handler: async ({ request, params }) =>
+      businessHttp(request, ["payment-methods", params.methodId, "commission"]),
+  },
+  {
+    method: "GET",
+    path: "sale-commissions/:sourceOrderId",
+    permission: "business",
+    failure: "No pudimos leer la comisión de la venta.",
+    handler: async ({ request, params }) =>
+      businessHttp(request, ["sale-commissions", "pos", params.sourceOrderId]),
+  },
   {
     method: "GET",
     path: "locations",
