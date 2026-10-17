@@ -1,3 +1,4 @@
+import { recordStockEvidence } from "../lifecycle/stock-evidence";
 import { lockAnalyticsBusiness } from "../lifecycle";
 import {
   evaluateAnalyticsFacts,
@@ -215,12 +216,15 @@ async function applyTranslation(
       .returning({ eventId: analyticsCampaignSnapshots.eventId });
     campaignChanged ||= changed.length > 0;
   }
+  await recordStockEvidence(tx, event, result);
   if (result.facts?.length)
     await evaluateAnalyticsFacts(tx, {
       businessId: event.businessId,
       eventId: event.id,
       capturedAt: event.capturedAt ?? new Date().toISOString(),
       facts: result.facts,
+      sourceKey: result.sourceKey,
+      sourceRevision: result.sourceRevision,
     });
   return campaignChanged;
 }

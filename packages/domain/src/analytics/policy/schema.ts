@@ -1,3 +1,4 @@
+import { ANALYTICS_TEXT_FIELDS } from "./rules";
 import type { AnalyticsCardCategory, InboxDecision } from "../types";
 
 export type AnalyticsRuleHandler =
@@ -43,7 +44,9 @@ export type AnalyticsPolicyConfig = {
     maximumUrgency: number;
     averageDailyDays: number;
     summaryFixed: number;
+    materialBucketBase: number;
   };
+  finance: { salesDays: number; closedMonths: number; minimumCoverage: number };
   lifetime: { days: number };
   snooze: { noveltyOnDue: "reset" };
   decisions: Readonly<Record<InboxDecision, { label: string }>>;
@@ -89,6 +92,14 @@ export function validatePolicy(
   };
   if (!config.revision?.trim())
     throw new Error("Política inválida: falta revision.");
+  positive(config.finance.salesDays, "finance.salesDays", 3650, true);
+  positive(config.finance.closedMonths, "finance.closedMonths", 120, true);
+  if (
+    !Number.isFinite(config.finance.minimumCoverage) ||
+    config.finance.minimumCoverage < 0 ||
+    config.finance.minimumCoverage > 1
+  )
+    throw new Error("Política inválida: finance.minimumCoverage.");
   positive(config.lifetime.days, "lifetime.days", 3650, true);
   positive(config.weights.minimum, "weights.minimum");
   positive(config.weights.maximumCards, "weights.maximumCards", 100, true);
@@ -109,6 +120,11 @@ export function validatePolicy(
   positive(config.weights.maximumPlata, "weights.maximumPlata");
   positive(config.weights.noSalesDailyMajor, "weights.noSalesDailyMajor");
   positive(config.weights.summaryFixed, "weights.summaryFixed");
+  if (
+    !Number.isFinite(config.weights.materialBucketBase) ||
+    config.weights.materialBucketBase <= 1
+  )
+    throw new Error("Política inválida: weights.materialBucketBase.");
   if (config.snooze.noveltyOnDue !== "reset")
     throw new Error("Política inválida: recordatorio no soportado.");
   const allowed: Record<AnalyticsCardCategory, readonly InboxDecision[]> = {
@@ -172,6 +188,14 @@ export function validatePolicy(
   ])
     if (!config.texts[key]?.trim())
       throw new Error(`Política inválida: texto ${key}.`);
+  for (const [key, fields] of Object.entries(ANALYTICS_TEXT_FIELDS)) {
+    const text = config.texts[key];
+    if (typeof text !== "string")
+      throw new Error(`Política inválida: texto ${key}.`);
+    for (const match of text.matchAll(/\{\{([a-zA-Z0-9_]+)\}\}/g))
+      if (!fields.includes(match[1]))
+        throw new Error(`Política inválida: campo ${key}.${match[1]}.`);
+  }
   const ids = new Set<string>();
   for (const rule of config.rules) {
     if (!/^[a-zA-Z0-9_-]+$/.test(rule.id) || ids.has(rule.id))

@@ -21,7 +21,11 @@ import {
   policyText,
   type AnalyticsPolicy,
 } from "@mi-pasaporte/domain/analytics/policy/index";
-import { localDay, validDay } from "@mi-pasaporte/domain/analytics/date";
+import {
+  localDay,
+  validDay,
+  daysBetween,
+} from "@mi-pasaporte/domain/analytics/date";
 import { actionContext, type AnalyticsViewer } from "../actions";
 import { AnalyticsError, safeMoney } from "../queries";
 
@@ -140,7 +144,7 @@ async function readInTransaction(
       ),
     )
     .where(eq(candidates.businessId, businessId));
-  const resolve = await actionContext(businessId, viewer);
+  const resolve = await actionContext(businessId, viewer, policy);
   const eligible: {
     content: Content;
     control: Control;
@@ -160,6 +164,15 @@ async function readInTransaction(
     )
       continue;
     if (control.status !== "open" && control.status !== "snoozed") continue;
+    if (
+      rule.handler === "demand" &&
+      content.subjectKey === "learning" &&
+      control.shownDays > 0 &&
+      control.lastShownDay !== today &&
+      daysBetween(control.lastShownDay, today) <
+        rule.parameters.learningCooldownDays
+    )
+      continue;
     const card = content.parameters as CardCandidate;
     // Target-day reports never masquerade as today's data while preparation is pending.
     if (
@@ -501,7 +514,7 @@ export async function decideInboxCard(
       viewer,
       now,
       policy,
-      false,
+      true,
     );
     return { cards: current.cards, nextReminderAt: current.nextReminderAt };
   });
@@ -524,6 +537,9 @@ export async function cleanupInbox(
     cutoff: new Date(
       now.getTime() - policy.lifetime.days * dayMs,
     ).toISOString(),
+    eligible: 0,
+    processed: 0,
+    completedAt: null,
     deleted: 0,
     skipped: 0,
     budgetExhausted: false,
@@ -548,6 +564,7 @@ export async function cleanupInbox(
         sql`select id,business_id from analytics.card_candidate where (expires_at<${now.toISOString()}::timestamptz or episode_started_at<${now.toISOString()}::timestamptz-${policy.lifetime.days}*interval '24 hours') ${attemptedFilter} ${busyFilter} order by expires_at,id limit ${batch}`,
       );
       if (!rows.rows.length) return false;
+      result.eligible += rows.rows.length;
       const businessIds = [
         ...new Set(rows.rows.map((row) => String(row.business_id))),
       ].sort();
@@ -580,6 +597,7 @@ export async function cleanupInbox(
           result.skipped++;
           continue;
         }
+        result.processed++;
         const [control] = await tx
           .select()
           .from(states)
@@ -594,6 +612,58 @@ export async function cleanupInbox(
     });
     if (!progress) break;
   }
+  // Controls for immutable facts/campaign cycles are not a notification history.
+  // Their source cursor prevents delivery replay; campaign creation also keeps its emission gate.
+  const attemptedControls = new Set<string>();
+  while (performance.now() < deadline) {
+    const progressed = await withDbTransaction(async (tx) => {
+      const excluded = attemptedControls.size
+        ? sql`and s.candidate_id not in (${sql.join(
+            [...attemptedControls].map((id) => sql`${id}::uuid`),
+            sql`,`,
+          )})`
+        : sql``;
+      const busy = busyBusinesses.size
+        ? sql`and s.business_id not in (${sql.join(
+            [...busyBusinesses].map((id) => sql`${id}::uuid`),
+            sql`,`,
+          )})`
+        : sql``;
+      const discover = await tx.execute(
+        sql`select s.business_id,s.candidate_id from analytics.card_state s where s.expires_at<${now.toISOString()}::timestamptz and s.remind_at is null and s.context->'observed'->>'kind' in ('count-gap','campaign') and not exists(select 1 from analytics.card_candidate c where c.business_id=s.business_id and c.id=s.candidate_id) and exists(select 1 from analytics.source_revision r where r.business_id=s.business_id and r.source_key=s.context->'observed'->>'sourceKey' and r.source_revision>=case when s.context->'observed'->>'sourceRevision' ~ '^[0-9]+$' then (s.context->'observed'->>'sourceRevision')::numeric else null end) ${excluded} ${busy} order by s.expires_at,s.candidate_id limit ${batch}`,
+      );
+      if (!discover.rows.length) return false;
+      result.eligible += discover.rows.length;
+      for (const row of [...discover.rows].sort((a, b) =>
+        String(a.business_id).localeCompare(String(b.business_id)),
+      )) {
+        const id = String(row.candidate_id),
+          businessId = String(row.business_id);
+        attemptedControls.add(id);
+        if (performance.now() >= deadline) break;
+        if (!(await lockAnalyticsBusiness(tx, businessId, true))) {
+          busyBusinesses.add(businessId);
+          result.skipped++;
+          continue;
+        }
+        const locked = await tx.execute(
+          sql`select revision,context_version from analytics.card_state where business_id=${businessId} and candidate_id=${id}::uuid for update skip locked`,
+        );
+        if (!locked.rows.length) {
+          result.skipped++;
+          continue;
+        }
+        result.processed++;
+        const deleted = await tx.execute(
+          sql`delete from analytics.card_state s where s.business_id=${businessId} and s.candidate_id=${id}::uuid and s.context->'observed'->>'kind' in ('count-gap','campaign') and exists(select 1 from analytics.source_revision r where r.business_id=s.business_id and r.source_key=s.context->'observed'->>'sourceKey' and r.source_revision>=case when s.context->'observed'->>'sourceRevision' ~ '^[0-9]+$' then (s.context->'observed'->>'sourceRevision')::numeric else null end) and s.revision=${Number(locked.rows[0].revision)} and s.context_version=${String(locked.rows[0].context_version)} and s.expires_at<${now.toISOString()}::timestamptz and s.remind_at is null and not exists(select 1 from analytics.card_candidate c where c.business_id=s.business_id and c.id=s.candidate_id) returning s.candidate_id`,
+        );
+        result.deleted += deleted.rows.length;
+      }
+      return true;
+    });
+    if (!progressed) break;
+  }
   if (performance.now() >= deadline) result.budgetExhausted = true;
+  if (!result.budgetExhausted) result.completedAt = new Date().toISOString();
   return result;
 }

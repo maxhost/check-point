@@ -1,19 +1,38 @@
-import { addDays, daysBetween, formatMoney, monthStart } from "../date";
-import { customerCohorts } from "../customer-promo-history";
-import { moneyRatio, sumIntegers } from "../money";
+import { addDays, daysBetween, formatMoney } from "../date";
+import { sumIntegers } from "../money";
 import type { AnalyticsInput, CardCandidate, CardState } from "../types";
 import { cardWeight, materialFingerprint } from "../weights";
 
-// §7 leaves urgency open: anomalies 0.8, habitual loss 0.7, completed promo 0.6.
+import {
+  ANALYTICS_POLICY,
+  policyText,
+  rulesFor,
+  type AnalyticsPolicy,
+  type AnalyticsRulePolicy,
+} from "../policy/index";
 export const CUSTOMER_PROMO_URGENCY = {
-  "10": 0.8,
-  "11": 0.7,
-  "12": 0.6,
-} as const;
+  "10": ANALYTICS_POLICY.rules.find((r) => r.id === "10")!.parameters.urgency,
+  "11": 0,
+  "12": ANALYTICS_POLICY.rules.find((r) => r.id === "12")!.parameters.urgency,
+};
 export function buildCustomerPromoCandidates(
   input: AnalyticsInput,
   states: readonly CardState[] = [],
+  policy: AnalyticsPolicy = ANALYTICS_POLICY,
+  rules: readonly AnalyticsRulePolicy[] = [
+    ...rulesFor(policy, "voids"),
+    ...rulesFor(policy, "campaign"),
+  ],
 ): CardCandidate[] {
+  return rules.flatMap((rule) => buildRule(input, states, policy, rule));
+}
+function buildRule(
+  input: AnalyticsInput,
+  states: readonly CardState[],
+  policy: AnalyticsPolicy,
+  rule: AnalyticsRulePolicy,
+): CardCandidate[] {
+  const p = rule.parameters;
   const cards: CardCandidate[] = [];
   const money = (n: number) =>
     formatMoney(n, input.currencyCode, input.minorUnit);
@@ -36,142 +55,188 @@ export function buildCustomerPromoCandidates(
   const avg =
     sum(
       input.metrics.filter(
-        (r) => r.day >= addDays(input.today, -28) && r.day < input.today,
+        (r) =>
+          r.day >= addDays(input.today, -policy.weights.averageDailyDays) &&
+          r.day < input.today,
       ),
       "revenue",
-    ) / 28;
+    ) / policy.weights.averageDailyDays;
   function add(
     card: Omit<
       CardCandidate,
-      "currencyCode" | "minorUnit" | "fingerprint" | "weight" | "urgency"
+      | "currencyCode"
+      | "minorUnit"
+      | "fingerprint"
+      | "weight"
+      | "urgency"
+      | "cardKey"
+      | "sender"
+      | "actionKey"
     >,
   ) {
     const candidate: CardCandidate = {
       ...card,
+      cardKey: rule.id,
+      category: rule.category,
+      sender: rule.sender,
+      actionKey: rule.actionKey,
       currencyCode: input.currencyCode,
       minorUnit: input.minorUnit,
-      urgency: CUSTOMER_PROMO_URGENCY[card.cardKey as "10" | "11" | "12"],
-      fingerprint: materialFingerprint(card.subjectKey, card.amountMinor),
+      urgency: p.urgency,
+      fingerprint: materialFingerprint(
+        card.subjectKey,
+        card.amountMinor,
+        policy,
+      ),
       weight: 0,
     };
     candidate.weight = cardWeight(
       candidate,
       avg,
       states.find(
-        (s) => s.cardKey === card.cardKey && s.subjectKey === card.subjectKey,
+        (s) => s.cardKey === rule.id && s.subjectKey === card.subjectKey,
       ),
+      policy,
     );
     cards.push(candidate);
   }
-  for (const location of input.locations) {
-    const first = input.firstSaleDays?.find(
-      (r) => r.locationId === location.id,
-    )?.day;
-    if (!first || daysBetween(first, input.today) < 28) continue;
-    const rows = input.metrics.filter((r) => r.locationId === location.id);
-    const current = rows.filter(
-      (r) => r.day >= addDays(input.today, -7) && r.day < input.today,
-    );
-    const weeks = Array.from({ length: 8 }, (_, i) =>
-      sum(
-        rows.filter(
-          (r) =>
-            r.day >= addDays(input.today, -14 - i * 7) &&
-            r.day < addDays(input.today, -7 - i * 7),
+  if (rule.handler === "voids")
+    for (const location of input.locations) {
+      const first = input.firstSaleDays?.find(
+        (r) => r.locationId === location.id,
+      )?.day;
+      if (!first || daysBetween(first, input.today) < p.historyDays) continue;
+      const rows = input.metrics.filter((r) => r.locationId === location.id);
+      const current = rows.filter(
+        (r) =>
+          r.day >= addDays(input.today, -p.windowDays) && r.day < input.today,
+      );
+      const weeks = Array.from({ length: p.baselineWindows }, (_, i) =>
+        sum(
+          rows.filter(
+            (r) =>
+              r.day >= addDays(input.today, -(i + 2) * p.windowDays) &&
+              r.day < addDays(input.today, -(i + 1) * p.windowDays),
+          ),
+          "voided_tickets",
+          "count",
         ),
-        "voided_tickets",
-        "count",
-      ),
-    );
-    const mean = weeks.reduce((a, b) => a + b, 0) / 8;
-    const sd = Math.sqrt(weeks.reduce((n, v) => n + (v - mean) ** 2, 0) / 8);
-    const count = sum(current, "voided_tickets", "count");
-    if (count <= Math.max(3, mean + 2 * sd)) continue;
-    const amount = sum(current, "voided_tickets");
-    add({
-      cardKey: "10",
-      subjectKey: `voids:${location.id}`,
-      sender: "Ventas",
-      title: "Más tickets anulados",
-      body: `Esta semana se anularon ${count} tickets en ${location.name} (${money(amount)} cargados). El promedio de las 8 semanas previas fue ${Number(mean.toFixed(1))}.`,
-      amountMinor: amount,
-      quality: "observed",
-      actionKey: "view_voided_orders",
-      locationId: location.id,
-    });
-  }
-  for (const customer of customerCohorts(input)) {
-    const gap = daysBetween(customer.lastDay, input.today),
-      med = customer.medianDays;
-    // Owner: at least four distinct local dates define the habit.
-    if (
-      customer.visitDays < 4 ||
-      gap > 90 ||
-      med <= 0 ||
-      gap <= 2 * med ||
-      gap < med + 7
-    )
-      continue;
-    const missed = Math.max(
-      0,
-      Math.floor(gap / med) -
-        Math.floor(
-          Math.max(
-            0,
-            daysBetween(customer.lastDay, monthStart(input.today)) - 1,
-          ) / med,
-        ),
-    );
-    const amount = customer.allAmountsKnown
-      ? moneyRatio(
-          BigInt(customer.spentMinor) * BigInt(missed),
-          BigInt(customer.visitDays),
-        )
-      : null;
-    const name =
-      input.labels.find((l) => l.kind === "customer" && l.id === customer.id)
-        ?.label || "Este cliente";
-    add({
-      cardKey: "11",
-      subjectKey: `customer:${customer.id}`,
-      sender: "Clientes",
-      title: "Un habitual lleva más tiempo sin venir",
-      body: `${name} solía venir cada ${med} días. Su última visita fue hace ${gap} días.`,
-      amountMinor: amount,
-      quality: "estimated",
-      actionKey: "view_customer",
-      actionHref: `/backoffice/customers/analytics/${customer.id}`,
-      locationId: null,
-      ...(amount === null ? { fixedPlata: 1 } : {}),
-    });
-  }
-  for (const campaign of input.campaigns ?? []) {
-    if (campaign.status === "draft") continue;
-    const finish = [campaign.endsAt, campaign.endedAt]
-      .filter((v): v is string => !!v)
-      .sort()[0];
-    if (!finish || addDays(finish.slice(0, 10), 1) !== input.today) continue;
-    const rows = input.metrics.filter(
-      (r) =>
-        r.dimensionId === campaign.campaignId &&
-        r.day >= campaign.startsAt.slice(0, 10) &&
-        r.day <= finish.slice(0, 10),
-    );
-    const discount = sum(rows, "promo_discount"),
-      sales = sum(rows, "promo_sales");
-    add({
-      cardKey: "12",
-      subjectKey: `campaign:${campaign.campaignId}`,
-      sender: "Promos",
-      title: "El resultado de tu promo",
-      body: `${campaign.label} te costó ${money(discount)} en descuentos y vino con ${money(sales)} en ventas en los mismos tickets. Estas ventas no indican que la promo las haya causado.`,
-      amountMinor: discount,
-      quality: "observed",
-      actionKey: "view_campaign_results",
-      actionHref: `/backoffice/marketing/${campaign.campaignId}`,
-      locationId: null,
-      ...(discount === 0 ? { fixedPlata: 1 } : {}),
-    });
-  }
+      );
+      const mean = weeks.reduce((a, b) => a + b, 0) / p.baselineWindows;
+      const sd = Math.sqrt(
+        weeks.reduce((n, v) => n + (v - mean) ** 2, 0) / p.baselineWindows,
+      );
+      const count = sum(current, "voided_tickets", "count");
+      if (count <= Math.max(p.minimumCount, mean + p.standardDeviations * sd))
+        continue;
+      const amount = sum(current, "voided_tickets");
+      add({
+        subjectKey: `voids:${location.id}`,
+        period: {
+          from: addDays(input.today, -p.windowDays),
+          to: addDays(input.today, -1),
+          label: "",
+        },
+        context: {
+          kind: "voids",
+          count,
+          amount,
+          mean,
+          sd,
+          observations: current
+            .filter((r) => r.metric === "voided_tickets")
+            .map((r) => [r.day, r.count, r.amountMinor]),
+        },
+
+        title: policyText(policy, "card_customer_promo_buildRule_1"),
+        body: policyText(policy, "card_customer_promo_buildRule_2", {
+          window: policyText(
+            policy,
+            p.windowDays === 7 ? "anomaly_this_week" : "anomaly_days",
+            { days: p.windowDays },
+          ),
+          baseline: policyText(
+            policy,
+            p.windowDays === 7
+              ? "anomaly_baseline_weeks"
+              : "anomaly_baseline_days",
+            { days: p.windowDays, windows: p.baselineWindows },
+          ),
+          v0: count,
+          v1: location.name,
+          v2: money(amount),
+          v3: Number(mean.toFixed(1)),
+        }),
+        amountMinor: amount,
+        quality: "observed",
+
+        locationId: location.id,
+      });
+    }
+  if (rule.handler === "campaign")
+    for (const campaign of input.campaigns ?? []) {
+      if (campaign.status === "draft") continue;
+      const finish = [campaign.endsAt, campaign.endedAt]
+        .filter((v): v is string => !!v)
+        .sort()[0];
+      if (
+        !finish ||
+        addDays(finish.slice(0, 10), p.emissionDelayDays) > input.today ||
+        (addDays(finish.slice(0, 10), p.emissionDelayDays) !== input.today &&
+          !states.some(
+            (s) =>
+              s.cardKey === rule.id &&
+              s.subjectKey === `campaign:${campaign.campaignId}`,
+          ))
+      )
+        continue;
+      const rows = input.metrics.filter(
+        (r) =>
+          r.dimensionId === campaign.campaignId &&
+          r.day >= campaign.startsAt.slice(0, 10) &&
+          r.day <= finish.slice(0, 10),
+      );
+      const discount = sum(rows, "promo_discount"),
+        sales = sum(rows, "promo_sales");
+      add({
+        subjectKey: `campaign:${campaign.campaignId}`,
+        originDay: finish.slice(0, 10),
+        ...(campaign.finishOccurredAt
+          ? {
+              originObservedAt: `${new Date(campaign.finishOccurredAt).toISOString()}:${campaign.eventId}`,
+            }
+          : {}),
+        period: {
+          from: campaign.startsAt.slice(0, 10),
+          to: finish.slice(0, 10),
+          label: "",
+        },
+        context: {
+          kind: "campaign",
+          sourceKey: campaign.sourceKey,
+          sourceRevision: campaign.sourceRevision,
+          cycle: { startsAt: campaign.startsAt, finish },
+          snapshot: {
+            capturedAt: campaign.capturedAt,
+            eventId: campaign.eventId,
+          },
+          discount,
+          sales,
+        },
+
+        title: policyText(policy, "card_customer_promo_buildRule_3"),
+        body: policyText(policy, "card_customer_promo_buildRule_4", {
+          v0: campaign.label,
+          v1: money(discount),
+          v2: money(sales),
+        }),
+        amountMinor: discount,
+        quality: "observed",
+
+        actionHref: `/backoffice/marketing/${campaign.campaignId}`,
+        locationId: null,
+        ...(discount === 0 ? { fixedPlata: p.zeroDiscountPlata } : {}),
+      });
+    }
   return cards;
 }

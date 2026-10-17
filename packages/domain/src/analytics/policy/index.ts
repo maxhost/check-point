@@ -3,6 +3,7 @@ import { ANALYTICS_POLICY_CONFIG } from "./config";
 import {
   ANALYTICS_RULE_DEFINITIONS,
   ANALYTICS_EVALUATOR_VERSION,
+  ANALYTICS_TEXT_FIELDS,
 } from "./rules";
 import {
   validatePolicy,
@@ -54,6 +55,7 @@ export function createAnalyticsPolicy(
           config: copy,
           definitions: ANALYTICS_RULE_DEFINITIONS,
           evaluatorVersion: ANALYTICS_EVALUATOR_VERSION,
+          templateFields: ANALYTICS_TEXT_FIELDS,
         }),
       )
       .digest("hex")}`,
@@ -61,13 +63,11 @@ export function createAnalyticsPolicy(
 }
 /** One immutable snapshot per process; callers may explicitly inject another validated snapshot. */
 export const ANALYTICS_POLICY = createAnalyticsPolicy(ANALYTICS_POLICY_CONFIG);
-export function ruleFor(
+export function rulesFor(
   policy: AnalyticsPolicy,
   handler: AnalyticsRuleHandler,
 ) {
-  const rule = policy.rules.find((r) => r.handler === handler);
-  if (!rule) throw new Error(`Regla no configurada: ${handler}.`);
-  return rule;
+  return policy.rules.filter((r) => r.enabled && r.handler === handler);
 }
 export function policyText(
   policy: AnalyticsPolicy,
@@ -88,12 +88,14 @@ export function policyWindows(policy: AnalyticsPolicy) {
   return {
     recentDays: Math.max(
       policy.weights.averageDailyDays,
+      policy.finance.salesDays,
       value("salesDays"),
       value("consumptionDays"),
+      value("weeklyDays"),
       value("missingFixedDays"),
       value("comparisonDays") + 1,
     ),
-    closedMonths: value("closedMonths"),
+    closedMonths: policy.finance.closedMonths,
     sameWeekdays: value("maximumOccurrences"),
     anomalyDays: Math.max(
       0,

@@ -28,9 +28,17 @@ vi.mock("next/server", async (original) => ({
     callbacks.all.push(work);
   },
 }));
-import { evaluateBusiness, readInbox, actOnCard } from "./index";
+import { evaluateBusiness, readInbox } from "./index";
+import { decideInboxCard } from "../lifecycle";
 import { readInput, readHistory, readDay } from "../queries";
-import { inboxGET, historyGET, dayGET, cardPOST, evaluateGET } from "../http";
+import {
+  inboxGET,
+  historyGET,
+  dayGET,
+  cardPOST,
+  legacyCardPOST,
+  evaluateGET,
+} from "../http";
 import { calculateGoal } from "@mi-pasaporte/domain/analytics/cards/index";
 import { localDay, addDays } from "@mi-pasaporte/domain/analytics/date";
 const businessA = randomUUID(),
@@ -214,9 +222,21 @@ describe.skipIf(!permisosIntegrationEnabled)(
       expect(
         (
           await cardPOST(
-            conCookie(`/api/analytics/inbox/${id}/dismiss`, "POST", cookieB),
+            new Request(
+              conCookie(`/api/analytics/inbox/${id}/ignore`, "POST", cookieB),
+              {
+                body: JSON.stringify({
+                  expectedVersion: inbox.cards[0].version,
+                  operationId: randomUUID(),
+                }),
+                headers: {
+                  cookie: cookieB,
+                  "content-type": "application/json",
+                },
+              },
+            ),
             id,
-            "dismissed",
+            "ignore",
           )
         ).status,
       ).toBe(404);
@@ -244,47 +264,55 @@ describe.skipIf(!permisosIntegrationEnabled)(
       ).toBe(404);
       expect((await readHistory(businessB, "month")).revenueMinor).toBe(0);
     });
-    it("accept and dismiss remove cards and unchanged dismissed fingerprints do not return", async () => {
-      const inbox = await readInbox(businessA, viewer);
-      const id = inbox.cards.find((c) => c.cardKey === "7")!.id;
-      const result = await actOnCard(
-        businessA,
-        ownerA,
-        id,
-        "dismissed",
+    it("v2 ignore closes only its context and legacy navigation returns 409 without closing", async () => {
+      const inbox = await readInbox(businessA, viewer),
+        card = inbox.cards.find((c) => c.cardKey === "7")!;
+      const result = await decideInboxCard(
+        {
+          businessId: businessA,
+          actorId: ownerA,
+          cardId: card.id,
+          decision: "ignore",
+          expectedVersion: card.version,
+          operationId: randomUUID(),
+        },
         viewer,
       );
-      expect(result.cards.some((c) => c.id === id)).toBe(false);
+      expect(result.cards.some((c) => c.id === card.id)).toBe(false);
       const second = await readInbox(businessA, viewer);
-      expect(second.cards.some((c) => c.id === id)).toBe(false);
+      expect(second.cards.some((c) => c.id === card.id)).toBe(false);
       const summary = second.cards.find((c) => c.cardKey === "1")!;
-      const accepted = await cardPOST(
+      const legacy = await legacyCardPOST(
         conCookie(`/api/analytics/inbox/${summary.id}/accept`, "POST", cookieA),
         summary.id,
-        "accepted",
       );
-      expect(accepted.status).toBe(200);
-      const yesterday = new Date(Date.now() - 86400000);
-      await evaluateBusiness(businessA, yesterday);
-      const old = await getDb()
-        .select()
-        .from(candidates)
-        .where(
-          and(
-            eq(candidates.businessId, businessA),
-            eq(candidates.day, addDays(today, -1)),
-          ),
-        );
-      if (old[0])
-        expect(
-          (
-            await cardPOST(
-              conCookie("/", "POST", cookieA),
-              old[0].id,
-              "dismissed",
-            )
-          ).status,
-        ).toBe(404);
+      expect(legacy.status).toBe(409);
+      expect((await legacy.json()).code).toBe("inbox_contract_changed");
+      expect(
+        (await readInbox(businessA, viewer)).cards.some(
+          (c) => c.id === summary.id,
+        ),
+      ).toBe(true);
+      const seen = await decideInboxCard(
+        {
+          businessId: businessA,
+          actorId: ownerA,
+          cardId: summary.id,
+          decision: "seen",
+          expectedVersion: summary.version,
+          operationId: randomUUID(),
+        },
+        viewer,
+      );
+      expect(seen.cards.some((c) => c.id === summary.id)).toBe(false);
+      expect(
+        (
+          await legacyCardPOST(
+            conCookie("/api/analytics/inbox/unknown/dismiss", "POST", cookieA),
+            summary.id,
+          )
+        ).status,
+      ).toBe(409);
     }, 30000);
     it("cron is authenticated; malformed dates/periods do not reach SQL", async () => {
       expect(
@@ -496,19 +524,17 @@ describe.skipIf(!permisosIntegrationEnabled)(
             },
           ]),
         );
-      await getDb()
-        .insert(metrics)
-        .values({
-          businessId: businessA,
-          locationId: localA,
-          day: "2026-10-30",
-          metric: "revenue",
-          dimensionKind: "none",
-          amountMinor: 2000n,
-          currencyCode: "USD",
-          minorUnit: 2,
-          count: 2,
-        });
+      await getDb().insert(metrics).values({
+        businessId: businessA,
+        locationId: localA,
+        day: "2026-10-30",
+        metric: "revenue",
+        dimensionKind: "none",
+        amountMinor: 2000n,
+        currencyCode: "USD",
+        minorUnit: 2,
+        count: 2,
+      });
       await assertSnapshotEquivalence(
         businessA,
         new Date("2026-10-31T08:00:00Z"),
