@@ -1,6 +1,6 @@
 # Release Negocio0235 — corte directo
 
-Estado del corte: **push completado de db3175d237cdcf4ec41e32d70cc1c4f1e06ab2cf, migraciones PROD0093–0095 aplicadas y cuatro deploys Vercel READY con ese SHA**. Comparación SQL posterior y smoke sin sesión PASS. Se avisó al owner que puede reanudar el uso y su cron horario; no se presume que ya lo haya reactivado. Pendientes de aceptación manual: recorrido autenticado de Negocio y cierre de una venta de prueba. Los intentos fallidos y sus correcciones se conservan abajo.
+Estado del corte: **push completado de db3175d237cdcf4ec41e32d70cc1c4f1e06ab2cf, migraciones PROD0093–0095 aplicadas y cuatro deploys Vercel READY con ese SHA**. Comparación SQL posterior, smoke sin sesión y venta real POS de F5 PASS. Se avisó al owner que puede reanudar el uso y su cron horario; no se presume que ya lo haya reactivado. Pendiente de aceptación manual: recorrido de las tres secciones de Negocio. Los intentos fallidos y sus correcciones se conservan abajo.
 
 ## Autorización y alcance
 
@@ -112,4 +112,35 @@ Los aliases `checkpass.club` y `business.checkpass.club` apuntan a sus deploys R
 
 Smoke anónimo mediante GET, **6/6 resultados esperados**: `/api/health`200; `/api/business/{regional,fiscal,payment-methods,payment-method-catalog}`401; `/backoffice/business`307 hacia `/`. Evidencia `/private/tmp/checkpass-negocio-release/prod-smoke.json`. Esta comprobación confirma salud y guardia sin sesión; **no acredita el recorrido autenticado ni un nuevo cobro real**. Los contratos de permisos/cierre/congelado fueron comprobados en CI protegida, no mediante una venta de PROD del coordinador.
 
-Se indicó al owner que ya puede usar la app y reactivar su job cada1h. La reactivación efectiva y el recorrido manual siguen a cargo del owner. Se solicita revisar Negocio con sus tres secciones, el selector de medios del POS y una venta de prueba. Sin configuración de comisión, el resultado esperado es0 provisional marcado «Sin configurar», nunca margen real. No se configuró ninguna comisión ni se generó una venta por el owner. No fue necesario rollback ni una publicación adicional.
+Se indicó al owner que ya puede usar la app y reactivar su job cada1h. La reactivación efectiva y el recorrido manual siguen a cargo del owner. Se solicita revisar Negocio con sus tres secciones, el selector de medios del POS y una venta de prueba. Si falta un componente aplicable de comisión, el resultado esperado es provisional y marcado «Sin configurar», nunca margen real; Efectivo/none es cero conocido. El coordinador no configuró ninguna comisión ni generó una venta. No fue necesario rollback ni una publicación adicional.
+
+## Venta real F5 después del despliegue
+
+El owner informó: «hice la prueba con el negocio F5 cerre session, inicie de nuevo, abri una orden, la cobre». Se verificó únicamente por SQL **REPEATABLE READ READ ONLY**, `transaction_read_only=on`, a2026-10-17T03:36:51.028Z. Se encontró una sola orden de F5 cerrada después del READY del deploy Merchant; no se creó otra venta ni se llamó a reintentos. La salida/inicio de sesión es evidencia aportada por el owner, no una inspección del navegador del coordinador.
+
+| Registro | ID o resultado |
+| --- | --- |
+| Comercio | `5fcaebc2-82f2-4b8c-ba5c-27a44c802c40` |
+| Local | `11560a0c-e7db-4909-b19c-968ef2ada93c` |
+| Orden POS | `530b45ab-11ff-49b2-b80d-8fa70a53d67e`, closed; creada03:35:28.303UTC, cerrada03:35:32.629UTC |
+| Cobrado | **ARS9.50**, descuento0.00, tres líneas |
+| Pago | `6d642ce3-d287-409a-aa72-3c5a234e6893`; importe9.50 |
+| Medio | `41aa1364-e75e-4884-aebe-805d7cfae819`, Efectivo, activo; **method_provider_id=core**, charge_shape=none; pertenece al mismo comercio |
+| Comisión por venta | `3c257494-118c-423b-b3c7-b3322c9121f9`; core.sale_commission, source_provider_id=pos, **completo, total0.00, reasons=[]** |
+| Comisión por pago | `8fa8c158-f84c-450d-b641-da72314ee89b`; core.payment_commission, mismo pago/medio/evento/local, configured=true, commission0.00, reasons=[], revisiónnull |
+| Evento | `857b2a82-047d-468a-887a-c3268bc2983b`, sale.closed, **versión2**, mismo comercio/local/orden; money.collected9.50ARS y pago provider core |
+| Delivery | `3aa00a6f-40ad-4fb9-b4af-7611e043acb8`, **recipes/applied**, attempts1, applied03:35:33.265UTC, sin claim ni error terminal |
+
+La comisión0.00 es **cero conocido**, correcto para Efectivo/none según spec0235 y ADR0150; no es «Sin configurar» aunque no haya revisiones de comisión. El resultado se guardó en las tablas core durante el cierre, sin delivery profitability nuevo. Esta venta no prueba una tarifa porcentual/fija ni el aviso de componentes sin configurar; esos contratos tienen evidencia CI previa y no se atribuyen a esta prueba en efectivo.
+
+La línea `48eeabff-d09a-45c2-aa96-73cfbe953703`, producto `48659125-a8d4-4703-af06-575e4a3911b0`, capturó composición `15e22b37-626c-4e0c-9fd2-74b2d56c7891` y revisión de receta `e37f4524-18ac-4451-a437-8aa84f2e47d9`. Tiene tres fuentes de consumo, una por insumo, y estos movimientos únicos:
+
+| Insumo | Movimiento | Consumo | Costo unitario congelado ARS |
+| --- | --- | --- | --- |
+| `8ad64b3a-3bd5-4d86-a951-4d76341c6b64` | `71354f41-9fcb-4d3b-8205-44b9502ee059` | -3.000 | 0.175000 |
+| `cea7a845-2376-456c-b1a3-7de38730595c` | `0cdd211c-0a35-43af-9763-61ddf7b65d94` | -5.000 | 0.000220 |
+| `d6865378-0c43-4959-9fe8-106b12de9edf` | `1e2367a4-34c5-4a83-a7bb-f152203733d7` | -30.000 | 0.005000 |
+
+Las cantidades negativas coinciden exactamente con las asignaciones de recipes.consumption_source; factor de merma congelado1.000000, monedaARS y escala2. Costo exacto de **esa línea con receta**: ARS0.6761. Las otras dos líneas no capturaron composición; no se afirma costo completo ni margen de toda la venta, ni se inventa consumo para ellas.
+
+Comprobación de consistencia entre orden/pago/medio/corecommission/evento/local y consumos **PASS**, sin duplicados en esta orden. Evidencia saneada: `/private/tmp/checkpass-negocio-release/f5-sale-after.json` y `f5-sale-verification.json`. Recorrido de Negocio/Marca, pruebas con una tasa y reactivación efectiva del cron no se presuponen a partir de este cierre POS.
