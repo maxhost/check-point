@@ -125,3 +125,23 @@ Primer intento de Vitest usó config Merchant desde cwd raíz y encontró cero
 tests (exit 1). Se corrigió cwd; solo la ejecución real 23/23 cuenta como PASS.
 Los mocks no certifican DB ni tenant real en Neon. B no ejecutó DB, migración,
 PROD, push, deploy, verify global ni mutaciones. Recurso DB pertenece a A.
+
+### Contrato del fallback ocupado
+
+QA detectó que el lector bloqueante de A2 podía esperar al lock del evaluador tras
+el presupuesto del HTTP, anulando ese presupuesto. A3 incorpora lectura pública
+no bloqueante con DTO preparing vacío/seguro y admisión del evaluador sin encolar
+otro trabajo si está ocupado. B conserva la firma y no devuelve el snapshot
+inicial, que podría haber vencido durante la espera.
+
+Se agregó el oráculo de última lectura ocupada y se ejecutó solo fallback:
+**3/3 PASS**, con servicios simulados. Prueba respuesta preparing/cards[]/cadencia
+de política al vencer el presupuesto; no certifica los locks reales de Neon. Se
+conserva la evidencia HTTP de `acc58d01` para los handlers que no cambiaron.
+El coordinador confirmó conservar las decisiones deshabilitadas mientras el inbox
+está preparing, como comportamiento heredado; no se amplió el producto.
+
+Ayuda documental externa, sin escrituras en policy: borrador
+`/private/tmp/checkpass-analytics-perf/lifecycle-policy-guide-draft.md`, entregado a
+A/coordinador. Incluye inventario y recetas; los TODO de integración/simulación
+señalan trabajo real pendiente y no se presentan como capacidad implementada.
