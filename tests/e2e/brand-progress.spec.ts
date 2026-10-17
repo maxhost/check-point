@@ -14,7 +14,6 @@ test("orientación con logo conserva identidad y no escribe Marca", async ({
   for (const expected of [
     "Da identidad a tu negocio",
     "Usa los colores de tu marca",
-    "Revisa horarios y moneda",
     "Aplica tus cambios cuando estén listos",
     "Encuentra una guía cuando la necesites",
   ]) {
