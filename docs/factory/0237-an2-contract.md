@@ -25,3 +25,10 @@ Worktree `/private/tmp/checkpass-an2/analytics-an2-qa`. Solo handoff `0237-an2-q
 ## Coordinación
 
 Reservas factory y contratos por commit local antes de código; entregas limpias con SHAs/pruebas/fallos reales, integración serial conserva commits. Workers no escriben estados/índices comunes ni refs de otros checkouts. Cambios de scope vuelven al coordinador. Desajuste spec/código se informa al owner antes de resolver. Worktrees se conservan si main local no contiene entregas; no forzar cleanup. DB reservada durante test/teardown, nunca suites concurrentes. QA fresco trabaja cuando ambos implementadores entregan.
+
+## Addendum de reservas y contratos
+
+- AutoresA/B arrancan en `bc63286051942bbc310cccb1fb3a247ba3c9fa58`; QA en `1af00c97786e91d80dae55ee43980a43f344c760` (aclaración moneda). A amplía reserva a `apps/merchant/src/modules/server-registry.ts`, exclusivamente registro Stock/Recetas.
+- A/B acuerdan hechos genéricos autocontenidos desde traducción para evaluación por delivery, sin core nombrar eventos ni módulos concretos; conteos conservan identidad/detalle, no se netean entre sí para la tarjeta9. El gauge conserva costo exacto y snapshot observado, con desempate estable; sumas monetarias siguen enteras.
+- GO DB exclusivoA: `/private/tmp/checkpass-0237/migration.env`, rama efímera de replay válido AN-1. No se reconcilia CI compartida ni se toca perf.
+- Inicio Node24.20.0/pnpm11.4.0, hooks `.githooks`; CI remoto main `db3175d` rojo por assertion previa en `stock-consumption.neon.integration.test.ts:315` (`count_changed` esperado). Se mantiene informado; solo regresión focal de corte en este encargo, sin batería publicación.
