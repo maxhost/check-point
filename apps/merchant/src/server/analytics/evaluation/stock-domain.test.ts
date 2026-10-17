@@ -27,7 +27,7 @@ const metric = (
   dimensionId,
   amountMinor,
   quantity,
-  count: 1,
+  count: metric === "revenue" ? 100 : 1,
   currencyCode: "USD",
   minorUnit: 2,
 });
@@ -249,10 +249,10 @@ describe("AN-2 depletion range", () => {
 });
 
 describe("AN-2 count loss", () => {
-  it("uses max(3 major, 1% weekly sales), inclusive, and only missing stock", () => {
+  it("uses max(exact 28-day average ticket, 1% weekly sales), inclusive, and only missing stock", () => {
     const i = input();
-    expect(facts(i, [gap({ amountMinor: "-299" })])).toEqual([]);
-    expect(facts(i, [gap()])[0]?.amountMinor).toBe(300);
+    expect(facts(i, [gap({ amountMinor: "-99" })])).toEqual([]);
+    expect(facts(i, [gap({ amountMinor: "-100" })])[0]?.amountMinor).toBe(100);
     expect(facts(i, [gap({ quantity: "3", amountMinor: "300" })])).toEqual([]);
     const high = {
       ...i,
@@ -280,12 +280,42 @@ describe("AN-2 count loss", () => {
     expect(c.actionHref).toContain("movementId=count");
     expect(c.subjectKey).toBe("count1:flour");
     expect(
-      facts(i, [gap({ currencyCode: "JPY", minorUnit: 0, amountMinor: "-2" })]),
-    ).toEqual([]);
+      facts(i, [gap({ currencyCode: "JPY", minorUnit: 0, amountMinor: "-1" })]),
+    ).toHaveLength(1);
+    expect(
+      facts(i, [gap({ currencyCode: "JPY", minorUnit: 0, amountMinor: "0" })]),
+    ).toHaveLength(1);
+    expect(
+      facts(i, [
+        gap({ currencyCode: "JPY", minorUnit: 0, amountMinor: "0" }),
+      ])[0]?.weight,
+    ).toBe(0);
     expect(
       carryFactCandidate({ ...i, today: "2026-10-30" }, c)?.weight,
     ).toBeCloseTo(c.weight * 0.7 ** 10);
   });
+});
+
+it("uses local COP tickets without FX and compares fractional average tickets before rounding", () => {
+  const i = { ...input(), currencyCode: "COP", minorUnit: 0 };
+  i.metrics = [
+    {
+      ...metric("revenue", 0, 301, "2026-10-01"),
+      count: 2,
+      currencyCode: "COP",
+      minorUnit: 0,
+    },
+  ];
+  const f = gap({ currencyCode: "COP", minorUnit: 0, amountMinor: "-150" });
+  expect(facts(i, [f])).toEqual([]); // 150 < 150.5; no rounded ticket threshold
+  expect(
+    facts(i, [gap({ currencyCode: "COP", minorUnit: 0, amountMinor: "-151" })]),
+  ).toHaveLength(1);
+  expect(
+    facts({ ...i, metrics: [] }, [
+      gap({ currencyCode: "COP", minorUnit: 0, amountMinor: "-1" }),
+    ]),
+  ).toHaveLength(1);
 });
 
 describe("AN-2 stock history", () => {
