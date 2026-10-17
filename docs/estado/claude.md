@@ -11,28 +11,23 @@
 
 
 
-## ⇥ ESTADO (2026-10-17, madrugada) — ADR 0152 (ANALÍTICAS) ACEPTADO; G LISTA PARA GPT; SIGUE SPEC DE AN
+## ⇥ ESTADO (2026-10-17) — SPEC 0237 DE ANALÍTICAS (AN) EN BORRADOR; ESPERA H1–H6 DEL OWNER
 
-**Sesión de diseño con el owner, sin código de producto.** Commits en `dev` (sin push): `95967d1e`, `bc4fbbad`,
-`3d7ff4e6`, `45a3f226`, `26bde4c1`.
+**Sesión de documentos, sin código de producto.** Commit en `dev` (sin push): `af9230d7`.
 
-**Hecho:** ADR **0152** aceptado (`docs/adr/0152-analiticas-inbox-accionable.md`): inbox de hasta 5 tarjetas (13 en la
-v1) con peso = plata en juego × urgencia × novedad, histórico en números con filtro mes/3/6/9/12 y comparativa anual
-construida; resúmenes diarios con vocabulario de métricas del core alimentados por `module_event`; contexto externo
-por **ciudad** (`eventos_clima` pronóstico + observado con Visual Crossing gratis, `eventos_calendario` con alcance país/provincia/zona/ciudad y
-tipo deportivo preparado), guardado sin acción; escala medida en Postgres local (no Neon). Decisiones y citas en
-`docs/plan-margen-ganancia-2026-10-14.md` (secciones «AN — …»); investigación en
-`docs/analisis-analiticas-mercado-2026-10-16.md`. Parqueado (proyecciones, cuadre de caja, dueño como fuente) en
-`docs/PARQUEADO.md`.
+**Hecho:** spec **0237** (`docs/specs/0237-analiticas-inbox-y-resumenes-diarios.md`, L3) con las decisiones del owner
+del 2026-10-17 (plan, «AN — decisiones del owner para la spec»): una spec en 3 etapas (AN-1 resúmenes + inbox +
+histórico + contexto externo, tarjetas 1, 2, 3, 4, 7, 13; AN-2 stock 5, 6, 8, 9; AN-3 10–12), inbox en el Dashboard e
+histórico en ítem «Analíticas» con permiso `analytics`, ventas = solo POS, tarjeta 10 = tickets abiertos anulados.
+Cruzada con la 0236 por `module_event`: el evento de gasto trae `expenseId` + `revision`; el chequeo de pendientes del
+conteo de Stock (`stock/count.ts`) filtra `sale.closed` de cualquier suscriptor → la 0237 §2.4 lo limita a suscriptores
+de stock.
 
-**G:** prompt ajustado al ADR 0152 en el plan («Prompt — Gastos»): meses pasados NO congelados, «todo el negocio» sin
-local (null también en `module_event`), `source_id` por edición. El owner lo lanza a GPT (spec 0236 + ADR 0151).
+**Siguiente:** el owner decide H1–H6 (al final de la spec); con eso la spec pasa a cerrada. AN-1 se implementa después
+de G (0236) y N (0235) integradas.
 
-**Siguiente: spec de AN (L3), la escribe Claude** (owner: no se la dejamos a GPT), en sesión nueva. Leer el ADR 0152
-entero y solo las secciones «AN — …» del plan. Al terminar, cruzarla con la spec 0236 de G por `module_event`.
-
-**Pendiente del owner:** push del fix de CI (`origin/main` rojo en `5b834ca0`; arreglo con QA PASS en `main` local).
+**Pendiente del owner:** push del fix de CI (`origin/main` rojo; arreglo con QA PASS en `main` local); cuenta y clave de
+Visual Crossing (H4).
 
 **Gotchas:** F5 Futbol Evolution es del owner (prueba en PROD). No se puede anular una venta cobrada. Escribir en PROD
-solo por la app, nunca por SQL.
-
+solo por la app, nunca por SQL. `MODULE_EVENTS_ENABLED` en PROD: verificar antes de AN-1.
