@@ -11,30 +11,26 @@
 
 
 
-## ⇥ ESTADO (2026-10-15) — PLAN COSTO/MARGEN → SMART MENU: R1, P1 Y P3 CERRADOS CON EL OWNER; PROMPTS LISTOS
+## ⇥ ESTADO (2026-10-16) — GASTOS/NEGOCIO/ANALÍTICAS REDISEÑADOS CON EL OWNER; EVENTOS ENCENDIDOS EN PROD
 
-**Sesion de diseño con el owner, sin codigo.** Claude piensa con el owner y prepara prompts; GPT escribe specs e
-implementa (ADR 0144). Fuente de verdad: **`docs/plan-margen-ganancia-2026-10-14.md`** (commit `223337c8`): tabla de
-etapas, decisiones del owner por pieza (secciones «R1 — huecos cerrados», «P1 — decisiones», «P3 — decisiones» con dos
-rondas) y prompts listos para GPT. Investigacion de Ecuador para el catalogo de P1:
-`docs/investigacion-medios-de-pago-ecuador-2026-10-15.md` (fuentes de prensa/proveedores, contradicciones marcadas).
+**Sesión de diseño, sin código de producto de Claude.** Fuente de verdad: **`docs/plan-margen-ganancia-2026-10-14.md`**
+→ tabla de etapas (filas EV, N, G, AN nuevas) y secciones «F rediseñada — Gastos, Medios y Analíticas», «Revisión de la
+0231», «Decisiones del owner sobre la revisión», prompts de encendido y de Negocio (0235/0150).
 
-**Estado de las piezas (leido en git el 2026-10-15, no corri gates):**
-- **0230** (costo de lo vendido) implementada, QA PASS (`docs/factory/0230-0231-qa.md`); **0231** (Rentabilidad: costos
-  fijos y sueldos, backend sin UI) implementada, QA PASS (`docs/factory/0231-qa.md`), ADR 0147 aceptado. Ambas en `main`
-  local (`d1e0710f`); **`main` local va 65 commits adelante de `origin/main`: nada pusheado**. La spec 0231 sigue
-  diciendo `estado: cerrada` (descuido de GPT).
-- **R1** spec 0232 + ADR 0148: GPT redactando en worktree `r1-0232-spec`; le pregunto 3 cosas (archivo, nombres
-  duplicados al migrar, redondeo/procedencia): respuesta sugerida dada al owner, sin confirmar que la envio.
-- **P1** spec 0233 + ADR 0149: GPT pregunto 4–8; respuesta sugerida dada (cambio en la 5: cobrado 0 no pide medio).
-  Owner pidio sumar a la 0233 el **descuento por linea en la version 2 de `sale.closed`** (mensaje para GPT dado).
-- **P3** spec 0234 + ADR 0150: prompt listo, sin lanzar. Implementa despues de P1.
+**Hecho y verificado:**
+- **EV:** `MODULE_EVENTS_ENABLED` encendido en PROD (GPT + owner). `origin/main` = `5b834ca0` (incluye fix retry Stock
+  `036615c0`). SQL de solo lectura en PROD (autorizado por el owner): 1 `sale.closed` v2, 2 entregas, venta de prueba
+  en F5 (comercio de prueba del owner). Cron de reintentos cada 1 h.
+- **N:** GPT escribió spec 0235 + ADR 0150 (`209f5937`). Claude NO los revisó todavía.
 
-**Que sigue:** prompts de **1.3** (despues de cerrar la spec de R1; necesita ADR de enganche «modulo aporta el costo
-del producto» al Catalogo), **P2**, **6** y **SM-datos**; UI pendiente con el owner: Rentabilidad (costos fijos en
-Locales, sueldo en Equipo), Recetas, selector de medio en el POS, Smart Menu + Dashboard (ADR de enganche).
+**Decisiones del owner (2026-10-15/16, en el plan):** módulo «Rentabilidad» → **Gastos** (`expenses`), solo gastos,
+criterio de caja, sueldos como nombre libre, tablas nuevas (se borra la 0231). Medios de pago → **core**, espacio
+**«Negocio»** (con Regional y Fiscal, mudados de Marca; permiso `business`). Toda la info → **Analíticas core** (opción
+C: resúmenes por día). Menú sin agrupar hasta tener 2–3 rubros. Orden: N → G → AN, en serie.
 
-**Gotchas de esta sesion:** comercios de **Ecuador (USD)**; redondeo a la **unidad minima de la moneda**, no
-«centavos» (COP/CLP sin fracciones). Stock y costo son **por local** a proposito; recetas por comercio; compra
-central = una carga por local, sin transferencias. «Todo es un cupon»: el canje de premio hoy NO emite cupon
-(`counter/redemptions.ts`) y todo cupon exige campaña. S1/S2 (comision del profesional, duracion del servicio) fuera.
+**Qué sigue:** revisar 0235/0150 contra las respuestas del owner; implementación de N (GPT); prompt de G; ADR de AN.
+Abiertos: 1.3-B (costo en ficha de Catálogo), 6 (merma), estimar recurrentes en Gastos (sugerencia de Claude sin
+confirmar). Spec 0231 sigue con `estado: cerrada`.
+
+**Gotchas:** F5 Futbol Evolution es del owner (prueba en PROD). Maduro de F5 sin costo (Bolón con Seco sale
+«incompleto»). No se puede anular una venta cobrada. Escribir en PROD solo por la app, nunca por SQL.
