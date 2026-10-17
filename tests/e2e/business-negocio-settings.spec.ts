@@ -170,3 +170,75 @@ test("cambio de moneda mantiene fijo previo identificado y exige configuración 
   ).toHaveValue("");
   expect(api.writes).toHaveLength(1);
 });
+
+test("cambio concurrente de moneda conserva fijo y moneda del editor hasta acción explícita", async ({
+  page,
+}) => {
+  const api = await apiFixture(page);
+  await page.goto(harness.url);
+  await row(page, "Transferencia")
+    .getByRole("textbox", { name: "Fijo de Transferencia (USD)" })
+    .fill("0.60");
+  // Another session commits a regional change after this editor's initial GET.
+  api.regional.currencyCode = "EUR";
+  api.regional.revision = 2;
+  api.fiscal.revision = 2;
+  await row(page, "Transferencia")
+    .getByRole("button", { name: "Guardar comisión de Transferencia" })
+    .click();
+  await expect(
+    row(page, "Transferencia").getByText("La moneda del negocio cambió.", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  expect(api.writes[0].body).toEqual({
+    expectedRevisionId: null,
+    fixed: "0.60",
+    expectedCurrencyCode: "USD",
+  });
+  expect(api.methods[2].commission.revisionId).toBeNull();
+  await expect(
+    row(page, "Transferencia").getByRole("textbox", {
+      name: "Fijo de Transferencia (USD)",
+    }),
+  ).toHaveValue("0.60");
+  await expect(
+    row(page, "Transferencia").getByRole("button", {
+      name: "Guardar comisión de Transferencia",
+    }),
+  ).toBeDisabled();
+  await row(page, "Transferencia")
+    .getByRole("button", { name: "Actualizar moneda del negocio", exact: true })
+    .click();
+  await expect(
+    row(page, "Transferencia").getByRole("textbox", {
+      name: "Fijo de Transferencia (USD)",
+    }),
+  ).toHaveValue("0.60");
+  await expect(
+    row(page, "Transferencia").getByRole("button", {
+      name: "Guardar comisión de Transferencia",
+    }),
+  ).toBeDisabled();
+  expect(api.writes).toHaveLength(1);
+  await row(page, "Transferencia")
+    .getByRole("button", { name: "Configurar fijo en EUR", exact: true })
+    .click();
+  const input = row(page, "Transferencia").getByRole("textbox", {
+    name: "Fijo de Transferencia (EUR)",
+  });
+  await expect(input).toHaveValue("");
+  await input.fill("0.70");
+  await row(page, "Transferencia")
+    .getByRole("button", { name: "Guardar comisión de Transferencia" })
+    .click();
+  await expect.poll(() => api.writes.length).toBe(2);
+  expect(api.writes[1].body).toEqual({
+    expectedRevisionId: null,
+    fixed: "0.70",
+    expectedCurrencyCode: "EUR",
+  });
+  await expect(
+    row(page, "Transferencia").getByText(/Comisión guardada/),
+  ).toBeVisible();
+});

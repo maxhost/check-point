@@ -111,6 +111,18 @@ export async function apiFixture(page: Page) {
         },
       });
     if (path.endsWith("/commission")) {
+      if (
+        body.fixed != null &&
+        body.expectedCurrencyCode !== api.regional.currencyCode
+      ) {
+        return route.fulfill({
+          status: 409,
+          json: {
+            error: "La moneda del negocio cambió.",
+            code: "commission_currency_conflict",
+          },
+        });
+      }
       const item = api.methods.find((item) => item.id === path.split("/")[1])!;
       const fixed = typeof body.fixed === "string" ? body.fixed : null;
       const commission: BusinessCommission = {

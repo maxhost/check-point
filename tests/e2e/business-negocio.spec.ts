@@ -193,3 +193,84 @@ test("guardado en vuelo bloquea duplicados y 422 conserva borrador editable", as
   await expect(row(page, "Tarjeta").getByRole("textbox")).toHaveValue("100.01");
   expect(api.writes).toHaveLength(1);
 });
+
+test("archivo confirmado no se revierte con respuesta tardía de comisión", async ({
+  page,
+}) => {
+  const api = await apiFixture(page);
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let requested = false;
+  await page.route(
+    "**/api/business/payment-methods/card/commission",
+    async (route) => {
+      requested = true;
+      const commission = {
+        ...api.methods[1].commission,
+        percent: "2",
+        configured: true,
+        revisionId: "committed-before-archive",
+      };
+      api.methods[1].commission = commission;
+      await held;
+      await route.fulfill({ json: { commission } });
+    },
+  );
+  try {
+    await page.goto(harness.url);
+    await row(page, "Tarjeta").getByRole("textbox").fill("2");
+    await row(page, "Tarjeta")
+      .getByRole("button", { name: "Guardar comisión de Tarjeta" })
+      .click();
+    await expect.poll(() => requested).toBe(true);
+    await page
+      .getByRole("button", { name: "Archivar Tarjeta", exact: true })
+      .click();
+    await expect(row(page, "Tarjeta").getByText(/Archivado/)).toBeVisible();
+    const response = page.waitForResponse(
+      "**/api/business/payment-methods/card/commission",
+    );
+    release();
+    await (await response).finished();
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+        ),
+    );
+    await expect(row(page, "Tarjeta").getByText(/Archivado/)).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Archivar Tarjeta", exact: true }),
+    ).toHaveCount(0);
+    await expect(row(page, "Tarjeta").getByRole("textbox")).toHaveCount(0);
+    expect(api.methods[1].status).toBe("archived");
+  } finally {
+    release();
+  }
+});
+
+test("refresco tras conflicto aprende archivo remoto sin reactivar el medio", async ({
+  page,
+}) => {
+  const api = await apiFixture(page);
+  await page.goto(harness.url);
+  api.fail = 409;
+  await row(page, "Tarjeta")
+    .getByRole("button", { name: "Guardar comisión de Tarjeta" })
+    .click();
+  await expect(
+    row(page, "Tarjeta").getByText("Tu borrador se conserva"),
+  ).toBeVisible();
+  api.fail = 0;
+  api.methods[1].status = "archived";
+  await page
+    .getByRole("button", { name: "Descartar borrador y actualizar Tarjeta" })
+    .click();
+  await expect(row(page, "Tarjeta").getByText(/Archivado/)).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Archivar Tarjeta", exact: true }),
+  ).toHaveCount(0);
+  await expect(row(page, "Tarjeta").getByRole("textbox")).toHaveCount(0);
+});

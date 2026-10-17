@@ -50,6 +50,10 @@ export function BusinessConsole() {
   useEffect(() => {
     void load();
   }, [load]);
+  async function refreshCurrency() {
+    const regional = await businessRequest<BusinessRegional>("regional");
+    setData((value) => value && { ...value, regional });
+  }
   function deny() {
     setData(null);
     setDenied(true);
@@ -83,6 +87,7 @@ export function BusinessConsole() {
                 catalog={data.catalog}
                 currencyCode={data.regional.currencyCode}
                 onAccessDenied={deny}
+                onRefreshCurrency={refreshCurrency}
               />
             </Card>
             <BusinessSettings

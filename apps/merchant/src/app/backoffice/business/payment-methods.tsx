@@ -30,11 +30,13 @@ export function PaymentMethods({
   catalog,
   currencyCode,
   onAccessDenied,
+  onRefreshCurrency,
 }: {
   initial: BusinessMethods;
   catalog: BusinessCatalog;
   currencyCode: string;
   onAccessDenied: () => void;
+  onRefreshCurrency: () => Promise<void>;
 }) {
   const [methods, setMethods] = useState(initial.methods);
   const [source, setSource] = useState("catalog");
@@ -92,7 +94,15 @@ export function PaymentMethods({
   const disabled = Boolean(saving) || denied;
   function update(method: BusinessPaymentMethod) {
     setMethods((current) =>
-      current.map((entry) => (entry.id === method.id ? method : entry)),
+      current.map((entry) =>
+        entry.id === method.id
+          ? {
+              ...entry,
+              commission: method.commission,
+              status: entry.status === "archived" ? "archived" : method.status,
+            }
+          : entry,
+      ),
     );
   }
   return (
@@ -164,6 +174,7 @@ export function PaymentMethods({
                 disabled={disabled}
                 onSaved={update}
                 onAccessDenied={onAccessDenied}
+                onRefreshCurrency={onRefreshCurrency}
                 onReload={async () =>
                   (
                     await businessRequest<BusinessMethods>(
