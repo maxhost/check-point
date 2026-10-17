@@ -1,5 +1,5 @@
 /** Bump when supported evaluator/lifecycle semantics change. */
-export const ANALYTICS_EVALUATOR_VERSION = "inbox-lifecycle-v2.4";
+export const ANALYTICS_EVALUATOR_VERSION = "inbox-lifecycle-v2.5";
 /** Structural safety bounds: raising these requires revisiting historical control pruning. */
 export const ANALYTICS_POLICY_LIMITS = { lifetimeDays: 3650 } as const;
 import type { AnalyticsRuleDefinition } from "./schema";

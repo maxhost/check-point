@@ -177,6 +177,7 @@ export async function syncInboxCandidates(
             : isFact && observed.fact
               ? { context: { ...oldContext, sourceFact: observed } }
               : {}),
+          episodeStartedAt: new Date(plan.startedAt),
           expiresAt: new Date(plan.expiresAt),
           remindAt: null,
           status: plan.expired && !plan.closed ? "expired" : previous.status,

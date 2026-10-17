@@ -134,9 +134,35 @@ async function recoverLegacyFacts(
           };
       }
     }
+    const provenOrigin = contextRecord(restored?.context?.fact).occurredAt;
+    const provenInstant =
+      typeof provenOrigin === "string" ? Date.parse(provenOrigin) : NaN;
+    const recoveredStart = Number.isFinite(provenInstant)
+      ? new Date(Math.min(Date.parse(control.episodeStartedAt!), provenInstant))
+      : undefined;
+    const recoveredExpiry = recoveredStart
+      ? new Date(
+          Math.min(
+            Date.parse(control.expiresAt!),
+            recoveredStart.getTime() + policy.lifetime.days * 86400000,
+          ),
+        )
+      : undefined;
+    const recoveredExpired = !!recoveredExpiry && now > recoveredExpiry;
     await tx
       .update(states)
       .set({
+        ...(recoveredStart && recoveredExpiry
+          ? { episodeStartedAt: recoveredStart, expiresAt: recoveredExpiry }
+          : {}),
+        ...(recoveredExpired
+          ? {
+              remindAt: null,
+              status: ["open", "snoozed", "shown"].includes(control.status)
+                ? "expired"
+                : control.status,
+            }
+          : {}),
         context: {
           ...context,
           legacyRecoveryAttempted: true,
@@ -162,6 +188,16 @@ async function recoverLegacyFacts(
           eq(states.candidateId, control.candidateId!),
         ),
       );
+    if (recoveredStart && recoveredExpiry) {
+      if (recoveredExpired)
+        await tx.execute(
+          sql`delete from analytics.card_candidate where business_id=${businessId} and id=${control.candidateId}::uuid`,
+        );
+      else
+        await tx.execute(
+          sql`update analytics.card_candidate set episode_started_at=${recoveredStart.toISOString()}::timestamptz,expires_at=${recoveredExpiry.toISOString()}::timestamptz where business_id=${businessId} and id=${control.candidateId}::uuid`,
+        );
+    }
   }
 }
 export async function evaluateBusiness(
