@@ -1,0 +1,157 @@
+import type { AnalyticsRuleDefinition } from "./schema";
+const integer = { minimum: 1, integer: true };
+const ratio = { minimum: 0, maximum: 1 };
+const nonnegative = { minimum: 0 };
+/** Supported algorithms and safe references, never another set of product defaults. */
+export const ANALYTICS_RULE_DEFINITIONS: readonly AnalyticsRuleDefinition[] = [
+  {
+    handler: "summary",
+    categories: ["informational"],
+    actionKeys: ["view_day"],
+    parameters: { comparisonDays: integer },
+  },
+  {
+    handler: "demand",
+    categories: ["informational"],
+    actionKeys: [null],
+    parameters: {
+      historyDays: integer,
+      minimumOccurrences: integer,
+      maximumOccurrences: integer,
+      topProducts: integer,
+      learningCooldownDays: integer,
+      fixedPlata: nonnegative,
+      urgency: ratio,
+    },
+  },
+  {
+    handler: "goal",
+    categories: ["actionable"],
+    actionKeys: ["view_calculation"],
+    parameters: {
+      salesDays: integer,
+      closedMonths: integer,
+      minimumCoverage: ratio,
+      closingPhaseDays: integer,
+      closingMultiplier: nonnegative,
+    },
+  },
+  {
+    handler: "expenses",
+    categories: ["actionable", "informational"],
+    actionKeys: ["record_expense"],
+    parameters: {
+      missingFixedDays: integer,
+      closingPhaseDays: integer,
+      fixedPlata: nonnegative,
+      normalUrgency: ratio,
+      closingUrgency: ratio,
+    },
+  },
+  {
+    handler: "cost-rise",
+    categories: ["actionable"],
+    actionKeys: ["edit_product_price"],
+    parameters: {
+      salesDays: integer,
+      minimumRiseRatio: nonnegative,
+      ageDecay: ratio,
+      weeklyDivisor: integer,
+      urgency: ratio,
+    },
+  },
+  {
+    handler: "margin",
+    categories: ["actionable"],
+    actionKeys: ["edit_product_price"],
+    parameters: {
+      salesDays: integer,
+      minimumSales: integer,
+      medianRatio: ratio,
+      weeklyDivisor: integer,
+      normalUrgency: ratio,
+      riskUrgency: ratio,
+    },
+  },
+  {
+    handler: "unknown-cost",
+    categories: ["actionable"],
+    actionKeys: ["set_product_cost"],
+    parameters: {
+      salesDays: integer,
+      minimumCoverage: ratio,
+      weeklyDivisor: integer,
+      normalUrgency: ratio,
+      riskUrgency: ratio,
+    },
+  },
+  {
+    handler: "stock",
+    categories: ["actionable"],
+    actionKeys: ["record_purchase"],
+    parameters: {
+      historyDays: integer,
+      consumptionDays: integer,
+      slowQuantile: ratio,
+      fastQuantile: ratio,
+      riskDays: nonnegative,
+      criticalDays: nonnegative,
+      urgencyScale: nonnegative,
+      fixedPlata: nonnegative,
+    },
+  },
+  {
+    handler: "count-gap",
+    categories: ["informational"],
+    actionKeys: ["view_count_detail"],
+    parameters: {
+      salesDays: integer,
+      weeklyDays: integer,
+      weeklySalesRatio: ratio,
+      ageDecay: ratio,
+      urgency: ratio,
+    },
+  },
+  {
+    handler: "voids",
+    categories: ["actionable"],
+    actionKeys: ["view_voided_orders"],
+    parameters: {
+      historyDays: integer,
+      windowDays: integer,
+      baselineWindows: integer,
+      minimumCount: nonnegative,
+      standardDeviations: nonnegative,
+      urgency: ratio,
+    },
+  },
+  {
+    handler: "customers",
+    categories: ["marketing"],
+    actionKeys: [null],
+    parameters: {},
+  },
+  {
+    handler: "campaign",
+    categories: ["informational"],
+    actionKeys: ["view_campaign_results"],
+    parameters: { emissionDelayDays: integer, urgency: ratio },
+  },
+  {
+    handler: "slow-day",
+    categories: ["informational"],
+    actionKeys: [null],
+    parameters: {
+      salesDays: integer,
+      historyDays: integer,
+      minimumOccurrences: integer,
+      maximumOccurrences: integer,
+      minimumProducts: integer,
+      minimumSales: integer,
+      slowRatio: ratio,
+      topProducts: integer,
+      normalUrgency: ratio,
+      riskUrgency: ratio,
+    },
+  },
+];
