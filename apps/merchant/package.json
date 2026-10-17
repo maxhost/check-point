@@ -13,7 +13,7 @@
     "@mapbox/search-js-react": "^1.6.0",
     "@mi-pasaporte/db": "workspace:*",
     "@mi-pasaporte/domain": "workspace:*",
-    "@neondatabase/serverless": "^1.1.0",
+    "@neondatabase/serverless": "^1.2.0",
     "@photostructure/tz-lookup": "11.7.0",
     "@point-of-sale/receipt-printer-encoder": "4.0.1",
     "better-auth": "^1.7.6",
