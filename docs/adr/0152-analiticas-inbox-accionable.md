@@ -147,8 +147,10 @@ Analíticas no calcula sobre el detalle.
 - **Hallazgos para la spec de G** (leídos en `packages/db/src/schema/module-event.ts`, 2026-10-16):
   - `module_event` es único por (comercio, tipo, `source_id`): dos ediciones del mismo gasto chocan si `source_id` es
     el id del gasto. El `source_id` de `expense.updated` tiene que ser el de la revisión o edición, no el del gasto.
-  - `location_id` es obligatorio: un gasto de «todo el negocio» no tiene local. Hay que decidir entre columna nullable
-    o una convención explícita; no un local elegido al azar.
+  - `location_id` es obligatorio: un gasto de «todo el negocio» no tiene local. **Resuelto (owner, 2026-10-16): va sin
+    local (null)**, nunca con un local elegido.
+- **Meses pasados no se congelan en Gastos** (owner, 2026-10-16): un gasto de un mes pasado puede editarse, borrarse o
+  registrarse; su evento lleva el estado completo y el resumen de ese día se recalcula.
 
 ### 5. Contexto externo: dato guardado desde ya, sin acción
 

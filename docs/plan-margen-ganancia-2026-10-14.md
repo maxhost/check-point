@@ -287,7 +287,9 @@ que apuntan a medios), `pos.pos_order` 17. `core.module_event`: 0 (la publicaci�
 2. **Permiso propio** (`expenses`) además del owner.
 3. **Local:** cada gasto va a un local o a «todo el negocio»; por defecto el local donde está el dueño. Sin reparto
    `equal/manual`.
-4. **Editar y borrar** libremente **solo dentro del mes en curso**; los meses pasados quedan congelados (histórico).
+4. ~~**Editar y borrar** libremente **solo dentro del mes en curso**; los meses pasados quedan congelados (histórico).~~
+   **Reemplazado (owner, 2026-10-16): «no congelemos los meses pasados y listo».** Se edita, borra y registra en
+   cualquier mes, también con fecha de un mes pasado.
 5. **Categorías fijas + «otro» con texto libre.**
 6. **Foto:** no se guarda como comprobante. Se conserva hasta que el gasto se guarda (por si hay que reanalizarla en
    ese momento) y después se descarta.
@@ -470,8 +472,10 @@ equilibrio y lo que el comercio gana o pierde, que calculará Analíticas (pieza
 8. **Fijo / variable lo marca la IA** (lo que se consume, como agua o gas, es variable; el alquiler es fijo), visible
    como un check que el dueño **puede corregir sin estar obligado**. No lo deduce la categoría.
 9. **Local:** cada gasto va a un local o a «todo el negocio»; por defecto el local donde está el dueño. Sin reparto
-   `equal/manual`.
-10. **Editar y borrar libremente solo dentro del mes en curso**; los meses pasados quedan congelados.
+   `equal/manual`. **«Todo el negocio» se guarda sin local** (null), nunca con un local elegido (owner, 2026-10-16).
+10. **Meses pasados NO se congelan** (owner, 2026-10-16: «no congelemos los meses pasados y listo»): se edita, borra y
+    registra un gasto en cualquier mes, también con fecha de un mes pasado. Reemplaza lo anterior («solo dentro del mes
+    en curso»).
 11. **Foto:** no se guarda como comprobante. Se conserva hasta que el gasto se guarda (por si hay que reanalizarla en
     ese momento) y después se descarta. Nada en R2 de forma permanente.
 12. **Permiso propio `expenses`** además del owner (los sueldos son sensibles).
@@ -488,19 +492,20 @@ equilibrio y lo que el comercio gana o pierde, que calculará Analíticas (pieza
   migrar (verificá de nuevo en PROD con autorización del owner antes de implementar).
 - Cómo la IA empareja el concepto con los conceptos ya usados por el comercio (como `itemId` en Stock) y qué pasa si
   se equivoca (el dueño lo corrige al confirmar).
-- «Mes en curso» según la zona horaria del comercio; qué pasa al registrar una fecha de un mes pasado (hallazgo a
-  decidir con el owner: con meses congelados, recomendación = no se permite).
+- «Día del pago» y su mes según la zona horaria del comercio. Editar, borrar o registrar en un mes pasado está
+  permitido (decisión 10): cada cambio publica su evento con el estado completo.
 - Cómo se generaliza `module_event` para publicar `expense.*` (hoy `publish.ts` solo publica `sale.closed`; mínimo
   necesario, sin construir Analíticas). Resolvé los dos hallazgos del ADR 0152 §4:
   - `module_event` es único por (comercio, tipo, `source_id`): el `source_id` de cada `expense.updated` tiene que ser
     el de esa edición, no el del gasto, o la segunda edición choca;
-  - `location_id` es obligatorio y un gasto de «todo el negocio» no tiene local: proponé columna nullable o una
-    convención explícita, con tu recomendación, como **hallazgo a decidir** con el owner. Nunca un local al azar.
+  - `location_id` es obligatorio y un gasto de «todo el negocio» no tiene local: **va null** (decisión 9). Decí qué
+    cambia en `module_event` para permitirlo y verificá que `sale.closed` y el corte del conteo de Stock
+    (`modules/stock/count.ts`, que filtra por local) sigan igual.
   Si exige más que eso, decilo como hallazgo.
 - Dónde vive la foto mientras dura el borrador y cómo se descarta.
 - Qué se borra (rutas, tablas, código, textos «Rentabilidad», permiso viejo) sin redirects a rutas borradas.
-- Pruebas mínimas y enfocadas: alta confirmada desde un borrador, concepto reconocido entre dos pagos, edición/borrado
-  bloqueado en mes pasado, permiso (owner sí; staff solo con `expenses`), aislamiento entre comercios, evento
+- Pruebas mínimas y enfocadas: alta confirmada desde un borrador, concepto reconocido entre dos pagos, edición de un
+  gasto de un mes pasado que publica su evento, gasto de «todo el negocio» sin local, permiso (owner sí; staff solo con `expenses`), aislamiento entre comercios, evento
   publicado. No suites enteras.
 
 ## Fuera de alcance
