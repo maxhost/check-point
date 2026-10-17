@@ -1,6 +1,6 @@
 # 0237 — Gastos: intento inmediato de entrega a Analíticas
 
-Candidato funcional `f9a190b7371d73f490f9227c0e194df7379184ae`; pendiente informe final de QA y pase local. [Contrato](0237-expenses-immediate-contract.md), spec0237§2.3. Owner pidió que guardar gastos dispare procesamiento como POS, conservando cola/cron durable como respaldo.
+**QA independiente PASS** separado de entregas A/B y combinación funcional `d10887ad36a568d95d91c0ae120c791b5cf72c6d`; producto idéntico al probado en dd0. [Contrato](0237-expenses-immediate-contract.md), [QA](0237-expenses-immediate-qa.md), spec0237§2.3. Owner pidió que guardar gastos dispare procesamiento como POS, conservando cola/cron durable como respaldo.
 
 ## Cambio
 
@@ -12,9 +12,9 @@ No cambia transacción de gastos, permisos, respuestas HTTP, traductores, dinero
 
 - Base funcional dev/main `819dec19`, contrato e76825db/spec c0f72774. A inicial263790be, entrega d54533a4; corrección técnica documentada d4590f57 antes del producto.
 - A final: entrega `ca6bce0411431c8dc43e708f7e721cdf2cd1dab2`, producto `1ac9aaf8cd52cd4b6b789df3a0a75742891af5ed`. [Handoff A](0237-expenses-immediate-a.md).16/16 unit PASS,668ms, sin skips/retries; tipos/lint/diff EXIT0. Logs `/private/tmp/expenses-immediate-a-budget-{unit,types,lint}.log`. Prueban rutas postwriter, batch, scope, no bloqueo, errores sync/async, after/fallback, GET/drafts sin dispatch y respuesta estable; no sustituyen DB real.
-- B: fixture originalbeac70c4, diagnóstico beeb1339; entrega `030fed7247e90dbdb97f4cfc86dddba02884b7b4`, sobre combinado `dd0bb1b65a9aaf463601a9ccb0662f2f1e712f4a`. [Handoff B](0237-expenses-immediate-b.md). Un caso Neon real por dispatcher autenticado, callback capturado/awaitable después de respuesta: alta12345→edición23456/cambio fecha-concepto-local→borrado0, revisiones/contribuciones exactas, replays sin doble importe, tenant ajeno/otra delivery/venta fuera de scope y corte Stock estable.1/1 PASS, cero skips/retries,32.68s runner/28.08s caso. Raw `/private/tmp/checkpass-expenses-immediate/expenses-immediate-b-neon-dd0bb1b6.log`; tipos/lint EXIT0 con logs en el mismo directorio.
+- B: fixture originalbeac70c4, diagnóstico beeb1339; entrega `030fed7247e90dbdb97f4cfc86dddba02884b7b4`, corregida solo documentalmente en `1dffa641474802f29493940503271e979752f129`, sobre combinado probado `dd0bb1b65a9aaf463601a9ccb0662f2f1e712f4a`. [Handoff B](0237-expenses-immediate-b.md). Un caso Neon real por dispatcher autenticado, callback capturado/awaitable después de respuesta: alta12345→edición23456/cambio fecha-concepto-local→borrado0, revisiones/contribuciones exactas, replays sin doble importe, tenant ajeno/otra delivery/venta fuera de scope y corte Stock estable.1/1 PASS, cero skips/retries,32.68s runner/28.08s caso. Raw `/private/tmp/checkpass-expenses-immediate/expenses-immediate-b-neon-dd0bb1b6.log`; tipos/lint EXIT0 con logs en el mismo directorio.
 - Diagnóstico callbacks create3154.78/update2744.65/delete2480.38ms; replays453.26/457.13ms. No benchmark general ni promesa de latencia/SLA. Next after controlado por fixture: no se afirma smoke nuevo del servidor real/navegador.
-- QA independiente: pendiente informe definitivo de entregas y combinación; sin ejecutar DB ni implementar producto.
+- QA independiente: PASS separado de Aca6, B1d y combinación d108; revisión de blobs/asserts/logs compatibles, sin ejecutar DB ni implementar producto. Corrigió una frase del handoff B: maxDuration60 ya existía y no se modificó. No nueva corrida por ese cambio documental.
 
 Node24.20.0. DB automatizada solo wrapper tools/neon-test.sh con replay protegido seleccionado, fuente inmóvil en cada corrida y teardown propio. No nuevos DDL/ledger/reset. B liberó recurso replay al entregar; autores no tienen procesos persistentes. Sin verify global, mutaciones de tests, push/deploy/PROD ni llamadas clima.
 
