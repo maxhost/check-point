@@ -8,7 +8,7 @@ import {
 } from "./support/brand-tour-fixture";
 test.use({ viewport: { width: 390, height: 844 }, reducedMotion: "reduce" });
 
-test("cinco pasos sin editar y checklist, parámetro consumido y completed", async ({
+test("cuatro pasos sin editar y checklist, parámetro consumido y completed", async ({
   page,
   brandHarness,
 }) => {
@@ -17,7 +17,6 @@ test("cinco pasos sin editar y checklist, parámetro consumido y completed", asy
   for (const expected of [
     "Da identidad a tu negocio",
     "Usa los colores de tu marca",
-    "Revisa horarios y moneda",
     "Aplica tus cambios cuando estén listos",
     "Encuentra una guía cuando la necesites",
   ]) {
@@ -68,7 +67,7 @@ test("nombre conserva otras ediciones, fallo no avanza y success usa DTO normali
   await next(page);
   await expect(title(page)).toHaveText("Guarda la marca");
   await expect(page.locator(".driver-popover-description")).toContainText(
-    "todos los cambios pendientes",
+    "el nombre, logo y colores pendientes",
   );
   api.failPut = 422;
   await page
@@ -94,11 +93,7 @@ test("nombre conserva otras ediciones, fallo no avanza y success usa DTO normali
   ).toHaveValue("Café Nuevo");
   expect(api.progress).toEqual([]);
 });
-for (const task of [
-  { name: "Ajustar los colores", steps: 4 },
-  { name: "Cambiar la zona horaria", steps: 1 },
-  { name: "Cambiar la moneda", steps: 1 },
-])
+for (const task of [{ name: "Ajustar los colores", steps: 4 }])
   test(`${task.name}: usa el editor real y espera guardado`, async ({
     page,
     brandHarness,
@@ -106,21 +101,6 @@ for (const task of [
     const api = await brandFixture(page);
     await page.goto(brandHarness);
     await help(page, task.name);
-    if (task.name === "Cambiar la moneda") {
-      await expect(page.locator(".driver-popover-description")).toContainText(
-        "No convierte",
-      );
-      await page.getByRole("button", { name: "Moneda" }).click();
-      await page.getByRole("option", { name: /EUR/ }).click();
-    }
-    if (task.name === "Cambiar la zona horaria") {
-      await page
-        .getByRole("button", { name: "Zona horaria del negocio" })
-        .click();
-      await page
-        .getByRole("option", { name: "America/Lima", exact: true })
-        .click();
-    }
     for (let i = 0; i < task.steps; i++) await next(page);
     await expect(title(page)).toHaveText("Guarda la marca");
     await page
@@ -130,10 +110,6 @@ for (const task of [
     await next(page);
     expect(api.progress).toEqual([]);
     expect(api.writes).toHaveLength(1);
-    if (task.name === "Cambiar la moneda")
-      expect(api.writes[0].currencyCode).toBe("EUR");
-    if (task.name === "Cambiar la zona horaria")
-      expect(api.writes[0].timezone).toBe("America/Lima");
   });
 test("Quitar es borrador, guardado fallido no avanza y no persiste onboarding", async ({
   page,

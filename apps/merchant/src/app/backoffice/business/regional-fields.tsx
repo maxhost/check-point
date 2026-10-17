@@ -37,8 +37,8 @@ export function RegionalFields({
   ].map((zone) => ({ id: zone, label: zone.replaceAll("_", " ") }));
 
   return (
-    <div className="brand-regional-grid">
-      <div data-tour="brand-timezone">
+    <div className="grid gap-5 sm:grid-cols-2">
+      <div>
         <SelectField
           isDisabled={disabled}
           label="Zona horaria del negocio"
@@ -48,7 +48,7 @@ export function RegionalFields({
           onSelectionChange={(key) => onTimezoneChange(String(key))}
         />
       </div>
-      <div data-tour="brand-currency">
+      <div>
         <SelectField
           isDisabled={disabled}
           label="Moneda"

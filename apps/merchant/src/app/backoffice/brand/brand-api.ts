@@ -1,13 +1,6 @@
-import { canonicalVatRate } from "@mi-pasaporte/domain/server/brand/vat";
-
 export type Brand = {
   id: string;
   name: string;
-  timezone: string;
-  currencyCode: string;
-  chargesVat: boolean;
-  saleVatRate: string | null;
-  recoversPurchaseVat: boolean;
   brandPrimaryColor: string;
   brandComplementaryColor: string;
   brandAccentColor: string;
@@ -37,22 +30,10 @@ export class BrandRequestError extends Error {
 export function isBrand(value: unknown): value is Brand {
   if (!value || typeof value !== "object") return false;
   const data = value as Record<string, unknown>;
-  try {
-    if (canonicalVatRate(data.saleVatRate) !== data.saleVatRate) return false;
-  } catch {
-    return false;
-  }
   return (
-    typeof data.chargesVat === "boolean" &&
-    typeof data.recoversPurchaseVat === "boolean" &&
-    (!data.chargesVat || data.saleVatRate !== null) &&
-    [
-      "id",
-      "name",
-      "timezone",
-      "currencyCode",
-      ...brandColors.map(([key]) => key),
-    ].every((key) => typeof data[key] === "string") &&
+    ["id", "name", ...brandColors.map(([key]) => key)].every(
+      (key) => typeof data[key] === "string",
+    ) &&
     Number.isInteger(data.brandRevision) &&
     Number(data.brandRevision) >= 1 &&
     Number.isInteger(data.logoVersion) &&

@@ -33,11 +33,6 @@ export async function brandFixture(page: Page) {
     brand: {
       id: "brand-1",
       name: "Café Inicial",
-      timezone: "America/Guayaquil",
-      currencyCode: "USD",
-      chargesVat: false,
-      saleVatRate: null,
-      recoversPurchaseVat: false,
       brandPrimaryColor: "#123ABC",
       brandComplementaryColor: "#BADA55",
       brandAccentColor: "#F0F0F0",

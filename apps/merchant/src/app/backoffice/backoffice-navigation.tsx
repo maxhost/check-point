@@ -44,6 +44,14 @@ type MenuName = "business" | "loyalty" | "more";
  */
 const businessLinks = [
   {
+    href: "/backoffice/business",
+    label: "Negocio",
+    icon: Shop,
+    segment: "business",
+    permission: "business",
+    delegado: true,
+  },
+  {
     href: "/backoffice/brand",
     label: "Marca",
     icon: Palette,

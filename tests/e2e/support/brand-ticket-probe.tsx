@@ -28,7 +28,8 @@ function Probe() {
       <button
         onClick={() => {
           tour.stop();
-          tour.start("change-currency");
+          tour.start("change-name");
+          tour.notify({ type: "next" });
           tour.notify({ type: "next" });
         }}
       >

@@ -2,19 +2,19 @@ import type { BusinessModule } from "../settings/module-navigation";
 import type { PermissionScope } from "@mi-pasaporte/db/permissions-catalog";
 
 /**
- * LA COPIA DE LOS OCHO PERMISOS PARA LA PANTALLA. **No es una lista propia de ids.**
+ * LA COPIA DE LOS PERMISOS PARA LA PANTALLA. **No es una lista propia de ids.**
  *
- * `@mi-pasaporte/db/permissions-catalog` declara el conjunto CERRADO (el mismo que el `CHECK` de la
- * migracion 0041) y dice explicitamente por que no tiene un solo `import`: para que nadie
+ * `@mi-pasaporte/db/permissions-catalog` declara el conjunto cerrado de la aplicación.
+ * El CHECK de DB valida la forma. El catálogo no tiene imports para que nadie
  * tenga que copiar el arreglo. Esta pantalla es su quinta consumidora, asi que **toma el
  * tipo de alla**: `Record<PermissionScope, …>` hace que un permiso nuevo en el catalogo
  * **NO COMPILE** aca hasta que se le escriba su copy — misma forma y mismo motivo que el
- * `TOUR_COPY` de `server/onboarding/checklist.ts`. Sin esto, agregar un permiso al `CHECK`
+ * `TOUR_COPY` de `server/onboarding/checklist.ts`. Sin esto, agregar un permiso al catálogo
  * dejaba una pantalla que no lo ofrece nunca, y sin un solo rojo.
  *
  * El ORDEN es de producto y a proposito NO es el del catalogo (que es alfabetico): primero el
  * recomendado (`counter`), ultimo el peligroso (`staff`). ORACULO DE ESA COBERTURA: el caso
- * «ofrece exactamente los siete permisos del catalogo» de `staff-contract.test.ts`, que
+ * «ofrece exactamente los permisos del catalogo» de `staff-contract.test.ts`, que
  * compara los dos conjuntos ordenados y por eso no depende de este orden.
  */
 const PERMISSION_COPY: Record<
@@ -41,6 +41,11 @@ const PERMISSION_COPY: Record<
     label: "Campañas",
     detail: "Crear, editar, pausar y activar campañas.",
   },
+  business: {
+    label: "Negocio",
+    detail:
+      "Administrar medios de pago, comisiones, configuración regional y datos fiscales.",
+  },
   brand: {
     label: "Marca",
     detail: "Editar la identidad visual del negocio.",
@@ -58,6 +63,7 @@ const PERMISSION_ORDER: readonly PermissionScope[] = [
   "loyalty",
   "marketing",
   "brand",
+  "business",
   "staff",
 ];
 

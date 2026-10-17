@@ -32,7 +32,7 @@ export function BrandSkeleton({ error = null }: { error?: string | null }) {
                 radius={22}
               />
               <div className="brand-editor">
-                {["identity", "logo", "colors", "regional"].map((key) => (
+                {["identity", "logo", "colors"].map((key) => (
                   <div className="brand-section" key={key}>
                     <div className="brand-section-head">
                       <Skeleton height={42} radius={13} width={42} />

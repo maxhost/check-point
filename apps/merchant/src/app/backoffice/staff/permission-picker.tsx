@@ -27,7 +27,7 @@ export function PermissionPicker({
   return (
     <fieldset className="staff-permissions" disabled={disabled}>
       <legend>Permisos</legend>
-      <p>Un permiso habilita ver, crear y editar ese módulo.</p>
+      <p>Un permiso habilita las acciones de su sección.</p>
       {permissionOptions(modules).map((permission) => {
         const admin = permission.id === "staff";
         const locked =

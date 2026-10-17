@@ -52,9 +52,9 @@ test("una respuesta vieja no avanza otra instancia de guía", async ({
   await page.getByRole("button", { name: "Primero" }).click();
   await page.getByRole("button", { name: "Capturar" }).click();
   await page.getByRole("button", { name: "Segundo" }).click();
-  await expect(page.locator("output")).toHaveText("change-currency:save");
+  await expect(page.locator("output")).toHaveText("change-name:save");
   await page.getByRole("button", { name: "Resolver" }).click();
-  await expect(page.locator("output")).toHaveText("change-currency:save");
+  await expect(page.locator("output")).toHaveText("change-name:save");
 });
 for (const status of [401, 403])
   test(`PUT ${status} termina guía, preserva error y no persiste`, async ({

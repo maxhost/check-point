@@ -2,7 +2,7 @@
 
 import { canonicalVatRate } from "@mi-pasaporte/domain/server/brand/vat";
 import { SelectField, TextField } from "../../../ui";
-import type { Brand } from "./brand-api";
+import type { BusinessFiscal } from "../../../lib/business-contract";
 
 const yesNo = [
   { id: "yes", label: "Sí" },
@@ -14,8 +14,8 @@ export function FiscalFields({
   onChange,
   disabled,
 }: {
-  draft: Brand;
-  onChange: (draft: Brand) => void;
+  draft: BusinessFiscal;
+  onChange: (draft: BusinessFiscal) => void;
   disabled: boolean;
 }) {
   let rateError: string | undefined;
@@ -30,7 +30,7 @@ export function FiscalFields({
     }
   }
   return (
-    <div className="brand-regional-grid">
+    <div className="grid gap-5 sm:grid-cols-2">
       <SelectField
         label="¿Cobras IVA?"
         options={yesNo}
