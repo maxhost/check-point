@@ -3,7 +3,19 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — ANALÍTICAS0237 AN-2 EN DEV CON QA PASS (2026-10-17)
+## ESTADO — ANALÍTICAS0237 AN-3 EN IMPLEMENTACIÓN, REANUDADA (2026-10-17)
+
+Encargo vigente: implementar solo AN-3 sobre AN-1/AN-2, QA independiente y luego merge a main local autorizado por el owner. Sin push/deploy/PROD, INDEX/TASKS/estado Claude, verify global ni mutaciones. [Contrato AN-3](../factory/0237-an3-contract.md). Dev documental `f7c81e5b`; código en worktrees propios todavía sin integrar. Pendientes de rendimiento, CI compartida antigua, housekeeping y ciudades/cron se conservan; clima real sí entra ahora.
+
+Owner resolvió antes de código UUIDv5 determinístico por (businessId,consumerId), namespace fijo de Analíticas, sin columna/backfill business_customer; snapshots de ciclo de campaña en alta/edición/transiciones con endsAt/endedAt y evaluación desde resumen. H5 confirmado: acción11 «Ver cliente», permiso existente counter/reader RLS. Pausa por mediana0 cerrada tras explicación: **tarjeta11 exige≥4 días distintos con visitas**, varias operaciones de la misma fecha cuentan un día para hábito; todas las operaciones/importes permanecen en métricas. Promedio monetario por día visitado para ponderar días esperados perdidos. Spec/contrato actualizados `f7c81e5b`. Si surge nueva contradicción, preguntar y PARAR TODO hasta respuesta del owner.
+
+Dos implementadores `/root/an3_events` y `/root/an3_product`, QA fresco `/root/an3_qa`, sin subdelegación. Se reutilizan tres worktrees limpios de AN-2 mediante factory continue, IDs y rutas históricas `analytics-an2-{events,product,qa}` bajo `/private/tmp/checkpass-an2/`. AN-2 aceptada no se descartó ni retiró por fuerza. Bases continuadas `bebf26c9`; A checkpoint `6cecd378` (productores, contratos, UUID, ingesta, única0099 snapshots). B recibió ff+factoryrefresh al checkpoint antes de restaurar cambios propios. QA solo revisión temprana: **sin dictamen final aún**. Pruebas/fallos y entregas exactas pendientes de cerrar.
+
+DB inicialmente exclusiva A: `/private/tmp/checkpass-0237/migration.env`, replay válido, solo tools/neon-test.sh/Node24. Ni ci.env ni perf ni DATABASE_URL raíz. Clima real: solo clave VISUAL_CROSSING_API_KEY en memoria desde env principal, sin imprimir/copiarenv; una petición rango ayer/hoy Cuenca por rutaGET interna autenticada, provider/DB reales. Gate hora se inyecta mínimo0 solo en harness del runner, con now/fetchedAt reales; sin bypassHTTP ni bandera. Ante fallo proveedor parar/informar. Todavía no hay resultado real de clima ni QA de AN-3 en este estado.
+
+Main local sigue `0f543dd8` (AN-1), dev contiene AN-2 PASS `672e7e1c` y cierre `dfe9ea70`. La autorización actual para main local incluye el candidato AN-3 cuando tenga QA PASS; no autoriza publicación. Archivos ajenos sin seguimiento preservados.
+
+## HISTÓRICO — ANALÍTICAS0237 AN-2 EN DEV CON QA PASS (2026-10-17)
 
 Implementado SOLO AN-2 conforme encargo: eventos Stock de compra/ajuste atómicos (uno por línea de lote), suscripción Recetas/cambio de costo y traductores puros, gauges exactos, tarjetas 5/8/9 e histórico stock/subas. Core reutiliza AN-1, sin switch ni imports de módulos concretos. Conteo intacto. [Handoff de cierre](../factory/0237-an2-handoff.md), [contrato](../factory/0237-an2-contract.md), [QA](../factory/0237-an2-qa.md), [eventos](../factory/0237-an2-events.md), [producto](../factory/0237-an2-product.md).
 
