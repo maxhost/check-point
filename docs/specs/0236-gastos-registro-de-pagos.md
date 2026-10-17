@@ -1,7 +1,7 @@
 ---
 spec: 0236
 fecha: 2026-10-16
-estado: cerrada
+estado: implementada
 resumen: Gastos registra pagos confirmados desde dictado o foto, con conceptos estables y eventos completos para Analíticas futura.
 disjunta: no; depende de 0235 integrada y comparte module_event, permisos y corte de conteo Stock
 archivos: modules/expenses; retiro profitability; esquema modular; eventos core y conteo Stock; ADR0151
@@ -9,7 +9,7 @@ archivos: modules/expenses; retiro profitability; esquema modular; eventos core 
 
 # 0236 — Gastos: registro de pagos
 
-Spec CHICA, nivel L2 por dinero, aislamiento y futura migración PROD; [ADR0144](../adr/0144-factory-local-por-tarea.md), [verificación proporcional](../VERIFICACION.md). **Entrega solo documental**: diseño cerrado, implementación, SQL generado y migración pendientes. [ADR0151](../adr/0151-gastos-y-eventos-autosuficientes.md) contiene el diseño técnico; [ADR0152 §4](../adr/0152-analiticas-inbox-accionable.md#4-de-dónde-salen-los-datos-resúmenes-diarios-con-vocabulario-del-core) manda sobre cualquier otra mención de eventos.
+Spec CHICA, nivel L2 por dinero, aislamiento y futura migración PROD; [ADR0144](../adr/0144-factory-local-por-tarea.md), [verificación proporcional](../VERIFICACION.md). **Implementación local verificada**, autorizada por el owner después del encargo documental original. [QA de entregas y combinación](../factory/0236-qa.md), [servidor y migración](../factory/0236-core.md), [UI](../factory/0236-ui.md). Migración0096 preparada y probada solo en CI; sin push, deploy ni escrituras PROD. [ADR0151](../adr/0151-gastos-y-eventos-autosuficientes.md) contiene el diseño técnico; [ADR0152 §4](../adr/0152-analiticas-inbox-accionable.md#4-de-dónde-salen-los-datos-resúmenes-diarios-con-vocabulario-del-core) manda sobre cualquier otra mención de eventos.
 
 ## Problema
 
@@ -21,7 +21,7 @@ Verificación de código sobre `45a3f2269320c8e28e202f7369a89f4fedee1009`, `dev`
 - `stock/ai-tasks.ts`, `recipes/ai-tasks.ts`, `server/ai/task.ts` y `stock/draft.ts`: tarea modular, IA síncrona y validación posterior contra el comercio. `stock/ui/stock-input-modal.tsx` conserva `File[]` en memoria; `server/ai/image-input.ts` solo normaliza buffers; `ai/usage.ts` registra metadatos, nunca entrada/salida.
 - `server/module-events/publish.ts` publica `sale.closed`; `types.ts` fija ese tipo. `module_event.location_id` es obligatorio y la unicidad es comercio/tipo/`source_id`. `stock/count.ts` corta por comercio/local sin filtrar tipo: requiere ajuste al incorporar otros eventos.
 
-PROD **no se consultó aquí**. Baseline comunicado por el owner, leído autorizadamente el 2026-10-16: tablas0231 vacías, cero comercios con módulo `profitability` y cero miembros con ese permiso; eventos encendidos desde ese día. Son datos históricos, no evidencia suficiente para ejecutar una migración futura.
+En la entrega documental original no se consultó PROD. Baseline comunicado por el owner, leído autorizadamente el 2026-10-16: tablas0231 vacías, cero comercios con módulo `profitability` y cero miembros con ese permiso; eventos encendidos desde ese día. Son datos históricos, no evidencia suficiente para ejecutar una migración futura.
 
 ## Alcance y diseño
 
@@ -99,11 +99,11 @@ Según [ADR0152 §4](../adr/0152-analiticas-inbox-accionable.md#4-de-dónde-sale
 
 Hallazgos técnicos adicionales: el retry/decodificador actual debe discriminar tipo para no deserializar un gasto como venta; no basta ampliar `publish.ts`. En `stock/count.ts`, agregar `event_type='sale.closed'` a captura, validación y pendiente del corte: los nuevos gastos de un local no representan ventas/consumos. Eventos sin local quedan fuera del filtro de local. Agregar filtro genérico opcional por tipos en retry/pendingSummary y seleccionar ventas en sus callers Stock/POS, conservando su alcance actual de comercio/local y presupuesto de consumo; cron genérico mantiene todos los tipos. No generar deliveries ficticios ni proyección/inbox/registro de métricas AN.
 
-### Migración futura y retiro
+### Migración preparada y retiro
 
-Antes de implementar, **pedir autorización al owner para volver a verificar PROD**: identidad DB/SHA, conteos tablas0231, módulos/permisos y dependencias SQL reales tras N. Si dejó de estar vacío o aparecen dependencias no previstas, detener el plan destructivo y presentar hallazgo; no inventar backfill. La autorización técnica/sandbox no autoriza consultas ni migración PROD; cada operación requiere autorización propia.
+La condición previa a implementar se cumplió con autorización específica «Sí, autorizar solo lectura en PROD»: consulta RepeatableRead/read_only=on del 2026-10-17T03:55:08.839Z, cero filas0231, activaciones y permisos viejos, sin dependencias inesperadas. Evidencia y base en el [contrato](../factory/0236-implementation-contract.md). Antes de ejecutar0096 en PROD se requieren autorización propia y preflight fresco de identidad/SHA, conteos, permisos, dependencias y obligaciones históricas. Si cambian, detener y presentar hallazgo; no inventar backfill. La autorización de lectura ya consumida no autoriza migrar ni otra operación PROD.
 
-Con preflight vacío confirmado, preparar en implementación futura migración transaccional: eliminar `fixed_cost_allocation`, `fixed_cost_period`, `fixed_cost` y FKs/funciones exclusivas; crear esquema nuevo; permitir local null en eventos con restricciones por tipo; renombrar identidad de módulo/permiso en registros/validadores. No hay filas que transformar bajo ese preflight; no activar Gastos ni conceder permiso a staff por defecto. No `DROP SCHEMA profitability CASCADE`: N puede conservar adaptadores/dependencias de comisión hasta su corte/drenaje; conservarlos según ADR0150 y reportar cualquier bloqueo real. Comisiones core, pagos POS y eventos históricos quedan fuera de la eliminación.
+Con preflight vacío confirmado se preparó y probó en CI la migración transaccional `0096_expenses_paid_register.sql`: eliminar `fixed_cost_allocation`, `fixed_cost_period`, `fixed_cost` y FKs/funciones exclusivas; crear esquema nuevo; permitir local null en eventos con restricciones por tipo; renombrar identidad de módulo/permiso en registros/validadores. No hay filas que transformar bajo ese preflight; no activar Gastos ni conceder permiso a staff por defecto. No `DROP SCHEMA profitability CASCADE`: N puede conservar adaptadores/dependencias de comisión hasta su corte/drenaje; conservarlos según ADR0150 y reportar cualquier bloqueo real. Comisiones core, pagos POS y eventos históricos quedan fuera de la eliminación.
 
 Retirar carpeta funcional `modules/profitability`, esquema/exports viejos, `salary.ts`, `intervals.ts`, reparto/aritmética exclusivos, `people`, `costs*`, `totals`, registro/hook de sueldo y textos/permiso «Rentabilidad». No redirects a rutas borradas ni alias públicos `profitability`. Conservar `core.staff_person`, personas sin acceso, API Equipo y hooks genéricos si tienen otros consumidores; retirar contratos sin consumidor mediante evidencia. La prueba residual `profitability/commission-arithmetic.test.ts` cubre helper financiero core: trasladar esa cobertura a su ámbito correcto, no eliminarla junto al módulo. Historia/documentos ADR no se reescriben para borrar términos históricos.
 
@@ -111,20 +111,20 @@ Fuera: AN y resúmenes diarios, métricas/inbox, estimados, punto de equilibrio,
 
 ## Archivos y paralelismo
 
-Implementación futura: `apps/merchant/src/modules/expenses/` (manifiesto, IA, validación, server y UI), retiro `profitability/`; `packages/db/src/schema/modules/expenses.ts`, exports y migración; tres registros modulares; `server/module-events/` y esquema genérico `module-event.ts`; `stock/count.ts`, callers `stock/server/routes.ts`, `stock/movements.ts`, `pos/server/close.ts` y sus casos focales. Rutas/pantallas mediante despachadores existentes, sin archivos de módulo en `app/` ni import core→módulo; [MODULOS](../MODULOS.md). Kit/guardias no se alteran para evadir checks. Copy de Merchant en tuteo.
+Implementación local: `apps/merchant/src/modules/expenses/` (manifiesto, IA, validación, server y UI), retiro `profitability/`; `packages/db/src/schema/modules/expenses.ts`, exports y migración; tres registros modulares; `server/module-events/` y esquema genérico `module-event.ts`; `stock/count.ts`, callers `stock/server/routes.ts`, `stock/movements.ts`, `pos/server/close.ts` y sus casos focales. Rutas/pantallas mediante despachadores existentes, sin archivos de módulo en `app/` ni import core→módulo; [MODULOS](../MODULOS.md). Kit/guardias no se alteran para evadir checks. Copy de Merchant en tuteo.
 
-G va **después de N**, nunca en paralelo sobre `profitability`. Writer único para esquema/eventos/contrato; UI y backend pueden separarse una vez fijado HTTP. Coordinador reserva recursos DB/migración; dos implementadores y QA independiente. Ficha operativa lleva base/worktrees/paths/puertos, sin datos volátiles aquí. Este encargo reserva únicamente ambos documentos; no escribe INDEX/TASKS/estados de Claude.
+G va **después de N**, nunca en paralelo sobre `profitability`. Writer único para esquema/eventos/contrato; UI y backend pueden separarse una vez fijado HTTP. Coordinador reserva recursos DB/migración; dos implementadores y QA independiente. Ficha operativa lleva base/worktrees/paths/puertos, sin datos volátiles aquí. La ampliación autorizada y las reservas concretas constan en el contrato y los handoffs. No se editan INDEX/TASKS/estados de Claude como parte de Gastos.
 
 ## Definition of Done
 
-- [ ] Gastos propio con flujo IA→revisión→confirmación; concepto reconocible, fijo corregible y «Todo el negocio» null; sin alta obligatoria ni sueldo ligado a Equipo.
-- [ ] Altas/ediciones/borrados de cualquier mes persisten dinero/día local correctos y evento completo atómico/autosuficiente; retry sin duplicados ni pérdida de segunda edición.
-- [ ] Owner/staff `expenses`, aislamiento, foto efímera y retiro0231 comprobados; comisiones N, personas Equipo, `sale.closed` y conteo Stock conservados.
-- [ ] Migración preparada/probada solo en implementación posterior, con preflight y autorización PROD propios; QA focal de tarea y combinación sobre SHA identificado.
+- [x] Gastos propio con flujo IA→revisión→confirmación; concepto reconocible, fijo corregible y «Todo el negocio» null; sin alta obligatoria ni sueldo ligado a Equipo.
+- [x] Altas/ediciones/borrados de cualquier mes persisten dinero/día local correctos y evento completo atómico/autosuficiente; retry sin duplicados ni pérdida de segunda edición.
+- [x] Owner/staff `expenses`, aislamiento, foto efímera y retiro0231 comprobados; comisiones N, personas Equipo, `sale.closed` y conteo Stock conservados.
+- [x] Migración0096 preparada/probada en CI, sin ejecución PROD; QA focal de tarea y combinación sobre SHA identificado. La futura ejecución PROD requiere preflight y autorización propios.
 
 ## Pruebas pertinentes
 
-Implementación futura, casos mínimos en la capa que detecta el defecto; reutilizar helpers de Stock y cobertura existente, sin suites enteras:
+Casos focales comprobados en la capa que detecta el defecto; reutilizar helpers de Stock y cobertura existente, sin suites enteras:
 
 1. Borrador real con proveedor IA inyectado → corrección → alta confirmada: nada persiste al analizar; lote confirmado guarda gastos/conceptos/revisiones/eventos o revierte completo ante fallo técnico. Foto disponible al reanalizar/error, liberada tras ACK/cancelar; sin escritura R2.
 2. Dos pagos «sueldo Luis»/«Luis450» reconocen el mismo concepto comercial; corregir emparejamiento cambia ese pago, ID ajeno no se valida. IA variable en agua/gas y fijo alquiler; check corregible sin paso obligatorio.
@@ -133,10 +133,10 @@ Implementación futura, casos mínimos en la capa que detecta el defecto; reutil
 5. Owner permissions[] sí; staff solo `expenses` sí; staff sin él recibe404 en pantalla (`notFound` actual del despachador) y403 en API. ComercioB no lee/edita/borra gasto/concepto/local deA ni lo introduce por borrador; negativos reales y FK compuestas. Error técnico de evento no permite commit de gasto.
 6. Migración CI focal con baseline vacío, conserva personas sin acceso, comisiones N y eventos; permisos/identidad vieja retirados, rutas viejas sin redirects. Cubrir preflight no vacío como parada explícita, no pérdida de filas. No ejecutar contra PROD.
 
-Node24; estáticos/guardias solo ámbitos cambiados y tests decisivos. DB únicamente `tools/neon-test.sh` contra CI protegida, migración aislada sin writers concurrentes y `--no-file-parallelism`; QA de entrega y de combinación son evidencias distintas. Esta entrega documental no ejecuta estas pruebas ni declara PASS de producto.
+Node24; estáticos/guardias solo ámbitos cambiados y tests decisivos. DB únicamente `tools/neon-test.sh` contra CI protegida, migración aislada sin writers concurrentes y `--no-file-parallelism`; QA de entrega y de combinación son evidencias distintas. Los resultados, exclusiones por selección y límites constan en QA y handoffs. IA comprobada con proveedor inyectado; no se afirma una llamada real al proveedor externo.
 
 ## Handoff y abierto
 
-Diseño documental cerrado sobre base `45a3f2269320c8e28e202f7369a89f4fedee1009`; implementación DoD pendiente. Entrega de documentos: diff, formato, fuentes, enlaces/contratos y números reservados;0mutaciones/DB/suites de producto, sin SQL generado, push o consultas PROD. SHA y evidencia de entrega van al coordinador. No marca implementada ni autoriza empezar implementación.
+Diseño documental original sobre `45a3f2269320c8e28e202f7369a89f4fedee1009`; implementación posterior sobre contrato `6368a8c7770bc722f2c2c2719183ba6060ebea6a`. Candidato combinado **`02a69e659fc0dceb679ef4b7b3edbdce0465638b`**, QA independiente PASS: tipos/build Merchant y smoke autenticado real con CI, además de evidencia focal de ambos autores. El primer intento del smoke falló por la guía de bienvenida del fixture; cerrar la guía con su botón normal permitió completar el recorrido, sin cambios de producto ni retries automáticos. No se ejecutó verify global, push, deploy ni escritura PROD. Detalles y SHAs en [QA](../factory/0236-qa.md).
 
 Hallazgos separados de decisiones del owner: (a) Stock y decodificador/retry requieren los ajustes mínimos de tipos descritos; (b) conteos PROD se deben revalidar autorizadamente; (c) N conserva compatibilidad condicionada al corte/drenaje, por lo que no se puede eliminar su esquema indiscriminadamente; (d) política general de cambio de moneda sigue fuera de G. Ninguna decisión de producto nueva bloqueante identificada. Si la implementación exige más infraestructura o revela datos/dependencias incompatibles con este contrato, se entrega el hallazgo aparte antes de ampliar alcance.

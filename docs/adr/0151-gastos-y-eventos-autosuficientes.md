@@ -1,15 +1,15 @@
 ---
 adr: 0151
 fecha: 2026-10-16
-estado: propuesta
+estado: aceptada
 resumen: Gastos reemplaza Rentabilidad con pagos confirmados, conceptos estables y eventos completos por revisión, sin implementar Analíticas.
 ---
 
 # 0151 — Gastos y eventos autosuficientes
 
-[Spec0236](../specs/0236-gastos-registro-de-pagos.md), L2 por dinero, aislamiento y futura migración PROD. **Entrega exclusivamente documental:** no implementa ni genera migraciones ni autoriza operaciones PROD. El producto está cerrado por el owner; este ADR propone su resolución técnica. Verificación de código sobre `45a3f2269320c8e28e202f7369a89f4fedee1009`, después de integrar N en `dev`.
+[Spec0236](../specs/0236-gastos-registro-de-pagos.md), L2 por dinero, aislamiento y futura migración PROD. El owner autorizó la implementación posterior al encargo documental. Resolución implementada localmente y verificada: [QA](../factory/0236-qa.md), [core y migración0096](../factory/0236-core.md), [UI](../factory/0236-ui.md). Sin push, deploy ni escritura PROD. El producto conserva las decisiones cerradas del owner. Verificación de código original sobre `45a3f2269320c8e28e202f7369a89f4fedee1009`, después de integrar N en `dev`.
 
-## Contexto verificado
+## Contexto verificado antes de implementar
 
 `modules/profitability/manifest.ts` todavía declara id/permiso `profitability`, nombre «Rentabilidad», sin navegación ni carga inicial. Su servidor conserva `costs`, `costs/:costId`, `costs/:costId/period`, `costs/:costId/stop`, `totals`, `people` y `locations`. `salary.ts` participa en cambios de local de Equipo. El esquema conserva `fixed_cost`, `fixed_cost_period` y `fixed_cost_allocation`: períodos mensuales, reparto y FK a `core.staff_person`. La aritmética y los intervalos corresponden a ese modelo, no a pagos sueltos.
 
@@ -34,7 +34,7 @@ Fuente: [plan, únicamente F rediseñada y sus subsecciones](../plan-margen-gana
 - Se eliminan tablas/rutas/código de0231 y se crean tablas de pagos nuevas. El nombre interno pasa de `profitability` a `expenses`.
 - Publicación inmediata de `expense.recorded`, `expense.updated`, `expense.deleted`, versionados y autosuficientes; updated/deleted incluyen el estado completo resultante.
 
-## Resolución técnica propuesta
+## Resolución técnica
 
 ### 1. Pagos, conceptos y revisiones
 
@@ -98,13 +98,13 @@ Mínimo cambio de infraestructura previsto:
 
 No cambiar el lector financiero ni la aplicación de consumo que ya seleccionan ventas. No crear suscripción AN para probar la publicación. La compatibilidad histórica de0150 no se borra porque un identificador contenga `profitability`.
 
-### 6. Migración y retiro futuro
+### 6. Migración preparada y retiro
 
 Los conteos PROD del owner (2026-10-16) son **evidencia histórica proporcionada**, no una consulta nueva: tablas0231 con0 filas, ningún comercio con módulo encendido y0 miembros con permiso `profitability`. El mismo encargo informa eventos encendidos en PROD desde ese día; no asumir el flag apagado del plan anterior.
 
-**Antes de implementar**, volver a verificar PROD con autorización específica del owner: identidad de entorno/SHA, filas0231, activaciones, permisos, dependencias y estado de transición de0150. No usar el baseline como garantía actual ni consultar PROD en este encargo. Si aparecen datos/activaciones/permisos inesperados, detener el supuesto de borrado sin migración de datos y presentar el hallazgo al owner antes de diseñar su tratamiento.
+El requisito previo se cumplió con autorización específica de lectura del owner: 2026-10-17T03:55:08.839Z, RepeatableRead/read_only=on, tablas0231/activaciones/permisos viejos vacíos y sin dependencias externas inesperadas. [Contrato y evidencia](../factory/0236-implementation-contract.md). La migración0096 se preparó y probó en CI; antes de ejecutarla en PROD se requieren autorización propia y comprobación fresca de identidad/SHA, datos, activaciones, permisos, dependencias y obligaciones históricas. Si cambian, detener el supuesto de borrado sin datos y presentar el hallazgo al owner. La autorización de lectura ya consumida no habilita escrituras ni consultas nuevas.
 
-Con preflight confirmado, preparar después una migración explícita: crear esquema/tablas nuevas; retirar allocations→periods→costs y FK/funciones propias dependientes, sin CASCADE ciego; eliminar esquema viejo solo si realmente queda sin dependencias. No hay filas de gastos que transformar según el baseline. No tocar medios, resultados, pagos, eventos ni obligaciones históricas trasladados a core por N. Cambiar permiso/manifiesto/registros al id nuevo sin otorgarlo por el permiso viejo ni backfill innecesario. Cada migración/operación PROD esperará autorización propia.
+Con preflight confirmado se preparó la migración explícita0096: crear esquema/tablas nuevas; retirar allocations→periods→costs y FK/funciones propias dependientes, sin CASCADE ciego; eliminar esquema viejo solo si realmente queda sin dependencias. No hay filas de gastos que transformar según el baseline. No tocar medios, resultados, pagos, eventos ni obligaciones históricas trasladados a core por N. Cambiar permiso/manifiesto/registros al id nuevo sin otorgarlo por el permiso viejo ni backfill innecesario. Cada migración/operación PROD esperará autorización propia.
 
 Eliminar carpeta/rutas antiguas, `salary.ts`, consultas/writers/totals/DTOs mensuales y sus tests exclusivos; retirar referencias al reparto, costos fijos periódicos y textos activos «Rentabilidad»/permiso viejo. Sustituir aritmética/intervalos solo si tienen uso real en pagos; borrar lo que quede sin consumidor. **Reubicar `profitability/commission-arithmetic.test.ts`: prueba el helper financiero core vigente y su cobertura no se borra al retirar la carpeta.** Conservar documentación histórica y las identidades históricas que exige0150. No redirects ni alias a rutas borradas. Conservar `core.staff_person`, personas sin acceso y APIs de Equipo. Retirar hooks genéricos `staffAction/staffPanel/staffLocationsChanged` solo tras comprobar que quedan sin consumidores; si alguno sigue usado, quitar exclusivamente la declaración/handler de Gastos.
 
@@ -118,8 +118,8 @@ Eliminar carpeta/rutas antiguas, `salary.ts`, consultas/writers/totals/DTOs mens
 
 ## Verificación y hallazgos separados
 
-Implementación pendiente. Pruebas focales de0236: alta confirmada desde borrador y rollback atómico ante fallo de evento; dos expresiones del mismo concepto; segunda edición de mes pasado con dos source UUID distintos; cambio de día/local/concepto y tombstone completos; todo el negocio con null; owner/staff expenses y negativos de permiso/tenant; publicación durable sin AN y con flag de ventas OFF. Regresión concreta: ventas v1/v2 con local obligatorio, gasto local/null sin alterar corte ni pendientes Stock, reintento idéntico sin duplicados y clave/cuerpo distinto409. DB solo `tools/neon-test.sh` aislado; no suites enteras.
+Implementación local verificada sobre candidato `02a69e659fc0dceb679ef4b7b3edbdce0465638b`; [QA independiente](../factory/0236-qa.md) distingue entrega y combinación. Pruebas focales de0236: alta confirmada desde borrador y rollback atómico ante fallo de evento; dos expresiones del mismo concepto; segunda edición de mes pasado con dos source UUID distintos; cambio de día/local/concepto y tombstone completos; todo el negocio con null; owner/staff expenses y negativos de permiso/tenant; publicación durable sin AN y con flag de ventas OFF. Regresión concreta: ventas v1/v2 con local obligatorio, gasto local/null sin alterar corte ni pendientes Stock, reintento idéntico sin duplicados y clave/cuerpo distinto409. DB solo `tools/neon-test.sh` aislado; no suites enteras.
 
-Hallazgos técnicos, **no decisiones del owner**: además de source_id/null advertidos por0152, se requieren decoder de retry discriminado y filtros explícitos de los consumidores actuales de ventas. Son ajustes mínimos descritos arriba. No apareció otra decisión de producto abierta. La política general de cambios de moneda sigue fuera; este diseño conserva snapshots sin conversión. La verificación PROD pendiente es condición de implementación, no evidencia inventada de esta entrega.
+Hallazgos técnicos, **no decisiones del owner**: además de source_id/null advertidos por0152, se requieren decoder de retry discriminado y filtros explícitos de los consumidores actuales de ventas. Son ajustes mínimos descritos arriba. No apareció otra decisión de producto abierta. La política general de cambios de moneda sigue fuera; este diseño conserva snapshots sin conversión. La lectura PROD previa a implementar ya se realizó con autorización; un nuevo preflight y autorización específicos siguen siendo condición de ejecución PROD.
 
-Verificación documental de este encargo: diff, paths/citas, coherencia con0236, formato y números disponibles. Presupuesto:0 mutaciones,0 DB,0 suites de producto. La revisión independiente y su SHA se registran en el handoff del coordinador; este ADR no afirma implementación ni PASS de pruebas futuras.
+La entrega original fue documental. La ampliación posterior incluye pruebas focales de autores, tipos/build Merchant y smoke real autenticado con CI, con resultados y límites en QA/handoffs. Presupuesto0 mutaciones; ningún verify global ni operación de publicación. La migración0096 conserva su hash probado en CI y espera autorización PROD propia.
