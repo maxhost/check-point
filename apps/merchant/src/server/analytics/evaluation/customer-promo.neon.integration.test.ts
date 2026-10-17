@@ -1,3 +1,4 @@
+import { assertSnapshotEquivalence } from "./snapshot-equivalence.test-support";
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { eq, sql } from "drizzle-orm";
@@ -197,6 +198,8 @@ describe.skipIf(!permisosIntegrationEnabled)(
           },
         ]);
       const input = await readInput(businessA, now);
+      await assertSnapshotEquivalence(businessA, now);
+      await assertSnapshotEquivalence(businessA, now, localA);
       expect(input.firstSaleDays).toContainEqual({
         locationId: localA,
         day: "2026-09-01",
@@ -248,6 +251,8 @@ describe.skipIf(!permisosIntegrationEnabled)(
           })),
         );
       const input = await readInput(businessA, now);
+      await assertSnapshotEquivalence(businessA, now);
+      await assertSnapshotEquivalence(businessA, now, localA);
       expect(input.campaigns?.[0]).toMatchObject({
         startsAt: "2026-10-01",
         endsAt: "2026-10-19",

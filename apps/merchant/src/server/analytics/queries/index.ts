@@ -86,13 +86,79 @@ export function inputStatement(
       coalesce((select jsonb_agg(c) from (select campaign_id as "campaignId",label,status,(starts_at at time zone b.timezone)::date::text as "startsAt",(ends_at at time zone b.timezone)::date::text as "endsAt",(ended_at at time zone b.timezone)::date::text as "endedAt",captured_at as "capturedAt",event_id as "eventId" from analytics.campaign_snapshot where business_id=b.id) c),'[]'::jsonb) as campaigns,
       exists(select 1 from analytics.daily_metric m where m.business_id=b.id ${location}) as "hasData",
       exists(select 1 from account_money where metric in ('expense_fixed','expense_variable') and day<date_trunc('month',b.today) and amount_minor>0) as "hasClosedExpenseMonth",
-      coalesce((select jsonb_agg(jsonb_build_array(day,metric,"locationId","dimensionId","amountMinor","currencyCode","minorUnit",quantity,count)) from metrics),'[]'::jsonb) as metrics,
+      coalesce((select jsonb_agg(jsonb_build_array(metric,"locationId","dimensionId","currencyCode","minorUnit",days)) from
+        (select metric,"locationId","dimensionId","currencyCode","minorUnit",jsonb_agg(jsonb_build_array(ordinal,day,"amountMinor",quantity,count)) days
+          from (select row_number() over () ordinal,metrics.* from metrics) numbered_metrics group by metric,"locationId","dimensionId","currencyCode","minorUnit") grouped_metrics),'[]'::jsonb) as "metricGroups",
       coalesce((select jsonb_agg(jsonb_build_object('locationId',location_id,'itemId',dimension_id,'day',day)) from (select m.location_id,m.dimension_id,min(m.day)::text AS day from analytics.daily_metric m where m.business_id=b.id and m.metric='stock_consumption' and m.quantity>0 group by m.location_id,m.dimension_id) first_days),'[]'::jsonb) as "firstConsumptionDays",
       coalesce((select jsonb_agg(g) from (select distinct on (metric,location_id,dimension_id) day::text,metric,location_id as "locationId",dimension_id as "dimensionId",amount_minor::text as "amountMinor",quantity::text,currency_code as "currencyCode",minor_unit as "minorUnit",unit,observed_at as "observedAt",event_id as "eventId" from analytics.daily_gauge where business_id=b.id and day<=b.today order by metric,location_id,dimension_id,observed_at desc,event_id desc) g),'[]'::jsonb) as gauges,
       coalesce((select jsonb_agg(c) from (select distinct on (card_key,subject_key) card_key as "cardKey",subject_key as "subjectKey",parameters,amount_minor::text as "amountMinor",currency_code as "currencyCode",minor_unit as "minorUnit",fingerprint,weight::text,location_id as "locationId" from analytics.card_candidate where business_id=b.id and card_key in ('5','9') and day between b.today-14 and b.today order by card_key,subject_key,parameters->>'originObservedAt' desc,day desc) c),'[]'::jsonb) as "factCards",
       coalesce((select jsonb_agg(jsonb_build_object('cardKey',card_key,'subjectKey',subject_key,'fingerprint',fingerprint,'status',status,'shownDays',shown_days,'lastShownDay',last_shown_day)) from analytics.card_state where business_id=b.id),'[]'::jsonb) as states,
       coalesce((select jsonb_agg(jsonb_build_object('kind',kind,'id',id,'label',label)) from analytics.dimension_label where business_id=b.id),'[]'::jsonb) as labels,
       coalesce((select jsonb_agg(jsonb_build_object('id',id,'name',name)) from core.location where business_id=b.id),'[]'::jsonb) as locations from b`;
+}
+/** Repeated series headers travel once; every day/value tuple stays distinct.
+ * Accept the prior flat representation for existing callers and recorded snapshots.
+ */
+function metricTuples(row: Record<string, unknown>): unknown[][] {
+  if (!("metricGroups" in row)) {
+    if (Array.isArray(row.metrics)) return row.metrics as unknown[][];
+    throw new AnalyticsError(
+      422,
+      "invalid_snapshot",
+      "El resumen está incompleto.",
+    );
+  }
+  if (!Array.isArray(row.metricGroups))
+    throw new AnalyticsError(
+      422,
+      "invalid_snapshot",
+      "El resumen está incompleto.",
+    );
+  const tuples: unknown[][] = [];
+  let length = 0;
+  for (const group of row.metricGroups as unknown[]) {
+    if (!Array.isArray(group) || group.length !== 6 || !Array.isArray(group[5]))
+      throw new AnalyticsError(
+        422,
+        "invalid_snapshot",
+        "El resumen está incompleto.",
+      );
+    const [metric, locationId, dimensionId, currencyCode, minorUnit, days] =
+      group;
+    for (const day of days as unknown[]) {
+      if (
+        !Array.isArray(day) ||
+        day.length !== 5 ||
+        !Number.isSafeInteger(Number(day[0])) ||
+        Number(day[0]) < 1 ||
+        tuples[Number(day[0]) - 1]
+      )
+        throw new AnalyticsError(
+          422,
+          "invalid_snapshot",
+          "El resumen está incompleto.",
+        );
+      tuples[Number(day[0]) - 1] = [
+        day[1],
+        metric,
+        locationId,
+        dimensionId,
+        day[2],
+        currencyCode,
+        minorUnit,
+        day[3],
+        day[4],
+      ];
+      length++;
+    }
+  }
+  if (tuples.length !== length)
+    throw new AnalyticsError(
+      422,
+      "invalid_snapshot",
+      "El resumen está incompleto.",
+    );
+  return tuples;
 }
 export function inputFromRow(
   row: Record<string, unknown> | undefined,
@@ -133,7 +199,7 @@ export function inputFromRow(
     hasClosedExpenseMonth: Boolean(row.hasClosedExpenseMonth),
     locations: row.locations as AnalyticsInput["locations"],
     labels: row.labels as AnalyticsInput["labels"],
-    metrics: (row.metrics as unknown[][]).map(
+    metrics: metricTuples(row).map(
       ([
         day,
         metric,

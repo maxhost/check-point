@@ -701,6 +701,13 @@
       "when": 1792219257677,
       "tag": "0099_analytics_campaign_snapshots",
       "breakpoints": true
+    },
+    {
+      "idx": 100,
+      "version": "7",
+      "when": 1792246822106,
+      "tag": "0100_analytics_metric_lookup",
+      "breakpoints": true
     }
   ]
 }

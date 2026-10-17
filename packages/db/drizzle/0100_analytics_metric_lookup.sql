@@ -1,0 +1,1 @@
+CREATE INDEX "analytics_daily_metric_lookup_idx" ON "analytics"."daily_metric" USING btree ("business_id","metric","day") WHERE "analytics"."daily_metric"."metric" in ('visits','promo_discount','promo_sales','promo_cost','voided_tickets','stock_consumption');

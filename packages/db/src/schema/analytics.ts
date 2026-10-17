@@ -80,6 +80,12 @@ export const analyticsDailyMetrics = analytics.table(
       )
       .nullsNotDistinct(),
     index("analytics_daily_metric_day_idx").on(t.businessId, t.day),
+    // Histories with no rows for a metric must not scan every product/day key.
+    index("analytics_daily_metric_lookup_idx")
+      .on(t.businessId, t.metric, t.day)
+      .where(
+        sql`${t.metric} in ('visits','promo_discount','promo_sales','promo_cost','voided_tickets','stock_consumption')`,
+      ),
     index("analytics_daily_metric_account_idx")
       .on(
         t.businessId,

@@ -1,3 +1,4 @@
+import { assertSnapshotEquivalence } from "./snapshot-equivalence.test-support";
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { and, eq } from "drizzle-orm";
@@ -216,6 +217,8 @@ describe.skipIf(!permisosIntegrationEnabled)(
     }, 120000);
     it("keeps local consumption history and exact gauges, returns stock HTTP with tenant guards", async () => {
       const input = await readInput(business, now);
+      await assertSnapshotEquivalence(business, now);
+      await assertSnapshotEquivalence(business, now, center);
       expect(input.firstConsumptionDays).toContainEqual({
         locationId: center,
         itemId: item,
