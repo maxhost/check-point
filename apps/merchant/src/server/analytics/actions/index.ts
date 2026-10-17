@@ -1,5 +1,10 @@
 import { MODULES } from "../../../modules/registry";
 import { enabledModuleIds } from "../../../modules/activation";
+import {
+  ANALYTICS_POLICY,
+  policyText,
+  type AnalyticsPolicy,
+} from "@mi-pasaporte/domain/analytics/policy/index";
 export type AnalyticsViewer = { role: string; permissions: readonly string[] };
 type ActionManifest = (typeof MODULES)[number] & {
   analyticsActions?: readonly {
@@ -15,13 +20,14 @@ export function resolveAction(
   viewer: AnalyticsViewer,
   enabled: ReadonlySet<string>,
   manifests: readonly ActionManifest[] = MODULES,
+  policy: AnalyticsPolicy = ANALYTICS_POLICY,
 ) {
   if (!key) return null;
   const permitted = (permission: string) =>
     viewer.role === "owner" || viewer.permissions.includes(permission);
   if (key === "view_day" || key === "view_calculation")
     return {
-      label: key === "view_day" ? "Ver el día" : "Ver el cálculo",
+      label: policyText(policy, `action_${key}`),
       href: href ?? "/backoffice/analytics",
     };
   if (key === "view_customer" || key === "view_campaign_results") {
@@ -38,11 +44,14 @@ export function resolveAction(
       )
     )
       return null;
-    return { label: customer ? "Ver cliente" : "Ver resultados", href };
+    return { label: policyText(policy, `action_${key}`), href };
   }
   if (key === "edit_product_price")
     return permitted("catalog")
-      ? { label: "Revisar precio", href: "/backoffice/catalog" }
+      ? {
+          label: policyText(policy, `action_${key}`),
+          href: "/backoffice/catalog",
+        }
       : null;
   const declarations = manifests.flatMap((m) =>
     (m.analyticsActions ?? [])
@@ -79,18 +88,28 @@ export function resolveAction(
       }
     }
     return permission && permitted(permission)
-      ? { label: active.label, href: destination }
+      ? {
+          label:
+            policy.texts[`action_${key}`] === undefined
+              ? active.label
+              : policyText(policy, `action_${key}`),
+          href: destination,
+        }
       : null;
   }
   return viewer.role === "owner"
-    ? { label: "Ver módulos", href: "/backoffice/settings" }
+    ? {
+        label: policyText(policy, "action_view_modules"),
+        href: "/backoffice/settings",
+      }
     : null;
 }
 export async function actionContext(
   businessId: string,
   viewer: AnalyticsViewer,
+  policy: AnalyticsPolicy = ANALYTICS_POLICY,
 ) {
   const enabled = await enabledModuleIds(businessId);
   return (key: string | null, href?: string) =>
-    resolveAction(key, href, viewer, enabled);
+    resolveAction(key, href, viewer, enabled, MODULES, policy);
 }
