@@ -433,6 +433,43 @@ anulaciones, cupones, canjes y visitas no publican eventos.
 4. **Tarjeta 10 = tickets abiertos anulados** (el POS no anula ventas cobradas).
 5. **Todo dato de Analíticas nace como evento** en la tx de su origen (ADR 0153). Owner: «lo correcto es hacer que
    cada módulo guarde los datos como venta cerrada del POS para seguir un patrón consistente».
+6. **Analíticas es core** (owner): «no se activa o desactiva por switch ni variable de entorno». Se retira
+   `MODULE_EVENTS_ENABLED`: `sale.closed` se publica siempre.
+7. **Hallazgos de la 0237:** la 6 y la 7 entran en AN-1; empieza limpio en el deploy de AN-1 (no procesa eventos
+   anteriores); local sin ciudad queda sin contexto; «cuánto ahorraste» a PARQUEADO.
+
+## Prompt — AN-1 (spec 0237; 2026-10-17; lanzar cuando el owner lo diga)
+
+```
+# Encargo: implementar la etapa AN-1 de Analíticas (spec 0237)
+
+Mandan docs/specs/0237-analiticas-inbox-y-resumenes-diarios.md, ADR 0152 y ADR 0153. Implementá SOLO la etapa
+AN-1 (tabla «Etapas» de la spec): resúmenes diarios por evento, suscriptor core, inbox con las tarjetas 1, 2, 3,
+4, 6, 7 y 13 en el Dashboard, histórico en «Analíticas», contexto externo guardado sin mostrar, y el retiro de
+MODULE_EVENTS_ENABLED (§2.5). Las decisiones de producto están cerradas: no se reabren.
+
+## Reglas
+- Flujo de ADR 0144 y docs/AGENT-WORKFLOW.md: coordinador, hasta dos implementadores en worktrees propios desde
+  dev, QA independiente. Asignación explícita: esquema `analytics`, `core.location.city_id`, UNA migración
+  nueva, framework de eventos y contrato de módulos, limitada a lo que pide la 0237.
+- Analíticas es core: sin switch de módulo ni variable de entorno.
+- Core nunca importa ni nombra un módulo (ADR 0138/0139): traductores y acciones por contrato.
+- Node 24; DB solo con tools/neon-test.sh, nunca DATABASE_URL.
+- Pruebas: las de «Pruebas pertinentes» de la 0237 para AN-1, focales; sin verify global ni mutaciones.
+- No push, no deploy, no migración ni lectura de PROD. No editar INDEX, TASKS ni el estado de Claude.
+
+## Pendiente que no bloquea
+La clave de Visual Crossing puede no estar todavía: implementá con proveedor simulado y dejá la prueba real
+de la API (primer paso del §5) para cuando el owner la cargue.
+
+## Fuera de alcance
+AN-2 y AN-3 (tarjetas 5, 8, 9, 10, 11, 12 y sus eventos), mostrar clima o calendario al comerciante, quitar la
+variable de Vercel.
+
+## Entrega
+Candidato local en dev con QA PASS y handoff en docs/factory/ (SHAs, pruebas reales, fallos, migración
+preparada). Avisá cualquier hallazgo que contradiga la spec antes de resolverlo por tu cuenta.
+```
 
 ## Prompt — Gastos (spec 0236 + ADR 0151; 2026-10-16; ajustado al ADR 0152 el mismo día; N ya está en `dev`)
 

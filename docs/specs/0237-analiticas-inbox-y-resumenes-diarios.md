@@ -1,9 +1,9 @@
 ---
 spec: 0237
 fecha: 2026-10-17
-estado: borrador
+estado: cerrada
 resumen: Analíticas en tres etapas — resúmenes diarios por evento, inbox de hasta 5 tarjetas en el Dashboard, histórico en números y contexto externo guardado — para que el dueño accione cada mañana sin que abrir la pantalla calcule nada.
-disjunta: no; depende de 0236 (G) y 0235 (N) integradas; comparte module_event, contrato de módulos, permisos, Dashboard y el corte de conteo de Stock
+disjunta: no; G (0236) y N (0235) ya integradas en dev; comparte module_event, contrato de módulos, permisos, Dashboard y el corte de conteo de Stock
 archivos: packages/db (esquema analytics, core.location.city_id, migraciones); packages/domain/src/analytics; apps/merchant/src/server/analytics; server/module-events; modules/{pos,recipes,expenses,stock}; app/backoffice (Dashboard, analytics); rutas api/analytics e api/internal/analytics; permissions-catalog
 ---
 
@@ -27,18 +27,19 @@ Leído en el código el 2026-10-17:
 - **El único evento que existe es `sale.closed`** (POS, `server/module-events/publish.ts`, en la tx del cierre).
   Compras y ajustes de stock (`stock.movement`), anulaciones (`pos.pos_order.status='voided'`), canjes de cupón
   (`core.coupon_redemption`) y visitas (`core.order`, `core.business_customer.last_visit_at`) solo escriben su tabla.
-- `EventSubscription.eventType` es el literal `"sale.closed"` (`server/module-events/types.ts:66`); `retry.ts`
-  decodifica toda delivery como venta. G generaliza el append y el decodificador (0236, «Eventos»).
+- G ya está integrada en `dev` (verificado el 2026-10-17): `appendModuleEvent` genérico
+  (`server/module-events/append.ts`), `GenericEventSubscription` con `eventType: string` y `dispatch`
+  (`types.ts:74`), `module_event.location_id` nullable salvo para `sale.closed`, y Gastos publica `expense.*` siempre.
 - La comisión de cada venta se congela en core al cerrar (`server/business/commission-close.ts`, tras N). El costo de
   lo vendido no viaja en el evento: lo calcula Stock al aplicar el consumo de Recetas
   (`modules/recipes/server/consumption-cost.ts` → `modules/stock/server/consumption-cost.ts`).
 - El corte del conteo de Stock (`modules/stock/count.ts`) toma todos los eventos del local y bloquea si hay
-  deliveries pendientes de esos eventos. G filtra por `sale.closed`; las deliveries de Analíticas sobre ventas lo
-  seguirían bloqueando (ver §2.4).
+  deliveries pendientes de esos eventos. G ya filtra captura y pendientes por `sale.closed`, pero de **cualquier
+  suscriptor**: una delivery de Analíticas sobre una venta lo bloquearía (ver §2.4).
 - La zona horaria es del comercio (`core.business.timezone`); el local no tiene zona ni ciudad. `address_snapshot`
   guarda el Details de Google Places (`addressComponents`), filas viejas de Geoapify o `{}` si el dueño tipeó.
-- `MODULE_EVENTS_ENABLED` encendido en PROD desde el 2026-10-16 según `docs/estado/claude-historico.md`; **verificar**
-  antes de AN-1.
+- `sale.closed` solo se publica si `MODULE_EVENTS_ENABLED === "true"` (`publish.ts:61`); también lo leen
+  `tools/payment-methods/preflight.ts` y tres soportes de test. Gastos ya publica sin esa variable.
 
 ## Decisiones del owner (no se reabren)
 
@@ -57,17 +58,23 @@ reconstruir ventas anteriores a los eventos). Del 2026-10-17 (plan, «AN — dec
    que `sale.closed`; los traductores solo leen el evento y Analíticas no lee tablas de origen
    ([ADR0153](../adr/0153-analiticas-solo-de-eventos.md)). Owner: «lo correcto es hacer que cada módulo guarde los
    datos como venta cerrada del POS para seguir un patrón consistente».
+6. **Analíticas es core**: no se activa ni desactiva por switch de módulo ni por variable de entorno. Todo comercio la
+   tiene. Por eso **se retira `MODULE_EVENTS_ENABLED`**: `sale.closed` se publica siempre, como `expense.*`; si no, la
+   variable apagaría Analíticas por la puerta de atrás (§2.5).
+7. **Hallazgos cerrados** (owner, 2026-10-17): la 6 y la 7 entran en AN-1 (H1); Analíticas empieza limpio en el deploy
+   de AN-1, sin procesar eventos anteriores (H2); un local sin ciudad queda sin contexto y no se le pide nada al dueño
+   (H3); «cuánto ahorraste» va a `docs/PARQUEADO.md` (H6).
 
 ## Etapas
 
 | Etapa | Entra | Tarjetas | Eventos nuevos |
 |---|---|---|---|
-| **AN-1** | resúmenes diarios, suscriptor core, inbox, histórico, contexto externo (ciudades, clima, calendario) | 1, 2, 3, 4, 7, 13 | `sale.closed` v3 (nombre del producto por línea), `sale.commission.frozen` (core), `recipes.consumption.applied`; traduce también `expense.*` de G |
-| **AN-2** | stock y costos | 5, 6, 8, 9 | `stock.purchase.recorded`, `stock.adjustment.recorded`, `recipes.product_cost.changed` |
+| **AN-1** | resúmenes diarios, suscriptor core, inbox, histórico, contexto externo (ciudades, clima, calendario) | 1, 2, 3, 4, 6, 7, 13 | `sale.closed` v3 (nombre del producto por línea), `sale.commission.frozen` (core), `recipes.consumption.applied`; traduce también `expense.*` de G |
+| **AN-2** | stock y costos | 5, 8, 9 | `stock.purchase.recorded`, `stock.adjustment.recorded`, `recipes.product_cost.changed` |
 | **AN-3** | anulaciones, clientes y promos | 10, 11, 12 | `pos.order.voided`, `visit.recorded` y `coupon.redeemed` (core) |
 
-**Ajuste de Claude, a confirmar por el owner (H1):** la tarjeta 7 (producto sin costo) pasa a AN-1 porque la meta
-del día (3) no se puede calcular sin saber qué parte de lo vendido tiene costo; sale de los mismos datos de venta.
+La 7 (producto sin costo) y la 6 (margen bajo) entran en AN-1 (owner, H1): la meta del día necesita saber qué parte de
+lo vendido tiene costo, y las dos salen de los mismos datos de venta.
 
 ## Alcance y diseño
 
@@ -100,8 +107,7 @@ exacto, `count`) y tipo de dimensión (`none`, `product`, `item`, `concept`, `cu
 
 Los nombres de la dimensión (producto, insumo, concepto, cliente, campaña) **viajan en el evento** y se guardan en
 `analytics.dimension_label`. Por eso `sale.closed` pasa a **v3** = v2 + `lines[].productLabel` (nombre al cerrar);
-decodificadores de POS, Recetas y core aceptan v1–v3. Las ventas v1/v2 ya guardadas no traen nombre: su producto toma
-la etiqueta del primer evento posterior que la traiga; mientras tanto se muestra «Producto sin nombre».
+decodificadores de POS, Recetas y core aceptan v1–v3.
 
 ### 2. Resúmenes diarios
 
@@ -156,16 +162,24 @@ borra el de otro.
   nada (un `expense.updated` viejo que llega tarde no pisa uno nuevo); si no, resta de `daily_metric` los aportes
   previos de ese `source_key`, los borra, inserta los nuevos y los suma (`on conflict do update`, filas en orden de
   clave para no trabarse). Un `expense.deleted` deja cero aportes. Reaplicar la misma delivery no cambia nada.
-- **Eventos ya guardados:** al encender AN-1 se crean deliveries `core.analytics` para los `module_event` existentes
-  (ventas desde el encendido de los eventos, 2026-10-16, y gastos). Lectura de Claude de «Analíticas cuenta desde que
-  los eventos están encendidos» (H2); nada se reconstruye desde tablas. Esas ventas no tienen
-  `recipes.consumption.applied` ni `sale.commission.frozen`: cuentan sin costo ni comisión.
+- **Empieza limpio** (owner, H2): las deliveries `core.analytics` se crean al publicar; los `module_event` guardados
+  antes del deploy de AN-1 no reciben ninguna y no se procesan.
 
 #### 2.4 Corte del conteo de Stock
 
 `validateCountCut` bloquea con deliveries pendientes de los eventos del corte. Una delivery `core.analytics`
 pendiente (p. ej. una que falló y espera su reintento) no cambia el stock y **no debe** bloquear un conteo: el chequeo de
 pendientes se limita a suscriptores de módulos que requieren `stock`. Test de regresión obligatorio (§Pruebas).
+
+#### 2.5 Sin switch: se retira `MODULE_EVENTS_ENABLED`
+
+Analíticas no tiene flag, módulo ni variable de entorno (decisión 6). `publishSaleClosed` publica siempre; se borran
+la lectura de `publish.ts`, el campo `publicationEnabled` de `tools/payment-methods/preflight.ts` y el manejo de la
+variable en los soportes de test (`module-events-integration-support.ts`, `module-events.neon.integration.test.ts`,
+`stock-average.neon.integration.test.ts`), con sus casos de «flag apagado» reescritos o borrados con motivo (no se
+borra un test para que el gate pase: si el caso deja de tener sentido, se dice por qué). La variable se quita de Vercel
+**después** del deploy, con autorización del owner. Lo que sí sigue dependiendo de switches son los **módulos que
+alimentan**: sin POS no hay ventas, sin Recetas no hay costo; Analíticas lo dice con sus invitaciones.
 
 ### 3. Inbox (Dashboard)
 
@@ -204,7 +218,8 @@ pendientes se limita a suscriptores de módulos que requieren `stock`. Test de r
 #### 3.3 Acciones sin nombrar módulos
 
 `ModuleManifest` suma `analyticsActions?: { key, label, href }[]` (p. ej. Gastos declara `record_expense`, Recetas
-`set_product_cost`). La tarjeta pide una clave; el core resuelve el `href` en un módulo **encendido** que la declare
+`set_product_cost`); el core declara las suyas (`edit_product_price` → catálogo, `/backoffice/catalog`). La tarjeta
+pide una clave; el core resuelve el `href` en el core o en un módulo **encendido** que la declare
 y que el usuario pueda abrir (permiso). Si ninguno la declara encendida, el botón lleva al catálogo de módulos; si el
 usuario no tiene permiso, la tarjeta sale sin botón.
 
@@ -216,6 +231,7 @@ usuario no tiene permiso, la tarjeta sale sin botón.
 | 2 | Ventas | ≥ 28 días desde la primera venta y ≥ 4 días iguales con venta | «Los martes se suelen vender unas 30 medialunas, 22 cafés con leche y 15 empanadas.» Mediana de los últimos 4–8 días iguales, top 3 por unidades. Antes del mínimo, como mucho una vez por semana: «Necesito 3 martes más para decirte qué se vende los martes.» | 0,1 · 1 | — |
 | 3 | Finanzas | hay ≥ 1 mes cerrado con gastos, cobertura de costo ≥ 80% de lo vendido en 28 días y la venta del mes va por debajo del ritmo | «Hoy necesitas vender $106 para cubrir el mes: te faltan $1.272 en 12 días de venta.» Marca «estimado» si algún concepto lo es. | brecha contra el ritmo · `1 − días restantes/días del mes`, ×1,5 en los últimos 10 días | «Ver el cálculo» → histórico, bloque del mes |
 | 4 | Finanzas | sin gastos fijos en 45 días, o sin mes cerrado con gastos | «Carga tus gastos fijos (alquiler, sueldos, luz) y te digo cuánto tienes que vender cada día para cubrir el mes.» Primer mes con gastos: «La meta se calcula al cerrar tu primer mes con gastos.» | 1 · 0,5 (0,8 en los últimos 10 días) | `record_expense` |
+| 6 | Costos | ganancia unitaria de 28 días negativa, o menor a la mitad de la mediana del comercio, con ≥ 10 ventas y costo conocido | «La empanada de queso te deja $0,05 por unidad, contra $1,20 de tus otros productos: vendiste 80 este mes.» Negativa: «Cada empanada de queso te hace perder $0,15.» | `p` = pérdida semanal o brecha semanal contra la mediana · 0,3 (1 si la meta del mes está en riesgo) | `edit_product_price` |
 | 7 | Costos | productos con `units_sold` mayor que `units_with_cost` en 28 días | «No sé cuánto ganas con café con leche y 4 productos más: vendiste $640 de ellos en 4 semanas.» Sujeto = el producto que más vendió. | monto = venta sin costo de 28 días / 4 · 0,6 (1 si la cobertura impide la meta) | `set_product_cost` |
 | 13 | Ventas | mismo mínimo que la 2; la venta esperada de hoy (mediana de días iguales) < 75% del promedio diario de 28 días; hay ≥ 2 productos con costo y ≥ 10 ventas en 28 días | «Los martes suelen ser flojos (unos $140, contra $210 de un día promedio). Si te piden recomendación: la pizza muzza te deja $3,10 por unidad y el flan $2,40.» Top 2 por ganancia unitaria. | `p` = promedio − esperado · 0,7 (1 si la 3 está activa) | — |
 
@@ -225,9 +241,9 @@ sueltos = promedio mensual de los últimos 3 meses cerrados. Margen de contribuc
 payment_commission) / revenue` de 28 días, solo sobre lo vendido con costo. Equilibrio del mes `E = gastos / m`.
 Días de venta restantes = días del resto del mes cuyo día de la semana tuvo ventas en las últimas 4 semanas, hoy
 incluido. Meta de hoy = `(E − revenue del mes) / días restantes`. Si ya se cubrió, no aparece. Si `m ≤ 0`, no hay meta
-y gana peso la 7 (AN-1) o la 6 (AN-2).
+y ganan peso la 6 y la 7.
 
-**Composición:** sin mecanismo extra; a fin de mes, bajo el equilibrio, 3 + 13 (+ 6 en AN-2) suben juntas por peso.
+**Composición:** sin mecanismo extra; a fin de mes, bajo el equilibrio, 3 + 6 + 13 suben juntas por peso.
 
 #### 3.5 HTTP (core)
 
@@ -307,11 +323,7 @@ AN-3 suma clientes y promos. «Cuánto ahorraste» no tiene medición en la v1 (
 - Tarjetas (mismo formato que §3.4):
   - **5 Suba de insumo**, evaluada en la delivery de `recipes.product_cost.changed`: costo unitario +5% o más contra el promedio anterior →
     «La harina subió 12%: tu muzza te cuesta $0,18 más por unidad (≈$9 por semana con lo que vendes).» `p` = impacto
-    semanal; `u` = 1 el día de la compra, ×0,7 por día después. Acción: revisar precio (`set_product_price`, la declara
-    quien tenga el catálogo de precios; verificar en la etapa).
-  - **6 Margen bajo o negativo:** ganancia unitaria de 28 días negativa, o menor a la mitad de la mediana del comercio,
-    con ≥ 10 ventas. `p` = pérdida semanal o brecha semanal contra la mediana; `u` = 0,3, 1 si la meta del mes está en
-    riesgo. Acción: revisar precio.
+    semanal; `u` = 1 el día de la compra, ×0,7 por día después. Acción `edit_product_price` (core).
   - **8 Insumo que se acaba:** existencia teórica / consumo diario (p25 y p75 de los últimos 28 días) → «Te estás
     quedando sin harina: queda para unas 20 masas y se acabaría entre el jueves y el sábado.» Aparece si el extremo
     corto es ≤ 4 días; requiere el mes mínimo. `u = 1 − días/5`. Acción `record_purchase`.
@@ -352,7 +364,7 @@ AN-3 suma clientes y promos. «Cuánto ahorraste» no tiene medición en la v1 (
 - Orden en AN-1: esquema + suscriptor (uno) → en paralelo dominio/evaluación/HTTP y contexto externo (dos) → UI cuando
   el HTTP esté fijado. QA independiente sobre la combinación. Core nunca importa ni nombra módulos (ADR0138/0139):
   traductores y acciones se registran por contrato.
-- **Depende de:** 0236 (G) y 0235 (N) integradas en `dev`. Reserva de rama Neon y migración: coordinador.
+- G (0236) y N (0235) ya están en `dev`. Reserva de rama Neon y migración: coordinador.
 
 ## Definition of Done
 
@@ -360,7 +372,8 @@ AN-1:
 - [ ] Una venta POS y un gasto (alta, edición que mueve día/concepto/local, borrado) dejan `daily_metric` exacto en el
   día local del comercio; reaplicar o recibir una revisión vieja no cambia nada.
 - [ ] Un conteo de Stock no se bloquea por una delivery de Analíticas pendiente.
-- [ ] El Dashboard muestra hasta 5 tarjetas (1, 2, 3, 4, 7, 13) con texto, monto y acción; aceptar/descartar trae la
+- [ ] `MODULE_EVENTS_ENABLED` no aparece en el código: `sale.closed` se publica siempre.
+- [ ] El Dashboard muestra hasta 5 tarjetas (1, 2, 3, 4, 6, 7, 13) con texto, monto y acción; aceptar/descartar trae la
   siguiente solo si supera el umbral; una descartada sin cambio material no vuelve.
 - [ ] La meta del día da el número correcto con conceptos reales y estimados, y no aparece sin mes cerrado ni con
   cobertura < 80%.
@@ -385,7 +398,7 @@ Recortadas a lo que detecta un defecto plausible; suites Neon con `tools/neon-te
 4. Neon (regresión): conteo con delivery `core.analytics` pendiente no da 409; con consumo de Recetas pendiente sí.
 5. Unit: pesos y selección — tope 5 con el resumen adentro, umbral, novedad (`0,6^n`, descartada sin cambio = 0,
    cambio de escalón vuelve).
-6. Unit: tarjetas 2, 3, 4, 7 y 13 con fixtures: mínimo de historia, meta con conceptos estimados, primer mes →
+6. Unit: tarjetas 2, 3, 4, 6, 7 y 13 con fixtures: mínimo de historia, meta con conceptos estimados, primer mes →
    invitación, cobertura baja, ya cubierto, `m ≤ 0`.
 7. Neon: aislamiento y permisos de las rutas (§3.5), 404 por id ajeno, 401 del cron, evaluación idempotente por día y
    fallback al abrir.
@@ -395,19 +408,17 @@ Recortadas a lo que detecta un defecto plausible; suites Neon con `tools/neon-te
    fría; si no, se para y se informa.
 10. Navegador: Dashboard con datos de prueba — ver, aceptar (navega), descartar (entra la siguiente o no) — e
     histórico con filtros.
+11. Neon: sin la variable de entorno, cerrar una venta publica `sale.closed` y crea la delivery `core.analytics`.
 
 AN-2/AN-3: un caso Neon por evento nuevo (atómico con su movimiento, local correcto, sin alterar el corte) y unit por
 tarjeta con sus bordes.
 
-## Hallazgos a decidir (owner)
+## Pendientes que no bloquean
 
-- **H1** Tarjeta 7 en AN-1 (la meta la necesita). La 6 también podría entrar en AN-1: usa solo datos de venta.
-- **H2** Procesar los eventos ya guardados desde el 2026-10-16 (lectura de «cuenta desde que los eventos están
-  encendidos»).
-- **H3** Locales con dirección tipeada quedan sin ciudad y sin contexto; no se le pide nada al dueño.
-- **H4** Cuenta y clave de Visual Crossing: las crea el owner y la carga en Vercel (sin imprimirla).
-- **H5** «Mandar cupón» a un cliente (tarjeta 11): verificar en AN-3 si Marketing lo permite.
-- **H6** «Cuánto ahorraste en 9 meses» (ejemplo del owner para el histórico) no tiene medición en la v1.
+- **Clave de Visual Crossing** (H4): la cuenta y la clave las crea el owner y la carga en Vercel
+  (`VISUAL_CROSSING_API_KEY`, sin imprimirla). Sin clave, el resto de AN-1 se implementa igual y la prueba real del
+  clima espera.
+- **«Mandar cupón» a un cliente** (H5, tarjeta 11): se verifica en AN-3 si Marketing lo permite; si no, «ver cliente».
 
 ## Handoff y abierto
 

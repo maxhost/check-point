@@ -11,6 +11,12 @@ conserva).
 Regla al sacar algo de aca: **nada toca codigo sin su spec cerrada.** Varias de estas filas dicen
 explicitamente «necesita spec» — eso es literal.
 
+## PARQUEADO 2026-10-17 — AN: «cuánto ahorraste»
+
+Ejemplo del owner para el histórico («cuánto dinero ahorramos en 9 meses»). Sin un «antes» contra el cual comparar, no
+hay medición honesta en la v1; el histórico muestra la evolución de ventas, costos y gastos. Owner 2026-10-17: fuera,
+a PARQUEADO (spec 0237, H6). Se piensa cuando haya historia.
+
 ## PARQUEADO 2026-10-16 — AN: proyecciones y plan de crecimiento
 
 Owner 2026-10-16: «sobre proyecciones yo lo dejaria parqueado ahora porque justamente solo es fiable con historico, y es
