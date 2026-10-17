@@ -69,9 +69,17 @@ describe.runIf(modulesIntegrationEnabled)(
       expect(rows).toHaveLength(1);
       return rows[0]!;
     }
-    async function flush() {
+    async function flush(phase: string) {
       expect(scheduled.callbacks).toHaveLength(1);
-      await scheduled.callbacks.shift()!();
+      const started = performance.now();
+      try {
+        await scheduled.callbacks.shift()!();
+      } finally {
+        console.info("EXPENSE_IMMEDIATE_CALLBACK", {
+          phase,
+          elapsedMs: performance.now() - started,
+        });
+      }
       expect(scheduled.callbacks).toHaveLength(0);
     }
 
@@ -176,7 +184,7 @@ describe.runIf(modulesIntegrationEnabled)(
         .values({ eventId: recorded!.id, subscriberId: "transport-fixture" })
         .returning();
       await cutUnchanged();
-      await flush();
+      await flush("create");
       expect(await core(recorded!.id)).toMatchObject({
         state: "applied",
         attempts: 1,
@@ -198,7 +206,7 @@ describe.runIf(modulesIntegrationEnabled)(
       expect(replay.status).toBe(201);
       expect(await replay.json()).toEqual(result);
       expect(await f.eventsFor(expense.id)).toHaveLength(1);
-      await flush();
+      await flush("create-replay");
       expect(await core(recorded!.id)).toMatchObject({
         state: "applied",
         attempts: 1,
@@ -252,7 +260,7 @@ describe.runIf(modulesIntegrationEnabled)(
       ).toBe(12345n);
       expect(await source(expense.id)).toMatchObject([{ sourceRevision: 1 }]);
       await cutUnchanged();
-      await flush();
+      await flush("update");
       expect((await core(changeEvent.id)).state).toBe("applied");
       const changedRows = await metrics();
       expect(changedRows.filter((row) => row.amountMinor !== 0n)).toMatchObject(
@@ -298,7 +306,7 @@ describe.runIf(modulesIntegrationEnabled)(
         (await metrics()).reduce((total, row) => total + row.amountMinor, 0n),
       ).toBe(23456n);
       await cutUnchanged();
-      await flush();
+      await flush("delete");
       expect((await core(deletionEvent.id)).state).toBe("applied");
       expect((await metrics()).every((row) => row.amountMinor === 0n)).toBe(
         true,
@@ -326,7 +334,7 @@ describe.runIf(modulesIntegrationEnabled)(
       );
       expect(deletedReplay.status).toBe(200);
       expect((await deletedReplay.json()).expense).toEqual(tombstone);
-      await flush();
+      await flush("delete-replay");
       expect(await f.eventsFor(expense.id)).toHaveLength(3);
       expect((await metrics()).every((row) => row.amountMinor === 0n)).toBe(
         true,
