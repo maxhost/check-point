@@ -2,9 +2,12 @@ import { randomUUID } from "node:crypto";
 import { beforeAll, describe, expect, it } from "vitest";
 import { getDb } from "@mi-pasaporte/db";
 import { businessModules } from "@mi-pasaporte/db/schema";
-import { callModuleRoute } from "../../modules-integration-support";
-import { posIntegrationEnabled, posStaff } from "./pos-integration-support";
-import { world, setupBusinessWorld } from "./business-core-support";
+import { callModuleRoute } from "./modules-integration-support";
+import {
+  posIntegrationEnabled,
+  posStaff,
+} from "./pos/server/pos-integration-support";
+import { world, setupBusinessWorld } from "./pos/server/business-core-support";
 const old = (
   module: string,
   path: string,
@@ -70,8 +73,12 @@ describe.skipIf(!posIntegrationEnabled)(
         "profitability",
         `sale-commissions/${randomUUID()}?locationId=${world.seed.locationId}`,
       );
-      expect(missing.status).toBe(404);
-      expect(await missing.json()).toMatchObject({ code: "sale_not_found" });
+      expect(missing.status).toBe(200);
+      expect(await missing.json()).toMatchObject({
+        state: "incompleto",
+        total: null,
+        reasons: ["commission_no_data"],
+      });
     }, 120000);
     it("POS-only and brand-only staff cannot administer via any old route", async () => {
       for (const permissions of [["pos"], ["brand"]]) {

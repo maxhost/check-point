@@ -1,3 +1,7 @@
+import { withDbTransaction } from "@mi-pasaporte/db";
+import { historicalEventHandlers } from "@mi-pasaporte/db/schema";
+import { and, eq } from "drizzle-orm";
+import { businessStorageReady } from "../../../server/business/storage";
 import { businessHttp } from "../../../server/business/http";
 import { NextResponse } from "next/server";
 import type { ModuleRoute, ModuleServer } from "../../route-table";
@@ -53,8 +57,34 @@ const handlers: readonly ModuleRoute[] = [
     path: "sale-commissions/:sourceOrderId",
     permission: "business",
     failure: "No pudimos leer la comisión de la venta.",
-    handler: async ({ request, params }) =>
-      businessHttp(request, ["sale-commissions", "pos", params.sourceOrderId]),
+    handler: async ({ request, params }) => {
+      const source = await withDbTransaction(async (tx) => {
+        if (!(await businessStorageReady(tx))) return null;
+        const [mapping] = await tx
+          .select({ source: historicalEventHandlers.sourceProviderId })
+          .from(historicalEventHandlers)
+          .where(
+            and(
+              eq(historicalEventHandlers.subscriberId, "profitability"),
+              eq(historicalEventHandlers.eventType, "sale.closed"),
+            ),
+          );
+        return mapping?.source ?? null;
+      });
+      return source
+        ? businessHttp(request, [
+            "sale-commissions",
+            source,
+            params.sourceOrderId,
+          ])
+        : NextResponse.json(
+            {
+              error: "La actualización de Negocio está en curso.",
+              code: "business_unavailable",
+            },
+            { status: 503 },
+          );
+    },
   },
   {
     method: "GET",
