@@ -1,6 +1,7 @@
+import { businessHttp } from "../../../server/business/http";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { getDb, withDbTransaction } from "@mi-pasaporte/db";
-import { posPaymentMethodInitializations } from "@mi-pasaporte/db/schema";
+import { paymentMethodInitializations } from "@mi-pasaporte/db/schema";
 import { eq } from "drizzle-orm";
 import { callModuleRoute } from "../../modules-integration-support";
 import { initializePaymentMethods } from "./payment-catalog";
@@ -19,7 +20,19 @@ const route = (
   path: string,
   body?: unknown,
   cookie = world.ownerCookie,
-) => callModuleRoute(method, `${ROOT}/${path}`, cookie, body);
+) => {
+  if (path === "payment-methods" && method === "GET")
+    return callModuleRoute(method, `${ROOT}/${path}`, cookie, body);
+  const url = new URL("http://localhost:3001/api/business/" + path);
+  return businessHttp(
+    new Request(url, {
+      method,
+      headers: { cookie, "content-type": "application/json" },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    }),
+    url.pathname.replace("/api/business/", "").split("/"),
+  );
+};
 beforeAll(async () => {
   world = await seedPosWorld("P1 medios EC");
   fallback = await seedPosWorld("P1 medios fallback", "CO", "COP");
@@ -76,12 +89,9 @@ describe.skipIf(!posIntegrationEnabled)("P1 medios comerciales reales", () => {
     expect((await initial.json()).methods.length).toBeGreaterThan(0);
     const [marker] = await getDb()
       .select()
-      .from(posPaymentMethodInitializations)
+      .from(paymentMethodInitializations)
       .where(
-        eq(
-          posPaymentMethodInitializations.businessId,
-          fallback.seed.business.id,
-        ),
+        eq(paymentMethodInitializations.businessId, fallback.seed.business.id),
       );
     expect(marker).toMatchObject({ countryCode: "CO", source: "base" });
     await withDbTransaction((tx) =>
@@ -90,10 +100,10 @@ describe.skipIf(!posIntegrationEnabled)("P1 medios comerciales reales", () => {
     expect(
       await getDb()
         .select()
-        .from(posPaymentMethodInitializations)
+        .from(paymentMethodInitializations)
         .where(
           eq(
-            posPaymentMethodInitializations.businessId,
+            paymentMethodInitializations.businessId,
             fallback.seed.business.id,
           ),
         ),

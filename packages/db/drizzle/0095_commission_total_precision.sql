@@ -1,0 +1,1 @@
+ALTER TABLE "core"."sale_commission" ALTER COLUMN "total" SET DATA TYPE numeric;

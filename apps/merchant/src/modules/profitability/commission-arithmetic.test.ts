@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   calculatePaymentCommission as calculate,
   parsePercent,
-} from "./commission-arithmetic";
+} from "@mi-pasaporte/domain/financial/commission";
 const fixed = (numerator: string) => ({
   numerator,
   denominator: "1",

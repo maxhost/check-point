@@ -1,5 +1,7 @@
+import { paymentStorageReady } from "./business/storage";
+import { initializePaymentMethods } from "./business/payment-catalog";
 import { randomUUID } from "node:crypto";
-import { getDb } from "@mi-pasaporte/db";
+import { withDbTransaction } from "@mi-pasaporte/db";
 import {
   businesses,
   locations,
@@ -89,7 +91,6 @@ export async function createOwnerWithBusiness(input: {
   business: { name: string; categoryGcid: string };
   selection: Selection;
 }): Promise<CreatedOwner> {
-  const db = getDb();
   const { selection } = input;
   const businessId = randomUUID();
   const locationId = randomUUID();
@@ -97,56 +98,61 @@ export async function createOwnerWithBusiness(input: {
   const latitude = String(selection.latitude);
   const longitude = String(selection.longitude);
   const slug = await slugForNewBusiness(input.business.name);
-  const owner = ownerUserInsert(db, input.email);
-  await db.batch([
-    owner.query,
-    db.insert(ownerProfiles).values({ userId: owner.userId, fullName: "" }),
-    db.insert(businesses).values({
-      id: businessId,
-      name: input.business.name,
-      slug,
-      categoryGcid: input.business.categoryGcid,
-      countryCode: selection.countryCode,
-      timezone: selection.timezone,
-      currencyCode: currencyForCountry(selection.countryCode),
-    }),
-    db.insert(memberships).values({
-      businessId,
-      userId: owner.userId,
-      role: "owner",
-    }),
-    db.insert(locations).values({
-      id: locationId,
-      businessId,
-      name: FIRST_LOCATION_NAME,
-      addressLabel: selection.label,
-      longitude,
-      latitude,
-      countryCode: selection.countryCode,
-      activeVerificationId: verificationId,
-      addressSnapshot: selection.snapshot,
-    }),
-    db.insert(locationVerifications).values({
-      id: verificationId,
-      locationId,
-      source: "provider_verified",
-      provider: "google",
-      providerPlaceId: selection.placeId,
-      normalizedAddress: selection.label,
-      longitude,
-      latitude,
-      countryCode: selection.countryCode,
-      providerSnapshot: selection.snapshot,
-      attribution: null,
-    }),
-    // Spec 0189 §D8 / ADR 0134 §2: el alta nace en la prueba de 90 dias, sin tarjeta. La
-    // fecha de fin SE GUARDA (el owner la extiende a mano), no se recalcula.
-    db.insert(subscriptions).values({
-      businessId,
-      plan: "trial",
-      status: "active",
-      trialEndsAt: new Date(Date.now() + TRIAL_DAYS * 86_400_000),
-    }),
-  ]);
-  return { userId: owner.userId, businessId, slug };
+  return withDbTransaction(async (db) => {
+    const owner = ownerUserInsert(db, input.email);
+    await owner.query;
+    const operations = [
+      db.insert(ownerProfiles).values({ userId: owner.userId, fullName: "" }),
+      db.insert(businesses).values({
+        id: businessId,
+        name: input.business.name,
+        slug,
+        categoryGcid: input.business.categoryGcid,
+        countryCode: selection.countryCode,
+        timezone: selection.timezone,
+        currencyCode: currencyForCountry(selection.countryCode),
+      }),
+      db.insert(memberships).values({
+        businessId,
+        userId: owner.userId,
+        role: "owner",
+      }),
+      db.insert(locations).values({
+        id: locationId,
+        businessId,
+        name: FIRST_LOCATION_NAME,
+        addressLabel: selection.label,
+        longitude,
+        latitude,
+        countryCode: selection.countryCode,
+        activeVerificationId: verificationId,
+        addressSnapshot: selection.snapshot,
+      }),
+      db.insert(locationVerifications).values({
+        id: verificationId,
+        locationId,
+        source: "provider_verified",
+        provider: "google",
+        providerPlaceId: selection.placeId,
+        normalizedAddress: selection.label,
+        longitude,
+        latitude,
+        countryCode: selection.countryCode,
+        providerSnapshot: selection.snapshot,
+        attribution: null,
+      }),
+      // Spec 0189 §D8 / ADR 0134 §2: el alta nace en la prueba de 90 dias, sin tarjeta. La
+      // fecha de fin SE GUARDA (el owner la extiende a mano), no se recalcula.
+      db.insert(subscriptions).values({
+        businessId,
+        plan: "trial",
+        status: "active",
+        trialEndsAt: new Date(Date.now() + TRIAL_DAYS * 86_400_000),
+      }),
+    ];
+    for (const operation of operations) await operation;
+    if (await paymentStorageReady(db))
+      await initializePaymentMethods(db, { businessId });
+    return { userId: owner.userId, businessId, slug };
+  });
 }

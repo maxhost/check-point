@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
-import { getDb } from "@mi-pasaporte/db";
+import { getDb, type DbTransaction } from "@mi-pasaporte/db";
 import { users } from "@mi-pasaporte/db/schema";
 
 /**
@@ -165,7 +165,10 @@ export async function findUserIdByEmail(email: string): Promise<string | null> {
  *
  * El `name` queda vacio: el alta pide el email y el nombre del COMERCIO, no el de la persona.
  */
-export function ownerUserInsert(db: ReturnType<typeof getDb>, email: string) {
+export function ownerUserInsert(
+  db: ReturnType<typeof getDb> | DbTransaction,
+  email: string,
+) {
   const userId = randomUUID();
   const now = new Date();
   return {

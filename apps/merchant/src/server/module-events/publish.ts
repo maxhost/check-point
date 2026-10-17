@@ -45,6 +45,8 @@ export async function publishSaleClosed(
   args: {
     businessId: string;
     settlement?: FinancialSettlement;
+    capture?: ResourceCapture;
+    coreCommission?: boolean;
     paymentsMetadata?: readonly PaymentMetadata[];
     sourceOrderId: string;
     locationId: string;
@@ -86,41 +88,7 @@ export async function publishSaleClosed(
       closedAt: new Date((event.payload as SaleClosedEvent).closedAt),
     };
   }
-  const resources = [
-    ...new Map(
-      [
-        ...args.lines.flatMap((l) =>
-          l.productId
-            ? [{ resourceType: "product", resourceId: l.productId }]
-            : [],
-        ),
-        ...(args.settlement?.payments.map((p) => ({
-          resourceType: "payment_method",
-          resourceId: p.methodId,
-        })) ?? []),
-      ].map((r) => [r.resourceType + "/" + r.resourceId, r]),
-    ).values(),
-  ];
-  // All typed resource pointers and subscriber eligibility share one MVCC visibility point.
-  const resourceValues = resources.length
-    ? sql`values ${sql.join(
-        resources.map(
-          (r) => sql`(${r.resourceType}::text,${r.resourceId}::uuid)`,
-        ),
-        sql`,`,
-      )}`
-    : sql`select null::text,null::uuid where false`;
-  const capture = await tx.execute(sql`select clock_timestamp() as captured_at,
-  (select coalesce(jsonb_agg(jsonb_build_object('resourceType',p.resource_type,'resourceId',p.resource_id,'providerId',p.provider_id,'slot',p.slot,'versionId',p.version_id)),'[]'::jsonb) from core.module_resource_version p join (${resourceValues}) r(resource_type,resource_id) on r.resource_type=p.resource_type and r.resource_id=p.resource_id where p.business_id=${args.businessId}::uuid) as versions,
-  (select coalesce(jsonb_agg(module_id),'[]'::jsonb) from core.business_module where business_id=${args.businessId}::uuid and enabled=true) as enabled`);
-  const row = capture.rows[0] as unknown as {
-    captured_at: Date | string;
-    versions: (ResourceVersion & {
-      resourceType: string;
-      resourceId: string;
-    })[];
-    enabled: string[];
-  };
+  const row = args.capture ?? (await captureSaleResources(tx, args));
   const refs = (resourceType: string, resourceId: string | null) =>
     row.versions
       .filter(
@@ -206,6 +174,12 @@ export async function publishSaleClosed(
   for (const [subscriberId, server] of Object.entries(SERVER_MODULES))
     for (const subscription of server.eventSubscriptions ?? []) {
       if (subscription.eventType !== "sale.closed") continue;
+      if (
+        args.coreCommission &&
+        subscription.resourceType === "payment_method" &&
+        subscription.slot === "commission"
+      )
+        continue;
       const eligible = [subscriberId, ...subscription.requiredModules].every(
         (id) => row.enabled.includes(id),
       );
@@ -217,4 +191,47 @@ export async function publishSaleClosed(
       });
     }
   return { eventId: event.id, closedAt: new Date(payload.closedAt) };
+}
+
+export type ResourceCapture = {
+  captured_at: Date | string;
+  versions: (ResourceVersion & { resourceType: string; resourceId: string })[];
+  enabled: string[];
+};
+export async function captureSaleResources(
+  tx: DbTransaction,
+  args: {
+    businessId: string;
+    lines: readonly { productId: string | null }[];
+    settlement?: FinancialSettlement;
+  },
+): Promise<ResourceCapture> {
+  const resources = [
+    ...new Map(
+      [
+        ...args.lines.flatMap((l) =>
+          l.productId
+            ? [{ resourceType: "product", resourceId: l.productId }]
+            : [],
+        ),
+        ...(args.settlement?.payments.map((p) => ({
+          resourceType: "payment_method",
+          resourceId: p.methodId,
+        })) ?? []),
+      ].map((r) => [r.resourceType + "/" + r.resourceId, r]),
+    ).values(),
+  ];
+  // All typed resource pointers and subscriber eligibility share one MVCC visibility point.
+  const resourceValues = resources.length
+    ? sql`values ${sql.join(
+        resources.map(
+          (r) => sql`(${r.resourceType}::text,${r.resourceId}::uuid)`,
+        ),
+        sql`,`,
+      )}`
+    : sql`select null::text,null::uuid where false`;
+  const capture = await tx.execute(sql`select clock_timestamp() as captured_at,
+  (select coalesce(jsonb_agg(jsonb_build_object('resourceType',p.resource_type,'resourceId',p.resource_id,'providerId',p.provider_id,'slot',p.slot,'versionId',p.version_id)),'[]'::jsonb) from core.module_resource_version p join (${resourceValues}) r(resource_type,resource_id) on r.resource_type=p.resource_type and r.resource_id=p.resource_id where p.business_id=${args.businessId}::uuid) as versions,
+  (select coalesce(jsonb_agg(module_id),'[]'::jsonb) from core.business_module where business_id=${args.businessId}::uuid and enabled=true) as enabled`);
+  return capture.rows[0] as unknown as ResourceCapture;
 }

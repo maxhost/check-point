@@ -1,3 +1,5 @@
+import { withDbTransaction } from "@mi-pasaporte/db";
+import { paymentStorageReady } from "../../../server/business/storage";
 import { NextResponse } from "next/server";
 import { apiOwnerFailureResponse } from "../../../server/api-owner";
 import { requireApiPermission } from "../../../server/api-permission";
@@ -33,10 +35,22 @@ async function readJson(request: Request) {
 }
 
 /** Client-facing shape: never leaks the internal R2 `logoObjectKey`, only a public path. */
-function brandResponse(brand: BrandRecord) {
+function brandResponse(brand: BrandRecord, legacyBusinessFields = false) {
   const { logoObjectKey, ...rest } = brand;
+  const {
+    timezone,
+    currencyCode,
+    chargesVat,
+    saleVatRate,
+    recoversPurchaseVat,
+    ...identity
+  } = rest;
+  void [timezone, currencyCode, chargesVat, saleVatRate, recoversPurchaseVat];
   return {
-    ...rest,
+    ...identity,
+    ...(legacyBusinessFields
+      ? { timezone, currencyCode, chargesVat, saleVatRate, recoversPurchaseVat }
+      : {}),
     logoPath: logoObjectKey
       ? `/api/public/brands/${brand.id}/logo?v=${brand.logoVersion}`
       : null,
@@ -52,7 +66,9 @@ export async function GET(request: Request) {
       { error: "Sin negocio.", code: "not_member" },
       { status: 403 },
     );
-  return NextResponse.json(brandResponse(brand));
+  return withDbTransaction(async (tx) =>
+    NextResponse.json(brandResponse(brand, !(await paymentStorageReady(tx)))),
+  );
 }
 
 export async function PUT(request: Request) {
@@ -63,16 +79,24 @@ export async function PUT(request: Request) {
     // `saveBrand` re-resolvia el negocio por `userId` con `role='owner'`, asi que un
     // integrante con `brand` pasaba esta puerta y moria abajo con «No tienes un negocio como
     // owner». El `userId` sigue yendo porque el optimistic lock y la auditoria lo usan.
-    const brand = await saveBrand(
-      auth.userId,
-      await readJson(request),
-      auth.business.id,
-    );
-    return NextResponse.json(brandResponse(brand));
+    return await withDbTransaction(async (tx) => {
+      const legacy = !(await paymentStorageReady(tx));
+      const brand = await saveBrand(
+        auth.userId,
+        await readJson(request),
+        auth.business.id,
+        legacy,
+      );
+      return NextResponse.json(brandResponse(brand, legacy));
+    });
   } catch (error) {
     if (error instanceof BrandError) {
       return NextResponse.json(
-        { error: error.message },
+        {
+          error: error.message,
+          code:
+            error.status === 409 ? "brand_revision_conflict" : "invalid_brand",
+        },
         { status: error.status },
       );
     }

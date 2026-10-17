@@ -1,3 +1,6 @@
+import { paymentStorageReady } from "../../../server/business/storage";
+import { freezeSaleCommission } from "../../../server/business/commission-close";
+import { captureSaleResources } from "../../../server/module-events/publish";
 import {
   minorUnitForCurrency,
   normalizeMoney,
@@ -220,7 +223,12 @@ export async function closePosOrder(
           settlement.collected
       )
         throw new Error("Accreditation net conflict");
-      const paymentsMetadata = paymentMetadata(settlement, methods);
+      const coreCommission = await paymentStorageReady(tx);
+      const paymentsMetadata = paymentMetadata(
+        settlement,
+        methods,
+        coreCommission ? "core" : "pos",
+      );
       const storedSettlement = {
         ...settlement,
         payments: settlement.payments.map((payment) => ({
@@ -230,7 +238,14 @@ export async function closePosOrder(
           )!,
         })),
       };
-      await persistPaymentSnapshot(tx, business.id, id, settlement, methods);
+      await persistPaymentSnapshot(
+        tx,
+        business.id,
+        id,
+        settlement,
+        methods,
+        coreCommission ? "core" : "pos",
+      );
 
       if (!row.locationId)
         throw new CounterError(
@@ -238,7 +253,16 @@ export async function closePosOrder(
           "location_required",
           "La orden necesita un local válido.",
         );
+      const capture = coreCommission
+        ? await captureSaleResources(tx, {
+            businessId: business.id,
+            settlement,
+            lines,
+          })
+        : undefined;
       const event = await publishSaleClosed(tx, {
+        capture,
+        coreCommission,
         businessId: business.id,
         sourceOrderId: id,
         locationId: row.locationId,
@@ -252,6 +276,17 @@ export async function closePosOrder(
           quantity,
         })),
       });
+      if (coreCommission)
+        await freezeSaleCommission(tx, {
+          businessId: business.id,
+          sourceProviderId: "pos",
+          sourceOrderId: id,
+          locationId: row.locationId,
+          settlement,
+          paymentsMetadata,
+          capture: capture!,
+          eventId: event?.eventId ?? null,
+        });
       const closedAt = event?.closedAt ?? now;
       const [closed] = await tx
         .update(posOrders)

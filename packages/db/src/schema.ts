@@ -17,6 +17,8 @@ export * from "./schema/wallet-push";
 export * from "./schema/web-push";
 export * from "./schema/catalog";
 export * from "./schema/payment-methods";
+export * from "./schema/commissions";
+export * from "./schema/sale-commission";
 export * from "./schema/catalog-import";
 // Spec 0224 / ADR 0143: el registro unico de uso de la IA.
 export * from "./schema/ai-request";

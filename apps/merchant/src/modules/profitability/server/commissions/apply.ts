@@ -1,8 +1,11 @@
-import type { DbTransaction } from "@mi-pasaporte/db";
+import { paymentStorageReady } from "../../../../server/business/storage";
+import { commissionSubscriptions as coreSubscriptions } from "../../../../server/business/commission-history";
 import {
   profitabilityCommissionRevisions as revisions,
   profitabilityPaymentCommissions as snapshots,
-} from "@mi-pasaporte/db/schema";
+} from "./legacy-tables";
+import type { DbTransaction } from "@mi-pasaporte/db";
+import {} from "@mi-pasaporte/db/schema";
 import { and, eq } from "drizzle-orm";
 import { isDeepStrictEqual } from "node:util";
 import { normalizeMoney } from "@mi-pasaporte/domain/financial";
@@ -10,7 +13,7 @@ import type { EventSubscription } from "../../../../server/module-events/types";
 import {
   calculatePaymentCommission,
   type ChargeShape,
-} from "../../commission-arithmetic";
+} from "@mi-pasaporte/domain/financial/commission";
 
 export const commissionSubscriptions: readonly EventSubscription[] = [
   {
@@ -19,6 +22,8 @@ export const commissionSubscriptions: readonly EventSubscription[] = [
     slot: "commission",
     requiredModules: [],
     handler: async (tx, event) => {
+      if (await paymentStorageReady(tx))
+        return coreSubscriptions[0].handler(tx, event);
       const payload = event.payload;
       if (payload.eventVersion === 1) return;
       for (const payment of payload.payments) {

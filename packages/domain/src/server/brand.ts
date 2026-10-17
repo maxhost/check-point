@@ -1,3 +1,4 @@
+import { resultingBrandVat } from "./brand/vat";
 import { randomUUID } from "node:crypto";
 import { and, asc, eq } from "drizzle-orm";
 import { sql } from "drizzle-orm";
@@ -25,7 +26,6 @@ import {
 import { ACCEPTED_IMAGE_LABEL } from "../lib/image-formats";
 import { BrandError, type BrandRecord, imageTypes } from "./brand/core";
 import { validateBrandInput } from "./brand/validation";
-import { resultingBrandVat } from "./brand/vat";
 import { cleanupPrefixNow } from "./brand/cleanup";
 
 export { BrandError } from "./brand/core";
@@ -199,8 +199,9 @@ export async function saveBrand(
   value: unknown,
   /** Spec 0086 §10: ver {@link ownerBusiness}. Opcional = comportamiento viejo. */
   businessId?: string,
+  legacyBusinessFields = false,
 ) {
-  const input = validateBrandInput(value);
+  const input = validateBrandInput(value, legacyBusinessFields);
   const business = await ownerBusiness(userId, businessId);
   if (!business) throw new BrandError(403, "No tienes un negocio como owner.");
 
@@ -212,14 +213,6 @@ export async function saveBrand(
       "La marca cambió en otra sesión. Recarga la página antes de guardar.",
     );
   }
-  const vat = resultingBrandVat(
-    {
-      chargesVat: business.chargesVat,
-      saleVatRate: business.saleVatRate,
-      recoversPurchaseVat: business.recoversPurchaseVat,
-    },
-    input.vat,
-  );
 
   let newPrefix: string | null = null;
   if (input.logoAction === "replace") {
@@ -263,9 +256,9 @@ export async function saveBrand(
     .update(businesses)
     .set({
       name: input.name,
-      timezone: input.timezone,
-      currencyCode: input.currencyCode ?? businesses.currencyCode,
-      ...vat,
+      ...(legacyBusinessFields
+        ? { ...input.regional, ...resultingBrandVat(business, input.vat) }
+        : {}),
       brandPrimaryColor: input.brandPrimaryColor,
       brandComplementaryColor: input.brandComplementaryColor,
       brandAccentColor: input.brandAccentColor,

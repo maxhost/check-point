@@ -1,8 +1,11 @@
+import { paymentStorageReady } from "../business/storage";
 import { randomUUID } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { getDb, withDbTransaction, type DbTransaction } from "@mi-pasaporte/db";
 import { moduleEvents, moduleEventDeliveries } from "@mi-pasaporte/db/schema";
 import { SERVER_MODULES } from "../../modules/server-registry";
+import { commissionSubscriptions } from "../business/commission-history";
+import { historicalHandlerKey } from "../business/historical-handler";
 import { decodeSaleClosedEvent } from "./decode";
 export type RetryOptions = {
   businessId?: string;
@@ -78,46 +81,7 @@ export async function retryModuleEvents(options: RetryOptions = {}) {
         async (tx) => {
           if (Date.now() >= deadline) throw new Error("Retry budget exhausted");
           await setRetryTimeouts(tx, deadline);
-          const [locked] = await tx
-            .select()
-            .from(moduleEventDeliveries)
-            .where(
-              and(
-                eq(moduleEventDeliveries.id, delivery.id),
-                eq(moduleEventDeliveries.claimToken, token),
-                eq(moduleEventDeliveries.state, "processing"),
-              ),
-            )
-            .for("update");
-          if (!locked) throw new Error("Claim lost");
-          const [event] = await tx
-            .select()
-            .from(moduleEvents)
-            .where(eq(moduleEvents.id, delivery.event_id));
-          const subscription = SERVER_MODULES[
-            delivery.subscriber_id
-          ]?.eventSubscriptions?.find((s) => s.eventType === event.eventType);
-          if (!subscription) throw new Error("Subscriber unavailable");
-          await subscription.handler(tx, {
-            id: event.id,
-            businessId: event.businessId,
-            payload: decodeSaleClosedEvent(event.payload),
-          });
-          await tx
-            .update(moduleEventDeliveries)
-            .set({
-              state: "applied",
-              appliedAt: new Date(),
-              claimToken: null,
-              claimUntil: null,
-              diagnostic: null,
-            })
-            .where(
-              and(
-                eq(moduleEventDeliveries.id, delivery.id),
-                eq(moduleEventDeliveries.claimToken, token),
-              ),
-            );
+          await applyClaimedDelivery(tx, delivery, token);
         },
         { connectionTimeoutMs: connectionBudget(deadline) },
       );
@@ -161,4 +125,68 @@ export async function pendingSummary(businessId: string, locationId: string) {
     sql`select count(*)::int as count,count(*) filter(where d.diagnostic is not null)::int as failed from core.module_event_delivery d join core.module_event e on e.id=d.event_id where e.business_id=${businessId}::uuid and e.location_id=${locationId}::uuid and d.state in ('pending','processing')`,
   );
   return rows.rows[0] as unknown as { count: number; failed: number };
+}
+
+export async function applyClaimedDelivery(
+  tx: DbTransaction,
+  delivery: { id: string; event_id: string; subscriber_id: string },
+  token: string,
+) {
+  const [locked] = await tx
+    .select()
+    .from(moduleEventDeliveries)
+    .where(
+      and(
+        eq(moduleEventDeliveries.id, delivery.id),
+        eq(moduleEventDeliveries.claimToken, token),
+        eq(moduleEventDeliveries.state, "processing"),
+      ),
+    )
+    .for("update");
+  if (!locked) throw new Error("Claim lost");
+  const [event] = await tx
+    .select()
+    .from(moduleEvents)
+    .where(eq(moduleEvents.id, delivery.event_id));
+  const declared = SERVER_MODULES[
+    delivery.subscriber_id
+  ]?.eventSubscriptions?.find((s) => s.eventType === event.eventType);
+  // Existing unrelated deliveries retain their original query budget. Only the
+  // migrated capability or a missing producer needs historical dispatch metadata.
+  const compatibility =
+    !declared ||
+    (declared.resourceType === "payment_method" &&
+      declared.slot === "commission");
+  let key: string | null = null;
+  if (compatibility) {
+    await paymentStorageReady(tx);
+    key = await historicalHandlerKey(
+      tx,
+      delivery.subscriber_id,
+      event.eventType,
+    );
+  }
+  const subscription =
+    key === "commission_snapshot" ? commissionSubscriptions[0] : declared;
+  if (!subscription) throw new Error("Subscriber unavailable");
+  await subscription.handler(tx, {
+    id: event.id,
+    businessId: event.businessId,
+    payload: decodeSaleClosedEvent(event.payload),
+  });
+  await tx
+    .update(moduleEventDeliveries)
+    .set({
+      state: "applied",
+      appliedAt: new Date(),
+      claimToken: null,
+      claimUntil: null,
+      diagnostic: null,
+    })
+    .where(
+      and(
+        eq(moduleEventDeliveries.id, delivery.id),
+        eq(moduleEventDeliveries.claimToken, token),
+      ),
+    );
 }

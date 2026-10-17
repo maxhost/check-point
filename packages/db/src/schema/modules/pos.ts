@@ -17,6 +17,7 @@ import { users } from "../auth";
 import { businesses, locations } from "../business";
 import { products } from "../catalog";
 import { orders } from "../order";
+import { paymentMethods } from "../payment-methods";
 import { createPosPaymentTables } from "./pos-payments";
 import type {
   FinancialSettlement,
@@ -242,7 +243,9 @@ export const ticketSettings = posSchema.table("ticket_settings", {
     .notNull()
     .defaultNow(),
 });
-const paymentTables = createPosPaymentTables(posSchema, posOrders);
-export const posPaymentMethods = paymentTables.methods;
-export const posPaymentMethodInitializations = paymentTables.initializations;
+const paymentTables = createPosPaymentTables(
+  posSchema,
+  posOrders,
+  paymentMethods,
+);
 export const posOrderPayments = paymentTables.payments;

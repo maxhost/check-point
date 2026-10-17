@@ -7,13 +7,13 @@ import {
 import { normalizeImage } from "@mi-pasaporte/domain/server/assets/image";
 import {
   canonicalVatRate,
+  validateVatPatch,
   resultingBrandVat,
 } from "@mi-pasaporte/domain/server/brand/vat";
 import { isIanaTimezone } from "@mi-pasaporte/domain/server/timezone";
 
 const valid = {
   name: "La Craft Beer Garden",
-  timezone: "America/Guayaquil",
   brandPrimaryColor: "#176548",
   brandComplementaryColor: "#2d8b68",
   brandAccentColor: "#E78132",
@@ -54,22 +54,34 @@ describe("brand contract", () => {
     expect(isIanaTimezone("Ecuador/Cuenca")).toBe(false);
   });
 
-  it("handles the optional currency: absent keeps it, supported passes, unknown is 422", () => {
-    // Absent → undefined (the service keeps the current value).
-    expect(validateBrandInput(valid).currencyCode).toBeUndefined();
-    // Supported ISO 4217 → echoed back.
-    expect(
-      validateBrandInput({ ...valid, currencyCode: "BRL" }).currencyCode,
-    ).toBe("BRL");
-    // Unknown/lowercase → 422.
-    expect(() => validateBrandInput({ ...valid, currencyCode: "ZZZ" })).toThrow(
-      BrandError,
-    );
-    expect(() => validateBrandInput({ ...valid, currencyCode: "usd" })).toThrow(
-      BrandError,
-    );
+  it("rejects regional and fiscal mutations in branding", () => {
+    for (const field of [
+      { timezone: "America/Guayaquil" },
+      { currencyCode: "USD" },
+      { chargesVat: false },
+      { saleVatRate: null },
+      { recoversPurchaseVat: false },
+    ])
+      expect(() => validateBrandInput({ ...valid, ...field })).toThrow(
+        BrandError,
+      );
   });
-
+  it("the pre-cut bridge accepts the old regional payload only when explicitly selected", () => {
+    expect(
+      validateBrandInput(
+        {
+          ...valid,
+          timezone: "America/Guayaquil",
+          currencyCode: "USD",
+          chargesVat: false,
+        },
+        true,
+      ),
+    ).toMatchObject({
+      regional: { timezone: "America/Guayaquil", currencyCode: "USD" },
+      vat: { chargesVat: false },
+    });
+  });
   it("validates real image bytes and creates both browser variants", async () => {
     const source = await sharp({
       create: { width: 64, height: 40, channels: 4, background: "#176548" },
@@ -125,9 +137,9 @@ describe("brand fiscal contract 0229", () => {
     [null, null],
   ])("canonicalizes exact percentage %s to %s", (value, expected) => {
     expect(canonicalVatRate(value)).toBe(expected);
-    expect(
-      validateBrandInput({ ...valid, saleVatRate: value }).vat.saleVatRate,
-    ).toBe(expected);
+    expect(validateVatPatch({ ...valid, saleVatRate: value }).saleVatRate).toBe(
+      expected,
+    );
   });
 
   it.each([
@@ -151,7 +163,7 @@ describe("brand fiscal contract 0229", () => {
     false,
     undefined,
   ])("rejects non-decimal/invalid percentage %s without rounding", (value) => {
-    expect(() => validateBrandInput({ ...valid, saleVatRate: value })).toThrow(
+    expect(() => validateVatPatch({ ...valid, saleVatRate: value })).toThrow(
       BrandError,
     );
   });
@@ -160,12 +172,12 @@ describe("brand fiscal contract 0229", () => {
     "only accepts strict booleans for %s",
     (field) => {
       for (const value of ["false", "true", 0, 1, null, undefined]) {
-        expect(() => validateBrandInput({ ...valid, [field]: value })).toThrow(
+        expect(() => validateVatPatch({ ...valid, [field]: value })).toThrow(
           BrandError,
         );
       }
       for (const value of [true, false]) {
-        expect(validateBrandInput({ ...valid, [field]: value }).vat).toEqual({
+        expect(validateVatPatch({ ...valid, [field]: value })).toEqual({
           [field]: value,
         });
       }
@@ -178,7 +190,7 @@ describe("brand fiscal contract 0229", () => {
       saleVatRate: null,
       recoversPurchaseVat: false,
     };
-    expect(validateBrandInput(valid).vat).toEqual({});
+    expect(validateVatPatch(valid)).toEqual({});
     expect(resultingBrandVat(initial, {})).toEqual(initial);
     expect(() => resultingBrandVat(initial, { chargesVat: true })).toThrow(
       "Ingresa la tasa",
