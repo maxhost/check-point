@@ -437,6 +437,10 @@ anulaciones, cupones, canjes y visitas no publican eventos.
    `MODULE_EVENTS_ENABLED`: `sale.closed` se publica siempre.
 7. **Hallazgos de la 0237:** la 6 y la 7 entran en AN-1; empieza limpio en el deploy de AN-1 (no procesa eventos
    anteriores); local sin ciudad queda sin contexto; «cuánto ahorraste» a PARQUEADO.
+8. **Piso de la tarjeta 9 (merma) en cualquier moneda** (2026-10-17, al preguntar GPT en AN-2): el owner había dicho
+   «3 unidades de la moneda del local» y lo corrigió porque no sirve en COP, ARS o CLP. Queda: lo que faltó vale al
+   menos **un ticket promedio de los últimos 28 días** o el 1% de la venta semanal, lo mayor; sin conversión. Sin
+   ventas en esos 28 días, aparece con cualquier faltante que tenga costo.
 
 ## Prompt — AN-1 (spec 0237; 2026-10-17; lanzar cuando el owner lo diga)
 
