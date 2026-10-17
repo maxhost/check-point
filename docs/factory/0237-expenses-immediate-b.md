@@ -82,3 +82,45 @@ se conservan arriba; un eventual resultado nuevo no los sustituye.
 Se espera combinación del nuevo producto de A, fuente congelada y GO del
 coordinador antes de tocar DB otra vez. Este checkpoint no tiene nueva evidencia
 Neon ni cambia el resultado de `d93599f7`.
+
+## Segunda ejecución real: PASS del alcance B
+
+Checkpoint de diagnóstico `beeb1339`; fuente combinada congelada durante la corrida
+`dd0bb1b65a9aaf463601a9ccb0662f2f1e712f4a`, con producto A `1ac9aaf8` y presupuesto
+real 20000 ms. Mismo comando focal/wrapper/configuración protegida y Node 24.20.0,
+sin paralelismo. Log crudo distinto:
+`/private/tmp/checkpass-expenses-immediate/expenses-immediate-b-neon-dd0bb1b6.log`.
+
+**Wrapper EXIT 0, un archivo/un test PASS, cero skips/retries.** Runner 32,68 s;
+caso 28,08 s. Setup y teardown concluyeron sin fallos de hooks. No se alteró el
+test para aceptar pendientes ni se ejecutó cron/retry posterior para completar la
+cadena. Pasaron todos los asserts originales de aplicado, dinero/revisión,
+idempotencia, tenant, suscriptor independiente, evento ajeno y corte Stock.
+
+Diagnósticos observados del callback (no latencia de la respuesta HTTP):
+
+| Fase | Tiempo observado |
+|---|---:|
+| create | 3154,78 ms |
+| create-replay | 453,26 ms |
+| update | 2744,65 ms |
+| delete | 2480,38 ms |
+| delete-replay | 457,13 ms |
+
+Son evidencia del intento acotado en esta DB/snapshot. No se presenta como garantía
+de actualización síncrona, entrega de todo backlog, SLA ni PASS del rendimiento
+general diferido. La respuesta conserva after detached; los unit de A certifican
+su programación/no bloqueo y el fallback, mientras este focal ejecuta el callback
+controlado después de leer cada respuesta.
+
+Los dos resultados quedan ligados a sus fuentes: `d93599f7`/2000 ms FAIL, y
+`dd0bb1b6`/20000 ms PASS tras la corrección técnica de producto. No se sustituyó el
+fallo anterior ni se cuentan sus fases posteriores como ejecutadas. No migración
+nueva ni cambios de ledger, configuración, herramientas o estados comunes por B.
+
+Merchant typecheck final y lint focal EXIT 0 sobre esa fuente; logs crudos:
+`/private/tmp/checkpass-expenses-immediate/expenses-immediate-b-types-dd0bb1b6.log`
+y `expenses-immediate-b-lint-dd0bb1b6.log` en el mismo directorio. Diff-check sin
+errores. No procesos de B pendientes; se libera el recurso replay tras finalizar
+teardown, antes de factory deliver. QA de combinación/main queda al coordinador;
+B no mueve main ni retira worktree por su cuenta.
