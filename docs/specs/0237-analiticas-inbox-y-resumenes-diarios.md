@@ -351,7 +351,7 @@ AN-3 suma clientes y promos. «Cuánto ahorraste» no tiene medición en la v1 (
   - **8 Insumo que se acaba:** existencia teórica / consumo diario (p25 y p75 de los últimos 28 días) → «Te estás
     quedando sin harina: queda para unas 20 masas y se acabaría entre el jueves y el sábado.» Aparece si el extremo
     corto es ≤ 4 días; requiere el mes mínimo. `u = 1 − días/5`. Acción `record_purchase`.
-  - **9 Merma por conteo,** el día del conteo: diferencia ≥ max(3 USD, 1% de la venta semanal) → «Faltaron 3 kg de
+  - **9 Merma por conteo,** el día del conteo: diferencia ≥ max(3 unidades mayores de la moneda del comercio sin FX, 1% de la venta semanal) → «Faltaron 3 kg de
     harina (~$4) que no explican las ventas.» Decae ×0,7 por día. Acción: ver detalle del conteo.
 - El corte del conteo ya filtra `sale.closed` (G): los eventos nuevos de stock no lo alteran.
 

@@ -16,7 +16,7 @@ Worktree `/private/tmp/checkpass-an2/analytics-an2-product`. Writer dominio anal
 
 Tarjetas5/8/9 por §6:5 evaluada en delivery derivada, umbral5%, impacto semanal y decaimiento0,7;8 por local/insumo con mínimo mes y p25/p75 últimos28d/rango;9 faltante y umbral, detalle conteo y decaimiento. Novedad/tope/acciones comunes existentes. Histórico agrega valor stock y subas con períodos/local; lee solo resúmenes. HTTP conserva campos AN-1 y agrega bloque stock documentado en handoff. Kit/tuteo, sin kit/guardias/CSS. Si se requiere habilidad UI, leer impeccable pertinente.
 
-Precisión pendiente comunicada al owner: umbral9 de3USD frente a moneda comercio sin FX. Implementar resto sin decidir esa equivalencia hasta respuesta; no bloquear trabajo independiente.
+Aclaración expresa del owner (2026-10-17): umbral9 =3 unidades mayores de la moneda del comercio, sin FX. Spec§6 actualizada por coordinador antes de implementar este criterio.
 
 ## QA — analytics-an2-qa
 
