@@ -3,7 +3,19 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — NEGOCIO0235 EN PROD; MIGRACIONES Y DEPLOYS VERIFICADOS (2026-10-16)
+## ESTADO — NEGOCIO0235 EN PROD; VENTA REAL F5 VERIFICADA (2026-10-16)
+
+Release publicado **db3175d237cdcf4ec41e32d70cc1c4f1e06ab2cf**, migraciones0093–95 en PROD/journal96,4deploysREADY ysmoke6/6PASS como abajo. **Nueva prueba del owner**: «hice la prueba con el negocio F5 cerre session, inicie de nuevo, abri una orden, la cobre». SQL2026-10-17T03:36:51.028Z, RepeatableRead ReadOnly yguardendpointbf545fdce7a0: **PASS venta530b45ab-11ff-49b2-b80d-8fa70a53d67e**, negocio5fcaebc2-82f2-4b8c-ba5c-27a44c802c40/local11560a0c-e7db-4909-b19c-968ef2ada93c, cerrada03:35:32.629UTC, **ARS9.50**. Única cerrada trasdeploy; pago6d642ce3-d287-409a-aa72-3c5a234e6893, Efectivo41aa1364-e75e-4884-aebe-805d7cfae819 activo/mismo comercio, **method_provider_id=core**.
+
+Core.sale_commission3c257494-118c-423b-b3c7-b3322c9121f9 ycore.payment_commission8fa8c158-f84c-450d-b641-da72314ee89b guardadas, mismas identidades/importe/local/evento. Comisión **0.00, completo, configured:true,reasons[]**, revisiónnull; **CORRECTO para Efectivo/charge_shape=none, cero conocido** según0235/0150. No llamar a este resultado «Sin configurar» ni inventarfalta: el aviso provisional aplica a componentes de un medio que requiere tasa/fijo. Esta prueba no cubre tarifaporcentual/fija ni cambio de comisióncongelado, que tienen evidenciaCIprevia.
+
+Evento857b2a82-047d-468a-887a-c3268bc2983b sale.closedv2 mismo negocio/local/orden/pago/money; solo deliveryRecipesapplied,1intento,03:35:33.265UTC,0claims. Comisiones se guardaron en cierre, no faltadeliveryprofitability. Línea48eeabff-d09a-45c2-aa96-73cfbe953703 tiene composicióncongelada15e22b37-626c-4e0c-9fd2-74b2d56c7891/revisiónrecetae37f4524-18ac-4451-a437-8aa84f2e47d9;3fuentes y3movimientos únicos **-3/-5/-30**, costoscongelados0.175/0.000220/0.005ARS factor1, costoexactoesalínea0.6761. **Otras2líneas sincomposición: no afirmar costocompleto/margen de toda venta**. Sin duplicados observados. No se ejecutó retry ni escritura/testPROD.
+
+Informe actualizado commit **7b9c955f** en dev [release](../factory/release-negocio-2026-10-16.md), sin push extra. Evidencia saneada /private/tmp/checkpass-negocio-release/f5-sale-after.json y f5-sale-verification.json; lectorverify-f5-sale.cjs usa checkoutprincipalvigente (elreleaseWT sigue retirado). Cierre/iniciosesión es reporteowner; no se inspeccionó su navegador. Sigue pendiente si ownerquiere aceptaciónvisual: Negocio3secciones yMarca branding; **reactivación efectiva delcron cada1h aún no confirmada explícitamente**. Puede usarapp/reactivarcron desdecortevalidado; no pedirpermisosgeneralesni rehacerbaterías. Autorizaciónprevia push/migración ya consumida, no usarpara nuevasopsPROD. Credenciales solo memoria sinvalores impresos.
+
+Solo worktreeprincipaldev, factoryrelease retired/recursosliberados; agentes anteriorescompletados. Antes de nuestro informeHEAD95967d1e incorporaba docsADR0152Analíticas ajenos, preservados; ya no aparecen los antiguos docsPARQUEADO/plan como dirty. No editarINDEX/TASKS/estadoClaude ni publicar docs. Mainlocal/remoto permanecendb3175d2; devincluye cierrelocal ytrabajo documentalajeno. Sin código/migracionesnuevas enesta revisión.
+
+## HISTÓRICO — NEGOCIO0235 EN PROD; MIGRACIONES Y DEPLOYS VERIFICADOS (2026-10-16)
 
 **Publicación completa del candidato db3175d237cdcf4ec41e32d70cc1c4f1e06ab2cf**, origin/main y main local exactos. Owner confirmó pausa y ordenó «listo pausado, hace el push y las migraiones», registrado2026-10-17T03:27:25.545Z. Wrapper recibió esta confirmación nueva posterior al pre-push real PASS03:22:16UTC, comprobó SQL read-only sin writers/obligaciones/claims/orphans y permitió el push; Git EXIT0 sin force/bypass. No reutilizar esta autorización para operaciones nuevas.
 
