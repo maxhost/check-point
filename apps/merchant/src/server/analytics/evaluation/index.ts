@@ -72,7 +72,7 @@ async function recoverLegacyFacts(
       sql`select e.id,e.event_type,e.event_version,e.payload,e.created_at from core.module_event e join core.module_event_delivery d on d.event_id=e.id and d.subscriber_id='core.analytics' and d.state='applied' where e.business_id=${businessId} and e.id=${eventId}::uuid`,
     );
     const raw = event.rows[0];
-    let restored: CardCandidate | undefined;
+    let restored: CardCandidate | undefined, provenOrigin: string | undefined;
     if (raw) {
       const translator = metricTranslators().find(
         (t) => t.eventType === raw.event_type,
@@ -97,12 +97,17 @@ async function recoverLegacyFacts(
         }
         const relevant = facts.filter(
           (f) =>
+            typeof f.occurredAt === "string" &&
+            Number.isFinite(Date.parse(f.occurredAt)) &&
             card.subjectKey ===
-            (f.kind === "unit_cost_change"
-              ? `${f.locationId}:${f.itemId}:${f.productId}`
-              : `${eventId}:${f.itemId}`),
+              (f.kind === "unit_cost_change"
+                ? `${f.locationId}:${f.itemId}:${f.productId}`
+                : `${eventId}:${f.itemId}`),
         );
         if (relevant.length) {
+          provenOrigin = [...relevant].sort(
+            (a, b) => Date.parse(a.occurredAt) - Date.parse(b.occurredAt),
+          )[0].occurredAt;
           const original = inputFromRow(
             (
               await tx.execute(
@@ -134,7 +139,6 @@ async function recoverLegacyFacts(
           };
       }
     }
-    const provenOrigin = contextRecord(restored?.context?.fact).occurredAt;
     const provenInstant =
       typeof provenOrigin === "string" ? Date.parse(provenOrigin) : NaN;
     const recoveredStart = Number.isFinite(provenInstant)

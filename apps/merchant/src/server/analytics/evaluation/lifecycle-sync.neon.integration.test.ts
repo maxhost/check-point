@@ -28,6 +28,8 @@ import {
   type AnalyticsPolicy,
   type AnalyticsPolicyConfig,
 } from "@mi-pasaporte/domain/analytics/policy/index";
+import { buildFactCandidates } from "@mi-pasaporte/domain/analytics/cards/stock";
+import { metricTranslators } from "../ingestion/registry";
 import { buildCandidates } from "@mi-pasaporte/domain/analytics/cards/index";
 import { addDays, daysBetween } from "@mi-pasaporte/domain/analytics/date";
 import type { AnalyticsContext } from "@mi-pasaporte/domain/analytics/types";
@@ -902,62 +904,63 @@ describe.skipIf(!permisosIntegrationEnabled)(
       expect((await content(f, "8"))[0].id).toBe(card.id);
       expect((await state(f, "8")).status).toBe("open");
     }, 60000);
-    it("recovers a real applied legacy fact older than90days and shortens retention without renewing content or reminders", async () => {
-      const f = await fixture();
-      await seed(f);
-      const eventId = randomUUID(),
-        movementId = randomUUID(),
-        id = randomUUID(),
-        origin = "2026-06-01T12:00:00.000Z",
-        expiry = new Date("2026-08-30T12:00:00.000Z"),
-        subject = `${eventId}:${f.item}`;
-      await getDb()
-        .insert(moduleEvents)
-        .values({
-          id: eventId,
-          businessId: f.businessId,
-          eventType: "stock.adjustment.recorded",
-          eventVersion: 1,
-          sourceId: movementId,
-          locationId: f.locationId,
-          createdAt: now,
-          payload: {
+    it.each([
+      { condition: "qualifying", belowThreshold: false },
+      { condition: "below-threshold", belowThreshold: true },
+    ])(
+      "recovers a real applied legacy fact older than90days and shortens retention without renewing content or reminders ($condition)",
+      async ({ belowThreshold }) => {
+        const f = await fixture();
+        await seed(f);
+        const eventId = randomUUID(),
+          movementId = randomUUID(),
+          id = randomUUID(),
+          origin = "2026-06-01T12:00:00.000Z",
+          expiry = new Date("2026-08-30T12:00:00.000Z"),
+          subject = `${eventId}:${f.item}`;
+        await getDb()
+          .insert(moduleEvents)
+          .values({
+            id: eventId,
+            businessId: f.businessId,
+            eventType: "stock.adjustment.recorded",
             eventVersion: 1,
-            movementId,
-            itemId: f.item,
-            itemLabel: "Harina",
-            itemUnit: "kg",
+            sourceId: movementId,
             locationId: f.locationId,
-            occurredAt: origin,
-            observedAt: origin,
-            quantity: "-5",
-            onHandAfter: "0",
-            countedQuantity: "0",
-            theoreticalQuantity: "5",
-            unitCost: "100",
-            gapAmountMinor: "-50000",
-            currencyCode: "USD",
-            minorUnit: 2,
-          },
-        });
-      await getDb()
-        .insert(moduleEventDeliveries)
-        .values({
+            createdAt: now,
+            payload: {
+              eventVersion: 1,
+              movementId,
+              itemId: f.item,
+              itemLabel: "Harina",
+              itemUnit: "kg",
+              locationId: f.locationId,
+              occurredAt: origin,
+              observedAt: origin,
+              quantity: "-5",
+              onHandAfter: "0",
+              countedQuantity: "0",
+              theoreticalQuantity: "5",
+              unitCost: "100",
+              gapAmountMinor: "-50000",
+              currencyCode: "USD",
+              minorUnit: 2,
+            },
+          });
+        await getDb().insert(moduleEventDeliveries).values({
           eventId,
           subscriberId: "core.analytics",
           state: "applied",
           appliedAt: now,
         });
-      await getDb()
-        .insert(sources)
-        .values({
-          businessId: f.businessId,
-          sourceKey: `stock.adjustment.recorded:${movementId}`,
-          sourceRevision: 1,
-        });
-      await getDb()
-        .insert(metrics)
-        .values({
+        await getDb()
+          .insert(sources)
+          .values({
+            businessId: f.businessId,
+            sourceKey: `stock.adjustment.recorded:${movementId}`,
+            sourceRevision: 1,
+          });
+        await getDb().insert(metrics).values({
           businessId: f.businessId,
           locationId: f.locationId,
           day: "2026-06-01",
@@ -970,94 +973,150 @@ describe.skipIf(!permisosIntegrationEnabled)(
           quantity: "-5",
           count: 1,
         });
-      await getDb()
-        .insert(states)
-        .values({
-          businessId: f.businessId,
-          cardKey: "9",
-          subjectKey: subject,
-          candidateId: id,
-          status: "open",
-          fingerprint: "legacy",
-          context: { legacy: true },
-          contextVersion: "legacy",
-          policyVersion: "legacy",
-          episodeStartedAt: now,
-          expiresAt: new Date(now.getTime() + 90 * 86400000),
-          remindAt: new Date(now.getTime() + 86400000),
-          lastShownDay: day,
-          shownDays: 2,
-          revision: 3,
-        });
-      await getDb()
-        .insert(candidates)
-        .values({
-          id,
-          businessId: f.businessId,
-          cardKey: "9",
-          subjectKey: subject,
-          day,
-          weight: "3",
-          amountMinor: 50000n,
-          currencyCode: "USD",
-          minorUnit: 2,
-          fingerprint: "legacy",
-          category: "informational",
-          contextVersion: "legacy",
-          policyVersion: "legacy",
-          episodeStartedAt: now,
-          expiresAt: new Date(now.getTime() + 90 * 86400000),
-          period: { from: day, to: day, label: "Legacy" },
-          parameters: {
+        await getDb()
+          .insert(states)
+          .values({
+            businessId: f.businessId,
             cardKey: "9",
             subjectKey: subject,
-            sender: "Stock",
-            title: "Legacy count",
-            body: "Prior copy",
-            amountMinor: 50000,
+            candidateId: id,
+            status: "open",
+            fingerprint: "legacy",
+            context: { legacy: true },
+            contextVersion: "legacy",
+            policyVersion: "legacy",
+            episodeStartedAt: now,
+            expiresAt: new Date(now.getTime() + 90 * 86400000),
+            remindAt: new Date(now.getTime() + 86400000),
+            lastShownDay: day,
+            shownDays: 2,
+            revision: 3,
+          });
+        await getDb()
+          .insert(candidates)
+          .values({
+            id,
+            businessId: f.businessId,
+            cardKey: "9",
+            subjectKey: subject,
+            day,
+            weight: "3",
+            amountMinor: 50000n,
             currencyCode: "USD",
             minorUnit: 2,
-            quality: "observed",
-            actionKey: null,
-            urgency: 1,
-            weight: 3,
             fingerprint: "legacy",
-            locationId: f.locationId,
-          },
+            category: "informational",
+            contextVersion: "legacy",
+            policyVersion: "legacy",
+            episodeStartedAt: now,
+            expiresAt: new Date(now.getTime() + 90 * 86400000),
+            period: { from: day, to: day, label: "Legacy" },
+            parameters: {
+              cardKey: "9",
+              subjectKey: subject,
+              sender: "Stock",
+              title: "Legacy count",
+              body: "Prior copy",
+              amountMinor: 50000,
+              currencyCode: "USD",
+              minorUnit: 2,
+              quality: "observed",
+              actionKey: null,
+              urgency: 1,
+              weight: 3,
+              fingerprint: "legacy",
+              locationId: f.locationId,
+            },
+          });
+        const p = focused(["9"], (c) => {
+          c.rules.find((r) => r.id === "9")!.parameters = {
+            ...c.rules.find((r) => r.id === "9")!.parameters,
+            ageDecay: 1,
+          };
         });
-      const p = focused(["9"], (c) => {
-        c.rules.find((r) => r.id === "9")!.parameters = {
-          ...c.rules.find((r) => r.id === "9")!.parameters,
-          ageDecay: 1,
-        };
-      });
-      expect(await evaluateBusiness(f.businessId, now, { policy: p })).toBe(
-        true,
-      );
-      expect(await state(f, "9")).toMatchObject({
-        candidateId: id,
-        status: "expired",
-        episodeStartedAt: new Date(origin),
-        expiresAt: expiry,
-        remindAt: null,
-        revision: 3,
-      });
-      expect(await content(f, "9")).toHaveLength(0);
-      expect(
-        (await readInbox(f.businessId, viewer, now, { policy: p })).cards,
-      ).toHaveLength(0);
-      expect(
-        await getDb()
+        const effective = belowThreshold
+          ? focused(["9"], (c) => {
+              c.rules.find((r) => r.id === "9")!.parameters = {
+                ...c.rules.find((r) => r.id === "9")!.parameters,
+                ageDecay: 1,
+                weeklySalesRatio: 1,
+              };
+            })
+          : p;
+        if (belowThreshold)
+          await getDb()
+            .insert(metrics)
+            .values({
+              businessId: f.businessId,
+              locationId: f.locationId,
+              day: "2026-05-31",
+              metric: "revenue",
+              dimensionKind: "none",
+              amountMinor: 100000n,
+              currencyCode: "USD",
+              minorUnit: 2,
+              count: 1000,
+            });
+        const [source] = await getDb()
           .select()
-          .from(metrics)
-          .where(
-            and(
-              eq(metrics.businessId, f.businessId),
-              eq(metrics.metric, "stock_count_gap"),
-            ),
+          .from(moduleEvents)
+          .where(eq(moduleEvents.id, eventId));
+        const translated = metricTranslators()
+          .find((t) => t.eventType === source.eventType)!
+          .translate({
+            id: eventId,
+            businessId: f.businessId,
+            eventType: source.eventType,
+            eventVersion: source.eventVersion,
+            payload: source.payload,
+            capturedAt: now.toISOString(),
+          });
+        const original = await readInput(
+          f.businessId,
+          new Date(origin),
+          undefined,
+          undefined,
+          effective,
+        );
+        expect(
+          buildFactCandidates(
+            original,
+            translated.facts!,
+            eventId,
+            () => "2026-06-01",
+            [],
+            effective,
           ),
-      ).toMatchObject([{ amountMinor: -50000n, quantity: "-5", count: 1 }]);
-    }, 60000);
+        ).toHaveLength(belowThreshold ? 0 : 1);
+        expect(
+          await evaluateBusiness(f.businessId, now, { policy: effective }),
+        ).toBe(true);
+        expect(await state(f, "9")).toMatchObject({
+          candidateId: id,
+          status: "expired",
+          episodeStartedAt: new Date(origin),
+          expiresAt: expiry,
+          remindAt: null,
+          revision: 3,
+        });
+        expect(await content(f, "9")).toHaveLength(0);
+        expect(
+          (await readInbox(f.businessId, viewer, now, { policy: effective })).cards,
+        ).toHaveLength(0);
+        expect(
+          await getDb()
+            .select()
+            .from(metrics)
+            .where(
+              and(
+                eq(metrics.businessId, f.businessId),
+                eq(metrics.metric, "stock_count_gap"),
+              ),
+            ),
+        ).toMatchObject([{ amountMinor: -50000n, quantity: "-5", count: 1 }]);
+      },
+      60000,
+    );
     it("reopens12 only for a new real applied campaign cycle, carries real coupons once, and keeps late money closed", async () => {
       const f = await fixture();
       await seed(f);
