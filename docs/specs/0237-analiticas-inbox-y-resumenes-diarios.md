@@ -94,6 +94,8 @@ exacto, `count`) y tipo de dimensión (`none`, `product`, `item`, `concept`, `cu
 | `payment_commission` | sum | money | none | 1 | `sale.commission.frozen` → comisión congelada de la venta |
 | `cost_of_goods` | sum | money | product | 1 | `recipes.consumption.applied` → costo del consumo de la línea |
 | `units_with_cost` | sum | quantity | product | 1 | `recipes.consumption.applied` → unidades con costo conocido; cobertura = `units_with_cost / units_sold` |
+| `revenue_with_cost` | sum | money | product | 1 | `recipes.consumption.applied` → neto exacto de las líneas cuyo costo se conoce; `count` cuenta esas líneas |
+| `payment_commission_with_cost` | sum | money | product | 1 | `recipes.consumption.applied` → comisión congelada asignada a esas líneas; `count` cuenta solo líneas con comisión conocida, incluido cero explícito |
 | `expense_fixed` / `expense_variable` | sum | money | concept | 1 | `expense.*` → gasto por concepto según `isFixed` |
 | `stock_purchase` | sum | money + quantity | item | 2 | `stock.purchase.recorded` |
 | `stock_unit_cost` | gauge | money | item | 2 | `stock.purchase.recorded` → costo promedio por unidad después de la compra |
@@ -107,7 +109,10 @@ exacto, `count`) y tipo de dimensión (`none`, `product`, `item`, `concept`, `cu
 
 Los nombres de la dimensión (producto, insumo, concepto, cliente, campaña) **viajan en el evento** y se guardan en
 `analytics.dimension_label`. Por eso `sale.closed` pasa a **v3** = v2 + `lines[].productLabel` (nombre al cerrar);
-decodificadores de POS, Recetas y core aceptan v1–v3.
+decodificadores de POS, Recetas y core aceptan v1–v3. El contrato v3, todavía sin desplegar, incluye también
+`lines[].commissionMinor: string | null`: comisión de la venta asignada a cada línea en unidades menores, cero
+conocido si no hay cargo y null si falta configuración. La asignación proporcional al neto de **todas** las líneas
+usa el reparto exacto existente del dominio financiero y conserva el total congelado, incluidos sus centavos.
 
 ### 2. Resúmenes diarios
 
@@ -147,6 +152,12 @@ Eventos nuevos de AN-1 (append genérico de G, `source_id` único por comercio y
   delivery de Recetas queda `skipped` (módulos apagados), no hay evento y esas unidades cuentan como sin costo
   (`units_sold` sin `units_with_cost`).
 
+Precisión técnica AN-1 (hallazgo comunicado durante implementación, ADR0153): cada línea del consumo conserva
+también `revenueMinor` y `allocatedCommissionMinor` del snapshot de la venta, con moneda/unidad. Sus métricas de
+dinero conocido se emiten únicamente cuando `cost` no es null; una comisión desconocida no se transforma en cero.
+Preparar el cálculo de comisión desde revisiones capturadas → publicar v3 con el reparto → congelar/persistir la
+comisión y su evento ocurre en la misma transacción de cierre, sin lecturas de tablas de origen en Analíticas.
+
 Traductores de AN-1: POS (`sale.closed` → `revenue`, `product_revenue`, `units_sold`, promos desde `discountOrigin`
 en AN-3), Recetas (`recipes.consumption.applied` → `cost_of_goods`, `units_with_cost`; en AN-2 también
 `stock_consumption`, `stock_on_hand`), Gastos (`expense.*`) y core (`sale.commission.frozen`). Cada evento tiene su
@@ -164,6 +175,10 @@ borra el de otro.
   clave para no trabarse). Un `expense.deleted` deja cero aportes. Reaplicar la misma delivery no cambia nada.
 - **Empieza limpio** (owner, H2): las deliveries `core.analytics` se crean al publicar; los `module_event` guardados
   antes del deploy de AN-1 no reciben ninguna y no se procesan.
+- Los eventos derivados declaran `causationEventId` al publicarse. Su delivery `core.analytics` solo se crea si
+  el padre del mismo comercio ya tiene una delivery core, en cualquier estado. Así un consumo tardío de una venta
+  predeploy puede completar Stock sin introducir costos históricos huérfanos en Analíticas. No usa la versión
+  del evento como fecha ni exige que la delivery padre ya esté aplicada; no añade flag ni migración.
 
 #### 2.4 Corte del conteo de Stock
 
@@ -243,6 +258,14 @@ payment_commission) / revenue` de 28 días, solo sobre lo vendido con costo. Equ
 Días de venta restantes = días del resto del mes cuyo día de la semana tuvo ventas en las últimas 4 semanas, hoy
 incluido. Meta de hoy = `(E − revenue del mes) / días restantes`. Si ya se cubrió, no aparece. Si `m ≤ 0`, no hay meta
 y ganan peso la 6 y la 7.
+
+Para conservar exactamente «solo sobre lo vendido con costo», el numerador y denominador de `m` usan
+`revenue_with_cost`, `cost_of_goods` y `payment_commission_with_cost`. No se prorratea el neto agregado por
+unidades ni por precio promedio: cambiar precios entre ventas no cambia qué líneas tenían costo conocido.
+Si hay líneas con costo pero su comisión es desconocida (`count` de comisión conocido menor que el del neto
+conocido), no se promete margen/meta exactos. La ganancia unitaria de las tarjetas 6/13 usa esas mismas métricas
+por producto y `units_with_cost`. El bruto del histórico conserva la fórmula literal del §4 con revenue y comisión
+totales; las métricas auxiliares no vuelven a sumarse allí.
 
 **Composición:** sin mecanismo extra; a fin de mes, bajo el equilibrio, 3 + 6 + 13 suben juntas por peso.
 
