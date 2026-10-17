@@ -1,7 +1,7 @@
 ---
 spec: 0237
 fecha: 2026-10-17
-estado: cerrada
+estado: en revisión
 resumen: Analíticas en tres etapas — resúmenes diarios por evento, inbox de hasta 5 tarjetas en el Dashboard, histórico en números y contexto externo guardado — para que el dueño accione cada mañana sin que abrir la pantalla calcule nada.
 disjunta: no; G (0236) y N (0235) ya integradas en dev; comparte module_event, contrato de módulos, permisos, Dashboard y el corte de conteo de Stock
 archivos: packages/db (esquema analytics, core.location.city_id, migraciones); packages/domain/src/analytics; apps/merchant/src/server/analytics; server/module-events; modules/{pos,recipes,expenses,stock}; app/backoffice (Dashboard, analytics); rutas api/analytics e api/internal/analytics; permissions-catalog
@@ -11,9 +11,16 @@ archivos: packages/db (esquema analytics, core.location.city_id, migraciones); p
 
 Spec L3 (toca dinero, aislamiento entre comercios y migración a PROD). [ADR0144](../adr/0144-factory-local-por-tarea.md),
 [verificación](../VERIFICACION.md). Diseño de producto cerrado en el [ADR0152](../adr/0152-analiticas-inbox-accionable.md),
-que manda sobre esta spec; amplía el [ADR0021](../adr/0021-analiticas-universales-y-lentes-por-rubro.md). Eventos de
+que manda sobre esta spec con su addendum de ciclo de avisos del 2026-10-17; amplía el [ADR0021](../adr/0021-analiticas-universales-y-lentes-por-rubro.md). Eventos de
 Gastos: [spec0236](0236-gastos-registro-de-pagos.md) y [ADR0151](../adr/0151-gastos-y-eventos-autosuficientes.md).
 Decisiones citadas: `docs/plan-margen-ganancia-2026-10-14.md`, secciones «AN — …».
+
+**Revisión posterior a AN-1/AN-2/AN-3 (owner, 2026-10-17):** se aprueban avisos persistentes, cierre explícito,
+postergación y retención de 90 días/semanal de §3.7–§3.10. Sustituyen la copia diaria y «aceptar = navegar» del corte
+original. La funcionalidad integrada anterior conserva sus handoffs y sus límites; esta revisión todavía no está
+implementada. El catálogo §3.8 tiene dos aclaraciones consultadas al owner; mientras figuren pendientes no se lanza
+código. [Contrato de implementación](../factory/0237-inbox-lifecycle-contract.md),
+[adversarial](../factory/0237-inbox-lifecycle-adversarial.md).
 
 ## Problema
 
@@ -22,7 +29,7 @@ tablas, rutas ni UI de analíticas (`app/analytics.ts` son fixtures de demo del 
 su margen ni su punto de equilibrio y no anticipa la demanda; el ADR0152 decidió un inbox accionable y un histórico
 en números, alimentados por resúmenes diarios.
 
-Leído en el código el 2026-10-17:
+Diagnóstico inicial anterior a la implementación de AN-1, leído el 2026-10-17 (se conserva como antecedente):
 
 - **El único evento que existe es `sale.closed`** (POS, `server/module-events/publish.ts`, en la tx del cierre).
   Compras y ajustes de stock (`stock.movement`), anulaciones (`pos.pos_order.status='voided'`), canjes de cupón
@@ -64,6 +71,16 @@ reconstruir ventas anteriores a los eventos). Del 2026-10-17 (plan, «AN — dec
 7. **Hallazgos cerrados** (owner, 2026-10-17): la 6 y la 7 entran en AN-1 (H1); Analíticas empieza limpio en el deploy
    de AN-1, sin procesar eventos anteriores (H2); un local sin ciudad queda sin contexto y no se le pide nada al dueño
    (H3); «cuánto ahorraste» va a `docs/PARQUEADO.md` (H6).
+
+8. **Ciclo posterior de avisos:** una tarjeta activa/pospuesta por asunto, sin copias por recálculo/día. Navegar no
+   cierra. Solucionado/Ignorar eliminan contenido y conservan control mínimo del contexto atendido; Visto cierra
+   informes. Recordarme luego conserva identidad y fecha elegida. Solo cambios pertinentes posteriores justifican
+   reabrir; stock necesita evidencia propia del insumo/local, no una venta ajena ni un replay. La prioridad protege
+   stock con riesgo ≤ 24 h frente a invitaciones. §3.7–§3.10 mandan para esta revisión (owner, 2026-10-17).
+9. **Retención aprobada:** limpieza semanal,90 días móviles desde cierre/vencimiento probado, solo residuos
+   cerrados/vencidos. Pendientes/pospuestos de cualquier edad y control anti-repetición necesario excluidos. Los
+   cierres nuevos eliminan contenido al acto; no se crea un log para conservarlo 90 días. Histórico numérico y
+   deduplicación de eventos fuera del cleanup.
 
 ## Etapas
 
@@ -198,38 +215,46 @@ alimentan**: sin POS no hay ventas, sin Recetas no hay costo; Analíticas lo dic
 
 ### 3. Inbox (Dashboard)
 
-#### 3.1 Evaluación diaria
+#### 3.1 Evaluación y persistencia
 
-- Cron `GET /api/internal/analytics/evaluate` (Bearer `CRON_SECRET`, cron-job.org, ADR0118), cada 30 min de 00:00 a
-  08:00 `America/Guayaquil`. Toma comercios cuyo día local empezó hace ≥ 3 h y no tienen `analytics.evaluation_run`
-  de hoy; claim con `SKIP LOCKED`, presupuesto 20 s, lote acotado, `pg_try_advisory_xact_lock` para no solapar.
-- Evaluar = leer `daily_metric`/`daily_gauge` del comercio, calcular cada tarjeta (funciones puras en
-  `packages/domain/src/analytics/cards/`), guardar candidatas en `analytics.card_candidate` (comercio, `card_key`,
-  `subject_key`, día evaluado, peso, monto en juego, parámetros del texto, `fingerprint`, local). Único por
-  (comercio, tarjeta, sujeto, día). Abrir el Dashboard solo lee.
-- **Si la tanda no corrió:** la primera apertura del día evalúa ese comercio (mismo código, mismo claim); si tarda más
-  de 3 s, muestra las de ayer con «Preparando lo de hoy» y termina en `after()`.
-- Tarjetas por hecho (5 al registrar una compra, 12 al terminar una campaña) se evalúan en la delivery que las
-  origina (AN-2/AN-3).
-- Comercios evaluados: activos con al menos una fila en `daily_metric` en los últimos 35 días, o sin ninguna (para
-  las invitaciones).
+- Se mantiene la evaluación diaria por `GET /api/internal/analytics/evaluate` (Bearer `CRON_SECRET`, cron-job.org,
+  ADR0118), cada 30 min de 00:00 a 08:00 America/Guayaquil. Claim por comercio/día con SKIP LOCKED, presupuesto de 20 s
+  y exclusión de evaluaciones concurrentes. `evaluation_run` registra trabajo, no la vigencia del inbox.
+- Evaluar lee solo resúmenes/contexto de Analíticas, calcula las funciones puras y sincroniza los asuntos. Una
+  tarjeta activa/pospuesta conserva `id` entre días, deliveries y recordatorios. Un recálculo idéntico no inserta
+  una fila ni crea un episodio. La unicidad de contenido vigente pasa de (comercio,tipo,sujeto,día) a
+  (comercio,tipo,asunto);9 distingue conteos diferentes, no se los colapsa por insumo.
+- `card_candidate` contiene contenido vigente, no un archivo diario. `card_state` conserva estado/control
+  compacto de contexto, evidencia de frescura, episodio, fechas de decisión/recordatorio y novedad. El `fingerprint`
+  monetario anterior puede ayudar al peso, pero no prueba frescura ni resolución. §3.7–§3.9 precisan invariantes.
+- Abrir Dashboard lee avisos persistentes elegibles, incluidos los pospuestos cuyo instante llegó. No requiere una
+  candidata de hoy/ayer ni crea copias. Si falta la tanda, conserva lo vigente con «Preparando lo de hoy» y usa el
+  fallback existente, con umbral de 3 s/after(); no presenta datos viejos como si fueran de hoy.
+- El cron sigue atendiendo comercios activos con datos recientes de 35 días o sin datos, y además pendientes que
+  requieren revalidación temporal/recordatorio aunque no haya actividad reciente. El mero paso de 35 días no borra
+  ni vuelve inaccesible un aviso. Un comercio inactivo conserva estado para revalidar al volver.
+- Tarjetas por hecho 5/9 y reconciliación de 12 sincronizan el mismo ciclo dentro de la delivery, sin reabrir un run
+  ready ni pisar snoozes. Fuentes5/9 no dependen de copiar el texto de otra candidata: se conserva el contexto
+  factual necesario del episodio dentro del estado estructurado existente y su control de orden/revisión.
 
 #### 3.2 Peso, novedad y tope
 
-`packages/domain/src/analytics/weights.ts` concentra los coeficientes iniciales (se ajustan con uso, ADR0152 §3):
+`packages/domain/src/analytics/weights.ts` mantiene los coeficientes y dinero exacto:
 
-- **Plata** `p = min(3, monto en juego / venta diaria promedio de 28 días)`; sin ventas, `monto / 20`
-  unidades mayores de la moneda del comercio, sin conversión. Aclaración expresa del owner durante AN-1
-  (2026-10-17): «Sí, 20 en la moneda del comercio». Tarjetas sin monto usan el `p` fijo de la tabla de §3.4.
-- **Urgencia** `u ∈ [0,2; 1]`, por tarjeta (§3.4).
-- **Novedad** `n`: 1 si es nueva o su `fingerprint` cambió de forma material; si ya se mostró igual, `0,6^días
-  mostrada`; **0** si se descartó o aceptó y el `fingerprint` no cambió. Material = otro sujeto o monto en otro
-  escalón `floor(log2(monto))`.
-- `peso = p × u × n`. El resumen de ayer tiene peso fijo 10 (siempre primero si existe).
-- Se muestran hasta **5** candidatas de hoy con peso ≥ 0,05, de mayor a menor. Al aceptar o descartar entra la
-  siguiente solo si supera ese umbral; si no, quedan menos de 5.
-- `analytics.card_state` (comercio, tarjeta, sujeto) guarda mostrada/aceptada/descartada, `fingerprint`, quién y
-  cuándo. **Aceptar** = tocar la acción; **descartar** = la X.
+- Plata `p = min(3,monto en juego / venta diaria promedio de 28 días)`; sin ventas, referencia de 20 unidades mayores de
+  la moneda del comercio, sin FX. Tarjetas sin monto conservan el p fijo de §3.4/§6/§7.
+- Urgencia `u ∈ [0,2;1]`, por tipo. Peso normal `p × u × n`, con los multiplicadores existentes de cada tarjeta.
+- Novedad de un episodio abierto:1 inicialmente y `0,6^días mostrada` según exposiciones reales, no cada lectura o
+  corrida. Solucionado/Ignorar/Visto cierran ese contexto y no dejan una tarjeta con peso0 copiándose. Reabrir exige
+  el comparador del catálogo §3.8, no que cambió un texto/fecha o faltó una fila limpiada.
+- Se muestran hasta 5, incluido el resumen actual de ayer con peso fijo 10 cuando exista. Entre los otros cupos,
+  una 8 abierta con extremo corto de agotamiento≤1 día tiene precedencia sobre invitaciones a completar datos 4/7
+  y la variante de aprendizaje de 2. Su novedad no puede volver invisible el riesgo crítico abierto. Esto no anula
+  cierres, recordatorios, permisos ni disponibilidad de acción. Otras candidatas conservan orden por peso y umbral
+  mínimo0,05. Si hay más riesgos reales que cupos no se promete mostrarlos todos simultáneamente.
+- Un recordatorio informativo de un período pasado conserva su período y no suplanta al resumen actual ni recibe
+  el privilegio fijo 10 de «ayer». Compite en los demás cupos con el peso informativo de 2 (0,1) y el mismo límite de 5.
+  **La vigencia de estos informes se cierra con la aclaración pendiente de §3.8.**
 
 #### 3.3 Acciones sin nombrar módulos
 
@@ -271,25 +296,140 @@ totales; las métricas auxiliares no vuelven a sumarse allí.
 
 #### 3.5 HTTP (core)
 
+Contrato v2 del inbox, sin flag ni variable de entorno. `id` persistente identifica la tarjeta; `version` opaca
+identifica el contexto que vio el usuario. Las decisiones envían `{ expectedVersion, operationId }`; posponer añade
+`remindAt`, ISO8601 con zona/offset convertido a instante UTC, futuro válido sin máximo artificial de 90 días. Se
+muestra/elige en zona del comercio, conservando el instante elegido si después cambia la zona.
+
 | Ruta | Contrato |
 |---|---|
-| `GET /api/analytics/inbox` | →200 `{ state: "ready" \| "preparing", preparedAt, cards: [{ id, cardKey, sender, title, body, amountAtStake: { amountMinor, currencyCode, minorUnit } \| null, quality: "observed" \| "estimated", action: { label, href } \| null }] }` |
-| `POST /api/analytics/inbox/:id/accept` y `/dismiss` | →200 `{ cards }` con el reemplazo; id ajeno o de otro día →404 `card_not_found` |
-| `GET /api/analytics/history?period=month\|3m\|6m\|9m\|12m&locationId=` | →200 bloques del §4; `locationId` ajeno →404 |
-| `GET /api/analytics/day?date=YYYY-MM-DD&locationId=` | →200 ventas por producto de ese día |
-| `GET /api/internal/analytics/evaluate`, `GET /api/internal/analytics/context` | Bearer `CRON_SECRET`; 401 sin él; 200 `{ processed, skipped }` |
+| `GET /api/analytics/inbox` | 200 `{ contractVersion:2,state,preparedAt,nextReminderAt,cards:[{ id,version,cardKey,sender,title,body,period,quality,amountAtStake,action,decisions }] }`. `period` indica origen y se muestra si no corresponde a hoy/ayer. `nextReminderAt` es el próximo recordatorio autorizado del comercio, o null. |
+| `POST /api/analytics/inbox/:id/resolve` | Solucionado: 200 `{ cards,nextReminderAt }`, elimina contenido y guarda control/decisión sin afirmar resolución observada. |
+| `POST /api/analytics/inbox/:id/ignore` | Ignorar: mismo cierre técnico, motivo distinto; no cambia stock ni datos de negocio. |
+| `POST /api/analytics/inbox/:id/seen` | Visto para informes; mismo contrato de cierre, permitido según capacidades del tipo. |
+| `POST /api/analytics/inbox/:id/snooze` | Recordarme luego:200 `{ cards,nextReminderAt }`, mismo id y contexto vigente; guarda instante y excluye hasta ese momento. |
+| `POST /api/analytics/inbox/:id/accept` y `/dismiss` antiguos | 409 `inbox_contract_changed`, sin modificar estado; el cliente recarga contrato. No reinterpretar una navegación de un cliente antiguo como Solucionado. |
+| `GET /api/analytics/history?period=month\|3m\|6m\|9m\|12m&locationId=` | Sin cambios:200 bloques §4; local ajeno 404. |
+| `GET /api/analytics/day?date=YYYY-MM-DD&locationId=` | Sin cambios:200 ventas por producto del día. |
+| `GET /api/internal/analytics/evaluate` y `/context` | Sin cambios de autenticación: Bearer CRON_SECRET; 401 sin él; 200 `{ processed,skipped }`. |
+| `GET /api/internal/analytics/cleanup` | Bearer CRON_SECRET; 401 sin él; 200 `{ cutoff,deleted,skipped,budgetExhausted }`; limpieza acotada §3.10, sin exponer datos personales. |
 
-Todas las rutas no internas: sesión, membresía activa y permiso `analytics` (dueño por rol); 401/403 con el envelope
-existente. El comercio sale del guard, nunca del cuerpo ni de la query. Ninguna serializa claves de R2.
+Todas las rutas públicas mantienen sesión, membresía activa y permiso analytics; comercio derivado del guard,
+nunca del cuerpo/query. ID ajeno o desconocido 404; sin sesión 401/sin permiso 403. Versión presentada obsoleta 409
+`card_context_changed`, sin cerrar datos nuevos no vistos. Fecha de recordatorio inválida/pasada 422. Repetir la
+misma operación sobre el mismo contexto es idempotente, incluso si el contenido ya fue eliminado; otro comando
+sobre una tarjeta ya cerrada no la resucita. Identificar retry con el control compacto, sin tabla nueva de log.
 
 #### 3.6 UI
 
-- **Dashboard** (`app/backoffice/page.tsx`): el cartel se reemplaza por el inbox para quien tiene `analytics`; los
-  accesos actuales quedan debajo. Cada tarjeta: remitente, título, cuerpo, monto en juego, «estimado» si aplica,
-  acción y X. Sin tarjetas: «Hoy no tengo nada para avisarte.» Sin datos todavía: «Analíticas empieza a contar con
-  tus ventas y gastos desde hoy.»
-- **Analíticas** (`app/backoffice/analytics`, ítem de menú core con permiso `analytics`): histórico (§4) y vista de
-  un día. Kit `ui/` existente (ADR0123), sin componentes nuevos de gráficos.
+Dashboard conserva remitente, título, cuerpo, monto/estimado, hasta 5 y vacío honesto. Navegación «Registrar compra»,
+«Ver cliente», etc. solo abre el destino resuelto por contrato/permiso; no POST de cierre. Decisiones visibles:
+Solucionado, Ignorar, Recordarme luego; en informes se usa Visto en lugar de Solucionado. Se retira la X ambigua.
+Capacidades: Visto en 1/2/9/12/13 y en la variante informativa «Tu primer mes con gastos» de 4; Solucionado en
+3/4 accionable/5/6/7/8/10/11. Ignorar y Recordarme luego disponibles en ambos grupos según vigencia del catálogo.
+El servidor declara decisiones disponibles; una decisión incompatible con el tipo devuelve 422 sin efectos.
+
+Recordarme luego permite elegir fecha/hora con kit existente, sin límite de 90 días; error de versión actualiza el contexto
+antes de pedir otra decisión. No hacer doble envío mientras la acción esté pendiente.
+
+El recordatorio se vuelve elegible al llegar su instante sin cron externo por cada tarjeta. El cliente usa
+nextReminderAt para refrescar al vencer si está abierto, y al volver al foco; al abrir lee pendientes ya debidos.
+No se implementan notificaciones OS/email/push ni un polling constante nuevo. Revalidar condiciones en la
+sincronización temporal/factual y antes de mostrar, sin cálculo pesado sobre tablas de origen al abrir.
+
+La página Analíticas/histórico y sus permisos siguen §4. UI con kit existente, COPY.md/tuteo, sin CSS/paleta o kit
+nuevos. Un informe pospuesto de un período pasado dice su fecha, no «hoy»/«ayer» falsos.
+
+#### 3.7 Ciclo y concurrencia
+
+Estados semánticos: abierto, pospuesto, solucionado, ignorado, visto y vencido. Contenido solo para abierto o
+pospuesto; los otros conservan exclusivamente el control mínimo aún necesario. Cerrar se ejecuta atómicamente con
+la eliminación del texto y la memoria del contexto atendido. Una condición que se resuelve de forma observada
+retira la tarjeta y cancela el recordatorio, sin atribuirle una acción al owner.
+
+Mientras exista aviso abierto/pospuesto de un asunto, nuevos datos actualizan el mismo id; no se crea otro por
+cada venta o día. Tras cierre, contexto idéntico no vuelve. Una 8 se reabre por consumo real posterior del mismo
+insumo/local que reduce existencias y mantiene el riesgo, o por reposición→nueva escasez. Venta ajena, texto
+recalculado, reloj por sí solo, replay o evento ocurrido antes del cierre no reabren 8. Capturar la recuperación
+intermedia en las deliveries de gauges: no depender solo del último stock del día, que puede perder una reposición
+intradiaria. Traductores siguen puros y core no lee tablas de origen ni nombra módulos.
+
+Posponer conserva id y remindAt; actualizaciones no anticipan ni reinician el recordatorio. Al vencer, se presenta
+la versión vigente de ese mismo asunto, con período explícito. La condición realmente resuelta lo cancela; la mera
+salida de la ventana de emisión no prueba resolución. §3.8 diferencia ambas cosas.
+
+Acción, evaluación, ingesta, reconciliación y limpieza comparten exclusión por comercio/tipo/asunto y un orden
+estable de locks; el lock por día no basta para tarjetas que cruzan medianoche. Usar versión/CAS para que cerrar
+A no cierre B publicada a la vez. La limpieza revalida estado/versión/fecha dentro de la tx; omite filas ocupadas y
+retoma luego. No cerrar un contexto posterior no visto ni reiniciar estado desde un replay antiguo.
+
+#### 3.8 Catálogo obligatorio de asunto y contexto
+
+No usar un hash de todo el input, una revisión global del comercio o el importe null como identidad del contexto.
+Cada comparador declara sus métricas/dimensiones/período, orden de la fuente y criterio de cambio pertinente.
+El esquema concreto se diseña dentro de las tablas actuales; no inventar observaciones que el evento no capturó.
+Los umbrales originales de emisión de §3.4/§6/§7 se conservan.
+
+| Tarjeta | Asunto / evidencia pertinente | Vigencia y reaparición después del cierre |
+|---|---|---|
+|1 Resumen | Día de ventas concreto, informes ligados a ese día; distinguir asunto de un cursor compacto de períodos ya atendidos. | **Pendiente de aclaración del owner:** retiro al terminar período salvo pospuesto, o conservación hasta Visto. Si se conserva, la fecha original se muestra y no reemplaza «ayer» actual. |
+|2 Demanda / aprendizaje | Proyección para día concreto y su soporte de días comparables; aprendizaje con progreso real y frecuencia máxima semanal original. No crear control nuevo cada fecha por mera repetición del mismo aprendizaje. | **Misma aclaración pendiente de informes del día.** Alcanzar el mínimo de historia retira aprendizaje. Reemitir demanda en otro día es otro contexto de proyección, no copia de la tarjeta vieja. |
+|3 Meta | Comercio/mes; brecha, margen/cobertura y fase temporal ya definida (últimos 10 días). | Mes vigente y condición de meta aplicable; cubierta/meta inválida retira. Datos pertinentes o entrada a fase temporal relevante pueden justificar otro contexto, sin reaviso por cada día igual. Pasar de mes vence ese asunto, no borra histórico. |
+|4 Gastos | Comercio/configuración faltante; estado de carga e historia necesaria, no importe null ni día. | Mientras falte la información que se invita a completar; cerrada no vuelve por calendario solo. Un cambio real de configuración/condición puede habilitar otra invitación. |
+|5 Suba | Local/insumo/producto; hecho de cambio de costo, ocurrióEn+eventId/revisión, antes/después conocidos. | El hecho sigue siendo consultable si está abierto/pospuesto; mantiene decaimiento original sin copiar. Cierre elimina texto y no lleva el hecho a otro día. Otro hecho pertinente posterior puede habilitar otra tarjeta; un replay no. |
+|6 Margen | Producto y contexto de margen/pérdida calculado con las mismas métricas exactas; cambio de signo/escalón material con soporte pertinente. | Mientras la condición se mantenga; recuperado/costo desconocido por regla original retira. Un contexto pertinente agravado puede reabrir, no una venta ajena ni texto/fecha nuevos. |
+|7 Sin costo | Producto y cobertura faltante de su venta; evidencia de consumo/costo y escalón material de venta sin costo, no simple ranking de otros productos. | Se retira al conocerse el costo pertinente/dejar de cumplir condición. Nuevos datos pertinentes que agraven la cobertura pueden justificar reabrir. No prometer datos faltantes como cero. |
+|8 Stock | Insumo/local; gauge observado/revisión, cantidad, consumo pertinente y recuperación del episodio; no fingerprint por importe null. | Mes mínimo y riesgo original presentes. Cierre silencia versión atendida; consumo posterior menor y reposición→escasez permiten nuevo episodio. Se retira al desaparecer riesgo. Snooze respeta fecha; crítico no anula cierre/snooze. |
+|9 Conteo | Conteo/evento+insumo+local. Conteos distintos son asuntos distintos, aunque el insumo coincida. | Informe factual abierto/pospuesto no caduca por cambiar el día o tener poco peso. Otro conteo pertinente emite asunto nuevo; mismo evento no se duplica. No agrupar mermas diferentes para reducir filas. |
+|10 Anulaciones | Local y anomalía del conjunto pertinente de anulaciones/ventanas originales; soporte de conteo/monto y referencias. | Mientras se cumpla anomalía; resuelta retira. Nuevas anulaciones pertinentes que cambien el contexto habilitan otro, no ventas o movimientos ajenos. |
+|11 Habitual | Cliente del comercio y episodio desde su última visita, mediana y ausencia; fechas unidas entre locales como en AN-3. | Nueva visita resuelve ausencia; >90 días de última visita deja de cumplir condición original y retira, incluso con recordatorio. **Pendiente de aclaración del owner:** reaviso al duplicarse ausencia atendida o solo otro episodio tras visita. Sin reaviso diario implícito. |
+|12 Promo | Campaña/ciclo terminado, snapshot causal y métricas asociadas sin doble conteo. Emisión al día siguiente no es caducidad. | Informe sigue vigente abierto/pospuesto después de ese día. Canje tardío actualiza mismo id y respeta remindAt. Snapshot que invalida fin retira; nuevo fin/ciclo pertinente puede emitir. Cierre no permite que el replay del viejo ciclo lo resucite. |
+|13 Día flojo | Día objetivo, previsión y productos/márgenes pertinentes; no día de consulta. | **Misma aclaración pendiente de informes del día.** Si se conserva/pospone se identifica el período original, sin recomendar retrospectivamente como si fuera hoy. |
+
+Antes de código se congelan comparadores y ejemplos de aceptación por tipo. Los controles de asuntos permanentes
+se actualizan; para asuntos de períodos/hechos se retiran solo cuando se prueba que el contexto no puede volver a
+entrar y no tiene aviso/recordatorio/reconciliación pendiente. No usar el hecho de que ya no se muestra entre los 5
+como prueba de que está vencido. Una tabla contenida por asuntos reales no tiene tamaño constante si se acumulan
+hechos distintos sin atender.
+
+#### 3.9 Transición y datos
+
+Reutilizar card_candidate/card_state/evaluation_run y resúmenes existentes mediante una migración acotada, sin nueva
+tabla de historial ni archivo, particionado o copia paralela. La migración debe preservar datos/identidades y
+separar contexto factual (5/9), presentación y control de atención; no reconstruir hechos parseando textos.
+
+El legado no tiene closedAt/expiredAt por candidata ni contexto completo visto en cada interacción. accepted antiguo
+significaba navegar: no convertirlo en Solucionado observado o declarado. Clasificar de manera conservadora las
+versiones vigentes/duplicadas/cerradas solo con evidencia; desconocidos se conservan y no entran al cleanup. Un
+updatedAt de otra versión, fecha antigua, importe bajo o ausencia de mostrada no prueba cierre. No inventar tiempos
+ni borrar potenciales pendientes para simplificar una restricción nueva.
+
+No modificar métricas, source_revision/metric_contribution, dinero/currency/minorUnit, H2, gauges exactos, permisos,
+histórico, contratos de eventos de origen ni corte Stock. Fuentes nuevas de contexto, si faltan, deben respetar
+ADR0153: completar eventos, nunca leer tablas de origen desde Analíticas. Si hace falta ampliar productores,
+contrato y asignación explícita del coordinador antes de editar; sin decidir producto por cuenta propia.
+
+#### 3.10 Limpieza semanal
+
+`GET /api/internal/analytics/cleanup`, autenticada por CRON_SECRET. Frecuencia semanal; horario operativo propuesto
+domingo 03:30 America/Guayaquil (configurarlo remotamente requiere otro encargo autorizado). Corte único por llamada:
+instante UTC de inicio menos 90×24 h. Elegible solo resto cerrado/vencido con fecha efectiva probada **estrictamente
+anterior** al corte; igualdad se conserva. Nunca por mes, createdAt, fecha de candidata o actualización automática.
+El 10 de abril de 2026 el corte por fecha es 10 de enero: no borrar febrero/marzo enteros.
+
+Cierres nuevos eliminan contenido inmediatamente. Los 90 días son red de seguridad/restos históricos, no obligación
+de conservar un log nuevo. Pendientes/pospuestos válidos, incluso de seis meses o con recordatorio futuro > 90 días,
+no se borran por edad. El control mínimo anti-repetición no tiene TTL ciego: solo se depura con prueba de que ya no
+hará falta. Si esa prueba no existe, se conserva su único estado por asunto. Eventos, revisiones/contribuciones,
+resúmenes numéricos e histórico del negocio quedan fuera.
+
+Lotes iniciales de hasta 500, presupuesto de 10 s por invocación, búsqueda indexada por elegibilidad/corte y desempate
+estable. Transacciones cortas, omitir ocupadas/revalidar bajo lock/CAS y volver a intentarlas; progreso solo después
+del commit. Corridas concurrentes/repetidas son idempotentes, sin barridos o locks globales. Si se agota presupuesto,
+se conserva el resto y se informa budgetExhausted; siguiente corrida retoma. Medir elegibles/procesadas/omitidas y
+último éxito sin exponer datos personales; fallos/backlog nunca justifican vaciar pendientes. Semanal no garantiza
+borrado antes de 97 días si hay backlog o fallos; en duda se retiene. No habilitar esta ruta sobre el modelo legado
+sin completar su transición y pruebas.
 
 ### 4. Histórico en números
 
@@ -403,7 +543,7 @@ AN-3 suma clientes y promos. «Cuánto ahorraste» no tiene medición en la v1 (
 
 ## Definition of Done
 
-AN-1:
+AN-1 (criterios del corte integrado original; ciclo nuevo en §3.7–§3.10):
 - [x] Una venta POS y un gasto (alta, edición que mueve día/concepto/local, borrado) dejan `daily_metric` exacto en el
   día local del comercio; reaplicar o recibir una revisión vieja no cambia nada.
 - [x] Un conteo de Stock no se bloquea por una delivery de Analíticas pendiente.
@@ -431,6 +571,16 @@ histórico clientes/promos, UUIDv5 y snapshots de campaña. Tarjeta 11 por ≥4 
 Prueba real de clima 1/1 PASS (una llamada, queryCost=2), contexto invisible. [Handoff](../factory/0237-an3-handoff.md)
 y [QA](../factory/0237-an3-qa.md). Main local autorizado por el owner tras QA; sin push, deploy ni PROD.
 
+Revisión de ciclo de avisos (posterior, todavía no implementada):
+
+- [ ] Catálogo §3.8 cerrado por el owner y contratos v2 implementados sin ambigüedad de navegación/cierre.
+- [ ] Una ID por asunto vigente/pospuesto, sin crecimiento diario artificial; fuentes 5/9 y llegada tardía12 seguras.
+- [ ] Reapertura pertinente y controles anti-replay; stock posterior/recuperación, condiciones temporales y snoozes.
+- [ ] Migración conservadora del legado, permisos/tenant/Stock/dinero/histórico intactos y carreras con CAS/locks.
+- [ ] Cleanup de 90 días/semanal probado con límites exactos, pendientes/pospuestos/control protegidos y fallos/backlog.
+- [ ] UI kit/tuteo, navegación independiente, decisiones explícitas, versión y recordatorio en 390/1280.
+- [ ] QA independiente de entregas/combinación exacta; sin afirmar performance≤1s a partir del PASS funcional.
+
 ## Pruebas pertinentes
 
 Recortadas a lo que detecta un defecto plausible; suites Neon con `tools/neon-test.sh`, nunca contra `DATABASE_URL`.
@@ -445,8 +595,8 @@ Recortadas a lo que detecta un defecto plausible; suites Neon con `tools/neon-te
    Regresión H2: consumir una venta predeploy pendiente completa Stock sin aportes analytics; una venta nueva con
    delivery core pendiente conserva elegibilidad aunque el consumo se aplique antes del revenue.
 4. Neon (regresión): conteo con delivery `core.analytics` pendiente no da 409; con consumo de Recetas pendiente sí.
-5. Unit: pesos y selección — tope 5 con el resumen adentro, umbral, novedad (`0,6^n`, descartada sin cambio = 0,
-   cambio de escalón vuelve).
+5. Unit: pesos/selección — cinco con resumen, umbral y novedad; contexto atendido no vuelve sin cambio pertinente;
+   stock crítico precede invitaciones y no decae hasta invisible, respetando cierre/snooze.
 6. Unit: tarjetas 2, 3, 4, 6, 7 y 13 con fixtures: mínimo de historia, meta con conceptos estimados, primer mes →
    invitación, cobertura baja, ya cubierto, `m ≤ 0`.
    Precisión: mismo producto/día con precios distintos y cobertura parcial conserva el neto exacto costeado,
@@ -457,12 +607,24 @@ Recortadas a lo que detecta un defecto plausible; suites Neon con `tools/neon-te
    prueba real con la clave; carga del calendario curado y unicidades.
 9. Medición en rama Neon efímera con datos sintéticos (repite ADR0152 §7): evaluación de un comercio ≤ 1 s con caché
    fría; si no, se para y se informa.
-10. Navegador: Dashboard con datos de prueba — ver, aceptar (navega), descartar (entra la siguiente o no) — e
-    histórico con filtros.
+10. Navegador: Dashboard con datos de prueba — navegar sin cerrar, Solucionado/Ignorar/Visto, posponer con fecha
+    y mantener ID, refresco al vencimiento y versión obsoleta; histórico con filtros intacto.
 11. Neon: sin la variable de entorno, cerrar una venta publica `sale.closed` y crea la delivery `core.analytics`.
 
 AN-2/AN-3: un caso Neon por evento nuevo (atómico con su movimiento, local correcto, sin alterar el corte) y unit por
 tarjeta con sus bordes.
+
+Pruebas adicionales de esta revisión:
+
+12. Unit por cada tipo: contexto/episodio, dato relevante/ajeno/viejo, ventana de emisión distinta de vigencia,
+    pospuesto fuera del período y temporalidad de 11 según decisión del catálogo. Ningún clock/hash global reabre8.
+13. Neon focal: cerrar A mientras se publica B no cierra B; retry del POST tras borrar contenido es idempotente;
+    posponer compite con cleanup/delivery de 12; medianoche no libera exclusión. Reposición y consumo intradiarios se
+    conservan como episodio aunque el gauge final coincida con el atendido. Sin cambios al corte de Stock.
+14. Neon de cleanup: 90 días exactos/justo antes, pendiente antiguo, snooze > 90 días, control necesario, legado desconocido,
+    rollback parcial/concurrencia, lote ocupado que luego se retoma; no tocar métricas ni revisiones.
+15. Migración/replay aislado: tablas existentes/punteros conservados, hashes previos intactos y 0100 coordinada;
+    sin sembrar/reparar/replay global de CI compartida. Solo tools/neon-test.sh/Node24 en DB reservada.
 
 ## Pendientes que no bloquean
 

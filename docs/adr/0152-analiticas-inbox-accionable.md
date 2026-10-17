@@ -233,6 +233,28 @@ ser varias veces más lenta (no medido). Calcular las tarjetas sobre el detalle 
 resúmenes no se midió y no se recomienda. La decisión 2 del owner pedía que GPT midiera con datos de prueba antes del
 ADR: esta medición la reemplaza para la propuesta; la spec repite la medición en una rama Neon.
 
+### 8. Ciclo persistente y retención del inbox (owner, 2026-10-17)
+
+El owner aprueba sustituir la copia diaria de candidatas y «aceptar = navegar» por un aviso vigente por asunto.
+Navegar a una herramienta no declara solución. Solucionado/Ignorar (Visto para informes) cierran y eliminan
+contenido; se conserva control compacto del contexto atendido, sin log de interacciones. Recordarme luego conserva
+identidad y fecha elegida. Contexto repetido no reabre; en stock un consumo posterior pertinente o reposición
+seguida de nueva escasez puede justificar otro episodio. Cada tipo distingue emisión, vigencia y contexto temporal.
+Se mantienen mínimos de historia, umbrales y dinero exacto, con prioridad de stock con riesgo ≤24h sobre
+invitaciones dentro de los cinco cupos, respetando cierres y postergaciones.
+
+Limpieza semanal con corte móvil de 90 días desde cierre/vencimiento probado, solo residuos cerrados/vencidos;
+pendientes/pospuestos válidos y control anti-repetición aún necesario quedan excluidos. El contenido de un cierre
+nuevo se elimina al cerrar: los 90 días no crean un archivo nuevo. Eventos, resúmenes numéricos y deduplicación de
+fuentes se conservan. Una revisión monetaria opaca o un TTL ciego no reemplazan el contrato de contexto por tipo.
+
+Esta decisión sustituye las formulaciones anteriores de aceptación/descarte como interacción de la tarjeta, sin
+modificar el patrón de eventos del ADR0153 ni el histórico de negocio. La
+[spec0237 §3.7–§3.10](../specs/0237-analiticas-inbox-y-resumenes-diarios.md) contiene reglas y pruebas;
+el [adversarial](../factory/0237-inbox-lifecycle-adversarial.md) requiere resolver el catálogo y la transición del
+legado antes de código. El catálogo mantiene explícitas dos aclaraciones consultadas al owner; no se atribuyen
+respuestas ni se autoriza implementar con celdas pendientes. Aprobación documental no autoriza PROD ni publicación.
+
 ## Consecuencias
 
 - G se lanza después de aprobar este ADR, con los eventos `expense.*` del §4 y sus dos hallazgos.
