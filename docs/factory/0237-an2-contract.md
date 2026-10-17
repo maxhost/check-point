@@ -16,7 +16,7 @@ Worktree `/private/tmp/checkpass-an2/analytics-an2-product`. Writer dominio anal
 
 Tarjetas5/8/9 por §6:5 evaluada en delivery derivada, umbral5%, impacto semanal y decaimiento0,7;8 por local/insumo con mínimo mes y p25/p75 últimos28d/rango;9 faltante y umbral, detalle conteo y decaimiento. Novedad/tope/acciones comunes existentes. Histórico agrega valor stock y subas con períodos/local; lee solo resúmenes. HTTP conserva campos AN-1 y agrega bloque stock documentado en handoff. Kit/tuteo, sin kit/guardias/CSS. Si se requiere habilidad UI, leer impeccable pertinente.
 
-Aclaración expresa del owner (2026-10-17): umbral9 =3 unidades mayores de la moneda del comercio, sin FX. Spec§6 actualizada por coordinador antes de implementar este criterio.
+Criterio vigente del owner (2026-10-17, spec en dev `2e0740e7`), que reemplaza la aclaración anterior de3 unidades: tarjeta9 aparece si el faltante al costo ≥ max(ticket promedio de los últimos28 días del local, 1% de la venta semanal del local). Sin FX. Sin ventas en esos28 días, cualquier faltante con costo es elegible. Pruebas obligatorias: COP y sin ventas, además de umbrales/decaimiento; comparar el promedio exactamente, sin redondearlo antes del umbral.
 
 ## QA — analytics-an2-qa
 
@@ -32,3 +32,9 @@ Reservas factory y contratos por commit local antes de código; entregas limpias
 - A/B acuerdan hechos genéricos autocontenidos desde traducción para evaluación por delivery, sin core nombrar eventos ni módulos concretos; conteos conservan identidad/detalle, no se netean entre sí para la tarjeta9. El gauge conserva costo exacto y snapshot observado, con desempate estable; sumas monetarias siguen enteras.
 - GO DB exclusivoA: `/private/tmp/checkpass-0237/migration.env`, rama efímera de replay válido AN-1. No se reconcilia CI compartida ni se toca perf.
 - Inicio Node24.20.0/pnpm11.4.0, hooks `.githooks`; CI remoto main `db3175d` rojo por assertion previa en `stock-consumption.neon.integration.test.ts:315` (`count_changed` esperado). Se mantiene informado; solo regresión focal de corte en este encargo, sin batería publicación.
+
+## Aclaraciones y dependencias posteriores del owner
+
+- `recipes.product_cost.changed` conserva `unitCostBefore`/`unitCostAfter` nullable: null nunca es cero. No emitir para un producto si ambos son null; si no quedan productos elegibles, no emitir el evento. Delta, `product_unit_cost_change` y tarjeta5 únicamente con ambos conocidos. Caso exigido: desconocido→conocido emite sin delta ni tarjeta. Se comunicó el desajuste antes de cambiar el contrato.
+- Dependencias compartidas por commits preservados: fundamentoA `452fc655` → checkpointB `3008438a` → correccionesB `6bcce4fc`. Factory refresh antes de restaurar cambios propios, sin copiar archivos de otro writer. QA reproduce oráculos por blobs congelados.
+- Scope ampliadoA: `tests/e2e/support/catalog-harness-server.ts` (mock useSearchParams necesario para detalle), `tests/e2e/analytics-an2-stock.spec.ts`. Scope ampliadoB: `packages/domain/src/analytics/stock-history.ts`, `tests/e2e/analytics-an2.spec.ts`, `tests/e2e/support/analytics-an2-fixture.ts`. Sin modificación general de tooling/kit/guardias.

@@ -344,6 +344,10 @@ AN-3 suma clientes y promos. «Cuánto ahorraste» no tiene medición en la v1 (
   aceptar los tipos registrados) y, si cambió el costo promedio, publica en esa tx **`recipes.product_cost.changed`**:
   por producto cuya receta usa el insumo `{ productId, productLabel, unitCostBefore, unitCostAfter, itemId,
   itemLabel }`. `source_id` = id de la compra. Su traductor da `product_unit_cost_change`.
+  Aclaración técnica del owner (2026-10-17): `unitCostBefore` y `unitCostAfter` son null cuando desconocidos
+  (null nunca es cero); no se incluye un producto si ambos son null y no se emite un evento sin productos.
+  El delta, `product_unit_cost_change` y la tarjeta5 se calculan solo con ambos costos conocidos.
+  Prueba: desconocido→conocido emite el evento sin generar delta ni tarjeta.
 - Tarjetas (mismo formato que §3.4):
   - **5 Suba de insumo**, evaluada en la delivery de `recipes.product_cost.changed`: costo unitario +5% o más contra el promedio anterior →
     «La harina subió 12%: tu muzza te cuesta $0,18 más por unidad (≈$9 por semana con lo que vendes).» `p` = impacto
@@ -351,7 +355,7 @@ AN-3 suma clientes y promos. «Cuánto ahorraste» no tiene medición en la v1 (
   - **8 Insumo que se acaba:** existencia teórica / consumo diario (p25 y p75 de los últimos 28 días) → «Te estás
     quedando sin harina: queda para unas 20 masas y se acabaría entre el jueves y el sábado.» Aparece si el extremo
     corto es ≤ 4 días; requiere el mes mínimo. `u = 1 − días/5`. Acción `record_purchase`.
-  - **9 Merma por conteo,** el día del conteo: diferencia al costo ≥ max(un ticket promedio de los últimos 28 días, 1% de la venta semanal), sin
+  - **9 Merma por conteo,** el día del conteo: diferencia al costo ≥ max(un ticket promedio de los últimos 28 días del local, 1% de la venta semanal del local), sin
     conversión de moneda; sin ventas en esos 28 días, cualquier faltante con costo (owner, 2026-10-17) → «Faltaron 3 kg de
     harina (~$4) que no explican las ventas.» Decae ×0,7 por día. Acción: ver detalle del conteo.
 - El corte del conteo ya filtra `sale.closed` (G): los eventos nuevos de stock no lo alteran.
