@@ -67,3 +67,76 @@ describe.skipIf(
     expect(fixed.rows).toHaveLength(1);
   }, 30000);
 });
+
+describe.skipIf(
+  !permisosIntegrationEnabled || process.env.ANALYTICS_PERF_INVENTORY !== "1",
+)("AN-3 performance inventory without changing fixtures", () => {
+  it("records the truthful ledger, indexes, target cardinality and exact payload size", async () => {
+    const { createHash } = await import("node:crypto");
+    const { readFileSync } = await import("node:fs");
+    const { inputStatement } = await import("../queries");
+    const db = getDb();
+    const writers = await db.execute(
+      sql`select pid from pg_stat_activity where pid<>pg_backend_pid() and state='active' and query like '%analytics.%' and query ~* '(insert|update|delete|copy|create index)'`,
+    );
+    console.log("PERF_ACTIVE_WRITERS", writers.rows.length);
+    expect(writers.rows).toHaveLength(0);
+    const ledger = await db.execute(
+      sql`select hash,created_at::text from drizzle.__drizzle_migrations order by created_at`,
+    );
+    const journal = JSON.parse(
+      readFileSync(
+        new URL(
+          "../../../../../../packages/db/drizzle/meta/_journal.json",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+    );
+    for (const entry of journal.entries.filter(
+      (e: { idx: number }) => e.idx >= 97,
+    )) {
+      const expected =
+        entry.idx === 97
+          ? "247e7e684054f9ec462dd1a32f3dde9f96ec52ec6db23dac50ace032c03bf6d1"
+          : createHash("sha256")
+              .update(
+                readFileSync(
+                  new URL(
+                    `../../../../../../packages/db/drizzle/${entry.tag}.sql`,
+                    import.meta.url,
+                  ),
+                ),
+              )
+              .digest("hex");
+      expect(
+        ledger.rows.find((r) => r.created_at === String(entry.when))?.hash,
+      ).toBe(expected);
+    }
+    console.log("PERF_LEDGER_TAIL", JSON.stringify(ledger.rows.slice(-3)));
+    const indexes = await db.execute(
+      sql`select c.relname,pg_get_indexdef(i.indexrelid) definition,i.indisvalid,i.indisready from pg_index i join pg_class c on c.oid=i.indexrelid where i.indrelid='analytics.daily_metric'::regclass order by c.relname`,
+    );
+    console.log("PERF_INDEX_INVENTORY", JSON.stringify(indexes.rows));
+    expect(
+      indexes.rows.find(
+        (r) => r.relname === "analytics_daily_metric_account_idx",
+      ),
+    ).toMatchObject({ indisvalid: true, indisready: true });
+    const cardinality = await db.execute(
+      sql`select metric,count(*)::int rows,min(day)::text first,max(day)::text last from analytics.daily_metric where business_id=md5('analytics-perf-business:1')::uuid group by metric order by metric`,
+    );
+    console.log("PERF_TARGET_CARDINALITY", JSON.stringify(cardinality.rows));
+    expect(
+      cardinality.rows.find((r) => r.metric === "product_revenue")?.rows,
+    ).toBe(29200);
+    const h = createHash("md5")
+      .update("analytics-perf-business:1")
+      .digest("hex");
+    const id = `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+    const payload = await db.execute(
+      sql`select octet_length(row_to_json(snapshot)::text) bytes,(select sum(jsonb_array_length(g->5)) from jsonb_array_elements(to_jsonb(snapshot)->'metricGroups') g) metric_rows from (${inputStatement(id, new Date("2026-10-20T08:00:00Z"))}) snapshot`,
+    );
+    console.log("PERF_PAYLOAD", JSON.stringify(payload.rows));
+  }, 60000);
+});

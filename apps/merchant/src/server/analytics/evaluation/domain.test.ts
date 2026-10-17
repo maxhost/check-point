@@ -498,3 +498,110 @@ it("keeps half-minor estimated expenses exact until the break-even ceil", () => 
     breakEvenMinor: 201,
   });
 });
+
+describe("lossless compact analytics snapshot", () => {
+  const snapshot = {
+    currencyCode: "COP",
+    today: "2026-10-31",
+    firstSaleDay: "2025-01-01",
+    timezone: "America/Bogota",
+    states: [],
+    locations: [],
+    labels: [],
+    hasData: true,
+    hasClosedExpenseMonth: false,
+  };
+  it("preserves ordering, money, quantities and every header across interleaved series", async () => {
+    const { inputFromRow } = await import("../queries");
+    const metrics = [
+      ["2026-10-30", "visits", "north", "customer", "12000", "COP", 0, "0", 4],
+      [
+        "2026-10-29",
+        "stock_consumption",
+        "south",
+        "item",
+        "0",
+        "",
+        0,
+        "0.125",
+        1,
+      ],
+      ["2026-10-29", "visits", "north", "customer", "0", "COP", 0, "1", 1],
+      ["2026-10-29", "revenue", null, null, "-900", "COP", 0, "0", 1],
+    ];
+    const metricGroups = [
+      [
+        "stock_consumption",
+        "south",
+        "item",
+        "",
+        0,
+        [[2, "2026-10-29", "0", "0.125", 1]],
+      ],
+      [
+        "visits",
+        "north",
+        "customer",
+        "COP",
+        0,
+        [
+          [3, "2026-10-29", "0", "1", 1],
+          [1, "2026-10-30", "12000", "0", 4],
+        ],
+      ],
+      ["revenue", null, null, "COP", 0, [[4, "2026-10-29", "-900", "0", 1]]],
+    ];
+    expect(inputFromRow({ ...snapshot, metricGroups })).toEqual(
+      inputFromRow({ ...snapshot, metrics }),
+    );
+  });
+  it("retains overflow protection for money and counts", async () => {
+    const { inputFromRow } = await import("../queries");
+    for (const [amount, count] of [
+      ["9007199254740992", 0],
+      ["0", "9007199254740992"],
+    ]) {
+      expect(() =>
+        inputFromRow({
+          ...snapshot,
+          metricGroups: [
+            [
+              "revenue",
+              null,
+              null,
+              "COP",
+              0,
+              [[1, "2026-10-30", amount, "0", count]],
+            ],
+          ],
+        }),
+      ).toThrow("El monto supera el rango de cálculo.");
+    }
+  });
+  it("rejects missing, duplicate or incomplete compact rows without treating them as no data", async () => {
+    const { inputFromRow } = await import("../queries");
+    for (const metricGroups of [
+      null,
+      [["revenue"]],
+      [["revenue", null, null, "COP", 0, [[2, "2026-10-30", "0", "0", 0]]]],
+      [
+        [
+          "revenue",
+          null,
+          null,
+          "COP",
+          0,
+          [
+            [1, "2026-10-30", "0", "0", 0],
+            [1, "2026-10-29", "0", "0", 0],
+          ],
+        ],
+      ],
+      [["revenue", null, null, "COP", 0, [[1, "2026-10-30", "0"]]]],
+    ]) {
+      expect(() => inputFromRow({ ...snapshot, metricGroups })).toThrow(
+        "El resumen está incompleto.",
+      );
+    }
+  });
+});

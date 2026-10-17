@@ -1,3 +1,4 @@
+import { assertSnapshotEquivalence } from "./snapshot-equivalence.test-support";
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { and, eq, sql } from "drizzle-orm";
@@ -417,6 +418,15 @@ describe.skipIf(!permisosIntegrationEnabled)(
         businessA,
         new Date("2026-10-31T08:00:00Z"),
       );
+      await assertSnapshotEquivalence(
+        businessA,
+        new Date("2026-10-31T08:00:00Z"),
+      );
+      await assertSnapshotEquivalence(
+        businessA,
+        new Date("2026-10-31T08:00:00Z"),
+        localA,
+      );
       expect(input.firstSaleDay).toBe("2026-07-04");
       expect(
         input.metrics.filter(
@@ -443,6 +453,67 @@ describe.skipIf(!permisosIntegrationEnabled)(
         )?.quantity,
       ).toBe(10);
     }, 30000);
+    it("preserves complete snapshots and card ordering for products tied on sales", async () => {
+      const tied = [randomUUID(), randomUUID()];
+      await getDb()
+        .insert(labels)
+        .values(
+          tied.map((id, i) => ({
+            businessId: businessA,
+            kind: "product",
+            id,
+            label: `Tied product ${i}`,
+            updatedAt: new Date(),
+          })),
+        );
+      await getDb()
+        .insert(metrics)
+        .values(
+          tied.flatMap((id) => [
+            {
+              businessId: businessA,
+              locationId: localA,
+              day: "2026-10-30",
+              metric: "product_revenue",
+              dimensionKind: "product",
+              dimensionId: id,
+              amountMinor: 1000n,
+              currencyCode: "USD",
+              minorUnit: 2,
+              count: 1,
+            },
+            {
+              businessId: businessA,
+              locationId: localA,
+              day: "2026-10-30",
+              metric: "units_sold",
+              dimensionKind: "product",
+              dimensionId: id,
+              quantity: "10",
+              currencyCode: "",
+              minorUnit: 0,
+              count: 1,
+            },
+          ]),
+        );
+      await getDb()
+        .insert(metrics)
+        .values({
+          businessId: businessA,
+          locationId: localA,
+          day: "2026-10-30",
+          metric: "revenue",
+          dimensionKind: "none",
+          amountMinor: 2000n,
+          currencyCode: "USD",
+          minorUnit: 2,
+          count: 2,
+        });
+      await assertSnapshotEquivalence(
+        businessA,
+        new Date("2026-10-31T08:00:00Z"),
+      );
+    }, 30000);
     it("uses canonical COP units across real summary, candidate, history and day", async () => {
       await getDb()
         .update(businesses)
@@ -461,6 +532,7 @@ describe.skipIf(!permisosIntegrationEnabled)(
       });
       const now = new Date(`${copDay}T08:00:00Z`);
       const input = await readInput(businessB, now);
+      await assertSnapshotEquivalence(businessB, now);
       expect(input.minorUnit).toBe(0);
       expect(input.firstSaleDay).toBe("2027-03-09");
       expect(await evaluateBusiness(businessB, now)).toBe(true);

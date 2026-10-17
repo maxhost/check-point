@@ -25,7 +25,8 @@ describe.skipIf(
         },
       },
     );
-    const elapsed = Math.round((performance.now() - started) * 100) / 100;
+    const rawElapsed = performance.now() - started;
+    const elapsed = Math.round(rawElapsed * 100) / 100;
     const connection =
       (stages.business_clock_and_connection ?? 0) +
       (stages.transaction_connection ?? 0);
@@ -42,6 +43,6 @@ describe.skipIf(
     );
     expect(result).toBe(true);
     // The owner/coordinator fixes which observed clock is the acceptance criterion before execution.
-    expect(elapsed).toBeLessThanOrEqual(1000);
+    expect(rawElapsed).toBeLessThanOrEqual(1000);
   }, 30000);
 });

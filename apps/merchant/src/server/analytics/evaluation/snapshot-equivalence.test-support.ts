@@ -1,0 +1,99 @@
+// Portable oracle: exact inputStatement from 5fac6608942dd2a71e4ceff0f902169311c51dec.
+// Deliberate legacy SQL snapshot: compare the complete decoded input and card outputs.
+import { expect } from "vitest";
+import { sql } from "drizzle-orm";
+import { getDb } from "@mi-pasaporte/db";
+import { inputStatement, inputFromRow } from "../queries";
+import {
+  buildCandidates,
+  calculateGoal,
+} from "@mi-pasaporte/domain/analytics/cards/index";
+import { carryFactCandidate } from "@mi-pasaporte/domain/analytics/cards/stock";
+import { summarizeHistory } from "@mi-pasaporte/domain/analytics/history";
+import { summarizeCustomerPromoHistory } from "@mi-pasaporte/domain/analytics/customer-promo-history";
+function legacyInputStatement(
+  businessId: string,
+  now = new Date(),
+  locationId?: string,
+) {
+  const location = locationId ? sql`and m.location_id=${locationId}` : sql``;
+  return sql`with b as (select id,currency_code,timezone,(${now.toISOString()}::timestamptz at time zone timezone)::date today from core.business where id=${businessId}),
+    account_money as materialized (select m.location_id,m.day,m.metric,m.dimension_kind,m.dimension_id,m.currency_code,m.minor_unit,m.amount_minor,m.count from analytics.daily_metric m,b where m.business_id=${businessId} and m.metric in ('revenue','expense_fixed','expense_variable') and m.day<=b.today ${location}),
+    same_days as (select distinct m.day from account_money m,b where m.metric='revenue' and (m.count>0 or m.amount_minor>0) and m.day<b.today and extract(dow from m.day)=extract(dow from b.today) order by m.day desc limit 8),
+    fixed_months as (select (max(m.day) filter(where m.amount_minor>0))::date as day,m.dimension_id,sum(m.amount_minor)::text amount,m.currency_code,m.minor_unit,
+      row_number() over(partition by m.dimension_id,m.currency_code,m.minor_unit order by date_trunc('month',m.day) desc) as rank
+      from account_money m,b where m.metric='expense_fixed' and m.day<date_trunc('month',b.today)
+      group by date_trunc('month',m.day),m.dimension_id,m.currency_code,m.minor_unit having sum(m.amount_minor)>0),
+    metric_rows as (
+      select m.* from b join analytics.daily_metric m on m.business_id=b.id and m.day between b.today-28 and b.today where (m.metric<>'expense_fixed' or m.day>=date_trunc('month',b.today)) ${location}
+      union all select m.* from b join analytics.daily_metric m on m.business_id=b.id and m.day>=date_trunc('month',b.today) and m.day<b.today-28 where m.metric='expense_fixed' ${location}
+      union all select m.* from b join analytics.daily_metric m on m.business_id=b.id and m.day>=date_trunc('month',b.today)-interval '3 months' and m.day<b.today-28 where m.metric='expense_variable' ${location}
+      union all select m.* from b join analytics.daily_metric m on m.business_id=b.id and m.day>=b.today-56 and m.day<b.today-28 where m.metric='revenue' ${location}
+      union all select m.* from b join analytics.daily_metric m on m.business_id=b.id and m.day<b.today-28 where m.metric in ('visits','promo_discount','promo_sales','promo_cost') ${location}
+      union all select m.* from b join analytics.daily_metric m on m.business_id=b.id and m.day between b.today-63 and b.today-29 where m.metric='voided_tickets' ${location}
+      union all select m.* from b join same_days sd on true join analytics.daily_metric m on m.business_id=b.id and m.day=sd.day where m.day<b.today-28 and m.metric='units_sold' ${location}
+      union all select m.* from b join same_days sd on true join analytics.daily_metric m on m.business_id=b.id and m.day=sd.day where m.day<b.today-56 and m.metric='revenue' ${location}),
+    metrics as (select m.day::text,m.metric,case when m.day=b.today-1 or m.metric in ('stock_consumption','units_sold','revenue','voided_tickets','visits','promo_discount','promo_sales','promo_cost') then m.location_id else null end as "locationId",m.dimension_id as "dimensionId",sum(m.amount_minor)::text as "amountMinor",m.currency_code as "currencyCode",m.minor_unit as "minorUnit",sum(m.quantity)::text as quantity,sum(m.count)::int as count
+      from metric_rows m,b group by m.day,m.metric,case when m.day=b.today-1 or m.metric in ('stock_consumption','units_sold','revenue','voided_tickets','visits','promo_discount','promo_sales','promo_cost') then m.location_id else null end,m.dimension_id,m.currency_code,m.minor_unit
+      union all select day::text,'expense_fixed',null,dimension_id,amount,currency_code,minor_unit,'0',0 from fixed_months where rank<=3)
+    select b.currency_code as "currencyCode",b.timezone,b.today::text,
+      (select min(day)::text from account_money where metric='revenue' and (count>0 or amount_minor>0)) as "firstSaleDay",
+      coalesce((select jsonb_agg(jsonb_build_object('locationId',location_id,'day',day)) from (select location_id,min(day)::text AS day from account_money where metric='revenue' and (count>0 or amount_minor>0) group by location_id) first_sales),'[]'::jsonb) as "firstSaleDays",
+      coalesce((select jsonb_agg(c) from (select campaign_id as "campaignId",label,status,(starts_at at time zone b.timezone)::date::text as "startsAt",(ends_at at time zone b.timezone)::date::text as "endsAt",(ended_at at time zone b.timezone)::date::text as "endedAt",captured_at as "capturedAt",event_id as "eventId" from analytics.campaign_snapshot where business_id=b.id) c),'[]'::jsonb) as campaigns,
+      exists(select 1 from analytics.daily_metric m where m.business_id=b.id ${location}) as "hasData",
+      exists(select 1 from account_money where metric in ('expense_fixed','expense_variable') and day<date_trunc('month',b.today) and amount_minor>0) as "hasClosedExpenseMonth",
+      coalesce((select jsonb_agg(jsonb_build_array(day,metric,"locationId","dimensionId","amountMinor","currencyCode","minorUnit",quantity,count)) from metrics),'[]'::jsonb) as metrics,
+      coalesce((select jsonb_agg(jsonb_build_object('locationId',location_id,'itemId',dimension_id,'day',day)) from (select m.location_id,m.dimension_id,min(m.day)::text AS day from analytics.daily_metric m where m.business_id=b.id and m.metric='stock_consumption' and m.quantity>0 group by m.location_id,m.dimension_id) first_days),'[]'::jsonb) as "firstConsumptionDays",
+      coalesce((select jsonb_agg(g) from (select distinct on (metric,location_id,dimension_id) day::text,metric,location_id as "locationId",dimension_id as "dimensionId",amount_minor::text as "amountMinor",quantity::text,currency_code as "currencyCode",minor_unit as "minorUnit",unit,observed_at as "observedAt",event_id as "eventId" from analytics.daily_gauge where business_id=b.id and day<=b.today order by metric,location_id,dimension_id,observed_at desc,event_id desc) g),'[]'::jsonb) as gauges,
+      coalesce((select jsonb_agg(c) from (select distinct on (card_key,subject_key) card_key as "cardKey",subject_key as "subjectKey",parameters,amount_minor::text as "amountMinor",currency_code as "currencyCode",minor_unit as "minorUnit",fingerprint,weight::text,location_id as "locationId" from analytics.card_candidate where business_id=b.id and card_key in ('5','9') and day between b.today-14 and b.today order by card_key,subject_key,parameters->>'originObservedAt' desc,day desc) c),'[]'::jsonb) as "factCards",
+      coalesce((select jsonb_agg(jsonb_build_object('cardKey',card_key,'subjectKey',subject_key,'fingerprint',fingerprint,'status',status,'shownDays',shown_days,'lastShownDay',last_shown_day)) from analytics.card_state where business_id=b.id),'[]'::jsonb) as states,
+      coalesce((select jsonb_agg(jsonb_build_object('kind',kind,'id',id,'label',label)) from analytics.dimension_label where business_id=b.id),'[]'::jsonb) as labels,
+      coalesce((select jsonb_agg(jsonb_build_object('id',id,'name',name)) from core.location where business_id=b.id),'[]'::jsonb) as locations from b`;
+}
+
+export async function assertSnapshotEquivalence(
+  businessId: string,
+  now: Date,
+  locationId?: string,
+) {
+  const baselineRows = await getDb().execute(
+    legacyInputStatement(businessId, now, locationId),
+  );
+  const compactRows = await getDb().execute(
+    inputStatement(businessId, now, locationId),
+  );
+  const baseline = inputFromRow(baselineRows.rows[0]);
+  const compact = inputFromRow(compactRows.rows[0]);
+  expect(compact).toEqual(baseline);
+  expect(buildCandidates(compact, compact.states)).toEqual(
+    buildCandidates(baseline, baseline.states),
+  );
+  expect(
+    compact.factCards.map((c) =>
+      carryFactCandidate(compact, c, compact.states),
+    ),
+  ).toEqual(
+    baseline.factCards.map((c) =>
+      carryFactCandidate(baseline, c, baseline.states),
+    ),
+  );
+  expect(calculateGoal(compact)).toEqual(calculateGoal(baseline));
+  expect(summarizeHistory(compact, compact.metrics)).toEqual(
+    summarizeHistory(baseline, baseline.metrics),
+  );
+  expect(
+    summarizeCustomerPromoHistory(
+      compact,
+      "2025-10-01",
+      compact.today,
+      locationId,
+    ),
+  ).toEqual(
+    summarizeCustomerPromoHistory(
+      baseline,
+      "2025-10-01",
+      baseline.today,
+      locationId,
+    ),
+  );
+}
