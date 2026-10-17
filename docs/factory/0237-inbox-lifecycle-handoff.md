@@ -1,6 +1,6 @@
 # 0237 — Ciclo del inbox y política central
 
-**QA funcional independiente PASS de entregas y combinación `c90a8f30da97db602773b20b20438a80fad438fb`.** Candidato integrado en dev local; main espera la disposición explícita del gate de rendimiento. Este informe registra el trabajo autorizado posterior a AN-3. No reemplaza los handoffs funcionales de AN-1/AN-2/AN-3 ni certifica rendimiento.
+**QA funcional independiente PASS de entregas y combinación `c90a8f30da97db602773b20b20438a80fad438fb`.** Candidato integrado en main local por autorización explícita del owner, conservando rendimiento como pendiente. Este informe registra el trabajo autorizado posterior a AN-3. No reemplaza los handoffs funcionales de AN-1/AN-2/AN-3 ni certifica rendimiento.
 
 ## Contrato y comportamiento
 
@@ -30,8 +30,8 @@ Control de campaña12 no equivale a contenido notificable: tras vencer se compac
 
 ## Pendientes y cierre
 
-QA emitió PASS funcional separado para A658, B103 y combinación c90. [Informe independiente](0237-inbox-lifecycle-qa.md). Pendiente disposición explícita del gate de rendimiento antes de mover main, como exige el contrato, sección Secuencia y checkpoint, punto5. No hay defectos funcionales pendientes de los focales conocidos. Worktrees se conservan; no retirar hasta entregas aceptadas ancestros de main y sin procesos. A liberó recursos DB/migración sin más operaciones después del último teardown.
+QA emitió PASS funcional separado para A658, B103 y combinación c90. [Informe independiente](0237-inbox-lifecycle-qa.md), entrega aceptada `e29775af9c602e171e56d535bfeded19e4ca9f47`. El owner respondió «Pasemos a main local» después de explicitar el FAIL de rendimiento: queda autorizado este pase conservando ese requisito pendiente, sin declarar PASS de rendimiento. No quedan defectos funcionales conocidos. A liberó recursos DB/migración sin más operaciones después del último teardown.
 
 Rendimiento permanece **FAIL1817.621042ms frente a1000ms**, fuente `b3ca9c6f`, entrega rechazada `058d7c48`; diagnóstico `a900bde2` preservado y excluido. Ninguna nueva medición ni afirmación de mejora en este ciclo. Siguen diferidos CI compartida (rojo remoto original), invocación operativa de ciudades/cron remoto, mostrar clima/calendario y «cuánto ahorraste». Marketing agregado/cupón y reactivación de11 requieren otro encargo. La llamada real de clima de AN-3 permanece cerrada en su handoff, no se repitió.
 
-Main local sigue `5afa5294aa844d260313cfc3673f6f69265e0254`; referencia local origin/main `db3175d237cdcf4ec41e32d70cc1c4f1e06ab2cf`. Nada publicado.
+Main local avanzó por fast-forward de `5afa5294aa844d260313cfc3673f6f69265e0254` al candidato `d8584fa45361332780fd62c8047cb394ed453a36`, seguido del cierre documental con producto idéntico al aprobado. Referencia local origin/main `db3175d237cdcf4ec41e32d70cc1c4f1e06ab2cf` intacta. Las tres tareas factory quedaron accepted→integrated→retired, retirando solo sus worktrees/ramas propios limpios, sin procesos y con entregas ancestros de main. Diagnóstico de rendimiento preservado en su ref y rama original; solo queda el checkout principal en dev. Nada publicado.
