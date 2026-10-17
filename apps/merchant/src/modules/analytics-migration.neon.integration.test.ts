@@ -3,10 +3,8 @@ import { readFileSync } from "node:fs";
 import { sql } from "drizzle-orm";
 import { getDb, withDbTransaction } from "@mi-pasaporte/db";
 import { beforeAll, describe, expect, it } from "vitest";
+import { permisosIntegrationEnabled } from "../server/permissions-integration-support";
 
-const enabled =
-  process.env.NEON_INTEGRATION_ISOLATED === "true" &&
-  !!process.env.NEON_INTEGRATION_DATABASE_URL;
 const migration = readFileSync(
   new URL(
     "../../../../packages/db/drizzle/0097_analytics_an1.sql",
@@ -30,7 +28,7 @@ const indexDdl = migration
   );
 const ledger = sql`select id,hash,created_at::text from drizzle.__drizzle_migrations order by created_at,id`;
 
-describe.runIf(enabled)(
+describe.runIf(permisosIntegrationEnabled)(
   bootstrapPatch
     ? "AN1 original bootstrap + exact account-index patch (performance DB)"
     : "AN1 official migration from an empty isolated database",
