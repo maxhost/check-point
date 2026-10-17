@@ -1,6 +1,6 @@
 # Release Negocio0235 — corte directo
 
-Estado de preparación: el primer pre-push sobre3fbcd8a6 terminó EXIT1 y **no publicó**. Sus contratos obsoletos quedaron corregidos y probados por dos workers, con QA independiente. Nueva combinación de código7cb270d5; falta repetir el hook completo sobre el commit final de esta ficha. Sin migración PROD ni confirmación nueva de pausa todavía.
+Estado de preparación: **pre-push completo aprobado sobre db3175d237cdcf4ec41e32d70cc1c4f1e06ab2cf**, a las2026-10-17 03:22:16UTC. El envío está detenido por el bloqueo adicional hasta recibir una confirmación nueva de pausa del cron. Sin push ni migración PROD todavía. Los intentos fallidos y sus correcciones se conservan abajo.
 
 ## Autorización y alcance
 
@@ -47,3 +47,24 @@ Resultado real del primer intento: tipos6,6s/lint8/UIguard0,9/formato9,7 PASS; u
 Entrega B **fca45e9c68f8ab36ed0484e47af77cac3a0ddc63**, fuente74cf1bc3: cuatro suites **31/31 PASS**, sin skips, dos wrappers seriales EXIT0; tour **3/3 PASS**, retries0. [Handoff B](0235-release-fiscal-test.md). Fiscal se prueba por Negocio/business real, Brand solo conserva branding y no recibe permiso nuevo; mantiene aislamiento, revisiones, conflictos, atomicidad, slug y lealtad. Browser usa el mismo componente/harness y mocks de siempre; no es smokeapp. Sus dos intentos de infraestructura fallidos (Next/EMFILE sin casos y Chromium IPC antes de UI) se conservan separados del resultado válido con escalación técnica; no se afirma cura de polling.
 
 QA independiente aceptó ambas entregas exactas y su evidencia; combinación7cb270d5 conserva los commits y solo suma docs del coordinador. Recurso CI se transfirió A→B→coordinador después de cada teardown; B confirmó cierre completo2026-10-17 02:58:30UTC, sin procesos/puertos/Next propios. Se restauró el next-env generado. Evidencia real A en /private/tmp/checkpass-negocio-release-contract-tests/ y B en /private/tmp/checkpass-negocio-release/fiscal-test-logs/. Estos focos no convierten el pre-push anterior en verde: el nuevo hook completo sigue obligatorio.
+
+## Pre-push final aprobado; espera de pausa
+
+El segundo intento, sobred09adbd0, se detuvo conSIGTERM143 al detectar formato pendiente en el helper nuevo, antes de build/browser/Neon. La corrección db3175d2 solo cambia formato del helper; AST TypeScript idéntico, formato global EXIT0 y QA independiente aceptó ese SHA exacto. No hubo transmisión ni bypass.
+
+El tercer intento ejecutó el hook original completo sobre **db3175d237cdcf4ec41e32d70cc1c4f1e06ab2cf**. Finalizó `verify: ok`; bloqueo adicional registró `originalHookExit: 0` a las2026-10-17T03:22:16.511Z. Log: `/private/tmp/checkpass-negocio-release/prepush-final.log`.
+
+| Gate | Resultado | Segundos |
+| --- | --- | --- |
+| typecheck | PASS | 5,6 |
+| lint | PASS | 8,0 |
+| ui-guard | PASS | 0,9 |
+| format:check | PASS | 9,4 |
+| test | 2916 aprobados;1328 DB excluidos en esta fase | 53,6 |
+| build | 4 aplicaciones aprobadas | 19,3 |
+| test:e2e | 447 aprobados;21 omitidos | 123,1 |
+| neon (full) | 3965 aprobados/282 omitidos paralelo +34 aprobados serial;0 fallos | 834,9 |
+
+Neon ejecutó510 archivos aprobados/41 omitidos en paralelo y11/11 archivos seriales aprobados. Las omisiones se declaran por separado y no cuentan como aprobaciones. El browser global usó los servidores Next normales. Se restauró solo el `next-env.d.ts` de public generado por esas pruebas; checkout candidato limpio. La prueba serial de fallas técnicas/condiciones de negocio aprobó4/4 casos, incluida la reversión por falla DB y el cierre marcado cuando la referencia capturada es inconsistente.
+
+Se pidió una nueva pausa al owner después de este resultado. Hasta recibirla, no se crea la señal de continuación: push detenido, esquema PROD sin cambios. Esta ficha se actualiza en dev sin agregar un push documental al candidato.
