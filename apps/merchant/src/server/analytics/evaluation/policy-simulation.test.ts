@@ -1132,3 +1132,28 @@ it("does not absorb new expense evidence when only urgency, closing-phase, or un
     ),
   ).toBe(true);
 });
+
+it("shortens an open legacy fact episode when its older origin becomes demonstrable", () => {
+  const origin = "2026-06-01T12:00:00.000Z";
+  expect(
+    planEpisode(
+      "count-gap",
+      {
+        status: "open",
+        context: { observed: { kind: "count-gap", eventId: "same" } },
+        episodeStartedAt: "2026-10-25T18:00:00.000Z",
+        expiresAt: "2027-01-23T18:00:00.000Z",
+      },
+      { kind: "count-gap", eventId: "same", fact: { occurredAt: origin } },
+      now,
+      90,
+      origin,
+    ),
+  ).toMatchObject({
+    newEpisode: false,
+    expired: true,
+    eligible: false,
+    startedAt: origin,
+    expiresAt: "2026-08-30T12:00:00.000Z",
+  });
+});

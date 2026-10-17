@@ -189,10 +189,17 @@ export function planEpisode(
 ) {
   const instant = Date.parse(now),
     old = contextRecord(previous?.context.observed);
+  const provenEarlier =
+    !!previous &&
+    ["cost-rise", "count-gap"].includes(handler) &&
+    Date.parse(originInstant) < Date.parse(previous.episodeStartedAt);
+  const retainedStart = provenEarlier
+    ? originInstant
+    : previous?.episodeStartedAt;
   const saved = previous
     ? Math.min(
         Date.parse(previous.expiresAt),
-        Date.parse(previous.episodeStartedAt) + lifetimeDays * 86400000,
+        Date.parse(retainedStart!) + lifetimeDays * 86400000,
       )
     : Infinity;
   const expired = !!previous && instant > saved,
@@ -224,7 +231,7 @@ export function planEpisode(
     !previous || canReopenContext(handler, previous.context, next, closure);
   const newEpisode =
     !previous || ((closed || expired) && allowed) || changedPeriod;
-  const startedAt = newEpisode ? originInstant : previous!.episodeStartedAt;
+  const startedAt = newEpisode ? originInstant : retainedStart!;
   const expiresAt = newEpisode
     ? new Date(Date.parse(startedAt) + lifetimeDays * 86400000).toISOString()
     : new Date(saved).toISOString();

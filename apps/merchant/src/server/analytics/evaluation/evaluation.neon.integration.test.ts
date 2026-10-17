@@ -578,9 +578,16 @@ describe.skipIf(!permisosIntegrationEnabled)(
         .select()
         .from(candidates)
         .where(
-          and(eq(candidates.businessId, businessB), eq(candidates.day, copDay)),
+          and(
+            eq(candidates.businessId, businessB),
+            eq(candidates.cardKey, "1"),
+            eq(candidates.subjectKey, "summary"),
+          ),
         );
-      expect(rows.find((r) => r.cardKey === "1")).toMatchObject({
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({
+        day: "2027-03-09",
+        period: { from: "2027-03-09", to: "2027-03-09" },
         amountMinor: 40n,
         minorUnit: 0,
         currencyCode: "COP",

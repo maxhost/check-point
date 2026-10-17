@@ -19,6 +19,8 @@ import {
   analyticsDailyGauges as gauges,
   analyticsSourceRevisions as sources,
   analyticsCampaignSnapshots as snapshots,
+  moduleEvents,
+  moduleEventDeliveries,
 } from "@mi-pasaporte/db/schema";
 import {
   ANALYTICS_POLICY,
@@ -900,5 +902,297 @@ describe.skipIf(!permisosIntegrationEnabled)(
       expect((await content(f, "8"))[0].id).toBe(card.id);
       expect((await state(f, "8")).status).toBe("open");
     }, 60000);
+    it("recovers a real applied legacy fact older than90days and shortens retention without renewing content or reminders", async () => {
+      const f = await fixture();
+      await seed(f);
+      const eventId = randomUUID(),
+        movementId = randomUUID(),
+        id = randomUUID(),
+        origin = "2026-06-01T12:00:00.000Z",
+        expiry = new Date("2026-08-30T12:00:00.000Z"),
+        subject = `${eventId}:${f.item}`;
+      await getDb()
+        .insert(moduleEvents)
+        .values({
+          id: eventId,
+          businessId: f.businessId,
+          eventType: "stock.adjustment.recorded",
+          eventVersion: 1,
+          sourceId: movementId,
+          locationId: f.locationId,
+          createdAt: now,
+          payload: {
+            eventVersion: 1,
+            movementId,
+            itemId: f.item,
+            itemLabel: "Harina",
+            itemUnit: "kg",
+            locationId: f.locationId,
+            occurredAt: origin,
+            observedAt: origin,
+            quantity: "-5",
+            onHandAfter: "0",
+            countedQuantity: "0",
+            theoreticalQuantity: "5",
+            unitCost: "100",
+            gapAmountMinor: "-50000",
+            currencyCode: "USD",
+            minorUnit: 2,
+          },
+        });
+      await getDb()
+        .insert(moduleEventDeliveries)
+        .values({
+          eventId,
+          subscriberId: "core.analytics",
+          state: "applied",
+          appliedAt: now,
+        });
+      await getDb()
+        .insert(sources)
+        .values({
+          businessId: f.businessId,
+          sourceKey: `stock.adjustment.recorded:${movementId}`,
+          sourceRevision: 1,
+        });
+      await getDb()
+        .insert(metrics)
+        .values({
+          businessId: f.businessId,
+          locationId: f.locationId,
+          day: "2026-06-01",
+          metric: "stock_count_gap",
+          dimensionKind: "item",
+          dimensionId: f.item,
+          currencyCode: "USD",
+          minorUnit: 2,
+          amountMinor: -50000n,
+          quantity: "-5",
+          count: 1,
+        });
+      await getDb()
+        .insert(states)
+        .values({
+          businessId: f.businessId,
+          cardKey: "9",
+          subjectKey: subject,
+          candidateId: id,
+          status: "open",
+          fingerprint: "legacy",
+          context: { legacy: true },
+          contextVersion: "legacy",
+          policyVersion: "legacy",
+          episodeStartedAt: now,
+          expiresAt: new Date(now.getTime() + 90 * 86400000),
+          remindAt: new Date(now.getTime() + 86400000),
+          lastShownDay: day,
+          shownDays: 2,
+          revision: 3,
+        });
+      await getDb()
+        .insert(candidates)
+        .values({
+          id,
+          businessId: f.businessId,
+          cardKey: "9",
+          subjectKey: subject,
+          day,
+          weight: "3",
+          amountMinor: 50000n,
+          currencyCode: "USD",
+          minorUnit: 2,
+          fingerprint: "legacy",
+          category: "informational",
+          contextVersion: "legacy",
+          policyVersion: "legacy",
+          episodeStartedAt: now,
+          expiresAt: new Date(now.getTime() + 90 * 86400000),
+          period: { from: day, to: day, label: "Legacy" },
+          parameters: {
+            cardKey: "9",
+            subjectKey: subject,
+            sender: "Stock",
+            title: "Legacy count",
+            body: "Prior copy",
+            amountMinor: 50000,
+            currencyCode: "USD",
+            minorUnit: 2,
+            quality: "observed",
+            actionKey: null,
+            urgency: 1,
+            weight: 3,
+            fingerprint: "legacy",
+            locationId: f.locationId,
+          },
+        });
+      const p = focused(["9"], (c) => {
+        c.rules.find((r) => r.id === "9")!.parameters = {
+          ...c.rules.find((r) => r.id === "9")!.parameters,
+          ageDecay: 1,
+        };
+      });
+      expect(await evaluateBusiness(f.businessId, now, { policy: p })).toBe(
+        true,
+      );
+      expect(await state(f, "9")).toMatchObject({
+        candidateId: id,
+        status: "expired",
+        episodeStartedAt: new Date(origin),
+        expiresAt: expiry,
+        remindAt: null,
+        revision: 3,
+      });
+      expect(await content(f, "9")).toHaveLength(0);
+      expect(
+        (await readInbox(f.businessId, viewer, now, { policy: p })).cards,
+      ).toHaveLength(0);
+      expect(
+        await getDb()
+          .select()
+          .from(metrics)
+          .where(
+            and(
+              eq(metrics.businessId, f.businessId),
+              eq(metrics.metric, "stock_count_gap"),
+            ),
+          ),
+      ).toMatchObject([{ amountMinor: -50000n, quantity: "-5", count: 1 }]);
+    }, 60000);
+    it("reopens12 only for a new real applied campaign cycle, carries real coupons once, and keeps late money closed", async () => {
+      const f = await fixture();
+      await seed(f);
+      const p = focused(["12"]),
+        campaignId = randomUUID();
+      const snapshot = (
+        capturedAt: string,
+        startsAt: string,
+        endsAt: string,
+      ): MetricEvent => ({
+        id: randomUUID(),
+        businessId: f.businessId,
+        eventType: "campaign.snapshot",
+        eventVersion: 1,
+        capturedAt,
+        payload: {
+          campaignId,
+          label: "Promo",
+          status: "ended",
+          startsAt,
+          endsAt,
+          endedAt: endsAt,
+          capturedAt,
+        },
+      });
+      const a = snapshot(
+        "2026-10-16T14:00:00Z",
+        "2026-10-01T05:00:00Z",
+        "2026-10-16T13:00:00Z",
+      );
+      await withDbTransaction((tx) => applyAnalyticsEvent(tx, a, p));
+      const first = (await readInbox(f.businessId, viewer, now, { policy: p }))
+        .cards[0];
+      expect(first).toBeDefined();
+      await close(f, "12", p, "seen");
+      const old = await state(f, "12");
+      const b = snapshot(
+          "2026-10-19T14:00:00Z",
+          "2026-10-18T05:00:00Z",
+          "2026-10-19T13:00:00Z",
+        ),
+        later = new Date("2026-10-20T18:00:00Z");
+      vi.setSystemTime(later);
+      await withDbTransaction((tx) => applyAnalyticsEvent(tx, b, p));
+      const reopened = await state(f, "12");
+      expect(reopened).toMatchObject({
+        candidateId: first.id,
+        status: "open",
+        episodeStartedAt: new Date("2026-10-19T13:00:00Z"),
+        decidedAt: null,
+      });
+      expect(reopened.episodeStartedAt.getTime()).toBeGreaterThan(
+        old.episodeStartedAt.getTime(),
+      );
+      const coupon = (
+        discountMinor: string,
+        salesMinor: string,
+      ): MetricEvent => ({
+        id: randomUUID(),
+        businessId: f.businessId,
+        eventType: "coupon.redeemed",
+        eventVersion: 1,
+        capturedAt: later.toISOString(),
+        payload: {
+          eventVersion: 1,
+          couponId: randomUUID(),
+          orderId: randomUUID(),
+          campaignId,
+          campaignLabel: "Promo",
+          locationId: f.locationId,
+          occurredAt: "2026-10-19T12:00:00Z",
+          discountMinor,
+          salesMinor,
+          costMinor: "1000",
+          currencyCode: "USD",
+          minorUnit: 2,
+        },
+      });
+      const canje = coupon("5000", "20000");
+      await withDbTransaction((tx) => applyAnalyticsEvent(tx, canje, p));
+      expect((await content(f, "12"))[0]).toMatchObject({
+        id: first.id,
+        amountMinor: 5000n,
+        episodeStartedAt: reopened.episodeStartedAt,
+        expiresAt: reopened.expiresAt,
+      });
+      await withDbTransaction((tx) => applyAnalyticsEvent(tx, a, p));
+      await withDbTransaction((tx) => applyAnalyticsEvent(tx, canje, p));
+      expect((await content(f, "12"))[0]).toMatchObject({
+        id: first.id,
+        amountMinor: 5000n,
+      });
+      expect(
+        (
+          await getDb()
+            .select()
+            .from(snapshots)
+            .where(eq(snapshots.businessId, f.businessId))
+        )[0].eventId,
+      ).toBe(b.id);
+      const shown = (
+        await readInbox(f.businessId, viewer, later, { policy: p })
+      ).cards[0];
+      expect(shown.id).toBe(first.id);
+      await decideInboxCard(
+        {
+          businessId: f.businessId,
+          actorId: actor,
+          cardId: shown.id,
+          decision: "seen",
+          expectedVersion: shown.version,
+          operationId: randomUUID(),
+        },
+        viewer,
+        later,
+        { policy: p },
+      );
+      await withDbTransaction((tx) =>
+        applyAnalyticsEvent(tx, coupon("1000", "4000"), p),
+      );
+      expect(await content(f, "12")).toHaveLength(0);
+      expect((await state(f, "12")).status).toBe("seen");
+      expect(
+        (
+          await getDb()
+            .select()
+            .from(metrics)
+            .where(
+              and(
+                eq(metrics.businessId, f.businessId),
+                eq(metrics.metric, "promo_discount"),
+              ),
+            )
+        )[0],
+      ).toMatchObject({ amountMinor: 6000n, count: 2 });
+    }, 90000);
   },
 );
