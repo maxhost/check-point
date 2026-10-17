@@ -1,3 +1,4 @@
+import { lockAnalyticsBusiness } from "../lifecycle";
 import {
   evaluateAnalyticsFacts,
   reconcileCampaignCandidates,
@@ -35,6 +36,7 @@ export async function applyAnalyticsEvent(
   tx: DbTransaction,
   event: MetricEvent,
 ) {
+  await lockAnalyticsBusiness(tx, event.businessId);
   const translator = metricTranslators().find(
     (t) => t.eventType === event.eventType,
   );

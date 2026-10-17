@@ -203,14 +203,14 @@ export function validatePolicy(
     )
       throw new Error(`Política inválida: ventanas de ${rule.id}.`);
     if (
-      rule.parameters.fastQuantile &&
-      rule.parameters.slowQuantile &&
+      rule.parameters.fastQuantile !== undefined &&
+      rule.parameters.slowQuantile !== undefined &&
       rule.parameters.fastQuantile < rule.parameters.slowQuantile
     )
       throw new Error(`Política inválida: cuantiles de ${rule.id}.`);
     if (
-      rule.parameters.criticalDays &&
-      rule.parameters.riskDays &&
+      rule.parameters.criticalDays !== undefined &&
+      rule.parameters.riskDays !== undefined &&
       rule.parameters.criticalDays > rule.parameters.riskDays
     )
       throw new Error(`Política inválida: riesgo de ${rule.id}.`);

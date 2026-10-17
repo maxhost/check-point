@@ -123,6 +123,7 @@ export const analyticsEvaluationRuns = analytics.table(
     status: text("status").notNull().default("preparing"),
     preparedAt: timestamp("prepared_at", { withTimezone: true }),
     claimedAt: timestamp("claimed_at", { withTimezone: true }),
+    policyVersion: text("policy_version").notNull().default("legacy"),
   },
   (t) => [primaryKey({ columns: [t.businessId, t.day] })],
 );
@@ -141,11 +142,24 @@ export const analyticsCardCandidates = analytics.table(
     parameters: jsonb("parameters").notNull(),
     fingerprint: text("fingerprint").notNull(),
     locationId: uuid("location_id"),
+    category: text("category").notNull().default("actionable"),
+    policyVersion: text("policy_version").notNull().default("legacy"),
+    contextVersion: text("context_version").notNull().default("legacy"),
+    episodeStartedAt: timestamp("episode_started_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    period: jsonb("period")
+      .notNull()
+      .default(sql`'{}'::jsonb`),
   },
   (t) => [
+    index("analytics_candidate_expiry_idx").on(t.expiresAt, t.id),
+    index("analytics_candidate_started_idx").on(t.episodeStartedAt, t.id),
     uniqueIndex("analytics_card_candidate_unique").on(
       t.businessId,
-      t.day,
       t.cardKey,
       t.subjectKey,
     ),
@@ -162,11 +176,36 @@ export const analyticsCardStates = analytics.table(
     shownDays: integer("shown_days").notNull().default(1),
     lastShownDay: date("last_shown_day").notNull(),
     actedBy: text("acted_by"),
+    candidateId: uuid("candidate_id").notNull().defaultRandom(),
+    policyVersion: text("policy_version").notNull().default("legacy"),
+    contextVersion: text("context_version").notNull().default("legacy"),
+    context: jsonb("context")
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    episodeStartedAt: timestamp("episode_started_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    remindAt: timestamp("remind_at", { withTimezone: true }),
+    reminderConsumedAt: timestamp("reminder_consumed_at", {
+      withTimezone: true,
+    }),
+    revision: integer("revision").notNull().default(0),
+    lastOperationId: text("last_operation_id"),
+    lastOperationDigest: text("last_operation_digest"),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
   },
-  (t) => [primaryKey({ columns: [t.businessId, t.cardKey, t.subjectKey] })],
+  (t) => [
+    primaryKey({ columns: [t.businessId, t.cardKey, t.subjectKey] }),
+    uniqueIndex("analytics_state_candidate_unique").on(t.candidateId),
+    index("analytics_state_reminder_idx").on(t.remindAt, t.candidateId),
+    index("analytics_state_expiry_idx").on(t.expiresAt, t.candidateId),
+  ],
 );
 
 /** Exact snapshot values; observed instant plus immutable event ID orders ties. */
