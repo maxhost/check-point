@@ -11,27 +11,20 @@
 
 
 
-## ⇥ ESTADO (2026-10-17) — SPEC 0237 DE ANALÍTICAS (AN) EN BORRADOR; ESPERA H1–H6 DEL OWNER
+## ⇥ ESTADO (2026-10-17) — SPEC 0237 (AN) CERRADA; PROMPT DE AN-1 LISTO PARA GPT
 
-**Sesión de documentos, sin código de producto.** Commits en `dev` (sin push): `af9230d7`, `285823d5`.
+**Sesión de documentos, sin código de producto.** Commits en `dev` (sin push): `af9230d7`, `285823d5`, `b0afe557`.
 
-**Hecho:** spec **0237** (`docs/specs/0237-analiticas-inbox-y-resumenes-diarios.md`, L3) con las decisiones del owner
-del 2026-10-17 (plan, «AN — decisiones del owner para la spec»): una spec en 3 etapas (AN-1 resúmenes + inbox +
-histórico + contexto externo, tarjetas 1, 2, 3, 4, 7, 13; AN-2 stock 5, 6, 8, 9; AN-3 10–12), inbox en el Dashboard e
-histórico en ítem «Analíticas» con permiso `analytics`, ventas = solo POS, tarjeta 10 = tickets abiertos anulados.
-Cruzada con la 0236 por `module_event`: el evento de gasto trae `expenseId` + `revision`; el chequeo de pendientes del
-conteo de Stock (`stock/count.ts`) filtra `sale.closed` de cualquier suscriptor → la 0237 §2.4 lo limita a suscriptores
-de stock.
+**Hecho:** spec **0237** cerrada (`docs/specs/0237-analiticas-inbox-y-resumenes-diarios.md`, L3) y ADR **0153**
+(todo dato de Analíticas nace como evento en la tx de su origen; traductores puros). Owner 2026-10-17: Analíticas es
+**core, sin switch ni variable** → se retira `MODULE_EVENTS_ENABLED` (§2.5); AN-1 = tarjetas 1, 2, 3, 4, 6, 7, 13;
+empieza limpio en su deploy; local sin ciudad sin contexto; «cuánto ahorraste» a PARQUEADO. G y N ya están en `dev`
+(verificado: append genérico, `GenericEventSubscription`, local nullable).
 
-**ADR 0153 aceptado** (owner): todo dato de Analíticas nace como evento en la tx de su origen; traductores puros;
-Analíticas no lee tablas. La 0237 suma `sale.closed` v3, `sale.commission.frozen`, `recipes.consumption.applied`,
-`recipes.product_cost.changed`, `visit.recorded`, `coupon.redeemed`.
+**Siguiente:** el owner lanza a GPT el «Prompt — AN-1» de `docs/plan-margen-ganancia-2026-10-14.md`.
 
-**Siguiente:** el owner decide H1–H6 (al final de la spec); con eso la spec pasa a cerrada. AN-1 se implementa después
-de G (0236) y N (0235) integradas.
-
-**Pendiente del owner:** push del fix de CI (`origin/main` rojo; arreglo con QA PASS en `main` local); cuenta y clave de
-Visual Crossing (H4).
+**Pendiente del owner:** push del fix de CI (`origin/main` rojo); cuenta y clave de Visual Crossing
+(`VISUAL_CROSSING_API_KEY` en Vercel; no bloquea AN-1).
 
 **Gotchas:** F5 Futbol Evolution es del owner (prueba en PROD). No se puede anular una venta cobrada. Escribir en PROD
-solo por la app, nunca por SQL. `MODULE_EVENTS_ENABLED` en PROD: verificar antes de AN-1.
+solo por la app, nunca por SQL. Quitar `MODULE_EVENTS_ENABLED` de Vercel solo después del deploy de AN-1, con OK.
