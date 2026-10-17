@@ -335,3 +335,28 @@ test("a reminder due during a mutation queues one read after the command", async
   await page.clock.fastForward(3_600_000);
   expect(fixture.reads).toBe(2);
 });
+
+test("preparation refresh uses server cadence and stops when ready", async ({
+  page,
+}) => {
+  await page.clock.install({ time: new Date("2026-10-20T14:59:00Z") });
+  await page.clock.pauseAt(new Date("2026-10-20T15:00:00Z"));
+  const { fixture } = await setupLifecycle(page);
+  fixture.inbox.state = "preparing";
+  fixture.inbox.refreshAfterMs = 1000;
+  await page.goto(harness.url);
+  await expect(
+    page.getByText("Preparando lo de hoy", { exact: true }),
+  ).toBeVisible();
+  fixture.inbox.state = "ready";
+  fixture.inbox.refreshAfterMs = null;
+  await page.clock.fastForward(999);
+  expect(fixture.reads).toBe(1);
+  await page.clock.fastForward(1);
+  await expect.poll(() => fixture.reads).toBe(2);
+  await expect(
+    page.getByText("Preparando lo de hoy", { exact: true }),
+  ).toHaveCount(0);
+  await page.clock.fastForward(3_600_000);
+  expect(fixture.reads).toBe(2);
+});

@@ -1,19 +1,19 @@
 import { AnalyticsAmountError } from "@mi-pasaporte/domain/analytics/money";
+import { ANALYTICS_POLICY } from "@mi-pasaporte/domain/analytics/policy/index";
+import type { InboxDecision } from "@mi-pasaporte/domain/analytics/types";
+import { parseAbsolute } from "@internationalized/date";
 import { after, NextResponse } from "next/server";
 import { apiOwnerFailureResponse } from "../../api-owner";
 import { requireApiPermissionSinGateDeEmail } from "../../api-permission";
-import {
-  actOnCard,
-  evaluateBusiness,
-  evaluateDueBusinesses,
-  readInbox,
-} from "../evaluation";
+import { evaluateBusiness, evaluateDueBusinesses } from "../evaluation";
+import { cleanupInbox, decideInboxCard, readInbox } from "../lifecycle";
 import { AnalyticsError, readDay, readHistory } from "../queries";
 import {
   HISTORY_PERIODS,
   type HistoryPeriod,
 } from "@mi-pasaporte/domain/analytics/history";
 import { validDay } from "@mi-pasaporte/domain/analytics/date";
+const cardIdPattern = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 export async function inboxWithFallback(
   businessId: string,
   viewer: { role: string; permissions: readonly string[] },
@@ -34,13 +34,13 @@ export async function inboxWithFallback(
     await Promise.race([
       pending,
       new Promise<void>((resolve) => {
-        timer = setTimeout(resolve, 3000);
+        timer = setTimeout(resolve, ANALYTICS_POLICY.operation.fallbackWaitMs);
       }),
     ]);
   } finally {
     if (timer) clearTimeout(timer);
   }
-  return readInbox(businessId, viewer, new Date(), true);
+  return readInbox(businessId, viewer);
 }
 export function analyticsFailure(error: unknown) {
   if (error instanceof AnalyticsAmountError)
@@ -79,25 +79,81 @@ export async function inboxGET(request: Request) {
 export async function cardPOST(
   request: Request,
   id: string,
-  status: "accepted" | "dismissed",
+  decision: InboxDecision,
 ) {
   const auth = await authenticated(request);
   if ("response" in auth) return auth.response;
-  if (!/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(id))
+  if (!cardIdPattern.test(id))
     return analyticsFailure(
-      new AnalyticsError(
-        404,
-        "card_not_found",
-        "No encontramos esa tarjeta de hoy.",
-      ),
+      new AnalyticsError(404, "card_not_found", "No encontramos ese aviso."),
     );
   try {
+    const body: unknown = await request.json().catch(() => null);
+    if (
+      !body ||
+      typeof body !== "object" ||
+      Array.isArray(body) ||
+      !("expectedVersion" in body) ||
+      typeof body.expectedVersion !== "string" ||
+      !body.expectedVersion.trim() ||
+      !("operationId" in body) ||
+      typeof body.operationId !== "string" ||
+      !body.operationId.trim()
+    )
+      throw new AnalyticsError(
+        422,
+        "invalid_decision",
+        "La decisión está incompleta. Revisa el aviso e intenta otra vez.",
+      );
+    let remindAt: string | undefined;
+    if (decision === "snooze") {
+      const raw = "remindAt" in body ? body.remindAt : null;
+      try {
+        if (typeof raw !== "string" || !/(?:Z|[+-]\d{2}:\d{2})$/i.test(raw))
+          throw new Error("missing-zone");
+        parseAbsolute(raw, "UTC");
+        remindAt = raw;
+      } catch {
+        throw new AnalyticsError(
+          422,
+          "invalid_reminder",
+          "Elige una fecha y hora válidas con zona horaria.",
+        );
+      }
+    }
     return NextResponse.json(
-      await actOnCard(auth.business.id, auth.userId, id, status, auth),
+      await decideInboxCard(
+        {
+          businessId: auth.business.id,
+          actorId: auth.userId,
+          cardId: id,
+          decision,
+          expectedVersion: body.expectedVersion,
+          operationId: body.operationId,
+          ...(remindAt ? { remindAt } : {}),
+        },
+        auth,
+      ),
     );
   } catch (e) {
     return analyticsFailure(e);
   }
+}
+/** Old navigation clients cannot reinterpret a click as a lifecycle decision. */
+export async function legacyCardPOST(request: Request, id: string) {
+  const auth = await authenticated(request);
+  if ("response" in auth) return auth.response;
+  if (!cardIdPattern.test(id))
+    return analyticsFailure(
+      new AnalyticsError(404, "card_not_found", "No encontramos ese aviso."),
+    );
+  return analyticsFailure(
+    new AnalyticsError(
+      409,
+      "inbox_contract_changed",
+      "Los avisos se actualizaron. Recarga la página antes de decidir.",
+    ),
+  );
 }
 export async function historyGET(request: Request) {
   const auth = await authenticated(request);
@@ -152,5 +208,18 @@ export async function evaluateGET(request: Request) {
     return NextResponse.json(await evaluateDueBusinesses());
   } catch (e) {
     return analyticsFailure(e);
+  }
+}
+export async function cleanupGET(request: Request) {
+  const secret = process.env.CRON_SECRET;
+  if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`)
+    return NextResponse.json(
+      { error: "No autorizado.", code: "unauthorized" },
+      { status: 401 },
+    );
+  try {
+    return NextResponse.json(await cleanupInbox());
+  } catch (error) {
+    return analyticsFailure(error);
   }
 }

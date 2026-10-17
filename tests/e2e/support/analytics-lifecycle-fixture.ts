@@ -54,9 +54,10 @@ export function lifecycleEnvelope(cards: ReturnType<typeof withLifecycle>[]) {
     contractVersion: 2 as const,
     policyVersion: "fixture-policy-v2",
     timezone: "America/Guayaquil",
-    state: "ready" as const,
+    state: "ready" as "ready" | "preparing",
     preparedAt: "2026-10-20T15:00:00.000Z",
     nextReminderAt: null as string | null,
+    refreshAfterMs: null as number | null,
     cards,
   };
 }
