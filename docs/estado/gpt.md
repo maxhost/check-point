@@ -3,6 +3,10 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
+## ESTADO — POS/COSTOS Y COPY L1; QA MANUAL OWNER (2026-10-17)
+
+Owner pidió rapidez/pocos tokens: sin agentes ni QA automatizado, QA navegador suyo. Cola LOCAL procesada manualmente por endpoint interno existente:30applied/0failed y siguiente0claimed; lectura Joyas confirma5400revenue/875cost,5unidades/5concosto,0pendientes. POS after ahora incluye sale.closed+recipes.consumption.applied+sale.commission.frozen,20s/lote50/comercio, sin bloquear respuesta. Histórico añade datos de unidades/costos ya calculados; copy aprobado pendiente/incompleto con unidades faltantes/completo con ventas y costo; oculta ganancia aparente sin costos completos. [Handoff L1](../factory/0237-pos-costs-l1.md). Solo diff--check, sin tests/types/browser automático. Candidato dev sobre f08e22bc; QA manual pendiente y main siguef08e22bc hasta cierre manual. Sin push/deploy/PROD/migración/backfill/seed/cron remoto/INDEX/TASKS/Claude. Todos los diferidos y FAIL rendimiento conservados.
+
 ## ESTADO — GASTOS: INTENTO INMEDIATO EN MAIN LOCAL, QA PASS (2026-10-17)
 
 Owner pidió procesar Gastos al guardarlos como POS. Implementado en POST/PUT/DELETE tras commit: after/fallback seguro, comercio autenticado+expense3+core.analytics, presupuesto20s/lote50, una programación por petición/batch. Respuesta no espera ni falla por procesamiento; dedup/cron durable/corte Stock se conservan. No nueva migración ni cambio de punto de equilibrio. [Handoff](../factory/0237-expenses-immediate-handoff.md), [QA](../factory/0237-expenses-immediate-qa.md), [contrato](../factory/0237-expenses-immediate-contract.md), spec§2.3.

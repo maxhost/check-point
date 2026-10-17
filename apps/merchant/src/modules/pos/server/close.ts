@@ -318,9 +318,13 @@ export async function closePosOrder(
   // Durable deliveries survive request completion; acceleration is bounded and cannot fail this sale.
   const retry = () =>
     retryModuleEvents({
-      eventTypes: ["sale.closed"],
+      eventTypes: [
+        "sale.closed",
+        "recipes.consumption.applied",
+        "sale.commission.frozen",
+      ],
       businessId: business.id,
-      budgetMs: 2000,
+      budgetMs: 20000,
       batchSize: 50,
     }).then(
       () => undefined,

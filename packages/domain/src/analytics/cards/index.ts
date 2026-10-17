@@ -126,6 +126,8 @@ export function contribution(
   const grossProfit = sumIntegers([knownRevenue, -goods, -knownCommission]);
   return {
     coverage: units > 0 ? knownUnits / units : 0,
+    units,
+    knownUnits,
     revenue,
     knownRevenue,
     goods,

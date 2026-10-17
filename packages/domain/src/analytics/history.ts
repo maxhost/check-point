@@ -41,6 +41,10 @@ export function summarizeHistory(
       : 0,
     grossProfitMinor: sumIntegers([c.revenue, -c.goods, -c.commission]),
     coverage: c.coverage,
+    soldUnits: c.units,
+    unitsWithoutCost: Math.max(0, c.units - c.knownUnits),
+    costOfGoodsMinor: c.goods,
+    paymentCommissionMinor: c.commission,
     fixedExpensesMinor,
     variableExpensesMinor,
     resultMinor:

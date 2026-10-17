@@ -165,10 +165,36 @@ export default function AnalyticsConsole({
           </Card>
           <Card className="grid gap-4">
             <Heading level={2}>Ganancia y gastos</Heading>
-            <Text>
-              Ganancia bruta: {money(history.grossProfitMinor)}, calculada sobre
-              el {Math.round(history.coverage * 100)}% de lo vendido.
-            </Text>
+            {history.soldUnits === 0 ? (
+              <Text>No hay unidades vendidas en este período.</Text>
+            ) : history.coverage === 0 ? (
+              <>
+                <Text>Ventas: {money(history.revenueMinor)}.</Text>
+                <Text>Ganancia bruta: pendiente de cálculo.</Text>
+                <Text variant="muted">
+                  Los costos de estas ventas todavía no están incluidos.
+                </Text>
+              </>
+            ) : history.coverage < 1 ? (
+              <>
+                <Text>Ventas: {money(history.revenueMinor)}.</Text>
+                <Text>Ganancia bruta: cálculo incompleto.</Text>
+                <Text variant="muted">
+                  Falta conocer el costo de {history.unitsWithoutCost} de las{" "}
+                  {history.soldUnits} unidades vendidas.
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text>Ganancia bruta: {money(history.grossProfitMinor)}.</Text>
+                <Text variant="muted">
+                  Vendiste {money(history.revenueMinor)} y el costo de esos
+                  productos fue {money(history.costOfGoodsMinor)}.
+                  {history.paymentCommissionMinor !== 0 &&
+                    ` También se descontaron ${money(history.paymentCommissionMinor)} de comisiones.`}
+                </Text>
+              </>
+            )}
             <Text>
               Gastos fijos: {money(history.fixedExpensesMinor)}. Gastos
               variables: {money(history.variableExpensesMinor)}.
