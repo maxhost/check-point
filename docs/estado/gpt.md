@@ -3,7 +3,19 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — ANALÍTICAS0237 AN-1 INTEGRADA EN MAIN LOCAL; RENDIMIENTO DIFERIDO (2026-10-17)
+## ESTADO — ANALÍTICAS0237 AN-2 EN DEV CON QA PASS (2026-10-17)
+
+Implementado SOLO AN-2 conforme encargo: eventos Stock de compra/ajuste atómicos (uno por línea de lote), suscripción Recetas/cambio de costo y traductores puros, gauges exactos, tarjetas 5/8/9 e histórico stock/subas. Core reutiliza AN-1, sin switch ni imports de módulos concretos. Conteo intacto. [Handoff de cierre](../factory/0237-an2-handoff.md), [contrato](../factory/0237-an2-contract.md), [QA](../factory/0237-an2-qa.md), [eventos](../factory/0237-an2-events.md), [producto](../factory/0237-an2-product.md).
+
+**Candidato en dev `672e7e1c111bce92cd420605edb4752f8ccc00fa`, QA independiente PASS de entregas y combinación; informe `7e74c821`.** A entrega `b3260d7e`/producto `d6b7c8a2`, B entrega `8dfd0d43`/producto `17507bb3`. Evidencia real: A 5/5 Neon + 25/25 unitarios/fronteras + 3/3 navegador; B 3/3 Neon + 36/36 unitarios + 19/19 fronteras + 2/2 navegador; QA 9/9 oráculos exactos; combinación 39/39 unitarios/fronteras + tipos PASS. Sin skips/retries como aprobación; fallos iniciales SQL/precisión/sandbox/oráculos conservados. Sin verify global ni mutaciones. Browser de componente, no smoke app real.
+
+Owner corrigió tarjeta 9 a max(ticket promedio exacto de 28 días del local, 1% de ventas de 7 días del local), sin FX; sin ventas en 28 días cualquier faltante costeado elegible. COP y sin ventas probados. Costos nullable confirmados: desconocido → conocido publica sin delta ni tarjeta 5; ambos desconocidos no publican. **Una 0098 preparada y probada solo en DB aislada**, SQL SHA256 `e53e80ed3a89109dc8128a11ea0ca7bb17ca21a358ac7b213ffe47a67d611905`, 0097 intacta. Neon exclusivamente wrapper/migration.env, recursos seriales y teardown completo.
+
+**Pendientes diferidos AN-1 conservados:** rendimiento 2082,39 ms FAIL ≤1000, Visual Crossing real para AN-3, CI compartida con 0097 original, ciudades existentes/cron operativos. No se reabrieron. Housekeeping de candidatas bajo 0,05 documentado sin ampliar código. No AN-3 implementada; docs ajenos de prompt AN-3/estado Claude/decisión del owner preservados. No INDEX/TASKS/estado Claude editados por este equipo. Sin push/deploy/lectura o migración PROD. Main local se mantiene `0f543dd8`, origin/main referencia local `db3175d2`; cierre documental posterior al candidato no cambia producto.
+
+Tres tareas factory aceptadas, recursos liberados, sin procesos propios; worktrees limpios conservados en `/private/tmp/checkpass-an2/` porque entrega pedida en dev no es ancestro de main local. Archivos ajenos sin seguimiento intactos.
+
+## HISTÓRICO — ANALÍTICAS0237 AN-1 INTEGRADA EN MAIN LOCAL; RENDIMIENTO DIFERIDO (2026-10-17)
 
 AN-1 cerrada funcionalmente por instrucción expresa del owner: «dejemos de momento las optimizaciones parqueadas, así podemos cerrar esto e integrarlo en main local para poder avanzar al AN-2». QA independiente **PASS funcional con excepción autorizada de §Pruebas9**; no se afirma rendimiento≤1s. [Informe QA](../factory/0237-an1-qa.md), [contrato](../factory/0237-an1-contract.md), [eventos/esquema](../factory/0237-an1-events.md), [dominio/UI/rendimiento](../factory/0237-an1-product.md). Main local y dev recibieron `26493249d375c800b795793c88fd67ad344c3bb2` (informe QA), candidato `65c84251169cbe6e19b86de1ae6d76041c6646dc`, producto idéntico a `e90d1dc878130111c5a881fcb68721f3cf53ec05`; este estado es documentación posterior. Origin/main sigue `db3175d237cdcf4ec41e32d70cc1c4f1e06ab2cf`: sin push, deploy, lectura/migración PROD ni cambio de variable Vercel. No INDEX/TASKS/estadoClaude.
 
