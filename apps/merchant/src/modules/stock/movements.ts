@@ -247,6 +247,7 @@ export async function attemptPurchaseConsumption(
   locationId: string,
 ): Promise<void> {
   await retryModuleEvents({
+    eventTypes: ["sale.closed"],
     businessId,
     locationId,
     budgetMs: 2000,
@@ -312,6 +313,7 @@ export async function recordAdjustment(
   const note = parseNote(body.note);
   const cut = await captureCountCut(businessId, location.id);
   await retryModuleEvents({
+    eventTypes: ["sale.closed"],
     businessId,
     locationId: location.id,
     eventIds: cut,

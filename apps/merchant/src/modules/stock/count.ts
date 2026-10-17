@@ -10,6 +10,7 @@ export async function captureCountCut(businessId: string, locationId: string) {
     .where(
       and(
         eq(moduleEvents.businessId, businessId),
+        eq(moduleEvents.eventType, "sale.closed"),
         eq(moduleEvents.locationId, locationId),
       ),
     )
@@ -29,6 +30,7 @@ export async function validateCountCut(
     .where(
       and(
         eq(moduleEvents.businessId, businessId),
+        eq(moduleEvents.eventType, "sale.closed"),
         eq(moduleEvents.locationId, locationId),
       ),
     )
@@ -46,6 +48,7 @@ export async function validateCountCut(
     .where(
       and(
         eq(moduleEvents.businessId, businessId),
+        eq(moduleEvents.eventType, "sale.closed"),
         eq(moduleEvents.locationId, locationId),
         sql`${moduleEventDeliveries.state} in ('pending','processing')`,
       ),

@@ -5,8 +5,6 @@ import {
   staffLocationAssignments,
 } from "@mi-pasaporte/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
-import { pgErrorCode } from "@mi-pasaporte/domain/server/counter/core";
-import { SERVER_MODULES } from "../../modules/server-registry";
 import { listStaffLocationTimeline } from "../staff-location-timeline";
 import { StaffError } from "../staff-error";
 import { touchStaffPerson } from "./identity";
@@ -88,25 +86,6 @@ export async function assignStaffLocations(
     .values(
       locationIds.map((locationId) => ({ businessId, periodId, locationId })),
     );
-  try {
-    for (const module of Object.values(SERVER_MODULES))
-      await module.staffLocationsChanged?.(tx, {
-        businessId,
-        personId,
-        fromMonth,
-        untilMonth,
-        locationIds,
-      });
-  } catch (error) {
-    const conflict =
-      ["40001", "40P01"].includes(pgErrorCode(error) ?? "") ||
-      (error as { status?: number })?.status === 409;
-    throw new StaffError(
-      conflict ? 409 : 503,
-      "No pudimos actualizar los locales. Actualiza los datos e intenta de nuevo.",
-      conflict ? "assignment_update_conflict" : "assignment_update_failed",
-    );
-  }
   await touchStaffPerson(tx, businessId, personId);
   return true;
 }

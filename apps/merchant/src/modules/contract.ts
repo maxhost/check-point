@@ -62,6 +62,4 @@ export type ModuleManifest = {
   operation?: ModuleOperation;
   startPage?: ModuleStartPage;
   locationAction?: ModuleLocationAction;
-  /** ADR0147: action for a person, independently of optional login access. */
-  staffAction?: ModuleLocationAction;
 };

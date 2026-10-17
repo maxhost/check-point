@@ -1,12 +1,10 @@
-import type { ModuleServer } from "../../route-table";
+import type { SaleEventSubscription } from "../../../server/module-events/types";
 import { applyConsumption } from "../../stock/consumption";
 import { capturedConsumption } from "./model/captured";
 import { persistProvenance } from "./model/provenance";
 
 /** Both captured formats are immutable; the transaction also owns delivery acknowledgment. */
-export const eventSubscriptions: NonNullable<
-  ModuleServer["eventSubscriptions"]
-> = [
+export const eventSubscriptions: readonly SaleEventSubscription[] = [
   {
     eventType: "sale.closed",
     resourceType: "product",

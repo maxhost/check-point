@@ -20,7 +20,7 @@ export type FrozenCommissionResult = {
   configured: boolean;
   reasons: string[];
 };
-/** Private builder; canonical exports belong to profitability.ts. No dependency on a sale producer. */
+/** Private builder; canonical exports belong to this core schema. No dependency on a sale producer. */
 export function createCommissionTables(schema: ReturnType<typeof pgSchema>) {
   const revisions = schema.table(
     "commission_revision",

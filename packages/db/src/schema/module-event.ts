@@ -49,7 +49,7 @@ export const moduleEvents = core.table(
     eventType: text("event_type").notNull(),
     eventVersion: integer("event_version").notNull(),
     sourceId: uuid("source_id").notNull(),
-    locationId: uuid("location_id").notNull(),
+    locationId: uuid("location_id"),
     payload: jsonb("payload").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -60,6 +60,10 @@ export const moduleEvents = core.table(
       t.businessId,
       t.eventType,
       t.sourceId,
+    ),
+    check(
+      "module_event_sale_location_check",
+      sql`${t.eventType} <> 'sale.closed' or ${t.locationId} is not null`,
     ),
     index("module_event_local_cut_idx").on(t.businessId, t.locationId, t.id),
   ],

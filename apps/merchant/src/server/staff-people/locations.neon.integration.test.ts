@@ -1,51 +1,24 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { getDb, withDbTransaction } from "@mi-pasaporte/db";
-import { businesses } from "@mi-pasaporte/db/schema";
-import { eq } from "drizzle-orm";
+import { withDbTransaction } from "@mi-pasaporte/db";
 import {
   permisosIntegrationEnabled,
   limpiarNegocios,
 } from "../permissions-integration-support";
-import { SERVER_MODULES } from "../../modules/server-registry";
 import { listStaffLocationTimeline } from "../staff-location-timeline";
 import { setLocationStatus } from "../locations/store";
 import { staffPeopleWorld, peopleApi } from "./integration-support";
 const run = permisosIntegrationEnabled ? describe : describe.skip;
-const contributorId = "staff-maintenance-fixture";
 
 run(
-  "0231 assignment timeline and atomic generic maintenance",
+  "0236 preserves independent staff assignment timelines",
   { timeout: 60000 },
   () => {
     let world: Awaited<ReturnType<typeof staffPeopleWorld>>;
-    let calls = 0,
-      fail = false;
     beforeAll(async () => {
       world = await staffPeopleWorld();
-      (SERVER_MODULES as Record<string, (typeof SERVER_MODULES)[string]>)[
-        contributorId
-      ] = {
-        routes: [],
-        staffLocationsChanged: async (tx, change) => {
-          calls++;
-          await tx
-            .update(businesses)
-            .set({ name: `derived-${change.fromMonth}` })
-            .where(eq(businesses.id, change.businessId));
-          if (fail)
-            throw new Error(
-              "Sensitive internal monetary payload must never escape",
-            );
-        },
-      };
     });
-    afterAll(async () => {
-      delete (
-        SERVER_MODULES as Record<string, (typeof SERVER_MODULES)[string]>
-      )[contributorId];
-      await limpiarNegocios([world.business.id], world.users);
-    });
+    afterAll(async () => limpiarNegocios([world.business.id], world.users));
     async function create() {
       const result = await peopleApi.create(world.cookie, {
         name: randomUUID(),
@@ -82,8 +55,7 @@ run(
         ],
       });
       expect(march.status).toBe(200);
-      const m = (await march.json()).person,
-        before = calls;
+      const m = (await march.json()).person;
       const rows = await timeline(p.id);
       expect(
         rows.map((r) => [r.fromMonth, r.untilMonth, r.locationIds]),
@@ -100,47 +72,11 @@ run(
       });
       expect(repeated.status).toBe(200);
       expect((await repeated.json()).person.revision).toBe(m.revision);
-      expect(calls).toBe(before);
       expect(await timeline(p.id)).toEqual(rows);
       const feb = (
         await (await peopleApi.list(world.cookie, "2026-02")).json()
       ).people.find((row: { id: string }) => row.id === p.id);
       expect(feb.locationIds).toEqual([world.locations[0]]);
-    });
-    it("runs callbacks without activation and rolls back assignment/revision/derived writes on sanitized failure", async () => {
-      const p = await create(),
-        before = await timeline(p.id);
-      const [businessBefore] = await getDb()
-        .select({ name: businesses.name })
-        .from(businesses)
-        .where(eq(businesses.id, world.business.id));
-      fail = true;
-      const response = await peopleApi.locations(world.cookie, p.id, {
-        expectedRevision: p.revision,
-        fromMonth: "2026-03",
-        locationIds: [world.locations[1]],
-      });
-      fail = false;
-      expect(response.status).toBe(503);
-      const error = await response.json();
-      expect(error.code).toBe("assignment_update_failed");
-      expect(JSON.stringify(error)).not.toContain("Sensitive");
-      expect(await timeline(p.id)).toEqual(before);
-      expect(
-        (
-          await getDb()
-            .select({ name: businesses.name })
-            .from(businesses)
-            .where(eq(businesses.id, world.business.id))
-        )[0],
-      ).toEqual(businessBefore);
-      const retry = await peopleApi.locations(world.cookie, p.id, {
-        expectedRevision: p.revision,
-        fromMonth: "2026-03",
-        locationIds: [world.locations[1]],
-      });
-      expect(retry.status).toBe(200);
-      expect((await timeline(p.id)).length).toBe(2);
     });
     it("serializes stale edits and rejects empty/foreign/new archived assignments while retaining an assigned archived local", async () => {
       const p = await create();

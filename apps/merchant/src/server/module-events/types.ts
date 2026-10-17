@@ -63,10 +63,48 @@ export type CapturedModuleEvent = {
   businessId: string;
   payload: SaleClosedEvent;
 };
-export type EventSubscription = {
+export type SaleEventSubscription = {
   eventType: "sale.closed";
   resourceType: string;
   slot: string;
   requiredModules: readonly string[];
   handler: (tx: DbTransaction, event: CapturedModuleEvent) => Promise<void>;
 };
+
+export type GenericEventSubscription = {
+  eventType: string;
+  resourceType: string;
+  slot: string;
+  requiredModules: readonly string[];
+  dispatch: (
+    tx: DbTransaction,
+    event: {
+      id: string;
+      businessId: string;
+      eventVersion: number;
+      payload: unknown;
+    },
+  ) => Promise<void>;
+};
+export type EventSubscription =
+  SaleEventSubscription | GenericEventSubscription;
+/** A producer/consumer-owned decoder keeps typed payloads outside the framework. */
+export function defineEventSubscription<T>(
+  args: Omit<GenericEventSubscription, "dispatch"> & {
+    decode: (payload: unknown, version: number) => T;
+    handler: (
+      tx: DbTransaction,
+      event: { id: string; businessId: string; payload: T },
+    ) => Promise<void>;
+  },
+): GenericEventSubscription {
+  return {
+    ...args,
+    dispatch: async (tx, event) =>
+      args.handler(tx, {
+        id: event.id,
+        businessId: event.businessId,
+        payload: args.decode(event.payload, event.eventVersion),
+      }),
+  };
+}

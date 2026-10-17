@@ -91,7 +91,7 @@ describe.skipIf(!modulesIntegrationEnabled)(
         "recipes",
         "pos",
         "tables",
-        "profitability",
+        "expenses",
       ]);
       expect(modules[0].navigation).toEqual([
         { path: "", label: "Stock", icon: "Package", permission: "stock" },
@@ -190,7 +190,7 @@ describe.skipIf(!modulesIntegrationEnabled)(
         "stock",
         "recipes",
         "pos",
-        "profitability",
+        "expenses",
       ]);
     }, 120_000);
 

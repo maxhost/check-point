@@ -118,18 +118,25 @@ describe.skipIf(!modulesIntegrationEnabled)(
           permissions: [],
         },
         {
-          id: "profitability",
-          name: "Rentabilidad",
-          description: "Costos fijos y sueldos de tu negocio",
+          id: "expenses",
+          name: "Gastos",
+          description: "Pagos del negocio, desde dictado o foto.",
           requires: [],
           enabled: false,
-          suggested: true,
-          navigation: [],
+          suggested: false,
+          navigation: [
+            {
+              path: "",
+              label: "Gastos",
+              icon: "Wallet",
+              permission: "expenses",
+            },
+          ],
           permissions: [
             {
-              id: "profitability",
-              label: "Rentabilidad",
-              description: "Ver y editar costos fijos y sueldos.",
+              id: "expenses",
+              label: "Gastos",
+              description: "Registrar y consultar pagos, incluidos sueldos.",
             },
           ],
         },
@@ -243,7 +250,7 @@ describe.skipIf(!modulesIntegrationEnabled)(
 
     it("aislamiento: el negocio B no ve encendido lo que encendio A, y su ruta sigue en 403", async () => {
       const r = await (await api.modules(other.cookie)).json();
-      // Spec 0231 adds profitability; all five modules remain disabled in B.
+      // Spec 0231 adds expenses; all five modules remain disabled in B.
       expect(r.modules.map((m: { enabled: boolean }) => m.enabled)).toEqual([
         false,
         false,
