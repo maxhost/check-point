@@ -92,9 +92,10 @@ export async function recordStockEvidence(
           Number(r.quantity) > 0 &&
           r.occurredAt,
       );
-      for (const row of consumption) {
+      if (consumption.length) {
         const fact = {
-          at: new Date(row.occurredAt!).toISOString(),
+          // Inventory mutation time captured by the paired gauge, never the sale accounting day.
+          at: cursor.at,
           id: event.id,
           quantity: gauge.quantity,
         };

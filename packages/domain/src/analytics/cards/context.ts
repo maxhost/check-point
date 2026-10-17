@@ -15,6 +15,13 @@ export function canonicalContext(value: unknown): string {
       .join(",")}}`;
   return JSON.stringify(value) ?? "null";
 }
+export const requiresCalculationBaseline = (
+  handler: AnalyticsRuleHandler,
+  previous: AnalyticsContext,
+  next: AnalyticsContext,
+) =>
+  ["goal", "expenses", "margin", "unknown-cost"].includes(handler) &&
+  contextRecord(previous.observed).calculationKey !== next.calculationKey;
 const same = (a: unknown, b: unknown) =>
   canonicalContext(a) === canonicalContext(b);
 const bucket = (v: unknown) =>
@@ -35,6 +42,7 @@ export function canReopenContext(
   const old = contextRecord(previous.observed),
     b = contextRecord(next),
     closed = time(decidedAt);
+  if (requiresCalculationBaseline(handler, previous, next)) return false;
   if (b.kind === "learning")
     return !same(
       [old.first, old.occurrences, old.historyReady],
@@ -62,14 +70,52 @@ export function canReopenContext(
   if (handler === "stock") {
     const priorGauge = contextRecord(old.gauge),
       gauge = contextRecord(b.gauge),
-      evidence = contextRecord(previous.stockEvidence);
-    const consumption = contextRecord(evidence.consumption),
+      evidence = contextRecord(previous.stockEvidence),
+      consumption = contextRecord(evidence.consumption),
       recovery = contextRecord(evidence.recovery);
+    const known = (v: unknown) =>
+      typeof v === "string" &&
+      /^-?\d+(?:\.\d+)?$/.test(v) &&
+      Number.isFinite(Number(v))
+        ? Number(v)
+        : null;
+    const attended = known(priorGauge.quantity),
+      current = known(gauge.quantity),
+      consumed = known(consumption.quantity);
+    const compare = (
+      at: unknown,
+      id: unknown,
+      otherAt: unknown,
+      otherId: unknown,
+    ) => {
+      const a = time(at),
+        b = time(otherAt);
+      if (!Number.isFinite(a) || !Number.isFinite(b)) return NaN;
+      return a !== b
+        ? a - b
+        : typeof id === "string" && typeof otherId === "string"
+          ? id < otherId
+            ? -1
+            : id > otherId
+              ? 1
+              : 0
+          : NaN;
+    };
+    if (current === null) return false;
     return (
       (time(consumption.at) > closed &&
-        Number(gauge.quantity) < Number(priorGauge.quantity) &&
-        time(gauge.observedAt) >= time(consumption.at)) ||
-      (time(recovery.at) > closed && time(gauge.observedAt) > time(recovery.at))
+        consumed !== null &&
+        attended !== null &&
+        consumed < attended &&
+        current < attended &&
+        compare(
+          gauge.observedAt,
+          gauge.eventId,
+          consumption.at,
+          consumption.id,
+        ) >= 0) ||
+      (time(recovery.at) > closed &&
+        compare(gauge.observedAt, gauge.eventId, recovery.at, recovery.id) > 0)
     );
   }
   if (handler === "goal")
@@ -166,6 +212,9 @@ export function planEpisode(
     ? new Date(Date.parse(startedAt) + lifetimeDays * 86400000).toISOString()
     : new Date(saved).toISOString();
   return {
+    rebaseline:
+      !!previous &&
+      requiresCalculationBaseline(handler, previous.context, next),
     newEpisode,
     allowed,
     expired,

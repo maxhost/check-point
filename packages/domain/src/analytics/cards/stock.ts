@@ -1,4 +1,4 @@
-import { contextRecord } from "./context";
+import { contextRecord, canonicalContext } from "./context";
 import {
   ANALYTICS_POLICY,
   policyText,
@@ -249,7 +249,13 @@ function buildStockRule(
 /** Captured facts are supplied by the translator. No source tables or module names. */
 export type FactEmission = {
   amountMinor: number;
-  basis?: { totalSales: number; tickets: number; weeklySales: number };
+  capture?: Readonly<Record<string, number>>;
+  basis?: {
+    totalSales?: number;
+    tickets?: number;
+    weeklySales?: number;
+    quantitySold?: { numerator: string; denominator: string };
+  };
 };
 export function buildFactCandidates(
   input: AnalyticsInput,
@@ -311,17 +317,22 @@ export function buildFactCandidates(
             fact.unitCostBefore,
           );
           if (productDelta.n <= 0n) return [];
-          const q = rows
-            .filter(
-              (r) =>
-                r.metric === "units_sold" &&
-                r.dimensionId === fact.productId &&
-                r.locationId === fact.locationId,
-            )
-            .reduce(
-              (total, r) => add(total, decimal(String(r.quantity))),
-              rational(0n),
-            );
+          const q = emitted?.basis?.quantitySold
+            ? rational(
+                BigInt(emitted.basis.quantitySold.numerator),
+                BigInt(emitted.basis.quantitySold.denominator),
+              )
+            : rows
+                .filter(
+                  (r) =>
+                    r.metric === "units_sold" &&
+                    r.dimensionId === fact.productId &&
+                    r.locationId === fact.locationId,
+                )
+                .reduce(
+                  (total, r) => add(total, decimal(String(r.quantity))),
+                  rational(0n),
+                );
           const weekly =
             emitted?.amountMinor ??
             moneyRatio(
@@ -346,7 +357,21 @@ export function buildFactCandidates(
                 ...base,
                 cardKey: rule.id,
                 subjectKey: subject,
-                context: { ...base.context, emission: { amountMinor: weekly } },
+                context: {
+                  ...base.context,
+                  emission: {
+                    amountMinor: weekly,
+                    capture: factCaptureParameters(rule),
+                    basis: emitted
+                      ? emitted.basis
+                      : {
+                          quantitySold: {
+                            numerator: String(q.n),
+                            denominator: String(q.d),
+                          },
+                        },
+                  },
+                },
                 sender: rule.sender,
                 title: policyText(policy, "card_stock_buildFactCandidates_1", {
                   v0: fact.itemLabel,
@@ -416,6 +441,7 @@ export function buildFactCandidates(
                 ...base.context,
                 emission: {
                   amountMinor: loss,
+                  capture: factCaptureParameters(rule),
                   basis: { weeklySales, totalSales, tickets },
                 },
               },
@@ -472,25 +498,126 @@ export function carryFactCandidate(
   );
 }
 
+export function factCaptureParameters(
+  rule: AnalyticsRulePolicy,
+): Readonly<Record<string, number>> {
+  return rule.handler === "cost-rise"
+    ? {
+        salesDays: rule.parameters.salesDays,
+        impactDays: rule.parameters.impactDays,
+      }
+    : {
+        salesDays: rule.parameters.salesDays,
+        weeklyDays: rule.parameters.weeklyDays,
+      };
+}
+export function needsFactOriginSnapshot(
+  rule: AnalyticsRulePolicy,
+  observed: Readonly<Record<string, unknown>>,
+) {
+  const emission = contextRecord(observed.emission),
+    capture = contextRecord(emission.capture),
+    basis = contextRecord(emission.basis);
+  if (
+    canonicalContext(capture) === canonicalContext(factCaptureParameters(rule))
+  )
+    return false;
+  return !(
+    rule.handler === "cost-rise" &&
+    capture.salesDays === rule.parameters.salesDays &&
+    basis.quantitySold
+  );
+}
+export type MissingFactSnapshot = {
+  cardKey: string;
+  subjectKey: string;
+  eventId: string;
+  originDay: string;
+  requiredDays: number;
+};
 /** The same bounded factual universe is used by daily evaluation and pure simulation. */
 export function restoreFactCandidates(
   input: AnalyticsInput,
   states: readonly CardState[],
   policy: AnalyticsPolicy = ANALYTICS_POLICY,
+  onMissing?: (info: MissingFactSnapshot) => void,
 ): CardCandidate[] {
   const cards: CardCandidate[] = [];
   for (const control of states) {
     const context = contextRecord(control.context),
       observed = contextRecord(context.sourceFact ?? context.observed),
       fact = observed.fact as AnalyticsFact | undefined;
-    if (!fact || typeof observed.eventId !== "string") continue;
-    const emission = contextRecord(observed.emission) as FactEmission;
-    const map = new Map([
-      [`${control.cardKey}:${control.subjectKey}`, emission],
-    ]);
+    const rule = policy.rules.find(
+      (r) =>
+        r.id === control.cardKey &&
+        r.enabled &&
+        (r.handler === "cost-rise" || r.handler === "count-gap"),
+    );
+    if (!rule || !fact || typeof observed.eventId !== "string") continue;
+    let original = input,
+      emission = contextRecord(observed.emission) as FactEmission | undefined;
+    if (
+      canonicalContext(emission?.capture) !==
+      canonicalContext(factCaptureParameters(rule))
+    ) {
+      if (
+        !needsFactOriginSnapshot(rule, observed) &&
+        fact.kind === "unit_cost_change"
+      ) {
+        const q = emission!.basis!.quantitySold!,
+          delta = decimalDifference(fact.unitCostAfter, fact.unitCostBefore);
+        emission = {
+          ...emission!,
+          capture: factCaptureParameters(rule),
+          amountMinor: moneyRatio(
+            delta.n *
+              10n ** BigInt(input.minorUnit) *
+              BigInt(q.numerator) *
+              BigInt(rule.parameters.impactDays),
+            delta.d * BigInt(q.denominator) * BigInt(rule.parameters.salesDays),
+          ),
+        };
+      } else {
+        const originDay = localDay(
+            new Date(fact.occurredAt),
+            input.timezone ?? "UTC",
+          ),
+          requiredDays = Math.max(
+            rule.parameters.salesDays,
+            rule.parameters.weeklyDays ?? 0,
+          );
+        const snapshot = input.factSnapshots?.find(
+          (s) =>
+            s.eventId === observed.eventId &&
+            s.input.today === originDay &&
+            (s.input.readWindows?.recentDays ?? 0) >= requiredDays,
+        );
+        if (!snapshot) {
+          const info = {
+            cardKey: rule.id,
+            subjectKey: control.subjectKey,
+            eventId: observed.eventId,
+            originDay,
+            requiredDays,
+          };
+          if (onMissing) {
+            onMissing(info);
+            continue;
+          }
+          throw new Error(
+            `Falta snapshot factual de origen: ${rule.id}/${control.subjectKey}.`,
+          );
+        }
+        original = snapshot.input;
+        emission = undefined;
+      }
+    }
+    const map = emission
+      ? new Map([[`${control.cardKey}:${control.subjectKey}`, emission]])
+      : new Map<string, FactEmission>();
     cards.push(
       ...buildFactCandidates(
-        input,
+        original,
         [fact],
         observed.eventId,
         (instant) => localDay(new Date(instant), input.timezone ?? "UTC"),
@@ -503,14 +630,22 @@ export function restoreFactCandidates(
             c.cardKey === control.cardKey &&
             c.subjectKey === control.subjectKey,
         )
-        .map((c) => ({
-          ...c,
-          context: {
-            ...c.context,
-            sourceKey: observed.sourceKey,
-            sourceRevision: observed.sourceRevision,
-          },
-        })),
+        .map((c) =>
+          carryFactCandidate(
+            input,
+            {
+              ...c,
+              context: {
+                ...c.context,
+                sourceKey: observed.sourceKey,
+                sourceRevision: observed.sourceRevision,
+              },
+            },
+            [],
+            policy,
+          ),
+        )
+        .filter((c): c is CardCandidate => c !== null),
     );
   }
   for (const card of input.factCards ?? []) {

@@ -196,6 +196,12 @@ export function validatePolicy(
       if (!fields.includes(match[1]))
         throw new Error(`Política inválida: campo ${key}.${match[1]}.`);
   }
+  for (const [key, text] of Object.entries(config.texts))
+    if (
+      key.startsWith("action_") &&
+      (typeof text !== "string" || !text.trim() || /[{}]/.test(text))
+    )
+      throw new Error(`Política inválida: etiqueta de acción ${key}.`);
   const ids = new Set<string>();
   for (const rule of config.rules) {
     if (!/^[a-zA-Z0-9_-]+$/.test(rule.id) || ids.has(rule.id))

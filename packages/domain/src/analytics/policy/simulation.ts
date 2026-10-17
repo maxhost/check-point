@@ -1,4 +1,7 @@
-import { restoreFactCandidates } from "../cards/stock";
+import {
+  restoreFactCandidates,
+  type MissingFactSnapshot,
+} from "../cards/stock";
 import { buildCandidates } from "../cards/index";
 import { planEpisode, contextRecord } from "../cards/context";
 import { addDays } from "../date";
@@ -27,9 +30,12 @@ export function simulateAnalytics(
         )
         .map((r) => r.amountMinor),
     ) / policy.weights.averageDailyDays;
+  const unavailableFacts: MissingFactSnapshot[] = [];
   const candidates = [
     ...buildCandidates(input, states, policy),
-    ...restoreFactCandidates(input, states, policy),
+    ...restoreFactCandidates(input, states, policy, (info) =>
+      unavailableFacts.push(info),
+    ),
   ].map((card) => {
     const rule = policy.rules.find((r) => r.id === card.cardKey)!;
     const state = states.find(
@@ -139,6 +145,7 @@ export function simulateAnalytics(
   }
   return {
     policyVersion: policy.version,
+    unavailableFacts,
     now,
     averageDailyMinor: average,
     rules: policy.rules.map((rule) => ({
@@ -147,9 +154,11 @@ export function simulateAnalytics(
       enabled: rule.enabled,
       reason: !rule.enabled
         ? "disabled"
-        : candidates.some((c) => c.cardKey === rule.id)
-          ? "evaluated"
-          : "condition_not_met",
+        : unavailableFacts.some((f) => f.cardKey === rule.id)
+          ? "requires_origin_snapshot"
+          : candidates.some((c) => c.cardKey === rule.id)
+            ? "evaluated"
+            : "condition_not_met",
     })),
     candidates,
     order: ordered.slice(0, policy.weights.maximumCards).map((c) => ({

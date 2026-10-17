@@ -305,7 +305,11 @@ describe("pertinent closed-context comparators", () => {
       },
       next = {
         kind: "stock",
-        gauge: { observedAt: "2026-10-25T15:00:00.000Z", quantity: "9" },
+        gauge: {
+          observedAt: "2026-10-25T15:00:00.000Z",
+          eventId: "event",
+          quantity: "9",
+        },
       };
     expect(canReopenContext("stock", { observed }, next, closed)).toBe(false);
     expect(
@@ -313,7 +317,13 @@ describe("pertinent closed-context comparators", () => {
         "stock",
         {
           observed,
-          stockEvidence: { consumption: { at: "2026-10-25T11:30:00.000Z" } },
+          stockEvidence: {
+            consumption: {
+              at: "2026-10-25T11:30:00.000Z",
+              quantity: "9",
+              id: "event",
+            },
+          },
         },
         next,
         closed,
@@ -324,7 +334,13 @@ describe("pertinent closed-context comparators", () => {
         "stock",
         {
           observed,
-          stockEvidence: { consumption: { at: "2026-10-25T15:00:00.000Z" } },
+          stockEvidence: {
+            consumption: {
+              at: "2026-10-25T15:00:00.000Z",
+              quantity: "9",
+              id: "event",
+            },
+          },
         },
         next,
         closed,
@@ -497,7 +513,11 @@ it("simulates exposed summaries at their fixed weight and factual5/9 from the sa
         kind: "cost-rise",
         eventId: "event5",
         fact: costFact,
-        emission: { amountMinor: 140 },
+        emission: {
+          amountMinor: 140,
+          capture: { salesDays: 28, impactDays: 7 },
+          basis: { quantitySold: { numerator: "28", denominator: "1" } },
+        },
       },
     },
   };
@@ -517,6 +537,7 @@ it("simulates exposed summaries at their fixed weight and factual5/9 from the sa
         fact: countFact,
         emission: {
           amountMinor: 500,
+          capture: { salesDays: 28, weeklyDays: 7 },
           basis: { totalSales: 2800, tickets: 28, weeklySales: 700 },
         },
       },
@@ -555,4 +576,390 @@ it("simulates exposed summaries at their fixed weight and factual5/9 from the sa
     components: { novelty: 1 },
     weightMultiplier: 0.7,
   });
+});
+
+it("keeps unknown-cost material tied to its own product while preserving aggregate presentation", () => {
+  const input = simulationFixture();
+  const unknown = (
+    ownUnits: number,
+    ownRevenue: number,
+    otherRevenue: number,
+  ) => ({
+    ...input,
+    metrics: [
+      ...input.metrics,
+      row("2026-10-24", "product_revenue", ownRevenue, 0, "p1"),
+      row("2026-10-24", "revenue_with_cost", 9900, 0, "p1"),
+      row("2026-10-24", "units_sold", 0, ownUnits, "p1"),
+      row("2026-10-24", "units_with_cost", 0, 9, "p1"),
+      row("2026-10-24", "product_revenue", otherRevenue, 0, "p2"),
+      row("2026-10-24", "units_sold", 0, 10, "p2"),
+    ],
+  });
+  const before = buildCandidates(unknown(10, 10000, 8000)).find(
+      (c) => c.cardKey === "7",
+    )!,
+    after = buildCandidates(unknown(11, 10001, 9000)).find(
+      (c) => c.cardKey === "7",
+    )!;
+  expect(before.subjectKey).toBe("p1");
+  expect(after.subjectKey).toBe("p1");
+  expect(after.context!.material).toBe(before.context!.material);
+  expect(after.amountMinor).toBeGreaterThan(before.amountMinor!);
+  expect(
+    canReopenContext(
+      "unknown-cost",
+      { observed: before.context },
+      after.context!,
+      now,
+    ),
+  ).toBe(false);
+});
+
+it("rebases5 exactly from captured rational units and requires origin-window snapshots for a changed sales window", () => {
+  const input = simulationFixture(),
+    occurredAt = "2026-10-24T12:00:00.000Z";
+  const fact = {
+    kind: "unit_cost_change",
+    occurredAt,
+    locationId: "local",
+    itemId: "item",
+    itemLabel: "Harina",
+    itemUnit: "kg",
+    itemUnitCostBefore: "1",
+    itemUnitCostAfter: "1.2",
+    productId: "product",
+    productLabel: "Café",
+    unitCostBefore: "0.4",
+    unitCostAfter: "0.6",
+    currencyCode: "USD",
+    minorUnit: 2,
+  };
+  const state: CardState = {
+    cardKey: "5",
+    subjectKey: "local:item:product",
+    status: "open",
+    fingerprint: "same",
+    shownDays: 1,
+    lastShownDay: "2026-10-24",
+    episodeStartedAt: occurredAt,
+    expiresAt: "2027-01-22T12:00:00.000Z",
+    context: {
+      observed: { kind: "cost-rise", eventId: "event5", fact: { occurredAt } },
+      sourceFact: {
+        kind: "cost-rise",
+        eventId: "event5",
+        fact,
+        emission: {
+          amountMinor: 140,
+          capture: { salesDays: 28, impactDays: 7 },
+          basis: { quantitySold: { numerator: "28", denominator: "1" } },
+        },
+      },
+    },
+  };
+  const impact = config();
+  Object.assign(impact.rules.find((r) => r.id === "5")!.parameters, {
+    impactDays: 14,
+  });
+  expect(
+    simulateAnalytics(
+      input,
+      [state],
+      now,
+      createAnalyticsPolicy(impact),
+    ).candidates.find((c) => c.cardKey === "5"),
+  ).toMatchObject({
+    amountMinor: 280,
+    weightMultiplier: 0.7,
+    expiresAt: state.expiresAt,
+  });
+  const window = config();
+  Object.assign(window.rules.find((r) => r.id === "5")!.parameters, {
+    salesDays: 42,
+  });
+  const policy = createAnalyticsPolicy(window),
+    missing = simulateAnalytics(input, [state], now, policy);
+  expect(missing.unavailableFacts).toEqual([
+    {
+      cardKey: "5",
+      subjectKey: state.subjectKey,
+      eventId: "event5",
+      originDay: "2026-10-24",
+      requiredDays: 42,
+    },
+  ]);
+  expect(missing.rules.find((r) => r.id === "5")?.reason).toBe(
+    "requires_origin_snapshot",
+  );
+  expect(missing.candidates.some((c) => c.cardKey === "5")).toBe(false);
+  const original = {
+    ...input,
+    today: "2026-10-24",
+    readWindows: {
+      recentDays: 42,
+      closedMonths: 3,
+      sameWeekdays: 8,
+      anomalyDays: 63,
+    },
+    metrics: [
+      ...Array.from({ length: 42 }, (_, i) =>
+        row(
+          addDays("2026-10-24", -i - 1),
+          "units_sold",
+          0,
+          i < 28 ? 1 : 10,
+          "product",
+        ),
+      ),
+      row("2026-10-24", "units_sold", 0, 99999, "product"),
+    ],
+  };
+  const prepared = {
+    ...input,
+    factSnapshots: [{ eventId: "event5", input: original }],
+  };
+  const rebased = simulateAnalytics(
+    prepared,
+    [state],
+    now,
+    policy,
+  ).candidates.find((c) => c.cardKey === "5")!;
+  expect(rebased).toMatchObject({
+    amountMinor: 560,
+    weightMultiplier: 0.7,
+    expiresAt: state.expiresAt,
+  });
+  const closed = {
+    ...state,
+    status: "ignored" as const,
+    decidedAt: "2026-10-24T13:00:00.000Z",
+  };
+  expect(
+    simulateAnalytics(prepared, [closed], now, policy).candidates.find(
+      (c) => c.cardKey === "5",
+    ),
+  ).toMatchObject({
+    reopens: false,
+    reason: "attended_context",
+    expiresAt: state.expiresAt,
+  });
+});
+
+it("rebases count9 from revenue before its origin when weeklyDays changes, never from future sales", () => {
+  const input = simulationFixture(),
+    occurredAt = "2026-10-24T12:00:00.000Z",
+    fact = {
+      kind: "count_gap",
+      occurredAt,
+      locationId: "local",
+      itemId: "item",
+      itemLabel: "Harina",
+      itemUnit: "kg",
+      quantity: "-2",
+      amountMinor: "-500",
+      currencyCode: "USD",
+      minorUnit: 2,
+      actionHref: "/count/detail",
+    };
+  const state: CardState = {
+    cardKey: "9",
+    subjectKey: "event9:item",
+    status: "open",
+    fingerprint: "same",
+    shownDays: 0,
+    lastShownDay: "2026-10-24",
+    episodeStartedAt: occurredAt,
+    expiresAt: "2027-01-22T12:00:00.000Z",
+    context: {
+      observed: { kind: "count-gap", eventId: "event9", fact: { occurredAt } },
+      sourceFact: {
+        kind: "count-gap",
+        eventId: "event9",
+        fact,
+        emission: {
+          amountMinor: 500,
+          capture: { salesDays: 28, weeklyDays: 7 },
+          basis: { totalSales: 140000, tickets: 2800, weeklySales: 35000 },
+        },
+      },
+    },
+  };
+  expect(
+    simulateAnalytics(input, [state], now).candidates.some(
+      (c) => c.cardKey === "9",
+    ),
+  ).toBe(true);
+  const changed = config();
+  Object.assign(changed.rules.find((r) => r.id === "9")!.parameters, {
+    weeklyDays: 14,
+  });
+  const policy = createAnalyticsPolicy(changed);
+  expect(
+    simulateAnalytics(input, [state], now, policy).unavailableFacts[0],
+  ).toMatchObject({ cardKey: "9", requiredDays: 28 });
+  const original = {
+    ...input,
+    today: "2026-10-24",
+    readWindows: {
+      recentDays: 45,
+      closedMonths: 3,
+      sameWeekdays: 8,
+      anomalyDays: 63,
+    },
+    metrics: [
+      ...Array.from({ length: 28 }, (_, i) => ({
+        ...row(addDays("2026-10-24", -i - 1), "revenue", 5000),
+        count: 100,
+      })),
+      row("2026-10-24", "revenue", 999999),
+    ],
+  };
+  expect(
+    simulateAnalytics(
+      { ...input, factSnapshots: [{ eventId: "event9", input: original }] },
+      [state],
+      now,
+      policy,
+    ).candidates.some((c) => c.cardKey === "9"),
+  ).toBe(false);
+});
+
+it("does not reopen stock because a later adjustment, rather than its consumption, lowered the attended quantity; honors causal ties", () => {
+  const observed = {
+    kind: "stock",
+    gauge: {
+      observedAt: "2026-10-25T11:00:00.000Z",
+      eventId: "old",
+      quantity: "10",
+    },
+  };
+  expect(
+    canReopenContext(
+      "stock",
+      {
+        observed,
+        stockEvidence: {
+          consumption: {
+            at: "2026-10-25T13:00:00.000Z",
+            id: "consumption",
+            quantity: "10",
+          },
+        },
+      },
+      {
+        kind: "stock",
+        gauge: {
+          observedAt: "2026-10-25T14:00:00.000Z",
+          eventId: "adjustment",
+          quantity: "8",
+        },
+      },
+      "2026-10-25T12:00:00.000Z",
+    ),
+  ).toBe(false);
+  expect(
+    canReopenContext(
+      "stock",
+      {
+        observed,
+        stockEvidence: {
+          recovery: {
+            at: "2026-10-25T14:00:00.000Z",
+            id: "a",
+            quantity: "100",
+          },
+        },
+      },
+      {
+        kind: "stock",
+        gauge: {
+          observedAt: "2026-10-25T14:00:00.000Z",
+          eventId: "b",
+          quantity: "8",
+        },
+      },
+      "2026-10-25T12:00:00.000Z",
+    ),
+  ).toBe(true);
+});
+
+it("rebases a closed calculated subject when capture parameters change, while labels do not absorb new evidence", () => {
+  const input = simulationFixture();
+  input.metrics = [
+    ...input.metrics,
+    row("2026-10-24", "product_revenue", 100, 0, "missing"),
+    row("2026-10-24", "units_sold", 0, 1, "missing"),
+    row("2026-09-10", "product_revenue", 10000, 0, "missing"),
+    row("2026-09-10", "units_sold", 0, 100, "missing"),
+  ];
+  const before = buildCandidates(input).find((c) => c.cardKey === "7")!;
+  const state: CardState = {
+    cardKey: "7",
+    subjectKey: "missing",
+    fingerprint: before.fingerprint,
+    status: "ignored",
+    shownDays: 2,
+    lastShownDay: input.today,
+    context: { observed: before.context },
+    decidedAt: now,
+    episodeStartedAt: now,
+    expiresAt: "2027-01-23T18:00:00.000Z",
+  };
+  const c = config();
+  c.rules.find((r) => r.id === "7")!.parameters = {
+    ...c.rules.find((r) => r.id === "7")!.parameters,
+    salesDays: 56,
+  };
+  const policy = createAnalyticsPolicy(c);
+  const changed = buildCandidates(input, [state], policy).find(
+    (c) => c.cardKey === "7",
+  )!;
+  expect(changed.context!.missingUnits).toBe(101);
+  expect(
+    simulateAnalytics(input, [state], now, policy).candidates.find(
+      (c) => c.cardKey === "7",
+    ),
+  ).toMatchObject({
+    reason: "attended_context",
+    reopens: false,
+    expiresAt: state.expiresAt,
+  });
+  const rebased = { ...state, context: { observed: changed.context } };
+  const withRealData = {
+    ...input,
+    metrics: [
+      ...input.metrics,
+      row("2026-10-25", "product_revenue", 30000, 0, "missing"),
+      row("2026-10-25", "units_sold", 0, 100, "missing"),
+    ],
+  };
+  // Builders intentionally exclude today's incomplete day: the next evaluation sees this actual new sale.
+  withRealData.today = "2026-10-26";
+  const text = structuredClone(policy);
+  text.texts = { ...text.texts, action_view_day: "Abrir día" };
+  expect(
+    simulateAnalytics(
+      withRealData,
+      [rebased],
+      "2026-10-26T18:00:00.000Z",
+      createAnalyticsPolicy(text),
+    ).candidates.find((c) => c.cardKey === "7"),
+  ).toMatchObject({ reason: "eligible", reopens: true });
+  for (const handler of ["goal", "expenses", "margin", "unknown-cost"] as const)
+    expect(
+      canReopenContext(
+        handler,
+        { observed: { calculationKey: "old" } },
+        {
+          calculationKey: "new",
+          month: "new",
+          hasFixed: true,
+          negative: true,
+          missingUnits: 20,
+          material: "p:9",
+        },
+        now,
+      ),
+    ).toBe(false);
 });

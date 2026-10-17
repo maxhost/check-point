@@ -172,6 +172,11 @@ export async function syncInboxCandidates(
         .update(states)
         .set({
           policyVersion: policy.version,
+          ...(plan.rebaseline
+            ? { context: { ...oldContext, observed: comparable } }
+            : isFact && observed.fact
+              ? { context: { ...oldContext, sourceFact: observed } }
+              : {}),
           expiresAt: new Date(plan.expiresAt),
           remindAt: null,
           status: plan.expired && !plan.closed ? "expired" : previous.status,
