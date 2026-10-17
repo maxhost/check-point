@@ -393,18 +393,25 @@ AN-3 suma clientes y promos. «Cuánto ahorraste» no tiene medición en la v1 (
 ## Definition of Done
 
 AN-1:
-- [ ] Una venta POS y un gasto (alta, edición que mueve día/concepto/local, borrado) dejan `daily_metric` exacto en el
+- [x] Una venta POS y un gasto (alta, edición que mueve día/concepto/local, borrado) dejan `daily_metric` exacto en el
   día local del comercio; reaplicar o recibir una revisión vieja no cambia nada.
-- [ ] Un conteo de Stock no se bloquea por una delivery de Analíticas pendiente.
-- [ ] `MODULE_EVENTS_ENABLED` no aparece en el código: `sale.closed` se publica siempre.
-- [ ] El Dashboard muestra hasta 5 tarjetas (1, 2, 3, 4, 6, 7, 13) con texto, monto y acción; aceptar/descartar trae la
+- [x] Un conteo de Stock no se bloquea por una delivery de Analíticas pendiente.
+- [x] `MODULE_EVENTS_ENABLED` no aparece en el código: `sale.closed` se publica siempre.
+- [x] El Dashboard muestra hasta 5 tarjetas (1, 2, 3, 4, 6, 7, 13) con texto, monto y acción; aceptar/descartar trae la
   siguiente solo si supera el umbral; una descartada sin cambio material no vuelve.
-- [ ] La meta del día da el número correcto con conceptos reales y estimados, y no aparece sin mes cerrado ni con
+- [x] La meta del día da el número correcto con conceptos reales y estimados, y no aparece sin mes cerrado ni con
   cobertura < 80%.
-- [ ] Histórico con los 5 períodos y filtro de local; comparativa anual oculta sin período previo completo.
-- [ ] Clima de Cuenca (pronóstico y observado) y calendario de Ecuador guardados por las rutas internas; nada visible.
-- [ ] Medición en rama Neon (§Pruebas 9) dentro del criterio.
-- [ ] Aislamiento: comercio B no ve ni toca tarjetas, histórico ni locales de A; permiso `analytics` respetado.
+- [x] Histórico con los 5 períodos y filtro de local; comparativa anual oculta sin período previo completo.
+- [x] Clima de Cuenca (pronóstico y observado, proveedor simulado) y calendario de Ecuador guardados por las rutas
+  internas; nada visible. Prueba real de API pendiente de clave, excepción no bloqueante del encargo.
+- [ ] Medición en rama Neon (§Pruebas 9) dentro del criterio. **Diferida por el owner** al cerrar AN-1 local:
+  último frío 2.082,39 ms; no cumple ≤1 s.
+- [x] Aislamiento: comercio B no ve ni toca tarjetas, histórico ni locales de A; permiso `analytics` respetado.
+
+Cierre local autorizado por el owner el 2026-10-17: «dejemos de momento las optimizaciones parqueadas, así podemos
+cerrar esto e integrarlo en main local para poder avanzar al AN-2». Se acepta AN-1 funcional con QA independiente;
+el requisito de rendimiento conserva su umbral y queda pendiente, sin declararlo PASS. [Handoff QA](../factory/0237-an1-qa.md)
+y [contrato de ejecución](../factory/0237-an1-contract.md). Esta autorización alcanza `main` local; no push, deploy ni PROD.
 
 AN-2 y AN-3: sus tarjetas con el mismo criterio y sus eventos atómicos con el movimiento/anulación.
 
@@ -443,6 +450,8 @@ tarjeta con sus bordes.
 
 ## Pendientes que no bloquean
 
+- **Rendimiento AN-1:** optimizaciones pausadas por decisión expresa del owner al autorizar el cierre y `main` local.
+  Fríos reales: 12.767,59 → 4.795,88 → 2.082,39 ms TOTAL; §Pruebas 9 sigue sin cumplir, no se reduce su umbral.
 - **Clave de Visual Crossing** (H4): la cuenta y la clave las crea el owner y la carga en Vercel
   (`VISUAL_CROSSING_API_KEY`, sin imprimirla). Sin clave, el resto de AN-1 se implementa igual y la prueba real del
   clima espera.
