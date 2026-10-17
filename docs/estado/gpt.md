@@ -3,7 +3,19 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — GASTOS: REVISIÓN SIMPLIFICADA LISTA EN DEV (2026-10-16)
+## ESTADO — ANALÍTICAS0237 AN-1 EN IMPLEMENTACIÓN; SIN QA PASS (2026-10-17)
+
+Encargo del owner: SOLO AN-1 de SPEC0237/ADR0152/0153. Coordinador GPT, implementadores `/root/analytics_events` y `/root/analytics_product`, QA independiente `/root/analytics_qa`; sin subdelegación. [Contrato y addenda](../factory/0237-an1-contract.md). Worktrees propios bajo `/private/tmp/checkpass-0237/analytics-an1-{events,product,qa}`; reservas activas factory. Dev de integración, main/origin intactos; no INDEX/TASKS/estadoClaude, push/deploy ni lectura/migración DB PROD. Se preserva el commit ajeno `a70ed478` del prompt AN-2, sin implementarlo.
+
+A fuente H2 `2ad9b6b9`, entrega anterior `22a3da4b` rechazada en factory por consumo tardío de venta predeploy; rojo reproducido y fix causal 3/3 Neon PASS. Orígenes/contexto/Stock/fronteras previos con evidencia focal, aún no aceptación final. A mantiene CI exclusiva y prepara neto/comisión por línea para corregir exactitud de margen. B fuente congelada `e9cba28c` sobre dominio `296d29b2`, seed de rendimiento en curso **sin cambiar checkout durante prueba**: 1000 comercios×730 días×40 productos, 29,2M filas globales + objetivo con todas métricas. Corregirá después COP minorUnit canónica, overflow, vacío con histórico, métricas de margen exacto y aserción TOTAL de rendimiento. No atribuir PASS final a focales anteriores a esos cambios.
+
+QA cerró cinco defectos del dominio por reproducción de blobs, confirmó H2 y falta de información exacta en meta; espera combinación congelada. Smoke app real preparado fuera checkout en `/private/tmp/checkpass-0237/qa-smoke-prepared`, puerto43141, todavía sin DB/build/server. QA limpio para merge ff-only + factory refresh al candidato final. No modificar producto desde QA.
+
+Neon: perfil separado `checkpass` autenticado por owner, proyecto confirmado `red-violet-38772073`; no modificar Sintetica-cuenca. CI A con `/private/tmp/checkpass-0237/ci.env`; B rama efímera `analytics-an1-perf-20261017` (`br-super-math-axhq8e58`, padre CI `br-icy-hat-axsfqc8k`, endpoint `ep-aged-mode-axjrknyi`, 1CU fijo, expira2026-10-19T08:00Z), config privada `perf.env` mismo directorio. Solo wrapper antiPROD `tools/neon-test.sh`, recursos distintos y seriales por DB. Suspender endpoint propio solo tras terminar seed/enrichment para medir caché fría; exigir TOTAL evaluateBusiness≤1s, sin restar conexión. Si no, parar e informar conforme spec.
+
+Owner aclaró referencia de peso: **20 unidades de moneda del comercio sin FX** (`fbd6f53c`). Hallazgos H2/margen comunicados antes de resolver; contrato técnico reservado `58e0042b` y completitud/perf `d43cc434`: causalidad genérica, `revenue_with_cost`/`payment_commission_with_cost`, counts conocidos, comisión por línea exacta en v3 aún sin desplegar. UNA migración0097 preparada/aplicada solo CI por wrapper, sin columnas/migración adicionales para esos fixes. Visual Crossing real pendiente de clave expresamente no bloqueante; proveedor simulado y fuentes oficiales Ecuador implementados. No cerrar encargo sin nuevas entregas, QA independiente, medición y handoff exactos.
+
+## HISTÓRICO — GASTOS: REVISIÓN SIMPLIFICADA LISTA EN DEV (2026-10-16)
 
 Owner autorizó aplicar la simplificación del modal y revisarla. Implementado: introducción única, DateField con calendario sin hora y teclado, «Qué pagaste» principal, clasificación/concepto bajo corrección, detalle opcional con fallback al concepto, local heredado con «Cambiar local», fijo visible. Conserva conceptos estables, descripción histórica/propuesta y HTTP completo. **Ajuste L1 de presentación**, backend/esquema/eventos idénticos. Owner señaló «no deberían ser cambios tan grandes, eran L0 a lo sumo L1»; el coordinador reconoció que sobredimensionó el proceso. Para retoques comparables, mini plan y verificaciones focales; no abrir otra fábrica ni ampliar gates por ceremonia.
 
