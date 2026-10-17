@@ -66,21 +66,15 @@ describe("brand contract", () => {
         BrandError,
       );
   });
-  it("the pre-cut bridge accepts the old regional payload only when explicitly selected", () => {
-    expect(
-      validateBrandInput(
-        {
-          ...valid,
-          timezone: "America/Guayaquil",
-          currencyCode: "USD",
-          chargesVat: false,
-        },
-        true,
-      ),
-    ).toMatchObject({
-      regional: { timezone: "America/Guayaquil", currencyCode: "USD" },
-      vat: { chargesVat: false },
-    });
+  it("retired branding has no override accepting the old regional/fiscal payload", () => {
+    expect(() =>
+      validateBrandInput({
+        ...valid,
+        timezone: "America/Guayaquil",
+        currencyCode: "USD",
+        chargesVat: false,
+      }),
+    ).toThrow(BrandError);
   });
   it("validates real image bytes and creates both browser variants", async () => {
     const source = await sharp({

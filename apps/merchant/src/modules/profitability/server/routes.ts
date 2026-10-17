@@ -5,7 +5,6 @@ import { createCost, editCost, stopCost } from "./writers";
 import { getCost, listCosts, listLocations, listPeople } from "./queries";
 import { totals } from "./totals";
 import { staffLocationsChanged } from "./salary";
-import { commissionSubscriptions } from "./commissions/apply";
 
 const query = (request: Request, name: string) =>
   new URL(request.url).searchParams.get(name);
@@ -126,5 +125,4 @@ export const routes: readonly ModuleRoute[] = handlers.map((route) => ({
 export const server: ModuleServer = {
   routes,
   staffLocationsChanged,
-  eventSubscriptions: commissionSubscriptions,
 };

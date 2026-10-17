@@ -4,7 +4,7 @@ import { getDb, withDbTransaction } from "@mi-pasaporte/db";
 import { paymentMethodInitializations } from "@mi-pasaporte/db/schema";
 import { eq } from "drizzle-orm";
 import { callModuleRoute } from "../../modules-integration-support";
-import { initializePaymentMethods } from "./payment-catalog";
+import { initializePaymentMethods } from "../../../server/business/payment-catalog";
 import {
   dropPosWorld,
   pos,
