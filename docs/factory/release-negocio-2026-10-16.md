@@ -1,6 +1,6 @@
 # Release Negocio0235 — corte directo
 
-Estado de preparación: **pre-push completo aprobado sobre db3175d237cdcf4ec41e32d70cc1c4f1e06ab2cf**, a las2026-10-17 03:22:16UTC. El envío está detenido por el bloqueo adicional hasta recibir una confirmación nueva de pausa del cron. Sin push ni migración PROD todavía. Los intentos fallidos y sus correcciones se conservan abajo.
+Estado del corte: **push completado de db3175d237cdcf4ec41e32d70cc1c4f1e06ab2cf, migraciones PROD0093–0095 aplicadas y cuatro deploys Vercel READY con ese SHA**. Comparación SQL posterior y smoke sin sesión PASS. Se avisó al owner que puede reanudar el uso y su cron horario; no se presume que ya lo haya reactivado. Pendientes de aceptación manual: recorrido autenticado de Negocio y cierre de una venta de prueba. Los intentos fallidos y sus correcciones se conservan abajo.
 
 ## Autorización y alcance
 
@@ -68,3 +68,48 @@ El tercer intento ejecutó el hook original completo sobre **db3175d237cdcf4ec41
 Neon ejecutó510 archivos aprobados/41 omitidos en paralelo y11/11 archivos seriales aprobados. Las omisiones se declaran por separado y no cuentan como aprobaciones. El browser global usó los servidores Next normales. Se restauró solo el `next-env.d.ts` de public generado por esas pruebas; checkout candidato limpio. La prueba serial de fallas técnicas/condiciones de negocio aprobó4/4 casos, incluida la reversión por falla DB y el cierre marcado cuando la referencia capturada es inconsistente.
 
 Se pidió una nueva pausa al owner después de este resultado. Hasta recibirla, no se crea la señal de continuación: push detenido, esquema PROD sin cambios. Esta ficha se actualiza en dev sin agregar un push documental al candidato.
+
+## Ejecución autorizada
+
+Nueva confirmación expresa del owner: **«listo pausado, hace el push y las migraiones»**. Registrada a2026-10-17T03:27:25.545Z (2026-10-16 22:27:25 America/Guayaquil), posterior al hook aprobado. Se conservó la app sin uso y el cron pausado para el corte. No se configuró ni ejecutó el cron por el owner.
+
+El bloqueo adicional ejecutó su preflight SQL solo lectura y pasó: esquema0092, cero obligaciones/claims de comisión, cero writers activos y cero referencias huérfanas. Git transmitió **5b834ca0→db3175d2**, `RELEASE_PUSH_EXIT=0`; `origin/main` confirmado como **db3175d237cdcf4ec41e32d70cc1c4f1e06ab2cf** mediante `ls-remote`. Sin force ni bypass del hook. Las correcciones documentales posteriores permanecen solo en dev.
+
+Baseline definitivo2026-10-17T03:27:37.765Z; migrador oficial `pnpm db:migrate:prod` inició03:27:38.585Z y terminó03:27:44.805Z, **EXIT0**. Se aplicaron0093+0094+0095 en una transacción, mientras Vercel procesaba el deploy; no se desplegó puente ni se ejecutó SQL manual separado. Credencial desde el archivo PROD existente solo en memoria, endpoint protegido por huella; ningún valor de variable impreso.
+
+Lectura SQL posterior2026-10-17T03:27:50.054Z; `check-migration.cjs after` **PASS**:
+
+| Evidencia | Antes | Después |
+| --- | --- | --- |
+| Journal | 93, hasta0092 | 96, hasta0095; hashes y timestamps exactos |
+| Comercios | 4 | 4; datos fiscales/regionales y membresías idénticos |
+| Medios e inicializaciones | 22 y4 | 22 y4; filas/ids/OIDs conservados al mover a core |
+| Pagos existentes | 4, provider pos | 4; mismos ids, importes, referencias y provider pos |
+| Revisiones/resultados de comisión | 0/0 | 0/0; sin reconstrucción ni configuración inventada |
+| Movimientos de stock | 38 | 38; fingerprint idéntico |
+| Punteros de recursos normalizados | 8 | 8; fingerprint idéntico |
+| Funciones financieras históricas | 2 | Mismos OIDs, cuerpos y tipos |
+| Entregas, FK y referencias huérfanas | Historial sin claims/obligaciones;0 huérfanas | Historial/FK idénticos;0 huérfanas |
+
+Fingerprints pre/post de medios `d71d647d37303f5d7203cd6ee0837ff3`, inicializaciones `c1549be43a6c91a423c3f87800fd6c5e`, pagos `f123c161f4406c2a75a37236951ba42c`, stock `8cab3bc31872d21e04bd966b4986a6f8` y punteros `42cd6f28e061f20bda3b9fd4bf83f946`: idénticos. No contienen datos personales. Las funciones históricas conservan OIDs566031/566040. El mapping conserva exactamente `profitability/sale.closed/commission_snapshot/pos`; `database_ready_for_retirement=true`, sin obligaciones, claims ni intentos fallidos pendientes.
+
+Hashes SQL aplicados:0093 `f45d1aa211ade2778fec7a59df145292f7d830bce1683a84f5745f277e6fcc58`;0094 `f6627a0204b8f50e5eee9d0df7e361e6d5a869706860c445768bade339acf813`;0095 `8e4d08b62dfd4a70230335eb46fb2ccd344dd0a98b6d99a654323a7c802ba239`. Los93 registros anteriores del journal siguen idénticos.
+
+Evidencia operativa local: `/private/tmp/checkpass-negocio-release/{release-continue.json,cron-paused.json,prod-before.json,prod-after.json,migration-prod.log,migration-result.json,vercel-release.json}`. No se ejecutaron suites contra PROD ni se consultó CI GitHub después del push.
+
+## Deploy y comprobación final
+
+Los cuatro deploys de producción quedaron **READY con db3175d237cdcf4ec41e32d70cc1c4f1e06ab2cf**, verificados juntos2026-10-17T03:32:02.939Z:
+
+| Aplicación | Deploy | Hora READY UTC |
+| --- | --- | --- |
+| Merchant | dpl_HugPt7VRgL3pRePFRXFqmUhypPMg | 03:31:17.244 |
+| Customer | dpl_21GQpFuBAJrL8x3LRKSP3sJQ27zQ | 03:29:25.102 |
+| Admin | dpl_GXFHXLWZ82th16rS8pQSDpKojkcv | 03:28:20.160 |
+| Public | dpl_EQ78j8Y7dJ99M83JbQece1nzfkN5 | 03:28:37.457 |
+
+Los aliases `checkpass.club` y `business.checkpass.club` apuntan a sus deploys READY del mismo SHA, comprobado2026-10-17T03:32:01.879Z. No hubo redeploy manual ni cambios de variables en este corte.
+
+Smoke anónimo mediante GET, **6/6 resultados esperados**: `/api/health`200; `/api/business/{regional,fiscal,payment-methods,payment-method-catalog}`401; `/backoffice/business`307 hacia `/`. Evidencia `/private/tmp/checkpass-negocio-release/prod-smoke.json`. Esta comprobación confirma salud y guardia sin sesión; **no acredita el recorrido autenticado ni un nuevo cobro real**. Los contratos de permisos/cierre/congelado fueron comprobados en CI protegida, no mediante una venta de PROD del coordinador.
+
+Se indicó al owner que ya puede usar la app y reactivar su job cada1h. La reactivación efectiva y el recorrido manual siguen a cargo del owner. Se solicita revisar Negocio con sus tres secciones, el selector de medios del POS y una venta de prueba. Sin configuración de comisión, el resultado esperado es0 provisional marcado «Sin configurar», nunca margen real. No se configuró ninguna comisión ni se generó una venta por el owner. No fue necesario rollback ni una publicación adicional.
