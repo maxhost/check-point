@@ -23,14 +23,12 @@ export async function seedBrandWorld() {
       createdAt: new Date(),
       updatedAt: new Date(),
     });
-  await getDb()
-    .insert(businesses)
-    .values({
-      id: businessId,
-      name: "Marca QA",
-      countryCode: "EC",
-      timezone: "America/Guayaquil",
-    });
+  await getDb().insert(businesses).values({
+    id: businessId,
+    name: "Marca QA",
+    countryCode: "EC",
+    timezone: "America/Guayaquil",
+  });
   await getDb()
     .insert(memberships)
     .values({ businessId, userId, role: "owner" });
