@@ -4,6 +4,8 @@ import { and, eq } from "drizzle-orm";
 import { getDb, withDbTransaction } from "@mi-pasaporte/db";
 import {
   analyticsDailyMetrics,
+  analyticsCardCandidates,
+  analyticsEvaluationRuns,
   analyticsCampaignSnapshots,
   analyticsDimensionLabels,
   moduleEvents,
@@ -36,7 +38,10 @@ import { transitionCampaign } from "../server/marketing/campaign-actions";
 import { enableTemplate } from "../server/marketing/template-store";
 import { pauseCampaignsForBilling } from "../server/marketing/plan-brake";
 import { appendModuleEvent } from "../server/module-events/append";
-import { applyAnalyticsEvent } from "../server/analytics/ingestion/apply";
+import {
+  applyAnalyticsEvent,
+  localMetricDay,
+} from "../server/analytics/ingestion/apply";
 import { retryModuleEvents } from "../server/module-events";
 import { captureCountCut, validateCountCut } from "./stock/count";
 import { callModuleRoute } from "./modules-integration-support";
@@ -532,6 +537,151 @@ describe.runIf(posIntegrationEnabled)(
         amountMinor: 404n,
         locationId: world.seed.locationId,
       });
+    });
+    it("late campaign delivery reconciles a ready day, sees all promo groups in the same tx and withdraws an edited finish", async () => {
+      const now = new Date(),
+        today = localMetricDay(now.toISOString(), "America/Guayaquil"),
+        yesterdayDate = new Date(`${today}T15:00:00Z`);
+      yesterdayDate.setUTCDate(yesterdayDate.getUTCDate() - 1);
+      const occurredAt = yesterdayDate.toISOString(),
+        campaignId = randomUUID(),
+        couponId = randomUUID();
+      const startsAt = new Date(
+        yesterdayDate.getTime() - 7 * 86400000,
+      ).toISOString();
+      await getDb()
+        .insert(analyticsEvaluationRuns)
+        .values({
+          businessId: world.seed.business.id,
+          day: today,
+          status: "ready",
+          preparedAt: now,
+        });
+      const read = () =>
+        getDb()
+          .select()
+          .from(analyticsCardCandidates)
+          .where(
+            and(
+              eq(analyticsCardCandidates.businessId, world.seed.business.id),
+              eq(analyticsCardCandidates.day, today),
+              eq(analyticsCardCandidates.cardKey, "12"),
+            ),
+          );
+      const publish = (eventType: string, payload: { eventVersion: 1 }) =>
+        withDbTransaction(async (tx) => {
+          const { eventId } = await appendModuleEvent(tx, {
+            businessId: world.seed.business.id,
+            eventType,
+            eventVersion: 1,
+            sourceId: randomUUID(),
+            locationId: world.seed.locationId,
+            payload,
+          });
+          const [event] = await tx
+            .select()
+            .from(moduleEvents)
+            .where(eq(moduleEvents.id, eventId));
+          await applyAnalyticsEvent(tx, {
+            ...event,
+            capturedAt: event.createdAt.toISOString(),
+          });
+          return event;
+        });
+      const snapshot = {
+        eventVersion: 1 as const,
+        campaignId,
+        label: "Promo que terminó ayer",
+        status: "ended",
+        startsAt,
+        endsAt: occurredAt,
+        endedAt: occurredAt,
+        capturedAt: new Date().toISOString(),
+      };
+      const ended = await publish("campaign.snapshot", snapshot);
+      const [first] = await read();
+      expect(first).toBeDefined();
+      expect(first.amountMinor).toBe(0n);
+      // The coupon produces its main and cost source groups before reconciliation reads this same transaction.
+      const redeemed = {
+        eventVersion: 1 as const,
+        couponId,
+        orderId: randomUUID(),
+        campaignId,
+        campaignLabel: snapshot.label,
+        locationId: world.seed.locationId,
+        occurredAt,
+        discountMinor: "123",
+        salesMinor: "999",
+        costMinor: "45",
+        currencyCode: "USD",
+        minorUnit: 2,
+      };
+      await withDbTransaction(async (tx) => {
+        const { eventId } = await appendModuleEvent(tx, {
+          businessId: world.seed.business.id,
+          eventType: "coupon.redeemed",
+          eventVersion: 1,
+          sourceId: couponId,
+          locationId: world.seed.locationId,
+          payload: redeemed,
+        });
+        const [event] = await tx
+          .select()
+          .from(moduleEvents)
+          .where(eq(moduleEvents.id, eventId));
+        await applyAnalyticsEvent(tx, {
+          ...event,
+          capturedAt: event.createdAt.toISOString(),
+        });
+        const [inside] = await tx
+          .select()
+          .from(analyticsCardCandidates)
+          .where(eq(analyticsCardCandidates.id, first.id));
+        expect(inside.amountMinor).toBe(123n);
+        expect(JSON.stringify(inside.parameters)).toContain("9,99");
+        expect(
+          (
+            await tx
+              .select()
+              .from(analyticsDailyMetrics)
+              .where(
+                and(
+                  eq(analyticsDailyMetrics.businessId, world.seed.business.id),
+                  eq(analyticsDailyMetrics.metric, "promo_cost"),
+                  eq(analyticsDailyMetrics.dimensionId, campaignId),
+                ),
+              )
+          )[0].amountMinor,
+        ).toBe(45n);
+        await applyAnalyticsEvent(tx, {
+          ...event,
+          capturedAt: event.createdAt.toISOString(),
+        });
+      });
+      expect(await read()).toMatchObject([{ id: first.id, amountMinor: 123n }]);
+      expect(
+        (
+          await getDb()
+            .select()
+            .from(analyticsEvaluationRuns)
+            .where(
+              eq(analyticsEvaluationRuns.businessId, world.seed.business.id),
+            )
+        )[0].status,
+      ).toBe("ready");
+      const edited = {
+        ...snapshot,
+        status: "paused",
+        endedAt: null,
+        endsAt: new Date(now.getTime() + 2 * 86400000).toISOString(),
+        capturedAt: new Date().toISOString(),
+      };
+      await publish("campaign.snapshot", edited);
+      expect(await read()).toHaveLength(0);
+      // Late replay of the old snapshot is stale by source cursor and cannot resurrect the card.
+      await apply(ended);
+      expect(await read()).toHaveLength(0);
     });
   },
 );

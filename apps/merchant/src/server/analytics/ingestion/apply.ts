@@ -1,4 +1,7 @@
-import { evaluateAnalyticsFacts } from "../evaluation";
+import {
+  evaluateAnalyticsFacts,
+  reconcileCampaignCandidates,
+} from "../evaluation";
 import type { DbTransaction } from "@mi-pasaporte/db";
 import {
   businesses,
@@ -40,7 +43,12 @@ export async function applyAnalyticsEvent(
   const groups = [result, ...(result.additionalSources ?? [])].sort((a, b) =>
     a.sourceKey.localeCompare(b.sourceKey),
   );
-  for (const group of groups) await applyTranslation(tx, event, group);
+  let campaignChanged = false;
+  for (const group of groups)
+    campaignChanged =
+      (await applyTranslation(tx, event, group)) || campaignChanged;
+  // Acquire the daily evaluation lock only after all source locks/deltas for this event.
+  if (campaignChanged) await reconcileCampaignCandidates(tx, event.businessId);
 }
 async function applyTranslation(
   tx: DbTransaction,
@@ -65,7 +73,7 @@ async function applyTranslation(
         eq(analyticsSourceRevisions.sourceKey, result.sourceKey),
       ),
     );
-  if (cursor && cursor.sourceRevision >= result.sourceRevision) return;
+  if (cursor && cursor.sourceRevision >= result.sourceRevision) return false;
   const [business] = await tx
     .select({ timezone: businesses.timezone })
     .from(businesses)
@@ -171,8 +179,11 @@ async function applyTranslation(
         },
         setWhere: sql`${analyticsDimensionLabels.updatedAt} <= excluded.updated_at`,
       });
+  let campaignChanged = result.rows.some(
+    (row) => row.dimensionKind === "campaign",
+  );
   for (const snapshot of result.campaignSnapshots ?? []) {
-    await tx
+    const changed = await tx
       .insert(analyticsCampaignSnapshots)
       .values({
         ...snapshot,
@@ -198,7 +209,9 @@ async function applyTranslation(
           eventId: sql`excluded.event_id`,
         },
         setWhere: sql`(${analyticsCampaignSnapshots.capturedAt},${analyticsCampaignSnapshots.eventId}) < (excluded.captured_at,excluded.event_id)`,
-      });
+      })
+      .returning({ eventId: analyticsCampaignSnapshots.eventId });
+    campaignChanged ||= changed.length > 0;
   }
   if (result.facts?.length)
     await evaluateAnalyticsFacts(tx, {
@@ -207,6 +220,7 @@ async function applyTranslation(
       capturedAt: event.capturedAt ?? new Date().toISOString(),
       facts: result.facts,
     });
+  return campaignChanged;
 }
 function normalize(row: MetricRow, timezone: string) {
   if (Boolean(row.day) === Boolean(row.occurredAt))
