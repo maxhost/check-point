@@ -11,20 +11,19 @@
 
 
 
-## ⇥ ESTADO (2026-10-17) — SPEC 0237 (AN) CERRADA; PROMPT DE AN-1 LISTO PARA GPT
+## ⇥ ESTADO (2026-10-17) — AN-1 EN MAIN LOCAL (REVISADA); AN-2 CORRIENDO EN GPT; PROMPT AN-3 LISTO
 
-**Sesión de documentos, sin código de producto.** Commits en `dev` (sin push): `af9230d7`, `285823d5`, `b0afe557`.
+**Sesión de documentos y revisión, sin código de producto.** Commit `e4ba665c` en `dev` (sin push): «Prompt — AN-3»
+en `docs/plan-margen-ganancia-2026-10-14.md`.
 
-**Hecho:** spec **0237** cerrada (`docs/specs/0237-analiticas-inbox-y-resumenes-diarios.md`, L3) y ADR **0153**
-(todo dato de Analíticas nace como evento en la tx de su origen; traductores puros). Owner 2026-10-17: Analíticas es
-**core, sin switch ni variable** → se retira `MODULE_EVENTS_ENABLED` (§2.5); AN-1 = tarjetas 1, 2, 3, 4, 6, 7, 13;
-empieza limpio en su deploy; local sin ciudad sin contexto; «cuánto ahorraste» a PARQUEADO. G y N ya están en `dev`
-(verificado: append genérico, `GenericEventSubscription`, local nullable).
+**AN-1:** GPT la integró en `dev` y `main` local (`0f543dd8`); `origin/main` sigue en `db3175d2`. Revisada: QA
+independiente PASS funcional (`docs/factory/0237-an1-qa.md`); re-medido por Claude: 32/32 unit de analytics
+(Node 24), `MODULE_EVENTS_ENABLED` sin usos en código, core sin imports de módulos, una migración 0097.
+Pendientes: rendimiento 2.082 ms frío contra ≤1 s (parqueado por el owner); CI compartida con el hash viejo de
+0097 (el fixture fallará: antes del push hay que elegir DB de replay o reconciliar CI); ciudades existentes y cron
+cron-job.org sin ejecutar; prueba real de clima diferida a AN-3; `app/analytics.ts` (demo ADR 0020) quedó sin uso.
 
-**Siguiente:** el owner lanza a GPT el «Prompt — AN-1» de `docs/plan-margen-ganancia-2026-10-14.md`.
+**AN-2:** GPT corriendo en `/private/tmp/checkpass-an2/` (contrato `bc632860`); preguntó al owner por el umbral de
+3 USD de la tarjeta 9 sin conversión.
 
-**Pendiente del owner:** push del fix de CI (`origin/main` rojo); cuenta y clave de Visual Crossing
-(`VISUAL_CROSSING_API_KEY` en Vercel; no bloquea AN-1).
-
-**Gotchas:** F5 Futbol Evolution es del owner (prueba en PROD). No se puede anular una venta cobrada. Escribir en PROD
-solo por la app, nunca por SQL. Quitar `MODULE_EVENTS_ENABLED` de Vercel solo después del deploy de AN-1, con OK.
+**Siguiente:** lanzar AN-3 cuando AN-2 tenga QA PASS e integrada en dev.
