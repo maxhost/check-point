@@ -483,3 +483,18 @@ it("recognizes free sales and old summary existence without inventing a new busi
     buildCandidates(input).find((c) => c.cardKey === "4")?.body,
   ).not.toContain("desde hoy");
 });
+
+it("keeps half-minor estimated expenses exact until the break-even ceil", () => {
+  const input = fixture();
+  input.metrics = input.metrics.filter((r) => !r.metric.startsWith("expense_"));
+  input.metrics = [
+    ...input.metrics,
+    row("2026-09-01", "expense_fixed", 100, "rent"),
+    row("2026-08-01", "expense_fixed", 101, "rent"),
+  ];
+  expect(calculateGoal(input)).toMatchObject({
+    expensesMinor: 101,
+    margin: 0.5,
+    breakEvenMinor: 201,
+  });
+});

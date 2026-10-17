@@ -241,8 +241,8 @@ export function calculateGoal(input: AnalyticsInput): GoalCalculation {
     c.margin !== null &&
     c.margin > 0
       ? moneyRatio(
-          BigInt(expensesMinor) * BigInt(c.knownRevenue),
-          BigInt(c.grossProfit),
+          expenseSixths * BigInt(c.knownRevenue),
+          6n * BigInt(c.grossProfit),
           "ceil",
         )
       : null;

@@ -69,7 +69,7 @@ export function inputStatement(
       group by date_trunc('month',m.day),m.dimension_id,m.currency_code,m.minor_unit having sum(m.amount_minor)>0),
     metric_rows as (
       select m.* from b join analytics.daily_metric m on m.business_id=b.id and m.day between b.today-28 and b.today where (m.metric<>'expense_fixed' or m.day>=date_trunc('month',b.today)) ${location}
-      union all select m.* from b join analytics.daily_metric m on m.business_id=b.id and m.day>=date_trunc('month',b.today) and m.day<b.today-28 where m.metric in ('expense_fixed','revenue') ${location}
+      union all select m.* from b join analytics.daily_metric m on m.business_id=b.id and m.day>=date_trunc('month',b.today) and m.day<b.today-28 where m.metric='expense_fixed' ${location}
       union all select m.* from b join analytics.daily_metric m on m.business_id=b.id and m.day>=date_trunc('month',b.today)-interval '3 months' and m.day<b.today-28 where m.metric='expense_variable' ${location}
       union all select m.* from b join analytics.daily_metric m on m.business_id=b.id and m.day>=b.today-56 and m.day<b.today-28 where m.metric='revenue' ${location}
       union all select m.* from b join same_days sd on true join analytics.daily_metric m on m.business_id=b.id and m.day=sd.day where m.day<b.today-28 and m.metric='units_sold' ${location}
