@@ -3,7 +3,21 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — CI PREVIO Y RETIRO CONDICIONADO0235 EN CURSO (2026-10-16)
+## ESTADO — MIGRACIONES LOCALES Y FIX CI CERRADOS; RETIRO0235 PREPARADO (2026-10-16)
+
+Encargo owner satisfecho localmente: migrador re-ejecutado EXIT0,96→96, hashes0093/0094/0095 coinciden; ya estaban aplicadas, sin reset/seed. URL solo memoria y guard local, huella16d3a8712ad6. Evidencia /private/tmp/checkpass-negocio-local-migration-confirmation.json. No se operó PROD ni se hizo push. Preservados INDEX/TASKS, estados de Claude y archivos ajenos sin seguimiento.
+
+Dos workers y QA independiente terminaron. [Contrato y ampliaciones](../factory/0235-followup-contract.md), [cierre QA](../factory/0235-followup-qa.md), [handoff CI](../factory/0235-ci-fix.md). Trabajo/documentación cerrado c02b8b9672f5aa88656a31229abb4ee4da218d42; dev y main local contienen el fix CI99d18e2f, integrado794140d4. Main local avanzado desde checkout limpio a c02b8b96, comparando apps/packages/tools/.github con entregaCI: idénticos. Estado propio se registra después en commit documental; ningún retiro de compatibilidad está en dev/main.
+
+CI: log remoto40P01 durante teardown cruzado con DDL y timeout Stock que no superaba budget. Arreglo unifica workflow con tools/neon-test.sh, mismas exclusiones/selección serial para DDL/business-failures y env efímero0600/trap; sin serializar todo ni ocultar errores. Timeout conserva2000/2500ms, prueba INSERT+rollback, no ACK y recuperación1. También mueve los cuatro casos del test de acceso core a modules/pos, sin tocar guardia. QA PASS; evidencia focal/historial de fallos en handoff. Run remoto38971334745 sigue siendo el histórico rojo: no se publicó ni se lanzó rerun. Task ci-baseline-0235 aceptada, integrada y retirada con factory; worktree/rama eliminados limpios, logs durables fuera del árbol.
+
+Retiro worker1dfb776b8160ffa588ca4c29292b60b5c367243d, runtime d4eda771, aceptado condicionado. Handoff conservado en esa rama: git show 1dfb776b:docs/factory/0235-retirement.md. Elimina adaptadores/aplicadores precorte conservando lectura/mapping/IDs/avisos y rechaza obligación sin handler antes de ACK. Dos tandas DB vía wrapper y reserva serial:5/5 y9/9 PASS sin skips; teardown terminado y recurso liberado2026-10-17 01:51:03UTC. SQL preflight solo lectura preparado, no ejecutado contra PROD: detecta esquema/obligaciones/claims, no demuestra READY ni ausencia de writers antiguos.
+
+Combinación código27a3befb6436ffdd21d7ebce5a766a96f8dea1ed: tiposMerchant PASS,67/67 unitarios focales y único buildMerchant PASS. Rama negocio-followup-qa final documental570e169d206480055f5afc7583999083fcde8696, aceptada por QA exacta; apps/packages/tools/.github idénticos27. Conserva por merge el commit ajeno1300a07b del plan sin editarlo ni atribuirlo al coordinador. Dos ramas/worktrees retenidos y limpios: negocio-retirement-0235 y negocio-followup-qa, ambos accepted sin recursos; no integrar/retirar mientras falten precondiciones. Sin suites, servidores ni túneles propios activos.
+
+Pendiente operativo: preparar puente compatible basado en e5eaa741 **actualizado con el fix CI** (el antiguo SHA no lo contiene), gates del SHA exacto y autorización específica de cada push/deploy/operación PROD. READY y ausencia de writers antiguos antes de0093+0094+0095 juntas en una transacción; preservar/comparar datos y drenar/certificar obligaciones/claims antes de integrar/publicar retiro. Código preparado no certifica ese drenaje. Rollback posterior al corte solo a puente compatible, nunca a0092 ni moviendo tablas atrás. No pedir autorización por anticipado ni publicar main final directamente sobre esquema viejo. Gastos/Analíticas fuera de alcance.
+
+## HISTÓRICO — CI PREVIO Y RETIRO CONDICIONADO0235 EN CURSO (2026-10-16)
 
 Owner pidió aplicar migraciones locales y lanzar un agente para el CI rojo y otro para el punto4 (retiro de compatibilidad). [Contrato](../factory/0235-followup-contract.md) comprometido05863466, ampliacionesb5f6f1af. No push, migración/deploy/drenaje PROD autorizados. Dev integra trabajo; main local permanece e2cd4544 con Negocio verificado. Preservar todos los assets/skills/configs ajenos sin seguimiento, INDEX/TASKS y estados de Claude.
 
