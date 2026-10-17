@@ -5,6 +5,7 @@ import { ModuleError } from "../../errors";
 import { buildDraft, buildPhotoDraft } from "../draft";
 import { getContext, listConcepts, listExpenses } from "./queries";
 import { createExpenses, mutateExpense } from "./writers";
+import { scheduleExpenseDelivery } from "./delivery";
 async function body(request: Request): Promise<Record<string, unknown>> {
   let value: unknown;
   try {
@@ -56,11 +57,15 @@ const handlers: readonly ModuleRoute[] = [
     method: "POST",
     path: "entries",
     failure: "No pudimos guardar los gastos.",
-    handler: async ({ business, userId, request }) =>
-      NextResponse.json(
-        await createExpenses(business.id, userId, await body(request)),
-        { status: 201 },
-      ),
+    handler: async ({ business, userId, request }) => {
+      const result = await createExpenses(
+        business.id,
+        userId,
+        await body(request),
+      );
+      scheduleExpenseDelivery(business.id);
+      return NextResponse.json(result, { status: 201 });
+    },
   },
   {
     method: "GET",
@@ -78,31 +83,33 @@ const handlers: readonly ModuleRoute[] = [
     method: "PUT",
     path: "entries/:id",
     failure: "No pudimos guardar el gasto.",
-    handler: async ({ business, userId, request, params }) =>
-      NextResponse.json(
-        await mutateExpense(
-          business.id,
-          userId,
-          params.id,
-          "updated",
-          await body(request),
-        ),
-      ),
+    handler: async ({ business, userId, request, params }) => {
+      const result = await mutateExpense(
+        business.id,
+        userId,
+        params.id,
+        "updated",
+        await body(request),
+      );
+      scheduleExpenseDelivery(business.id);
+      return NextResponse.json(result);
+    },
   },
   {
     method: "DELETE",
     path: "entries/:id",
     failure: "No pudimos borrar el gasto.",
-    handler: async ({ business, userId, request, params }) =>
-      NextResponse.json(
-        await mutateExpense(
-          business.id,
-          userId,
-          params.id,
-          "deleted",
-          await body(request),
-        ),
-      ),
+    handler: async ({ business, userId, request, params }) => {
+      const result = await mutateExpense(
+        business.id,
+        userId,
+        params.id,
+        "deleted",
+        await body(request),
+      );
+      scheduleExpenseDelivery(business.id);
+      return NextResponse.json(result);
+    },
   },
 ];
 export const routes: readonly ModuleRoute[] = handlers.map((route) => ({
