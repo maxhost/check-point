@@ -403,7 +403,7 @@ AN-1:
   cobertura < 80%.
 - [x] Histórico con los 5 períodos y filtro de local; comparativa anual oculta sin período previo completo.
 - [x] Clima de Cuenca (pronóstico y observado, proveedor simulado) y calendario de Ecuador guardados por las rutas
-  internas; nada visible. Prueba real de API pendiente de clave, excepción no bloqueante del encargo.
+  internas; nada visible. Prueba real de API diferida a AN-3 por el owner; clave local disponible según su reporte.
 - [ ] Medición en rama Neon (§Pruebas 9) dentro del criterio. **Diferida por el owner** al cerrar AN-1 local:
   último frío 2.082,39 ms; no cumple ≤1 s.
 - [x] Aislamiento: comercio B no ve ni toca tarjetas, histórico ni locales de A; permiso `analytics` respetado.
@@ -452,9 +452,9 @@ tarjeta con sus bordes.
 
 - **Rendimiento AN-1:** optimizaciones pausadas por decisión expresa del owner al autorizar el cierre y `main` local.
   Fríos reales: 12.767,59 → 4.795,88 → 2.082,39 ms TOTAL; §Pruebas 9 sigue sin cumplir, no se reduce su umbral.
-- **Clave de Visual Crossing** (H4): la cuenta y la clave las crea el owner y la carga en Vercel
-  (`VISUAL_CROSSING_API_KEY`, sin imprimirla). Sin clave, el resto de AN-1 se implementa igual y la prueba real del
-  clima espera.
+- **Prueba real de Visual Crossing** (H4): el owner informa el 2026-10-17 que la clave ya está en
+  `apps/merchant/.env.local` y difiere la prueba real hasta AN-3. No se leyó la clave ni se llamó la API en este cierre.
+  El proveedor simulado queda validado. La carga de `VISUAL_CROSSING_API_KEY` en Vercel sigue siendo del owner.
 - **«Mandar cupón» a un cliente** (H5, tarjeta 11): se verifica en AN-3 si Marketing lo permite; si no, «ver cliente».
 
 ## Handoff y abierto
