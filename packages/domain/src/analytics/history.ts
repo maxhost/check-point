@@ -1,3 +1,4 @@
+import { summarizeStockHistory } from "./stock-history";
 import { sumIntegers, moneyRatio } from "./money";
 import { addDays, addMonths, daysBetween, monthStart } from "./date";
 import { calculateGoal, contribution, products } from "./cards/index";
@@ -89,6 +90,7 @@ export function buildHistory(
     currencyCode: input.currencyCode,
     minorUnit: input.minorUnit,
     ...current,
+    stock: summarizeStockHistory(input, range.from, range.to, locationId),
     previous: {
       revenueMinor: previous.revenueMinor,
       variation:

@@ -93,7 +93,9 @@ export const analyticsDailyMetrics = analytics.table(
         t.amountMinor,
         t.count,
       )
-      .where(sql`${t.metric} in ('revenue','expense_fixed','expense_variable')`),
+      .where(
+        sql`${t.metric} in ('revenue','expense_fixed','expense_variable')`,
+      ),
   ],
 );
 export const analyticsDimensionLabels = analytics.table(
@@ -159,4 +161,34 @@ export const analyticsCardStates = analytics.table(
       .defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.businessId, t.cardKey, t.subjectKey] })],
+);
+
+/** Exact snapshot values; observed instant plus immutable event ID orders ties. */
+export const analyticsDailyGauges = analytics.table(
+  "daily_gauge",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    businessId: business(),
+    ...dimensions(),
+    amountMinor: numeric("amount_minor").notNull().default("0"),
+    quantity: numeric("quantity").notNull().default("0"),
+    currencyCode: text("currency_code").notNull().default(""),
+    minorUnit: integer("minor_unit").notNull().default(0),
+    unit: text("unit").notNull(),
+    observedAt: timestamp("observed_at", { withTimezone: true }).notNull(),
+    eventId: uuid("event_id").notNull(),
+  },
+  (t) => [
+    unique("analytics_daily_gauge_unique")
+      .on(
+        t.businessId,
+        t.locationId,
+        t.day,
+        t.metric,
+        t.dimensionKind,
+        t.dimensionId,
+      )
+      .nullsNotDistinct(),
+    index("analytics_daily_gauge_day_idx").on(t.businessId, t.day),
+  ],
 );

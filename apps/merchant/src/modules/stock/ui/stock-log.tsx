@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { EditPencil, Package, Plus, Xmark } from "iconoir-react";
 import { Alert, Button, Dialog, Text } from "../../../ui";
@@ -19,12 +20,54 @@ import {
 } from "./stock-types";
 
 export function StockLog() {
+  const [attempt, setAttempt] = useState(0);
+  const search = useSearchParams();
+  const movementId = search.get("movementId"),
+    requestedLocation = search.get("locationId");
+  const [detail, setDetail] = useState<
+    (StockMovement & { theoreticalQuantity: string }) | null
+  >(null);
   const local = useStockLocations("/api/modules/stock/locations");
+  useEffect(() => {
+    if (
+      requestedLocation &&
+      local.locations?.some((l) => l.id === requestedLocation)
+    )
+      local.setLocationId(requestedLocation);
+  }, [requestedLocation, local.locations, local.setLocationId]);
+  useEffect(() => {
+    setDetail(null);
+    if (
+      !movementId ||
+      !local.locationId ||
+      (requestedLocation && local.locationId !== requestedLocation)
+    )
+      return;
+    let active = true;
+    void panelRequest<{
+      movement: StockMovement & { theoreticalQuantity: string };
+    }>(
+      `/api/modules/stock/counts/${encodeURIComponent(movementId)}?locationId=${encodeURIComponent(local.locationId)}`,
+    )
+      .then((data) => {
+        if (active) setDetail(data.movement);
+      })
+      .catch((cause) => {
+        if (active)
+          setError(
+            cause instanceof Error
+              ? cause.message
+              : "No pudimos leer el conteo.",
+          );
+      });
+    return () => {
+      active = false;
+    };
+  }, [movementId, requestedLocation, local.locationId, attempt]);
   const [items, setItems] = useState<StockItem[]>([]);
   const [pending, setPending] = useState({ count: 0, failed: 0 });
   const [entries, setEntries] = useState<StockMovement[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [attempt, setAttempt] = useState(0);
   const [timezone, setTimezone] = useState<string | undefined>();
   const [currency, setCurrency] = useState<string | undefined>();
   useEffect(() => {
@@ -105,6 +148,19 @@ export function StockLog() {
           description="Consulta los registros de stock de tu negocio."
           closeHref="/backoffice"
         />
+        {detail && (
+          <Alert kind="info" title={`Conteo de ${detail.itemName}`}>
+            <Text>
+              Contaste {formatAmount(detail.countedQuantity)}{" "}
+              {detail.unit === "unit" ? "unidades" : detail.unit}. El stock
+              teórico era {formatAmount(detail.theoreticalQuantity)}.
+              Diferencia: {formatAmount(detail.quantity)}.
+            </Text>
+            <Text variant="muted">
+              {dateFormat.format(new Date(detail.occurredAt))}
+            </Text>
+          </Alert>
+        )}
         {local.locations && (
           <StockLocationField
             locations={local.locations}

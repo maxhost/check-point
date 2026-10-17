@@ -78,3 +78,53 @@ describe("AN-1 action contract", () => {
     ).toBe("/backoffice/catalog");
   });
 });
+
+it("preserves declared action destinations with a captured detail query and rejects foreign paths", () => {
+  const manifests = [
+    {
+      ...manifest,
+      analyticsActions: [
+        {
+          key: "view_count_detail",
+          label: "Ver detalle",
+          href: "/backoffice/sample",
+        },
+      ],
+    },
+  ];
+  const viewer = { role: "staff", permissions: ["sample_view"] };
+  expect(
+    resolveAction(
+      "view_count_detail",
+      "/backoffice/sample?movementId=count",
+      viewer,
+      new Set(["sample"]),
+      manifests,
+    )?.href,
+  ).toBe("/backoffice/sample?movementId=count");
+  for (const href of [
+    "https://evil.invalid/backoffice/sample",
+    "//evil.invalid/backoffice/sample",
+    "/backoffice/sample-other?movementId=count",
+    "/backoffice/sample/../catalog",
+  ]) {
+    expect(
+      resolveAction(
+        "view_count_detail",
+        href,
+        viewer,
+        new Set(["sample"]),
+        manifests,
+      )?.href,
+    ).toBe("/backoffice/sample");
+  }
+  expect(
+    resolveAction(
+      "view_count_detail",
+      "/backoffice/sample?movementId=count",
+      { role: "staff", permissions: ["analytics"] },
+      new Set(["sample"]),
+      manifests,
+    ),
+  ).toBeNull();
+});

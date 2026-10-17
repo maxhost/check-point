@@ -1,9 +1,11 @@
+import { evaluateAnalyticsFacts } from "../evaluation";
 import type { DbTransaction } from "@mi-pasaporte/db";
 import {
   businesses,
   analyticsSourceRevisions,
   analyticsMetricContributions,
   analyticsDimensionLabels,
+  analyticsDailyGauges,
 } from "@mi-pasaporte/db/schema";
 import { and, eq, sql } from "drizzle-orm";
 import { METRICS } from "@mi-pasaporte/domain/analytics/metrics";
@@ -12,6 +14,7 @@ import { minorUnitForCurrency } from "@mi-pasaporte/domain/financial/rational";
 import type {
   MetricEvent,
   MetricRow,
+  MetricGauge,
 } from "@mi-pasaporte/domain/analytics/metrics";
 import { metricTranslators } from "./registry";
 export function localMetricDay(instant: string, timezone: string) {
@@ -57,6 +60,7 @@ export async function applyAnalyticsEvent(
     .where(eq(businesses.id, event.businessId));
   if (!business) throw new Error("Metric business unavailable");
   const rows = result.rows.map((row) => normalize(row, business.timezone));
+  await applyGauges(tx, event, result.gauges ?? [], business.timezone);
   const previous = await tx
     .select()
     .from(analyticsMetricContributions)
@@ -116,10 +120,12 @@ export async function applyAnalyticsEvent(
     string,
     typeof analyticsDimensionLabels.$inferInsert
   >();
-  for (const row of result.rows) {
+  for (const row of [...result.rows, ...(result.gauges ?? [])]) {
     if (row.dimensionId && row.dimensionLabel) {
       const updatedAt = new Date(
-          row.occurredAt ?? event.capturedAt ?? `${row.day}T00:00:00Z`,
+          row.occurredAt ??
+            event.capturedAt ??
+            `${"day" in row ? row.day : ""}T00:00:00Z`,
         ),
         key = row.dimensionKind + ":" + row.dimensionId;
       const prior = labels.get(key);
@@ -153,6 +159,13 @@ export async function applyAnalyticsEvent(
         },
         setWhere: sql`${analyticsDimensionLabels.updatedAt} <= excluded.updated_at`,
       });
+  if (result.facts?.length)
+    await evaluateAnalyticsFacts(tx, {
+      businessId: event.businessId,
+      eventId: event.id,
+      capturedAt: event.capturedAt ?? new Date().toISOString(),
+      facts: result.facts,
+    });
 }
 function normalize(row: MetricRow, timezone: string) {
   if (Boolean(row.day) === Boolean(row.occurredAt))
@@ -160,12 +173,13 @@ function normalize(row: MetricRow, timezone: string) {
   const definition = METRICS[row.metric];
   if (
     !definition ||
+    definition.type !== "sum" ||
     definition.dimension !== row.dimensionKind ||
     (row.dimensionKind === "none" && row.dimensionId !== null)
   )
     throw new Error("Invalid metric dimension");
   if (
-    definition.unit === "money" &&
+    (definition.unit === "money" || definition.unit === "money_quantity") &&
     (!row.currencyCode ||
       !isSupportedCurrency(row.currencyCode) ||
       row.minorUnit !== minorUnitForCurrency(row.currencyCode) ||
@@ -219,4 +233,83 @@ function key(row: {
     row.currencyCode,
     row.minorUnit,
   ].join("/");
+}
+
+async function applyGauges(
+  tx: DbTransaction,
+  event: MetricEvent,
+  rows: readonly MetricGauge[],
+  timezone: string,
+) {
+  const ordered = [...rows].sort((a, b) =>
+    (a.locationId + a.metric + a.dimensionId).localeCompare(
+      b.locationId + b.metric + b.dimensionId,
+    ),
+  );
+  for (const row of ordered) {
+    const definition = METRICS[row.metric];
+    if (
+      definition.type !== "gauge" ||
+      definition.dimension !== row.dimensionKind ||
+      !row.dimensionId ||
+      !row.locationId ||
+      !Number.isFinite(Date.parse(row.occurredAt)) ||
+      !row.unit ||
+      !/^-?\d+(?:\.\d+)?$/.test(row.amountMinor ?? "0") ||
+      !/^-?\d+(?:\.\d+)?$/.test(row.quantity ?? "0")
+    )
+      throw new Error("Invalid gauge");
+    if (
+      definition.unit === "money" &&
+      (!row.currencyCode ||
+        !isSupportedCurrency(row.currencyCode) ||
+        row.minorUnit !== minorUnitForCurrency(row.currencyCode) ||
+        row.amountMinor === undefined)
+    )
+      throw new Error("Invalid gauge currency");
+    if (
+      definition.unit === "quantity" &&
+      (row.quantity === undefined ||
+        row.amountMinor !== undefined ||
+        row.currencyCode !== undefined)
+    )
+      throw new Error("Invalid quantity gauge");
+    await tx
+      .insert(analyticsDailyGauges)
+      .values({
+        businessId: event.businessId,
+        locationId: row.locationId,
+        day: localMetricDay(row.occurredAt, timezone),
+        metric: row.metric,
+        dimensionKind: row.dimensionKind,
+        dimensionId: row.dimensionId,
+        amountMinor: row.amountMinor ?? "0",
+        quantity: row.quantity ?? "0",
+        currencyCode: row.currencyCode ?? "",
+        minorUnit: row.minorUnit ?? 0,
+        unit: row.unit,
+        observedAt: new Date(row.occurredAt),
+        eventId: event.id,
+      })
+      .onConflictDoUpdate({
+        target: [
+          analyticsDailyGauges.businessId,
+          analyticsDailyGauges.locationId,
+          analyticsDailyGauges.day,
+          analyticsDailyGauges.metric,
+          analyticsDailyGauges.dimensionKind,
+          analyticsDailyGauges.dimensionId,
+        ],
+        set: {
+          amountMinor: sql`excluded.amount_minor`,
+          quantity: sql`excluded.quantity`,
+          currencyCode: sql`excluded.currency_code`,
+          minorUnit: sql`excluded.minor_unit`,
+          unit: sql`excluded.unit`,
+          observedAt: sql`excluded.observed_at`,
+          eventId: sql`excluded.event_id`,
+        },
+        setWhere: sql`(analytics.daily_gauge.observed_at,analytics.daily_gauge.event_id)<(excluded.observed_at,excluded.event_id)`,
+      });
+  }
 }

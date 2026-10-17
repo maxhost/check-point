@@ -33,3 +33,18 @@ export function moneyRatio(
 export function roundedMoney(value: number): number {
   return safeInteger(Math.round(value));
 }
+
+/** Exact captured decimal, including sub-minor unit costs and quantities. */
+export function decimal(value: string): { n: bigint; d: bigint } {
+  if (!/^-?\d+(?:\.\d+)?$/.test(value)) throw new AnalyticsAmountError();
+  const [whole, fraction = ""] = value.replace(/^-/, "").split(".");
+  return {
+    n: BigInt(whole + fraction) * (value.startsWith("-") ? -1n : 1n),
+    d: 10n ** BigInt(fraction.length),
+  };
+}
+export function decimalDifference(after: string, before: string) {
+  const a = decimal(after),
+    b = decimal(before);
+  return { n: a.n * b.d - b.n * a.d, d: a.d * b.d };
+}

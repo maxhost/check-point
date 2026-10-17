@@ -1,9 +1,66 @@
+import type { ProductCostChanged } from "./purchase-cost-event";
+import { fromDb, roundDiv } from "../../decimal";
 import type {
   MetricTranslator,
   MetricRow,
 } from "@mi-pasaporte/domain/analytics/metrics";
 import type { ConsumptionApplied } from "./consumption-event";
 export const metricTranslators: readonly MetricTranslator[] = [
+  {
+    eventType: "recipes.product_cost.changed",
+    translate(event) {
+      const p = event.payload as ProductCostChanged;
+      const comparable = p.products.flatMap((product) =>
+        product.unitCostBefore !== null && product.unitCostAfter !== null
+          ? [
+              {
+                ...product,
+                unitCostBefore: product.unitCostBefore,
+                unitCostAfter: product.unitCostAfter,
+              },
+            ]
+          : [],
+      );
+      return {
+        sourceKey: `recipes.product_cost.changed:${p.purchaseId}`,
+        sourceRevision: 1,
+        rows: comparable.map((product) => ({
+          metric: "product_unit_cost_change" as const,
+          locationId: p.locationId,
+          occurredAt: p.occurredAt,
+          dimensionKind: "product" as const,
+          dimensionId: product.productId,
+          dimensionLabel: product.productLabel,
+          amountMinor: String(
+            roundDiv(
+              fromDb(product.unitCostAfter, 6) -
+                fromDb(product.unitCostBefore, 6),
+              10n ** BigInt(6 - p.minorUnit),
+            ),
+          ),
+          currencyCode: p.currencyCode,
+          minorUnit: p.minorUnit,
+          count: 1,
+        })),
+        facts:
+          p.itemUnitCostBefore === null || p.itemUnitCostAfter === null
+            ? []
+            : comparable.map((product) => ({
+                kind: "unit_cost_change" as const,
+                locationId: p.locationId,
+                occurredAt: p.occurredAt,
+                itemId: p.itemId,
+                itemLabel: p.itemLabel,
+                itemUnit: p.itemUnit,
+                itemUnitCostBefore: p.itemUnitCostBefore!,
+                itemUnitCostAfter: p.itemUnitCostAfter!,
+                ...product,
+                currencyCode: p.currencyCode,
+                minorUnit: p.minorUnit,
+              })),
+      };
+    },
+  },
   {
     eventType: "recipes.consumption.applied",
     translate(event) {
@@ -48,10 +105,32 @@ export const metricTranslators: readonly MetricTranslator[] = [
           }
         }
       }
+      for (const item of p.items)
+        rows.push({
+          metric: "stock_consumption",
+          locationId: p.locationId,
+          occurredAt: p.closedAt,
+          dimensionKind: "item",
+          dimensionId: item.itemId,
+          dimensionLabel: item.itemLabel,
+          quantity: item.quantity,
+        });
       return {
         sourceKey: `recipes.consumption.applied:${p.sourceOrderId}`,
         sourceRevision: 1,
         rows,
+        gauges: p.items
+          .filter((item) => item.itemUnit && (p.observedAt || event.capturedAt))
+          .map((item) => ({
+            metric: "stock_on_hand" as const,
+            locationId: p.locationId,
+            occurredAt: (p.observedAt ?? event.capturedAt)!,
+            dimensionKind: "item" as const,
+            dimensionId: item.itemId,
+            dimensionLabel: item.itemLabel,
+            quantity: item.onHandAfter,
+            unit: item.itemUnit!,
+          })),
       };
     },
   },

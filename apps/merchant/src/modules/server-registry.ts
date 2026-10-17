@@ -1,3 +1,4 @@
+import { metricTranslators as stockMetrics } from "./stock/server/metrics";
 import { metricTranslators as recipeMetrics } from "./recipes/server/metrics";
 import type { ModuleServer } from "./route-table";
 import { routes as stock } from "./stock/server/routes";
@@ -19,7 +20,7 @@ import { server as expenses } from "./expenses/server/routes";
  * Agregar un modulo = una linea aca.
  */
 export const SERVER_MODULES: Readonly<Record<string, ModuleServer>> = {
-  stock: { routes: stock },
+  stock: { routes: stock, metricTranslators: stockMetrics },
   recipes: {
     routes: recipes,
     eventSubscriptions: recipeEvents,

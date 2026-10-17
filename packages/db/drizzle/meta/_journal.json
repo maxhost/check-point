@@ -687,6 +687,13 @@
       "when": 1792213123591,
       "tag": "0097_analytics_an1",
       "breakpoints": true
+    },
+    {
+      "idx": 98,
+      "version": "7",
+      "when": 1792218149187,
+      "tag": "0098_analytics_stock_gauge",
+      "breakpoints": true
     }
   ]
 }

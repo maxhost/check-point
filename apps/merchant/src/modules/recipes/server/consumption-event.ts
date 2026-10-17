@@ -18,6 +18,7 @@ import {
 } from "@mi-pasaporte/domain/financial/rational";
 export type ConsumptionApplied = {
   eventVersion: 1;
+  observedAt?: string;
   sourceOrderId: string;
   locationId: string;
   closedAt: string;
@@ -39,6 +40,7 @@ export type ConsumptionApplied = {
   items: {
     itemId: string;
     itemLabel: string;
+    itemUnit?: string;
     quantity: string;
     onHandAfter: string;
   }[];
@@ -73,6 +75,7 @@ export async function publishConsumptionApplied(
         .select({
           itemId: stockItems.id,
           itemLabel: stockItems.name,
+          itemUnit: stockItems.unit,
           onHandAfter: sql<string>`(select coalesce(sum(m.quantity),0)::text from stock.movement m where m.business_id=${event.businessId}::uuid and m.location_id=${p.locationId}::uuid and m.item_id=${stockItems.id})`,
         })
         .from(stockItemLocations)
@@ -87,6 +90,7 @@ export async function publishConsumptionApplied(
     : [];
   const payload: ConsumptionApplied = {
     eventVersion: 1,
+    observedAt: new Date().toISOString(),
     sourceOrderId: p.sourceOrderId,
     locationId: p.locationId,
     closedAt: p.closedAt,

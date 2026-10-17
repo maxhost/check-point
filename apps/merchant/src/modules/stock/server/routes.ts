@@ -8,7 +8,7 @@ import {
 } from "../../../server/module-events";
 import { createItem, listItems, updateItem } from "../items";
 import { listMovements, recordAdjustment, recordPurchase } from "../movements";
-import { listLog, recordEntry } from "../entries";
+import { countDetail, listLog, recordEntry } from "../entries";
 import { buildDraft, buildPhotoDraft } from "../draft";
 import { requireEntryPrices, requirePurchasePrice } from "./purchase-price";
 
@@ -40,6 +40,20 @@ async function readLocal(businessId: string, request: Request) {
   };
 }
 export const routes: readonly ModuleRoute[] = [
+  {
+    method: "GET",
+    path: "counts/:movementId",
+    failure: "No pudimos leer el conteo.",
+    permission: "stock",
+    handler: async ({ request, business, params }) =>
+      NextResponse.json({
+        movement: await countDetail(
+          business.id,
+          params.movementId,
+          query(request, "locationId"),
+        ),
+      }),
+  },
   {
     method: "GET",
     path: "locations",

@@ -10,6 +10,19 @@ export type AnalyticsMetric = {
   minorUnit: number;
 };
 export type AnalyticsLabel = { kind: string; id: string; label: string };
+export type AnalyticsGauge = {
+  day: string;
+  metric: string;
+  locationId: string | null;
+  dimensionId: string;
+  amountMinor: string;
+  quantity: string;
+  currencyCode: string;
+  minorUnit: number;
+  unit: string | null;
+  observedAt: string;
+  eventId: string;
+};
 export type AnalyticsInput = {
   today: string;
   firstSaleDay?: string | null;
@@ -17,11 +30,18 @@ export type AnalyticsInput = {
   hasClosedExpenseMonth?: boolean;
   metrics: readonly AnalyticsMetric[];
   labels: readonly AnalyticsLabel[];
+  gauges?: readonly AnalyticsGauge[];
+  firstConsumptionDays?: readonly {
+    locationId: string;
+    itemId: string;
+    day: string;
+  }[];
   locations: readonly { id: string; name: string }[];
   currencyCode: string;
   minorUnit: number;
 };
-export type CardKey = "1" | "2" | "3" | "4" | "6" | "7" | "13";
+export type CardKey =
+  "1" | "2" | "3" | "4" | "5" | "8" | "9" | "6" | "7" | "13";
 export type CardCandidate = {
   cardKey: CardKey;
   subjectKey: string;
@@ -34,6 +54,8 @@ export type CardCandidate = {
   quality: "observed" | "estimated";
   actionKey: string | null;
   actionHref?: string;
+  originDay?: string;
+  originObservedAt?: string;
   urgency: number;
   fixedPlata?: number;
   weightMultiplier?: number;
