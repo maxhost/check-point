@@ -18,6 +18,8 @@ Ampliación nominal explícita tras evidencia: .github/workflows/ci.yml, tools/n
 
 Reserva exclusiva db:modules-ci, incluida limpieza. Configuración seleccionada /private/tmp/checkpass-recipes-margin/0234-ci.env. Toda suite DB con tools/neon-test.sh y selección focal serial; guardar stdout/exit codes en archivos propios, sanitizados. Nada de DATABASE_URL PROD ni suites globales. Reproducir primero la señal decisiva; confirmar después solo los casos afectados y un vecino pertinente. No pnpm verify completo ni publicación en esta tarea.
 
+Ampliación nominal de cierre: mover el test completo apps/merchant/src/app/backoffice/business/page-guard.test.ts a apps/merchant/src/modules/pos/business-page-access.test.ts, conservando sus cuatro casos y la guardia. Detectado y aprobado antes de la entrega99d18e2f; paths reservados en factory. Evita nombrar POS desde core, sin excepciones ni fragmentación de literales.
+
 ## Worker retiro — negocio-retirement-0235
 
 Preparar e implementar el candidato que elimina compatibilidad después del corte según0150: adaptadores de ubicación POS, onEnable/seed modular, resourceProvider payment_method legado, ramas Brand precorte y aplicación/retry históricos cuando ya no hay obligaciones. Conservar core medios/selector, capturas/resultados/lectura histórica, identidades y avisos, sin reescribir datos. No eliminar sale_settlement mientras exista su lector. No renombrar profitability ni implementar Gastos.
@@ -35,3 +37,5 @@ Puede investigar/codificar y correr unit/tipos sin DB mientras CI tiene la reser
 Node24 antes de comandos. Dependencias propias con tools/worktree-new.sh; no env productivo copiado/enlazado. De env solo claves/metadatos. Scope/recursos en factory. Commit propio, factory deliver, SHA/base, archivos reales, comandos/exit/skips/fallos y logs durables en handoff. No modificar pruebas para esconder fallos ni atribuir PASS a retries/exclusiones.
 
 QA independiente por candidato congelado: una revisión focal más correcciones necesarias, cero mutaciones por defecto. Coordinador verifica identidad/evidencia e integra el fix CI tras PASS. El candidato de retiro se conserva en su rama hasta cumplir su precondición operativa; preparar código no certifica drenaje PROD. Actualizar estado propio y próximos pasos al cierre; no pedir autorizaciones de PROD antes de tener el resultado concreto revisable.
+
+El árbol de combinación negocio-followup-qa conserva el reporte final mediante merge documental desde dev. Su scope se amplía nominalmente para incluir, sin editar ni atribuirse, el commit ajeno1300a07b del plan de margen que acompaña ese merge. No se descarta trabajo del owner/Claude para satisfacer el registro. Esta rama sigue retenida y no se integra hacia dev/main.

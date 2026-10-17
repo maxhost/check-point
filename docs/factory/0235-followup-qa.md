@@ -22,7 +22,7 @@ GitHub continúa mostrando el run histórico38971334745 rojo: no se publicó ni 
 
 ## Retiro aceptado como artefacto separado
 
-Entrega **1dfb776b**, runtime d4eda771; QA de entrega PASS. [Handoff y precondiciones](0235-retirement.md). Retira elección de esquema, onEnable y provider de medios POS, ramas Brand precorte, aplicador y dispatch históricos. Conserva tablas, mapping de origen, lectura histórica, sale_settlement, IDs, revisión y avisos. Una obligación sin handler se rechaza antes del ACK; no se borra ni maquilla.
+Entrega **1dfb776b**, runtime d4eda771; QA de entrega PASS. Handoff y precondiciones en la rama retenida: `git show 1dfb776b:docs/factory/0235-retirement.md`. Retira elección de esquema, onEnable y provider de medios POS, ramas Brand precorte, aplicador y dispatch históricos. Conserva tablas, mapping de origen, lectura histórica, sale_settlement, IDs, revisión y avisos. Una obligación sin handler se rechaza antes del ACK; no se borra ni maquilla.
 
 Dos selecciones DB protegidas y seriales sobre el runtime congelado: retiro5/5 PASS28,46s y Resources9/9 PASS50,78s, ambos EXIT0, sin skips y teardown completo. SQL solo lectura detecta esquema requerido, pending/processing y cualquier claim sin resolver; no certifica READY ni ausencia de writers antiguos. La fixture aplicada conserva resultado3%=0,06 y sus IDs sin aplicador; pending/claim bloquea certificación y no cambia su estado.
 
