@@ -18,8 +18,9 @@ Decisiones citadas: `docs/plan-margen-ganancia-2026-10-14.md`, secciones «AN �
 **Revisión posterior a AN-1/AN-2/AN-3 (owner, 2026-10-17):** se aprueban avisos persistentes, cierre explícito,
 postergación y retención de 90 días/semanal de §3.7–§3.10. Sustituyen la copia diaria y «aceptar = navegar» del corte
 original. La funcionalidad integrada anterior conserva sus handoffs y sus límites; esta revisión todavía no está
-implementada. El catálogo §3.8 y los recordatorios tienen tres aclaraciones consultadas al owner; mientras figuren pendientes no se lanza
-código. [Contrato de implementación](../factory/0237-inbox-lifecycle-contract.md),
+implementada. El owner confirmó categorías informativa/accionable y resumen diario renovable sin postergación.
+Siguen pendientes el reaviso de 11 y la novedad al vencer un recordatorio accionable; no se lanza código mientras
+estén sin resolver. [Contrato de implementación](../factory/0237-inbox-lifecycle-contract.md),
 [adversarial](../factory/0237-inbox-lifecycle-adversarial.md).
 
 ## Problema
@@ -81,6 +82,9 @@ reconstruir ventas anteriores a los eventos). Del 2026-10-17 (plan, «AN — dec
    cerrados/vencidos. Pendientes/pospuestos de cualquier edad y control anti-repetición necesario excluidos. Los
    cierres nuevos eliminan contenido al acto; no se crea un log para conservarlo 90 días. Histórico numérico y
    deduplicación de eventos fuera del cleanup.
+10. **Categorías y resumen diario:** las tarjetas declaran si son informativas o accionables. Las puramente
+    informativas no ofrecen Solucionado ni Recordarme luego. El resumen de ayer marcado se retira; si no se marca,
+    se actualiza con el siguiente día, sin acumular informes de anteayer. Su navegación al histórico no lo marca.
 
 ## Etapas
 
@@ -223,7 +227,8 @@ alimentan**: sin POS no hay ventas, sin Recetas no hay costo; Analíticas lo dic
 - Evaluar lee solo resúmenes/contexto de Analíticas, calcula las funciones puras y sincroniza los asuntos. Una
   tarjeta activa/pospuesta conserva `id` entre días, deliveries y recordatorios. Un recálculo idéntico no inserta
   una fila ni crea un episodio. La unicidad de contenido vigente pasa de (comercio,tipo,sujeto,día) a
-  (comercio,tipo,asunto);9 distingue conteos diferentes, no se los colapsa por insumo.
+  (comercio,tipo,asunto);9 distingue conteos diferentes, no se los colapsa por insumo. El resumen diario tiene un
+  solo asunto renovable por comercio: el día es contexto versionado, no una tarjeta pendiente adicional.
 - `card_candidate` contiene contenido vigente, no un archivo diario. `card_state` conserva estado/control
   compacto de contexto, evidencia de frescura, episodio, fechas de decisión/recordatorio y novedad. El `fingerprint`
   monetario anterior puede ayudar al peso, pero no prueba frescura ni resolución. §3.7–§3.9 precisan invariantes.
@@ -239,10 +244,10 @@ alimentan**: sin POS no hay ventas, sin Recetas no hay costo; Analíticas lo dic
 
 #### 3.2 Peso, novedad y tope
 
-**Pendiente del owner:** al vencer un recordatorio, renovar la novedad para recuperar elegibilidad o mantener el
-decaimiento anterior. QA detectó que una informativa con peso base 0,1 y dos exposiciones puede quedar en
-0,036, bajo el mínimo 0,05, aunque el usuario haya elegido volver a verla. Revisión detenida hasta respuesta;
-no implementar una política implícita.
+**Pendiente del owner:** al vencer un recordatorio accionable, renovar la novedad para recuperar elegibilidad o
+mantener el decaimiento anterior. El ejemplo inicial de QA era una informativa con peso base 0,1 y dos exposiciones,
+que quedaba en 0,036 bajo el mínimo 0,05. La nueva regla elimina la postergación informativa, pero no resuelve
+esa interacción entre novedad y recordatorio para accionables de peso bajo. No implementar una política implícita.
 
 `packages/domain/src/analytics/weights.ts` mantiene los coeficientes y dinero exacto:
 
@@ -257,9 +262,9 @@ no implementar una política implícita.
   y la variante de aprendizaje de 2. Su novedad no puede volver invisible el riesgo crítico abierto. Esto no anula
   cierres, recordatorios, permisos ni disponibilidad de acción. Otras candidatas conservan orden por peso y umbral
   mínimo0,05. Si hay más riesgos reales que cupos no se promete mostrarlos todos simultáneamente.
-- Un recordatorio informativo de un período pasado conserva su período y no suplanta al resumen actual ni recibe
-  el privilegio fijo 10 de «ayer». Compite en los demás cupos con el peso informativo de 2 (0,1) y el mismo límite de 5.
-  **La vigencia de estos informes se cierra con la aclaración pendiente de §3.8.**
+- Solo el resumen vigente de ayer tiene el privilegio fijo 10. El informe anterior no compite con el nuevo:
+  se reemplaza su contenido, sin un archivo de tarjetas diarias ni recordatorios informativos. Si todavía falta
+  preparar el nuevo día, no mostrar el anterior como «ayer»; indicar preparación conforme a §3.1.
 
 #### 3.3 Acciones sin nombrar módulos
 
@@ -310,11 +315,11 @@ muestra/elige en zona del comercio, conservando el instante elegido si después 
 
 | Ruta | Contrato |
 |---|---|
-| `GET /api/analytics/inbox` | 200 `{ contractVersion:2,state,preparedAt,nextReminderAt,cards:[{ id,version,cardKey,sender,title,body,period,quality,amountAtStake,action,decisions }] }`. `period` indica origen y se muestra si no corresponde a hoy/ayer. `nextReminderAt` es el mínimo instante estrictamente futuro de pospuestos vigentes/autorizados, o null; los ya debidos van en cards, no en ese campo. |
+| `GET /api/analytics/inbox` | 200 `{ contractVersion:2,state,preparedAt,nextReminderAt,cards:[{ id,version,cardKey,category,sender,title,body,period,quality,amountAtStake,action,decisions }] }`. `category` es `informational` o `actionable` y determina capacidades. `period` indica origen y se muestra si no corresponde a hoy/ayer. `nextReminderAt` es el mínimo instante estrictamente futuro de pospuestos accionables vigentes/autorizados, o null; los ya debidos van en cards, no en ese campo. |
 | `POST /api/analytics/inbox/:id/resolve` | Solucionado: 200 `{ cards,nextReminderAt }`, elimina contenido y guarda control/decisión sin afirmar resolución observada. |
 | `POST /api/analytics/inbox/:id/ignore` | Ignorar: mismo cierre técnico, motivo distinto; no cambia stock ni datos de negocio. |
 | `POST /api/analytics/inbox/:id/seen` | Visto para informes; mismo contrato de cierre, permitido según capacidades del tipo. |
-| `POST /api/analytics/inbox/:id/snooze` | Recordarme luego:200 `{ cards,nextReminderAt }`, mismo id y contexto vigente; guarda instante y excluye hasta ese momento. |
+| `POST /api/analytics/inbox/:id/snooze` | Solo accionables. Recordarme luego:200 `{ cards,nextReminderAt }`, mismo id y contexto vigente; guarda instante y excluye hasta ese momento. Informativas: 422 sin efectos. |
 | `POST /api/analytics/inbox/:id/accept` y `/dismiss` antiguos | 409 `inbox_contract_changed`, sin modificar estado; el cliente recarga contrato. No reinterpretar una navegación de un cliente antiguo como Solucionado. |
 | `GET /api/analytics/history?period=month\|3m\|6m\|9m\|12m&locationId=` | Sin cambios:200 bloques §4; local ajeno 404. |
 | `GET /api/analytics/day?date=YYYY-MM-DD&locationId=` | Sin cambios:200 ventas por producto del día. |
@@ -332,12 +337,23 @@ respuestas de todas las operaciones ni se crea un log. Otro comando sobre una ta
 
 #### 3.6 UI
 
-Dashboard conserva remitente, título, cuerpo, monto/estimado, hasta 5 y vacío honesto. Navegación «Registrar compra»,
-«Ver cliente», etc. solo abre el destino resuelto por contrato/permiso; no POST de cierre. Decisiones visibles:
-Solucionado, Ignorar, Recordarme luego; en informes se usa Visto en lugar de Solucionado. Se retira la X ambigua.
-Capacidades: Visto en 1/2/9/12/13 y en la variante informativa «Tu primer mes con gastos» de 4; Solucionado en
-3/4 accionable/5/6/7/8/10/11. Ignorar y Recordarme luego disponibles en ambos grupos según vigencia del catálogo.
-El servidor declara decisiones disponibles; una decisión incompatible con el tipo devuelve 422 sin efectos.
+Dashboard conserva remitente, título, cuerpo, monto/estimado, hasta 5 y vacío honesto. Cada tarjeta tiene categoría
+semántica explícita, independiente del remitente y del destino de navegación:
+
+| Categoría | Tarjetas del catálogo | Decisiones disponibles |
+|---|---|---|
+| Informativa (`informational`) | 1/2/9/12/13 y variante «Tu primer mes con gastos» de 4 | Visto / Ignorar. Sin Solucionado ni Recordarme luego. |
+| Accionable (`actionable`) | 3/4 invitación a cargar gastos/5/6/7/8/10/11 | Solucionado / Ignorar / Recordarme luego. |
+
+«Ver el día», «Ver cliente», «Registrar compra», etc. solo abren el destino resuelto por contrato/permiso; no hacen
+POST de cierre. Una tarjeta informativa puede enlazar al histórico sin convertirse por eso en accionable. Se
+retira la X ambigua. El servidor declara categoría y decisiones disponibles; una decisión incompatible devuelve
+422 sin efectos. El cliente no infiere capacidades por texto, remitente o presencia de un enlace.
+
+El resumen marcado se retira para su período. Si sigue sin marcar, el siguiente resumen actualiza la misma
+tarjeta/ID y su versión; no se conserva otra pendiente de anteayer. La decisión del período anterior no oculta
+el siguiente: sus datos nuevos habilitan el resumen diario correspondiente. Una decisión atrasada con la versión
+anterior no puede retirar el nuevo. No hay postergación ni archivo de tarjetas del resumen; el histórico permanece.
 
 Recordarme luego permite elegir fecha/hora con kit existente, sin límite de 90 días; error de versión actualiza el contexto
 antes de pedir otra decisión. No hacer doble envío mientras la acción esté pendiente.
@@ -348,7 +364,7 @@ No se implementan notificaciones OS/email/push ni un polling constante nuevo. Re
 sincronización temporal/factual y antes de mostrar, sin cálculo pesado sobre tablas de origen al abrir.
 
 La página Analíticas/histórico y sus permisos siguen §4. UI con kit existente, COPY.md/tuteo, sin CSS/paleta o kit
-nuevos. Un informe pospuesto de un período pasado dice su fecha, no «hoy»/«ayer» falsos.
+nuevos. Un aviso accionable pospuesto de un período pasado dice su fecha, no «hoy»/«ayer» falsos.
 
 #### 3.7 Ciclo y concurrencia
 
@@ -382,19 +398,19 @@ Los umbrales originales de emisión de §3.4/§6/§7 se conservan.
 
 | Tarjeta | Asunto / evidencia pertinente | Vigencia y reaparición después del cierre |
 |---|---|---|
-|1 Resumen | Día de ventas concreto, informes ligados a ese día; distinguir asunto de un cursor compacto de períodos ya atendidos. | **Pendiente de aclaración del owner:** retiro al terminar período salvo pospuesto, o conservación hasta Visto. Si se conserva, la fecha original se muestra y no reemplaza «ayer» actual. |
-|2 Demanda / aprendizaje | Proyección para día concreto y su soporte de días comparables; aprendizaje con progreso real y frecuencia máxima semanal original. No crear control nuevo cada fecha por mera repetición del mismo aprendizaje. | **Misma aclaración pendiente de informes del día.** Alcanzar el mínimo de historia retira aprendizaje. Reemitir demanda en otro día es otro contexto de proyección, no copia de la tarjeta vieja. |
+|1 Resumen | Asunto diario renovable del comercio; día de ventas y datos del resumen como contexto versionado. | Informativa sin snooze. Visto/Ignorar retiran el período; el siguiente día elegible puede aparecer. Sin marcar, se actualiza la misma tarjeta con el día siguiente y se retira el contenido anterior. Nunca se acumulan resúmenes ni se muestra anteayer como ayer. |
+|2 Demanda / aprendizaje | Proyección para día concreto y su soporte de días comparables; aprendizaje con progreso real y frecuencia máxima semanal original. No crear control nuevo cada fecha por mera repetición del mismo aprendizaje. | Informativa sin snooze. La proyección solo se muestra para el día objetivo; una siguiente proyección sustituye a la anterior, sin acumular tarjetas diarias. Alcanzar el mínimo de historia retira aprendizaje; se mantiene su frecuencia original. |
 |3 Meta | Comercio/mes; brecha, margen/cobertura y fase temporal ya definida (últimos 10 días). | Mes vigente y condición de meta aplicable; cubierta/meta inválida retira. Datos pertinentes o entrada a fase temporal relevante pueden justificar otro contexto, sin reaviso por cada día igual. Pasar de mes vence ese asunto, no borra histórico. |
 |4 Gastos | Comercio/configuración faltante; estado de carga e historia necesaria, no importe null ni día. | Mientras falte la información que se invita a completar; cerrada no vuelve por calendario solo. Un cambio real de configuración/condición puede habilitar otra invitación. |
 |5 Suba | Local/insumo/producto; hecho de cambio de costo, ocurrióEn+eventId/revisión, antes/después conocidos. | El hecho sigue siendo consultable si está abierto/pospuesto; mantiene decaimiento original sin copiar. Cierre elimina texto y no lleva el hecho a otro día. Otro hecho pertinente posterior puede habilitar otra tarjeta; un replay no. |
 |6 Margen | Producto y contexto de margen/pérdida calculado con las mismas métricas exactas; cambio de signo/escalón material con soporte pertinente. | Mientras la condición se mantenga; recuperado/costo desconocido por regla original retira. Un contexto pertinente agravado puede reabrir, no una venta ajena ni texto/fecha nuevos. |
 |7 Sin costo | Producto y cobertura faltante de su venta; evidencia de consumo/costo y escalón material de venta sin costo, no simple ranking de otros productos. | Se retira al conocerse el costo pertinente/dejar de cumplir condición. Nuevos datos pertinentes que agraven la cobertura pueden justificar reabrir. No prometer datos faltantes como cero. |
 |8 Stock | Insumo/local; gauge observado/revisión, cantidad, consumo pertinente y recuperación del episodio; no fingerprint por importe null. | Mes mínimo y riesgo original presentes. Cierre silencia versión atendida; consumo posterior menor y reposición→escasez permiten nuevo episodio. Se retira al desaparecer riesgo. Snooze respeta fecha; crítico no anula cierre/snooze. |
-|9 Conteo | Conteo/evento+insumo+local. Conteos distintos son asuntos distintos, aunque el insumo coincida. | Informe factual abierto/pospuesto no caduca por cambiar el día o tener poco peso. Otro conteo pertinente emite asunto nuevo; mismo evento no se duplica. No agrupar mermas diferentes para reducir filas. |
+|9 Conteo | Conteo/evento+insumo+local. Conteos distintos son asuntos distintos, aunque el insumo coincida. | Informativa sin snooze. Informe factual abierto no caduca por cambiar el día o tener poco peso. Otro conteo pertinente emite asunto nuevo; mismo evento no se duplica. No agrupar mermas diferentes para reducir filas. |
 |10 Anulaciones | Local y anomalía del conjunto pertinente de anulaciones/ventanas originales; soporte de conteo/monto y referencias. | Mientras se cumpla anomalía; resuelta retira. Nuevas anulaciones pertinentes que cambien el contexto habilitan otro, no ventas o movimientos ajenos. |
 |11 Habitual | Cliente del comercio y episodio desde su última visita, mediana y ausencia; fechas unidas entre locales como en AN-3. | Nueva visita resuelve ausencia; >90 días de última visita deja de cumplir condición original y retira, incluso con recordatorio. **Pendiente de aclaración del owner:** reaviso al duplicarse ausencia atendida o solo otro episodio tras visita. Sin reaviso diario implícito. |
-|12 Promo | Campaña/ciclo terminado, snapshot causal y métricas asociadas sin doble conteo. Emisión al día siguiente no es caducidad. | Informe sigue vigente abierto/pospuesto después de ese día. Canje tardío actualiza mismo id y respeta remindAt. Snapshot que invalida fin retira; nuevo fin/ciclo pertinente puede emitir. Cierre no permite que el replay del viejo ciclo lo resucite. |
-|13 Día flojo | Día objetivo, previsión y productos/márgenes pertinentes; no día de consulta. | **Misma aclaración pendiente de informes del día.** Si se conserva/pospone se identifica el período original, sin recomendar retrospectivamente como si fuera hoy. |
+|12 Promo | Campaña/ciclo terminado, snapshot causal y métricas asociadas sin doble conteo. Emisión al día siguiente no es caducidad. | Informativa sin snooze. Informe sigue vigente abierto después de ese día. Canje tardío actualiza mismo id sin crear copias. Snapshot que invalida fin retira; nuevo fin/ciclo pertinente puede emitir. Cierre no permite que el replay del viejo ciclo lo resucite. |
+|13 Día flojo | Día objetivo, previsión y productos/márgenes pertinentes; no día de consulta. | Informativa sin snooze. Solo se muestra para el día objetivo; la previsión siguiente sustituye a la anterior sin acumular pendientes ni recomendar retrospectivamente como si fuera hoy. |
 
 Antes de código se congelan comparadores y ejemplos de aceptación por tipo. Los controles de asuntos permanentes
 se actualizan; para asuntos de períodos/hechos se retiran solo cuando se prueba que el contexto no puede volver a
@@ -413,6 +429,10 @@ significaba navegar: no convertirlo en Solucionado observado o declarado. Clasif
 versiones vigentes/duplicadas/cerradas solo con evidencia; desconocidos se conservan y no entran al cleanup. Un
 updatedAt de otra versión, fecha antigua, importe bajo o ausencia de mostrada no prueba cierre. No inventar tiempos
 ni borrar potenciales pendientes para simplificar una restricción nueva.
+
+La capacidad de posponer informes existía solo en este borrador, no en el producto integrado. No crear recordatorios
+informativos en la migración; no usar la nueva categoría como motivo para descartar legado cuyo significado sea
+desconocido. Reconciliar resúmenes diarios por período probado, preservando métricas e histórico numérico.
 
 No modificar métricas, source_revision/metric_contribution, dinero/currency/minorUnit, H2, gauges exactos, permisos,
 histórico, contratos de eventos de origen ni corte Stock. Fuentes nuevas de contexto, si faltan, deben respetar
@@ -627,9 +647,11 @@ tarjeta con sus bordes.
 Pruebas adicionales de esta revisión:
 
 12. Unit por cada tipo: contexto/episodio, dato relevante/ajeno/viejo, ventana de emisión distinta de vigencia,
-    pospuesto fuera del período y temporalidad de 11 según decisión del catálogo. Ningún clock/hash global reabre8.
+    pospuesto accionable fuera del período y temporalidad de 11 según decisión del catálogo. Ningún clock/hash global reabre8.
+    Categorías/capacidades: informativa rechaza resolve/snooze; resumen sin marcar renueva la misma ID, marcado
+    permite el siguiente período, una versión anterior no retira el nuevo y nunca se acumula anteayer con ayer.
 13. Neon focal: cerrar A mientras se publica B no cierra B; retry del POST tras borrar contenido es idempotente;
-    posponer compite con cleanup/delivery de 12; medianoche no libera exclusión. Reposición y consumo intradiarios se
+    posponer accionable compite con cleanup; delivery tardía de 12 actualiza sin duplicar. Medianoche no libera exclusión. Reposición y consumo intradiarios se
     conservan como episodio aunque el gauge final coincida con el atendido. Sin cambios al corte de Stock.
 14. Neon de cleanup: 90 días exactos/justo antes, pendiente antiguo, snooze > 90 días, control necesario, legado desconocido,
     rollback parcial/concurrencia, lote ocupado que luego se retoma; no tocar métricas ni revisiones.

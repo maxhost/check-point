@@ -238,10 +238,16 @@ ADR: esta medición la reemplaza para la propuesta; la spec repite la medición 
 El owner aprueba sustituir la copia diaria de candidatas y «aceptar = navegar» por un aviso vigente por asunto.
 Navegar a una herramienta no declara solución. Solucionado/Ignorar (Visto para informes) cierran y eliminan
 contenido; se conserva control compacto del contexto atendido, sin log de interacciones. Recordarme luego conserva
-identidad y fecha elegida. Contexto repetido no reabre; en stock un consumo posterior pertinente o reposición
+identidad y fecha elegida en avisos accionables. Contexto repetido no reabre; en stock un consumo posterior pertinente o reposición
 seguida de nueva escasez puede justificar otro episodio. Cada tipo distingue emisión, vigencia y contexto temporal.
 Se mantienen mínimos de historia, umbrales y dinero exacto, con prioridad de stock con riesgo ≤24h sobre
 invitaciones dentro de los cinco cupos, respetando cierres y postergaciones.
+
+El owner distingue categorías explícitas: informativa (`informational`) y accionable (`actionable`). Las puramente
+informativas no se posponen ni se declaran solucionadas; tienen Visto/Ignorar. Las accionables conservan
+Solucionado/Ignorar/Recordarme luego. El resumen diario marcado se retira; si no se marca, se actualiza con el día
+siguiente conservando una sola tarjeta, sin acumular anteayer con ayer. El histórico numérico no se borra. Un enlace
+para consultar detalles no convierte un informe en accionable ni marca la tarjeta al navegar.
 
 Limpieza semanal con corte móvil de 90 días desde cierre/vencimiento probado, solo residuos cerrados/vencidos;
 pendientes/pospuestos válidos y control anti-repetición aún necesario quedan excluidos. El contenido de un cierre
@@ -252,8 +258,9 @@ Esta decisión sustituye las formulaciones anteriores de aceptación/descarte co
 modificar el patrón de eventos del ADR0153 ni el histórico de negocio. La
 [spec0237 §3.7–§3.10](../specs/0237-analiticas-inbox-y-resumenes-diarios.md) contiene reglas y pruebas;
 el [adversarial](../factory/0237-inbox-lifecycle-adversarial.md) requiere resolver el catálogo y la transición del
-legado antes de código. El catálogo y los recordatorios mantienen explícitas tres aclaraciones consultadas al owner; no se atribuyen
-respuestas ni se autoriza implementar con celdas pendientes. Aprobación documental no autoriza PROD ni publicación.
+legado antes de código. Quedan dos aclaraciones consultadas al owner: reaviso de la tarjeta 11 tras cierre y
+novedad al vencer un recordatorio accionable. No se atribuyen respuestas ni se autoriza implementar con celdas
+pendientes. Aprobación documental no autoriza PROD ni publicación.
 
 ## Consecuencias
 
