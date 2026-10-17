@@ -94,6 +94,9 @@ export async function setupLifecycle(page: Page) {
   const fixture = {
     inbox: lifecycleEnvelope([informative, actionable]),
     reads: 0,
+    holdRead: null as Promise<void> | null,
+    holdWrite: null as Promise<void> | null,
+    nextTransportFailure: false,
     writes: [] as { decision: string; body: Record<string, unknown> }[],
     nextError: null as { status: number; code: string; error: string } | null,
   };
@@ -101,13 +104,20 @@ export async function setupLifecycle(page: Page) {
     const request = route.request();
     if (request.method() === "GET") {
       fixture.reads += 1;
-      return route.fulfill({ json: fixture.inbox });
+      const snapshot = structuredClone(fixture.inbox);
+      await fixture.holdRead;
+      return route.fulfill({ json: snapshot });
     }
     const parts = new URL(request.url()).pathname.split("/");
     const id = parts.at(-2);
     const decision = parts.at(-1)!;
     const body = request.postDataJSON() as Record<string, unknown>;
     fixture.writes.push({ decision, body });
+    if (fixture.nextTransportFailure) {
+      fixture.nextTransportFailure = false;
+      return route.abort("failed");
+    }
+    await fixture.holdWrite;
     if (fixture.nextError) {
       const failure = fixture.nextError;
       fixture.nextError = null;

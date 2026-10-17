@@ -1,64 +1,35 @@
 "use client";
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Xmark } from "iconoir-react";
-import type { InboxCard } from "@mi-pasaporte/domain/analytics/types";
 import { formatMoney } from "@mi-pasaporte/domain/analytics/date";
-import { Alert, Button, Card, Heading, Link, Text } from "../../../ui";
-import { panelRequest } from "../panel-request";
-type Inbox = {
-  state: "ready" | "preparing";
-  preparedAt: string | null;
-  cards: InboxCard[];
-};
+import {
+  Alert,
+  Button,
+  Card,
+  DateTimeField,
+  Dialog,
+  FormActions,
+  Heading,
+  Link,
+  Text,
+} from "../../../ui";
+import { useAnalyticsInbox } from "./inbox-state";
 export function AnalyticsInbox() {
-  const router = useRouter();
-  const [inbox, setInbox] = useState<Inbox | null>(null);
-  const [error, setError] = useState("");
-  const [pending, setPending] = useState<string | null>(null);
-  const [reload, setReload] = useState(0);
-  useEffect(() => {
-    let active = true;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const load = async () => {
-      try {
-        const data = await panelRequest<Inbox>("/api/analytics/inbox");
-        if (active) {
-          setInbox(data);
-          setError("");
-          if (data.state === "preparing")
-            timer = setTimeout(() => {
-              void load();
-            }, 3000);
-        }
-      } catch {
-        if (active) setError("No pudimos leer tus avisos. Intenta otra vez.");
-      }
-    };
-    void load();
-    return () => {
-      active = false;
-      if (timer) clearTimeout(timer);
-    };
-  }, [reload]);
-  async function act(card: InboxCard, action: "accept" | "dismiss") {
-    setPending(card.id);
-    setError("");
-    try {
-      const result = await panelRequest<{ cards: InboxCard[] }>(
-        `/api/analytics/inbox/${card.id}/${action}`,
-        "POST",
-      );
-      setInbox((current) =>
-        current ? { ...current, cards: result.cards } : null,
-      );
-      if (action === "accept" && card.action) router.push(card.action.href);
-    } catch {
-      setError("No pudimos guardar la acción. Intenta otra vez.");
-    } finally {
-      setPending(null);
-    }
-  }
+  const {
+    inbox,
+    error,
+    pending,
+    refresh,
+    act,
+    snoozing,
+    setSnoozing,
+    reminder,
+    setReminder,
+    reminderError,
+    setReminderError,
+    reminderTimezone,
+    localValue,
+    saveReminder,
+    beginSnooze,
+  } = useAnalyticsInbox();
   return (
     <section aria-labelledby="analytics-inbox-title" className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -69,7 +40,7 @@ export function AnalyticsInbox() {
       </div>
       {error && (
         <Alert kind="error" title={error}>
-          <Button variant="quiet" onPress={() => setReload((n) => n + 1)}>
+          <Button variant="quiet" onPress={refresh}>
             Volver a intentar
           </Button>
         </Alert>
@@ -86,25 +57,20 @@ export function AnalyticsInbox() {
         </Card>
       )}
       {inbox?.cards.map((card) => (
-        <Card key={card.id} as="article" className="grid gap-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="grid gap-1">
-              <Text variant="small">{card.sender}</Text>
-              <Heading level={3}>{card.title}</Heading>
-            </div>
-            <Button
-              variant="quiet"
-              aria-label={`Descartar ${card.title}`}
-              isDisabled={pending !== null || inbox.state === "preparing"}
-              isLoading={pending === card.id}
-              onPress={() => {
-                void act(card, "dismiss");
-              }}
-            >
-              <Xmark aria-hidden="true" className="size-5" />
-            </Button>
+        <Card key={card.id} as="article" className="grid min-w-0 gap-4">
+          <div className="grid min-w-0 gap-1">
+            <Text variant="small">
+              {card.sender} ·{" "}
+              {card.category === "informational"
+                ? "Información"
+                : card.category === "actionable"
+                  ? "Operaciones"
+                  : "Marketing"}
+            </Text>
+            <Heading level={3}>{card.title}</Heading>
           </div>
-          <Text className="whitespace-pre-line">{card.body}</Text>
+          <Text className="whitespace-pre-line break-words">{card.body}</Text>
+          <Text variant="small">{card.period.label}</Text>
           {(card.amountAtStake || card.quality === "estimated") && (
             <div className="flex flex-wrap gap-3">
               {card.amountAtStake && (
@@ -124,19 +90,69 @@ export function AnalyticsInbox() {
           )}
           {card.action && (
             <div>
-              <Button
-                variant="secondary"
-                isDisabled={pending !== null || inbox.state === "preparing"}
-                onPress={() => {
-                  void act(card, "accept");
-                }}
-              >
+              <Link variant="secondary" href={card.action.href}>
                 {card.action.label}
-              </Button>
+              </Link>
             </div>
           )}
+          <div className="flex flex-wrap gap-2">
+            {card.decisions.map((decision) => (
+              <Button
+                key={decision.key}
+                variant="quiet"
+                isDisabled={pending !== null || inbox.state === "preparing"}
+                isLoading={pending === card.id}
+                onPress={() => {
+                  if (decision.key === "snooze") {
+                    beginSnooze(card);
+                  } else void act(card, decision.key);
+                }}
+              >
+                {decision.label}
+              </Button>
+            ))}
+          </div>
         </Card>
       ))}
+      <Dialog
+        isOpen={snoozing !== null}
+        onOpenChange={(open) => {
+          if (!open && pending === null) setSnoozing(null);
+        }}
+        title="Recordarme luego"
+        isDismissable={pending === null}
+        description={snoozing?.title}
+      >
+        {snoozing && inbox && (
+          <div className="grid gap-5">
+            <DateTimeField
+              label="Fecha y hora"
+              value={reminder}
+              onChange={(value) => {
+                setReminder(value);
+                setReminderError("");
+              }}
+              min={localValue(new Date())}
+              isDisabled={pending !== null}
+              isRequired
+              description={`Zona del comercio: ${reminderTimezone}. Hasta ${new Intl.DateTimeFormat("es-419", { dateStyle: "medium", timeStyle: "short", timeZone: reminderTimezone }).format(new Date(snoozing.expiresAt))}.`}
+              errorMessage={reminderError}
+            />
+            <FormActions>
+              <Button
+                variant="secondary"
+                isDisabled={pending !== null}
+                onPress={() => setSnoozing(null)}
+              >
+                Cancelar
+              </Button>
+              <Button isLoading={pending !== null} onPress={saveReminder}>
+                Guardar recordatorio
+              </Button>
+            </FormActions>
+          </div>
+        )}
+      </Dialog>
     </section>
   );
 }

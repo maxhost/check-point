@@ -14,11 +14,11 @@ test.afterAll(async () => {
 
 async function chooseReminder(page: Page, year = "2026") {
   for (const [segment, value] of [
-    [/día/i, "21"],
-    [/mes/i, "10"],
-    [/año/i, year],
-    [/hora/i, "10"],
-    [/minuto/i, "30"],
+    [/^día,/i, "21"],
+    [/^mes,/i, "10"],
+    [/^año,/i, year],
+    [/^hora,/i, "10"],
+    [/^minuto,/i, "30"],
   ] as const) {
     const field = page.getByRole("spinbutton", { name: segment });
     await field.focus();
@@ -35,16 +35,12 @@ for (const width of [390, 1280]) {
     await page.setViewportSize({ width, height: 900 });
     const { fixture, informative } = await setupLifecycle(page);
     await page.goto(harness.url);
-    const summary = page
-      .getByRole("article")
-      .filter({
-        has: page.getByRole("heading", { name: "Tus ventas de ayer" }),
-      });
-    const stock = page
-      .getByRole("article")
-      .filter({
-        has: page.getByRole("heading", { name: "Queda poca harina" }),
-      });
+    const summary = page.getByRole("article").filter({
+      has: page.getByRole("heading", { name: "Tus ventas de ayer" }),
+    });
+    const stock = page.getByRole("article").filter({
+      has: page.getByRole("heading", { name: "Queda poca harina" }),
+    });
     await expect(
       summary.getByRole("button", { name: "Visto", exact: true }),
     ).toBeVisible();
@@ -87,7 +83,8 @@ for (const width of [390, 1280]) {
   test(`snooze chooses commerce time and rejects beyond expiry at ${width}px`, async ({
     page,
   }, info) => {
-    await page.clock.install({ time: new Date("2026-10-20T15:00:00Z") });
+    await page.clock.install({ time: new Date("2026-10-20T14:59:00Z") });
+    await page.clock.pauseAt(new Date("2026-10-20T15:00:00Z"));
     await page.setViewportSize({ width, height: 900 });
     const { fixture, actionable } = await setupLifecycle(page);
     await page.goto(harness.url);
@@ -148,7 +145,8 @@ test("stale context reloads the card without closing the new version", async ({
 test("reminder refreshes once at due time and focus; server keeps ranking authority", async ({
   page,
 }) => {
-  await page.clock.install({ time: new Date("2026-10-20T15:00:00Z") });
+  await page.clock.install({ time: new Date("2026-10-20T14:59:00Z") });
+  await page.clock.pauseAt(new Date("2026-10-20T15:00:00Z"));
   const { fixture, actionable } = await setupLifecycle(page);
   fixture.inbox.cards = [fixture.inbox.cards[0]!];
   fixture.inbox.nextReminderAt = "2026-10-20T15:01:00.000Z";
@@ -168,4 +166,172 @@ test("reminder refreshes once at due time and focus; server keeps ranking author
   await page.clock.fastForward(3_600_000);
   expect(fixture.reads).toBe(3);
   expect(fixture.writes).toHaveLength(0);
+});
+
+test("a reminder beyond the browser timer limit waits without request loops", async ({
+  page,
+}) => {
+  await page.clock.install({ time: new Date("2026-10-20T14:59:00Z") });
+  await page.clock.pauseAt(new Date("2026-10-20T15:00:00Z"));
+  const { fixture, actionable } = await setupLifecycle(page);
+  fixture.inbox.cards = [fixture.inbox.cards[0]!];
+  fixture.inbox.nextReminderAt = "2026-11-19T15:00:00.000Z";
+  await page.goto(harness.url);
+  await expect(page.getByRole("article")).toHaveCount(1);
+  // Clock-controller also has a signed 32-bit jump limit: cross it in two steps.
+  await page.clock.fastForward(13 * 24 * 60 * 60 * 1000);
+  await page.clock.fastForward(13 * 24 * 60 * 60 * 1000);
+  expect(fixture.reads).toBe(1);
+  fixture.inbox.nextReminderAt = null;
+  fixture.inbox.cards.push(actionable);
+  await page.clock.fastForward(4 * 24 * 60 * 60 * 1000);
+  await expect(
+    page.getByRole("heading", { name: "Queda poca harina" }),
+  ).toBeVisible();
+  expect(fixture.reads).toBe(2);
+  expect(fixture.writes).toHaveLength(0);
+});
+
+test("an open inbox removes content immediately after expiresAt, keeping the exact boundary", async ({
+  page,
+}) => {
+  await page.clock.install({ time: new Date("2026-10-20T14:59:00Z") });
+  await page.clock.pauseAt(new Date("2026-10-20T15:00:00Z"));
+  const { fixture } = await setupLifecycle(page);
+  fixture.inbox.cards[1]!.expiresAt = "2026-10-20T15:00:01.000Z";
+  await page.goto(harness.url);
+  await expect(page.getByRole("article")).toHaveCount(2);
+  await page.clock.fastForward(1000);
+  await expect(page.getByRole("article")).toHaveCount(2);
+  await page.clock.fastForward(1);
+  await expect(
+    page.getByRole("heading", { name: "Queda poca harina" }),
+  ).toHaveCount(0);
+  await expect.poll(() => fixture.reads).toBe(2);
+  await page.clock.fastForward(3_600_000);
+  expect(fixture.reads).toBe(2);
+});
+
+test("a reminder due during a pending read queues one fresh snapshot", async ({
+  page,
+}) => {
+  await page.clock.install({ time: new Date("2026-10-20T14:59:00Z") });
+  await page.clock.pauseAt(new Date("2026-10-20T15:00:00Z"));
+  const { fixture, actionable } = await setupLifecycle(page);
+  fixture.inbox.cards = [fixture.inbox.cards[0]!];
+  fixture.inbox.nextReminderAt = "2026-10-20T15:01:00.000Z";
+  await page.goto(harness.url);
+  await expect(page.getByRole("article")).toHaveCount(1);
+  let release!: () => void;
+  fixture.holdRead = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect.poll(() => fixture.reads).toBe(2);
+  await page.clock.fastForward(60_000);
+  fixture.inbox.cards.push(actionable);
+  fixture.inbox.nextReminderAt = null;
+  fixture.holdRead = null;
+  release();
+  await expect(
+    page.getByRole("heading", { name: "Queda poca harina" }),
+  ).toBeVisible();
+  expect(fixture.reads).toBe(3);
+  await page.clock.fastForward(3_600_000);
+  expect(fixture.reads).toBe(3);
+});
+
+test("an obsolete read cannot release the newer read's focus coalescing", async ({
+  page,
+}) => {
+  const { fixture } = await setupLifecycle(page);
+  await page.goto(harness.url);
+  await expect(page.getByRole("article")).toHaveCount(2);
+  let releaseOld!: () => void;
+  fixture.holdRead = new Promise<void>((resolve) => {
+    releaseOld = resolve;
+  });
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect.poll(() => fixture.reads).toBe(2);
+  let releaseNew!: () => void;
+  fixture.holdRead = new Promise<void>((resolve) => {
+    releaseNew = resolve;
+  });
+  fixture.nextError = {
+    status: 409,
+    code: "card_context_changed",
+    error: "El aviso cambió. Revisa la información.",
+  };
+  await page.getByRole("button", { name: "Solucionado" }).click();
+  await expect.poll(() => fixture.reads).toBe(3);
+  const oldResponse = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/api/analytics/inbox") &&
+      response.request().method() === "GET",
+  );
+  releaseOld();
+  await (await oldResponse).finished();
+  // Let the completed body and its promise chain settle before triggering focus.
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      }),
+  );
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event("focus"));
+    window.dispatchEvent(new Event("focus"));
+  });
+  expect(fixture.reads).toBe(3);
+  fixture.holdRead = null;
+  releaseNew();
+  await expect.poll(() => fixture.reads).toBe(4);
+  await expect(page.getByRole("article")).toHaveCount(2);
+  expect(fixture.writes).toHaveLength(1);
+});
+
+test("transport retry keeps operationId and the original context", async ({
+  page,
+}) => {
+  const { fixture } = await setupLifecycle(page);
+  fixture.nextTransportFailure = true;
+  await page.goto(harness.url);
+  await page.getByRole("button", { name: "Visto", exact: true }).click();
+  await expect(
+    page.getByText("No pudimos guardar la acción. Intenta otra vez."),
+  ).toBeVisible();
+  await expect(page.getByRole("article")).toHaveCount(2);
+  await page.getByRole("button", { name: "Visto", exact: true }).click();
+  await expect(page.getByRole("article")).toHaveCount(1);
+  expect(fixture.writes).toHaveLength(2);
+  expect(fixture.writes[1]!.body).toEqual(fixture.writes[0]!.body);
+});
+
+test("a reminder due during a mutation queues one read after the command", async ({
+  page,
+}) => {
+  await page.clock.install({ time: new Date("2026-10-20T14:59:00Z") });
+  await page.clock.pauseAt(new Date("2026-10-20T15:00:00Z"));
+  const { fixture, actionable } = await setupLifecycle(page);
+  fixture.inbox.cards = [fixture.inbox.cards[0]!];
+  fixture.inbox.nextReminderAt = "2026-10-20T15:01:00.000Z";
+  let release!: () => void;
+  fixture.holdWrite = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.goto(harness.url);
+  await page.getByRole("button", { name: "Visto", exact: true }).click();
+  await expect.poll(() => fixture.writes.length).toBe(1);
+  await page.clock.fastForward(60_000);
+  expect(fixture.reads).toBe(1);
+  fixture.inbox.cards.push(actionable);
+  fixture.inbox.nextReminderAt = null;
+  release();
+  await expect(
+    page.getByRole("heading", { name: "Queda poca harina" }),
+  ).toBeVisible();
+  await expect.poll(() => fixture.reads).toBe(2);
+  expect(fixture.writes).toHaveLength(1);
+  await page.clock.fastForward(3_600_000);
+  expect(fixture.reads).toBe(2);
 });
