@@ -3,7 +3,23 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — NEGOCIO0235 IMPLEMENTADO LOCAL; QA PASS; SIN PUBLICAR (2026-10-16)
+## ESTADO — CI PREVIO Y RETIRO CONDICIONADO0235 EN CURSO (2026-10-16)
+
+Owner pidió aplicar migraciones locales y lanzar un agente para el CI rojo y otro para el punto4 (retiro de compatibilidad). [Contrato](../factory/0235-followup-contract.md) comprometido05863466, ampliacionesb5f6f1af. No push, migración/deploy/drenaje PROD autorizados. Dev integra trabajo; main local permanece e2cd4544 con Negocio verificado. Preservar todos los assets/skills/configs ajenos sin seguimiento, INDEX/TASKS y estados de Claude.
+
+Migrador LOCAL re-ejecutado EXIT0:96→96, hashes0093/0094/0095 coinciden con journal y SQL. DATABASE_URL solo memoria, host local verificado, huella16d3a8712ad6; sin reset/seed ni valores impresos. Resultado /private/tmp/checkpass-negocio-local-migration-confirmation.json. Aplicación local satisfecha; no quedan migraciones actuales pendientes.
+
+Worker CI `/root/negocio_ui_0235`, task/rama ci-baseline-0235, árbol /private/tmp/checkpass-negocio-followups/ci-baseline-0235, base05863466. Único poseedor db:modules-ci, env seleccionado /private/tmp/checkpass-recipes-margin/0234-ci.env; SOLO tools/neon-test.sh y selección serial, incluyendo teardown. Paths testStock/permissionshelper/handoff CI más workflow y wrapper/tests nominales en contrato/factory. Sin runtime fuera de scope ni presupuestos/assertions relajados. Guardar logs reales durables sanitizados.
+
+CI status confirmó main5b834ca0 run38971334745 rojo: Stock637 completed10<10 y DELETEbusiness86. Log remoto leído por root confirma40P01 deadlock, no FK; archivo /private/tmp/checkpass-ci-baseline-0235/remote-failures.log. Workflow usa pnpm test directo y omite el aislamiento de DDL del wrapper local; se investiga reproducción/orden de locks antes de certificar causa/resolución. Diez sleeps0.1 suman1s frente budget2s, hipótesis de inducción insuficiente pendiente de medición. Suite nueva business-failures tiene trigger global40001 y nombre sin migration: el arreglo de aislamiento debe cubrirla también, sin tocar el archivo reservado a retiro. Ningún PASS de arreglo todavía.
+
+Worker retiro `/root/spec_negocio_0235`, task/rama negocio-retirement-0235, árbol /private/tmp/checkpass-negocio-followups/negocio-retirement-0235, base05863466. Implementa candidato separado postcut/drain: retirar elección de schema/onEnable/provider POS, ramas Brand precorte y suscripción/aplicación/retry antiguos; conservar lectores/IDs/avisos y sale_settlement si se usa. SQL precondición solo lectura distingue readiness/queue/claims de evidencia externa oldwriters/READY. No consultas PROD ni DB de CI hasta turno explícito tras liberar el otro worker. Paths amplios explícitos en factory/contrato; ampliados resources.neon y stock-local-integration-support. Tests del candidato prueban ausencia de ACK ante obligación inesperada y conservación histórica; bridge/ACK original permanece en e5eaa741. No skips para esconder retiro ni borrar obligaciones.
+
+QA `/root/qa_release_plan` leyó contrato y espera SHAs congelados; sin DB/suites, presupuesto0 mutaciones. CI fix puede integrarse tras QA; retiro se conserva como artefacto condicionado, no sustituye puente ni certifica corte/drenaje PROD. No integrar/publicar retirada antes de su precondición operativa. Sin subdelegación/revisores extra. Siguiente: recibir diagnósticos/commits, transferir reserva DB solo después de teardown, QA focal y actualización de handoffs/estado. No verify global ni publicación por inferencia.
+
+Negocio local anterior queda íntegro: [QA](../factory/0235-qa.md), [core/rollout](../factory/0235-core.md), [UI](../factory/0235-ui.md); candidato finalb6dcb1bc, puente combinadoe5eaa741. Operación eventos PROD anterior terminada en d60711a3, sin nuevas operaciones en este seguimiento.
+
+## HISTÓRICO — NEGOCIO0235 IMPLEMENTADO LOCAL; QA PASS; SIN PUBLICAR (2026-10-16)
 
 Owner pidió lanzar la implementación tras aprobar0235/0150. Dev y main local incluyen el cierre `2ce13f3258f1fb9582bcaeae2dbce2a36619f999`; producto combinado `b6dcb1bc412d113b1417366bbee12ab62666a8cc`, informe QA `be7cafe4`. [QA y candidatos](../factory/0235-qa.md), [core y rollout](../factory/0235-core.md), [UI](../factory/0235-ui.md), [spec](../specs/0235-negocio-y-medios-de-pago-core.md). No push, deploy ni migración PROD autorizados/ejecutados para0235.
 
