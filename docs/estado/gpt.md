@@ -3,7 +3,19 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — GASTOS: SPEC0236 + ADR0151 DOCUMENTALES EN DEV (2026-10-16)
+## ESTADO — GASTOS0236: IMPLEMENTACIÓN LOCAL EN CURSO (2026-10-16)
+
+Owner pidió «si estamos listos podemos pasar a implementar con nuestro flujo agentico?» y confirmó expresamente «Sí, autorizar solo lectura en PROD». [Contrato de implementación](../factory/0236-implementation-contract.md) commit **6368a8c7770bc722f2c2c2719183ba6060ebea6a**, base de ambos workers; dev anterior **e5e85b6a** incluye cambios documentales ajenos de ADR0152/estadoClaude, preservados. No INDEX/TASKS/estadoClaude editados. La nueva tarea sí autoriza implementación local y migración preparada, **no push/deploy/migración o escritura PROD**.
+
+Preflight autorizado ejecutado **2026-10-17T03:55:08.839Z**, RepeatableRead/read_only=on, endpoint guard bf545fdce7a0: **0 filas** en las tres tablas0231,0 activaciones/filas business_module profitability,0 miembros con permiso viejo, sin dependencias externas inesperadas ni funciones en esquema viejo; core medios/comisiones presentes,journal96.2sale.closedv2 sin local null y delivery histórico profitability1skipped/0claims. Permite continuar diseño de borrado vacío; no autoriza ejecutarlo. Lector/evidencia saneada `/private/tmp/checkpass-gastos-implementation/prod-readonly.cjs` y `.json`, credencial solo memoria.
+
+Flujo activo: `/root/gastos_core_impl` taskfactory **gastos-core-0236**, worktree `/private/tmp/checkpass-gastos-implementation/gastos-core-0236`, writer backend/esquema/migración/eventos/registros/retiro y fixtures nominales; reserva exclusiva **db:modules-ci**, envCI protegido seleccionado `/private/tmp/checkpass-recipes-margin/0234-ci.env`, DB solo tools/neon-test.sh y DDL serial. `/root/gastos_ui_impl` task **gastos-ui-0236**, worktree hermano del mismo nombre, UI expenses/ui y pruebas/handoff propios; puertos43130/43131 y harness efímero propio. Sin subdelegación; QA independiente se asignará al candidato congelado. Handoffs previstos0236-core.md/0236-ui.md. Scope completo en factory; workers no tocan docs centrales.
+
+**CI main previo ROJO** db3175d run38998852554, Stock conteo test315 esperaba count_changed y observó consumo pendiente. A investigando primero: selección original1/1PASS con9excluidos por-t no reproduce CI. Código convierte rechazo del retry antes de validar corte; se prepara reproducción determinista, **causa aún no certificada**. UI completó preparación y espera confirmación del arreglo antes de editar. Pruebas focales/gates combinados pendientes, no implementación PASS aún. Impeccable context ejecutado una vez por coordinador; modo Operate y kit/flujoStock fijados por owner, sin rediseño global ni entrevistas repetidas.
+
+Main local avanzó a **a82d179d** (solo entrega documental ya QA PASS) para integrar/retirar limpiamente ambos worktrees documentales vía factory; origin/main permanece referencia localdb3175d, **sin push**. Dos worktrees operativos nuevos, dependencias propias sin envPROD. Artifacts/documentos previos ajenos sin seguimiento preservados. Al reanudar: comprobar refs/registros/procesos, seguir tareas existentes; no lanzar implementación duplicada ni pedir de nuevo autorización SELECT ya consumida. La futura operación PROD requerirá autorización específica nueva y baseline fresco.
+
+## HISTÓRICO — GASTOS: SPEC0236 + ADR0151 DOCUMENTALES EN DEV (2026-10-16)
 
 Encargo del owner terminado **solo documentos; detenerse antes de implementar**. Candidato integrado en `dev` **a82d179d75a505163b056f63fd143bde421e4430**, base **45a3f2269320c8e28e202f7369a89f4fedee1009** (N y últimas decisiones del owner integrados). [Spec0236](../specs/0236-gastos-registro-de-pagos.md) cerrada como diseño, DoD de implementación pendiente; [ADR0151](../adr/0151-gastos-y-eventos-autosuficientes.md) propuesta técnica, sin atribuir su aceptación al owner. Decisiones de producto citadas desde F rediseñada y el encargo; eventos mandados por ADR0152 §4. No nuevas decisiones de producto bloqueantes.
 
