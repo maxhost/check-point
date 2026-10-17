@@ -1,6 +1,6 @@
 # 0237 — Ciclo del inbox y política central
 
-**Candidato en preparación; todavía sin QA final ni integración en main local.** Este informe registra el trabajo autorizado posterior a AN-3. No reemplaza los handoffs funcionales de AN-1/AN-2/AN-3 ni certifica rendimiento.
+**QA funcional independiente PASS de entregas y combinación `c90a8f30da97db602773b20b20438a80fad438fb`.** Candidato integrado en dev local; main espera la disposición explícita del gate de rendimiento. Este informe registra el trabajo autorizado posterior a AN-3. No reemplaza los handoffs funcionales de AN-1/AN-2/AN-3 ni certifica rendimiento.
 
 ## Contrato y comportamiento
 
@@ -13,7 +13,7 @@ Contenido pendiente o pospuesto vence a los90 días por defecto, incluso sin cro
 ## Fuentes y evidencia disponible
 
 - Base común: `65b5152e7897ab55023f36358add4df0bd49cb7f`; incorpora base funcional de rendimiento sin aceptar su FAIL. Catálogo/contrato cerrado `74125ab9`, QA documental `ae4c7592`.
-- A, datos/dominio/evaluación: fuente final `d07265cd571dae727da103e359622686903979c8`, entrega documental pendiente. [Handoff A](0237-inbox-lifecycle-data.md). Unit72/72 en e677 compatible; tipos/lint focal PASS en d072. La recuperación usa la fecha del hecho aplicado identificado incluso si el umbral actual no genera candidata: solo acorta inicio/plazo, retira contenido/reminder vencido y conserva identidad/decisiones. Combinación de producto congelada `5c4746b2ab9cec2f564392a58dfd99437a6cad8a`, sin diferencias de producto frente a esa fuente más B.
+- A, datos/dominio/evaluación: fuente final `d07265cd571dae727da103e359622686903979c8`, entrega `6582570cc8912c92ee070c4680eda57cacac5ed3`, PASS independiente. [Handoff A](0237-inbox-lifecycle-data.md). Unit72/72 en e677 compatible; tipos/lint focal PASS en d072. La recuperación usa la fecha del hecho aplicado identificado incluso si el umbral actual no genera candidata: solo acorta inicio/plazo, retira contenido/reminder vencido y conserva identidad/decisiones. Combinación final `c90a8f30da97db602773b20b20438a80fad438fb`, sin diferencias de producto frente a esa fuente más B.
 - B, HTTP/UI/actions: entrega aceptada `1038c2efd4c99bf9dd8b5d8a5453084bcf76c710`. [Handoff B](0237-inbox-lifecycle-ui.md), PASS independiente de ese alcance. HTTP/actions/fallback28/28; browser de componentes390/1280 con HTTP simulado. No smoke nuevo de Next ni DB de B. Revisión combinada del coordinador en `84d771af`:28/28 sin filtros/retries, log crudo `/private/tmp/analytics-lifecycle-combination-http-84d771af.log`.
 - Neon A3 inicial `b60db5c2`:21 PASS/12 FAIL/0 SKIP, log `/private/tmp/analytics-lifecycle-a3-neon-b60db5c2.log`. SQL de claim, fixture de importe insuficiente y orden del oráculo corregidos en7da, sin quitar exigencias de dinero/orden. Segunda corrida7da:32 PASS/1 FAIL/0 SKIP,180.87s, log `/private/tmp/analytics-lifecycle-a3-neon-7da87404.log`. No se presenta como PASS completo.
 - Correcciones focales: e677,3 PASS/15 no seleccionados,34.11s en `/private/tmp/analytics-lifecycle-a3-focal-e6773759.log`: selector COP por identidad con período/día vendido e importe40/COP/minorUnit0, recuperación antigua calificable y nuevo ciclo12 por ingesta real con cupones/replays/cierre tardío. d072,1 PASS/9 no seleccionados,6.71s en `/private/tmp/analytics-lifecycle-a3-threshold-d07265cd.log`: recuperación antigua por debajo del umbral, builder0 pero vencimiento probado y retirada real. QA cotejó ambos logs; no se afirma una corrida única35/35 ni nuevos PASS de los casos filtrados.
@@ -30,7 +30,7 @@ Control de campaña12 no equivale a contenido notificable: tras vencer se compac
 
 ## Pendientes y cierre
 
-Pendientes de este candidato: entrega documental A, informe QA de combinación exacta, aceptación y disposición explícita del gate de rendimiento antes de mover main. No hay defectos funcionales pendientes de los focales conocidos. Worktrees se conservan; no retirar hasta entregas aceptadas ancestros de main y sin procesos.
+QA emitió PASS funcional separado para A658, B103 y combinación c90. [Informe independiente](0237-inbox-lifecycle-qa.md). Pendiente disposición explícita del gate de rendimiento antes de mover main, como exige el contrato, sección Secuencia y checkpoint, punto5. No hay defectos funcionales pendientes de los focales conocidos. Worktrees se conservan; no retirar hasta entregas aceptadas ancestros de main y sin procesos. A liberó recursos DB/migración sin más operaciones después del último teardown.
 
 Rendimiento permanece **FAIL1817.621042ms frente a1000ms**, fuente `b3ca9c6f`, entrega rechazada `058d7c48`; diagnóstico `a900bde2` preservado y excluido. Ninguna nueva medición ni afirmación de mejora en este ciclo. Siguen diferidos CI compartida (rojo remoto original), invocación operativa de ciudades/cron remoto, mostrar clima/calendario y «cuánto ahorraste». Marketing agregado/cupón y reactivación de11 requieren otro encargo. La llamada real de clima de AN-3 permanece cerrada en su handoff, no se repitió.
 
