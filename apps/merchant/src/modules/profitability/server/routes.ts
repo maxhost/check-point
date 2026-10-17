@@ -1,3 +1,8 @@
+import { withDbTransaction } from "@mi-pasaporte/db";
+import { historicalEventHandlers } from "@mi-pasaporte/db/schema";
+import { and, eq } from "drizzle-orm";
+import { businessStorageReady } from "../../../server/business/storage";
+import { businessHttp } from "../../../server/business/http";
 import { NextResponse } from "next/server";
 import type { ModuleRoute, ModuleServer } from "../../route-table";
 import { ModuleError } from "../../errors";
@@ -22,6 +27,65 @@ async function body(request: Request): Promise<Record<string, unknown>> {
 }
 
 const handlers: readonly ModuleRoute[] = [
+  // Temporary ADR0150 administration bridge: core owns permission and calculation.
+  {
+    method: "GET",
+    path: "commissions",
+    permission: "business",
+    failure: "No pudimos leer las comisiones.",
+    handler: async ({ request }) => {
+      const response = await businessHttp(request, ["payment-methods"]);
+      if (!response.ok) return response;
+      const data = await response.json();
+      return NextResponse.json({
+        methods: data.methods.map(
+          (method: { commission: unknown }) => method.commission,
+        ),
+      });
+    },
+  },
+  {
+    method: "PUT",
+    path: "commissions/:methodId",
+    permission: "business",
+    failure: "No pudimos guardar la comisión.",
+    handler: async ({ request, params }) =>
+      businessHttp(request, ["payment-methods", params.methodId, "commission"]),
+  },
+  {
+    method: "GET",
+    path: "sale-commissions/:sourceOrderId",
+    permission: "business",
+    failure: "No pudimos leer la comisión de la venta.",
+    handler: async ({ request, params }) => {
+      const source = await withDbTransaction(async (tx) => {
+        if (!(await businessStorageReady(tx))) return null;
+        const [mapping] = await tx
+          .select({ source: historicalEventHandlers.sourceProviderId })
+          .from(historicalEventHandlers)
+          .where(
+            and(
+              eq(historicalEventHandlers.subscriberId, "profitability"),
+              eq(historicalEventHandlers.eventType, "sale.closed"),
+            ),
+          );
+        return mapping?.source ?? null;
+      });
+      return source
+        ? businessHttp(request, [
+            "sale-commissions",
+            source,
+            params.sourceOrderId,
+          ])
+        : NextResponse.json(
+            {
+              error: "La actualización de Negocio está en curso.",
+              code: "business_unavailable",
+            },
+            { status: 503 },
+          );
+    },
+  },
   {
     method: "GET",
     path: "locations",
