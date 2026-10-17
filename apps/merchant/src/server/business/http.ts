@@ -4,11 +4,7 @@ import { CounterError, isUuid } from "@mi-pasaporte/domain/server/counter/core";
 import { requireApiPermission } from "../api-permission";
 import { apiOwnerFailureResponse } from "../api-owner";
 import { businessStorageReady } from "./storage";
-import {
-  listPaymentMethods,
-  createPaymentMethod,
-  archivePaymentMethod,
-} from "./payment-methods";
+import { createPaymentMethod, archivePaymentMethod } from "./payment-methods";
 import { listPaymentCatalog } from "./payment-catalog";
 import { listCommissions, saveCommission } from "./commission-config";
 import { readSaleCommissions } from "./commission-read";
@@ -57,16 +53,30 @@ export async function businessHttp(request: Request, paths: string[]) {
         return NextResponse.json(await listPaymentCatalog(id));
       if (paths[0] === "payment-methods") {
         if (paths.length === 1 && method === "GET") {
-          const [methods, commissions] = await Promise.all([
-            listPaymentMethods(id, url.searchParams.get("status")),
-            listCommissions(id),
-          ]);
+          const status = url.searchParams.get("status");
+          if (status !== null && status !== "active" && status !== "all")
+            throw new BusinessError(
+              422,
+              "invalid_status",
+              "El estado no es válido.",
+            );
+          // Metadata and revisions originate from the same repeatable-read snapshot.
+          const snapshot = await listCommissions(id);
+          const methods = snapshot.methods
+            .filter((m) => status === "all" || m.status === "active")
+            .map((commission) => ({
+              id: commission.methodId,
+              name: commission.name,
+              chargeShape: commission.chargeShape,
+              isCash: commission.isCash,
+              status: commission.status,
+              commission,
+            }));
           return NextResponse.json({
-            ...methods,
-            methods: methods.methods.map((m) => ({
-              ...m,
-              commission: commissions.methods.find((c) => c.methodId === m.id)!,
-            })),
+            methods,
+            defaultMethodId:
+              methods.find((m) => m.isCash && m.status === "active")?.id ??
+              null,
           });
         }
         if (paths.length === 1 && method === "POST")
