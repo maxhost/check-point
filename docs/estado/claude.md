@@ -13,7 +13,7 @@
 
 ## ⇥ ESTADO (2026-10-17) — SPEC 0237 DE ANALÍTICAS (AN) EN BORRADOR; ESPERA H1–H6 DEL OWNER
 
-**Sesión de documentos, sin código de producto.** Commit en `dev` (sin push): `af9230d7`.
+**Sesión de documentos, sin código de producto.** Commits en `dev` (sin push): `af9230d7`, `285823d5`.
 
 **Hecho:** spec **0237** (`docs/specs/0237-analiticas-inbox-y-resumenes-diarios.md`, L3) con las decisiones del owner
 del 2026-10-17 (plan, «AN — decisiones del owner para la spec»): una spec en 3 etapas (AN-1 resúmenes + inbox +
@@ -22,6 +22,10 @@ histórico en ítem «Analíticas» con permiso `analytics`, ventas = solo POS, 
 Cruzada con la 0236 por `module_event`: el evento de gasto trae `expenseId` + `revision`; el chequeo de pendientes del
 conteo de Stock (`stock/count.ts`) filtra `sale.closed` de cualquier suscriptor → la 0237 §2.4 lo limita a suscriptores
 de stock.
+
+**ADR 0153 aceptado** (owner): todo dato de Analíticas nace como evento en la tx de su origen; traductores puros;
+Analíticas no lee tablas. La 0237 suma `sale.closed` v3, `sale.commission.frozen`, `recipes.consumption.applied`,
+`recipes.product_cost.changed`, `visit.recorded`, `coupon.redeemed`.
 
 **Siguiente:** el owner decide H1–H6 (al final de la spec); con eso la spec pasa a cerrada. AN-1 se implementa después
 de G (0236) y N (0235) integradas.
