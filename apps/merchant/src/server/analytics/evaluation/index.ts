@@ -11,6 +11,7 @@ import {
   buildFactCandidates,
   carryFactCandidate,
 } from "@mi-pasaporte/domain/analytics/cards/stock";
+import { buildCustomerPromoCandidates } from "@mi-pasaporte/domain/analytics/cards/customer-promo";
 import { buildCandidates } from "@mi-pasaporte/domain/analytics/cards/index";
 import { localDay } from "@mi-pasaporte/domain/analytics/date";
 import { selectCards } from "@mi-pasaporte/domain/analytics/weights";
@@ -104,6 +105,38 @@ export async function evaluateBusiness(
     options.trace?.("persistence_round_trips", performance.now() - writing);
     return true;
   });
+}
+/** Reconciles only today's campaign reports after a new lifecycle or promo summary contribution.
+ * Called inside ingestion's transaction; preserves candidate IDs and all card_state history.
+ */
+export async function reconcileCampaignCandidates(
+  tx: DbTransaction,
+  businessId: string,
+  now = new Date(),
+) {
+  await tx.execute(
+    sql`select pg_advisory_xact_lock(hashtextextended('analytics:evaluate:'||${businessId}||':'||(${now.toISOString()}::timestamptz at time zone timezone)::date::text,0)) from core.business where id=${businessId}`,
+  );
+  const result = await tx.execute(inputStatement(businessId, now));
+  const input = inputFromRow(result.rows[0]);
+  const cards = buildCustomerPromoCandidates(input, input.states).filter(
+    (card) => card.cardKey === "12",
+  );
+  const rows = cards.map((card) => ({
+    subject_key: card.subjectKey,
+    weight: String(card.weight),
+    amount_minor: card.amountMinor === null ? null : String(card.amountMinor),
+    currency_code: card.currencyCode,
+    minor_unit: card.minorUnit,
+    parameters: card,
+    fingerprint: card.fingerprint,
+    location_id: card.locationId,
+  }));
+  await tx.execute(sql`with fresh as materialized (select * from jsonb_to_recordset(${JSON.stringify(rows)}::jsonb) as c(subject_key text,weight numeric,amount_minor bigint,currency_code text,minor_unit int,parameters jsonb,fingerprint text,location_id uuid)),
+    saved as (insert into analytics.card_candidate(business_id,day,card_key,subject_key,weight,amount_minor,currency_code,minor_unit,parameters,fingerprint,location_id)
+      select ${businessId}::uuid,${input.today}::date,'12',subject_key,weight,amount_minor,currency_code,minor_unit,parameters,fingerprint,location_id from fresh
+      on conflict(business_id,day,card_key,subject_key) do update set weight=excluded.weight,amount_minor=excluded.amount_minor,currency_code=excluded.currency_code,minor_unit=excluded.minor_unit,parameters=excluded.parameters,fingerprint=excluded.fingerprint,location_id=excluded.location_id returning id)
+    delete from analytics.card_candidate where business_id=${businessId} and day=${input.today}::date and card_key='12' and not exists(select 1 from fresh where fresh.subject_key=analytics.card_candidate.subject_key)`);
 }
 /** Called inside the ingestion transaction only after a new source revision was applied. */
 export async function evaluateAnalyticsFacts(

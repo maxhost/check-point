@@ -1,10 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { eq, sql } from "drizzle-orm";
-import { getDb } from "@mi-pasaporte/db";
+import { getDb, withDbTransaction } from "@mi-pasaporte/db";
 import {
   analyticsDailyMetrics as metrics,
   analyticsCampaignSnapshots as snapshots,
+  analyticsCardCandidates as candidates,
+  analyticsCardStates as states,
+  analyticsEvaluationRuns as runs,
   locations,
   consumerAccounts,
   businessCustomers,
@@ -23,6 +26,7 @@ import { analyticsCustomerId } from "../../counter/analytics-events";
 import { readAnalyticsCustomer } from "../../customers/analytics-detail";
 import { GET as customerGET } from "../../../app/api/customers/analytics/[id]/route";
 import { buildCustomerPromoCandidates } from "@mi-pasaporte/domain/analytics/cards/customer-promo";
+import { reconcileCampaignCandidates, evaluateBusiness } from "./index";
 import { readInput, readHistory } from "../queries";
 const businessA = randomUUID(),
   businessB = randomUUID(),
@@ -347,6 +351,93 @@ describe.skipIf(!permisosIntegrationEnabled)(
       );
       expect(response.status).toBe(200);
       expect(await response.json()).toEqual(first);
+    }, 30000);
+    it("reconciles after today's ready run, late promo money and edited finish while preserving IDs/state", async () => {
+      await evaluateBusiness(businessA, now);
+      await withDbTransaction(async (tx) => {
+        await tx
+          .update(snapshots)
+          .set({
+            status: "ended",
+            endsAt: new Date("2026-10-20T04:30Z"),
+            endedAt: new Date("2026-10-20T04:30Z"),
+          })
+          .where(eq(snapshots.businessId, businessA));
+        await reconcileCampaignCandidates(tx, businessA, now);
+      });
+      const read = () =>
+        getDb()
+          .select()
+          .from(candidates)
+          .where(
+            sql`${candidates.businessId}=${businessA} and ${candidates.day}='2026-10-20' and ${candidates.cardKey}='12'`,
+          );
+      const [first] = await read();
+      expect(first).toBeDefined();
+      expect(first!.amountMinor).toBe(3000n);
+      await getDb().insert(states).values({
+        businessId: businessA,
+        cardKey: "12",
+        subjectKey: first!.subjectKey,
+        fingerprint: first!.fingerprint,
+        status: "dismissed",
+        shownDays: 1,
+        lastShownDay: "2026-10-20",
+      });
+      await withDbTransaction((tx) =>
+        reconcileCampaignCandidates(tx, businessA, now),
+      );
+      expect((await read())[0]).toMatchObject({ id: first!.id, weight: "0" });
+      await withDbTransaction(async (tx) => {
+        await tx
+          .update(metrics)
+          .set({ amountMinor: 14000n })
+          .where(
+            sql`${metrics.businessId}=${businessA} and ${metrics.metric}='promo_discount'`,
+          );
+        await reconcileCampaignCandidates(tx, businessA, now);
+      });
+      const [updated] = await read();
+      expect(updated).toMatchObject({ id: first!.id, amountMinor: 14000n });
+      expect(Number(updated!.weight)).toBeGreaterThan(0);
+      expect(
+        (
+          await getDb()
+            .select()
+            .from(runs)
+            .where(eq(runs.businessId, businessA))
+        )[0]!.status,
+      ).toBe("ready");
+      expect(
+        (
+          await getDb()
+            .select()
+            .from(states)
+            .where(eq(states.businessId, businessA))
+        )[0]!.status,
+      ).toBe("dismissed");
+      await getDb()
+        .update(snapshots)
+        .set({
+          endsAt: new Date("2026-10-21T04:30Z"),
+          endedAt: null,
+          status: "paused",
+        })
+        .where(eq(snapshots.businessId, businessA));
+      await withDbTransaction((tx) =>
+        reconcileCampaignCandidates(tx, businessA, now),
+      );
+      expect(await read()).toHaveLength(0);
+      expect(
+        (
+          await getDb()
+            .select()
+            .from(candidates)
+            .where(
+              sql`${candidates.businessId}=${businessA} and ${candidates.cardKey}='10'`,
+            )
+        ).length,
+      ).toBeGreaterThan(0);
     }, 30000);
   },
 );
