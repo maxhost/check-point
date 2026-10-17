@@ -12,7 +12,15 @@ export type OrderVoided = {
   eventVersion: 1;
   sourceOrderId: string;
   locationId: string | null;
-  occurredAt: string;
+  voidedAt: string;
+  userId: string;
+  lines: readonly {
+    sourceLineId: string;
+    productId: string | null;
+    productLabel: string;
+    quantity: number;
+    unitPrice: string;
+  }[];
   amountMinor: string;
   currencyCode: string;
   minorUnit: 0 | 2;
@@ -29,7 +37,7 @@ export const metricTranslators: readonly MetricTranslator[] = [
           {
             metric: "voided_tickets",
             locationId: p.locationId,
-            occurredAt: p.occurredAt,
+            occurredAt: p.voidedAt,
             dimensionKind: "none",
             dimensionId: null,
             amountMinor: p.amountMinor,

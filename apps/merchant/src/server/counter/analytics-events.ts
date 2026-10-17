@@ -70,6 +70,7 @@ export type VisitRecorded = {
 export type CouponRedeemed = {
   eventVersion: 1;
   couponId: string;
+  orderId: string;
   campaignId: string;
   campaignLabel: string;
   locationId: string | null;
