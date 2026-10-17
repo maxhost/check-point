@@ -1,5 +1,7 @@
 /** Bump when supported evaluator/lifecycle semantics change. */
-export const ANALYTICS_EVALUATOR_VERSION = "inbox-lifecycle-v2.3";
+export const ANALYTICS_EVALUATOR_VERSION = "inbox-lifecycle-v2.4";
+/** Structural safety bounds: raising these requires revisiting historical control pruning. */
+export const ANALYTICS_POLICY_LIMITS = { lifetimeDays: 3650 } as const;
 import type { AnalyticsRuleDefinition } from "./schema";
 const integer = { minimum: 1, maximum: 3650, integer: true };
 const ratio = { minimum: 0, maximum: 1 };

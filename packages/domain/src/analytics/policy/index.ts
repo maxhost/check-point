@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { ANALYTICS_POLICY_CONFIG } from "./config";
 import {
   ANALYTICS_RULE_DEFINITIONS,
+  ANALYTICS_POLICY_LIMITS,
   ANALYTICS_EVALUATOR_VERSION,
   ANALYTICS_TEXT_FIELDS,
 } from "./rules";
@@ -20,6 +21,7 @@ export type {
 } from "./schema";
 export {
   ANALYTICS_RULE_DEFINITIONS,
+  ANALYTICS_POLICY_LIMITS,
   ANALYTICS_EVALUATOR_VERSION,
 } from "./rules";
 export { validatePolicy } from "./schema";
@@ -54,6 +56,7 @@ export function createAnalyticsPolicy(
         canonical({
           config: copy,
           definitions: ANALYTICS_RULE_DEFINITIONS,
+          structuralLimits: ANALYTICS_POLICY_LIMITS,
           evaluatorVersion: ANALYTICS_EVALUATOR_VERSION,
           templateFields: ANALYTICS_TEXT_FIELDS,
         }),

@@ -39,6 +39,7 @@ import {
   legacyCardPOST,
   evaluateGET,
 } from "../http";
+import { ANALYTICS_POLICY } from "@mi-pasaporte/domain/analytics/policy/index";
 import { calculateGoal } from "@mi-pasaporte/domain/analytics/cards/index";
 import { localDay, addDays } from "@mi-pasaporte/domain/analytics/date";
 const businessA = randomUUID(),
@@ -190,14 +191,25 @@ describe.skipIf(!permisosIntegrationEnabled)(
         ).status,
       ).toBe(200);
     });
-    it("fallback on opening persists one complete run and repeated evaluations are idempotent", async () => {
+    it("fallback returns its valid preparing or ready phase and persists one complete idempotent run", async () => {
       const response = await inboxGET(
         conCookie("/api/analytics/inbox", "GET", cookieA),
       );
       expect(response.status).toBe(200);
       const inbox = await response.json();
-      expect(inbox.state).toBe("ready");
-      expect(inbox.cards.length).toBeGreaterThan(1);
+      expect(["preparing", "ready"]).toContain(inbox.state);
+      if (inbox.state === "preparing")
+        expect(inbox).toMatchObject({
+          cards: [],
+          nextReminderAt: null,
+          refreshAfterMs: ANALYTICS_POLICY.operation.fallbackWaitMs,
+        });
+      // The HTTP budget may finish before the real transaction. Drain the registered
+      // Next after callback; this is completion of that attempt, never a retry/PASS.
+      for (const callback of callbacks.all.splice(0)) await callback();
+      const completed = await readInbox(businessA, viewer);
+      expect(completed.state).toBe("ready");
+      expect(completed.cards.length).toBeGreaterThan(1);
       const before = await getDb()
         .select()
         .from(candidates)

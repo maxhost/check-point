@@ -28,6 +28,7 @@ import {
 } from "@mi-pasaporte/domain/analytics/policy/index";
 import { buildCandidates } from "@mi-pasaporte/domain/analytics/cards/index";
 import { addDays, daysBetween } from "@mi-pasaporte/domain/analytics/date";
+import type { AnalyticsContext } from "@mi-pasaporte/domain/analytics/types";
 import type {
   AnalyticsFact,
   MetricEvent,
@@ -170,13 +171,13 @@ describe.skipIf(!permisosIntegrationEnabled)(
             {
               day: addDays(day, -1),
               metric: "product_revenue",
-              amountMinor: 100n,
+              amountMinor: 10000n,
             },
             { day: addDays(day, -1), metric: "units_sold", quantity: "1" },
             {
               day: addDays(day, -40),
               metric: "product_revenue",
-              amountMinor: 10000n,
+              amountMinor: 1000000n,
             },
             { day: addDays(day, -40), metric: "units_sold", quantity: "100" },
           ].map((r) => ({
@@ -215,7 +216,7 @@ describe.skipIf(!permisosIntegrationEnabled)(
       ).toBe(101);
       await getDb()
         .update(metrics)
-        .set({ amountMinor: 40000n, quantity: "101" })
+        .set({ amountMinor: 4000000n, quantity: "101" })
         .where(
           and(
             eq(metrics.businessId, f.businessId),
@@ -409,6 +410,45 @@ describe.skipIf(!permisosIntegrationEnabled)(
       expect(
         ((await content(f, "5"))[0].parameters as { body: string }).body,
       ).toContain("14");
+      await getDb()
+        .insert(metrics)
+        .values(
+          [
+            { day: addDays(day, -40), quantity: "2000" },
+            { day: addDays(day, 1), quantity: "999999" },
+          ].map((r) => ({
+            ...r,
+            businessId: f.businessId,
+            locationId: f.locationId,
+            dimensionKind: "product",
+            dimensionId: f.product,
+            metric: "units_sold",
+          })),
+        );
+      await getDb()
+        .update(businesses)
+        .set({ timezone: "Pacific/Kiritimati" })
+        .where(eq(businesses.id, f.businessId));
+      const wider = focused(["5"], (c) => {
+        c.rules.find((r) => r.id === "5")!.parameters = {
+          ...c.rules.find((r) => r.id === "5")!.parameters,
+          salesDays: 56,
+          impactDays: 14,
+        };
+      });
+      await evaluateBusiness(f.businessId, now, { policy: wider });
+      const rebased = (await content(f, "5"))[0];
+      expect(rebased).toMatchObject({
+        id: first.id,
+        amountMinor: 27500n,
+        period: { from: day, to: day },
+      });
+      expect(await state(f, "5")).toMatchObject({
+        status: "snoozed",
+        episodeStartedAt: before.episodeStartedAt,
+        expiresAt: before.expiresAt,
+        remindAt: before.remindAt,
+      });
     }, 60000);
     it("records the sixth card's first real exposure in the successful POST, without incrementing its recognized retry", async () => {
       const f = await fixture(),
@@ -489,7 +529,11 @@ describe.skipIf(!permisosIntegrationEnabled)(
         sourceKey: "immutable-fact",
         sourceRevision: 2,
       });
-      const controls = [
+      const controls: {
+        cardKey: string;
+        subjectKey: string;
+        context: AnalyticsContext;
+      }[] = [
         {
           cardKey: "9",
           subjectKey: randomUUID(),
@@ -505,6 +549,7 @@ describe.skipIf(!permisosIntegrationEnabled)(
           cardKey: "12",
           subjectKey: randomUUID(),
           context: {
+            factCursor: "2015-06-01T12:00:00.000Z:old",
             observed: {
               kind: "campaign",
               cycle: { startsAt: "2015-01-01", finish: "2015-06-01" },
@@ -537,6 +582,7 @@ describe.skipIf(!permisosIntegrationEnabled)(
         cardKey: "12",
         subjectKey: `campaign:${activeCampaign}`,
         context: {
+          factCursor: "2026-06-01T12:00:00.000Z:recent",
           observed: {
             kind: "campaign",
             sourceKey: "immutable-fact",
@@ -551,6 +597,36 @@ describe.skipIf(!permisosIntegrationEnabled)(
           },
         },
       } as (typeof controls)[number]);
+      controls.push({
+        cardKey: "11",
+        subjectKey: randomUUID(),
+        context: { legacy: true },
+      } as (typeof controls)[number]);
+      controls.push({
+        cardKey: "12",
+        subjectKey: `campaign:${randomUUID()}`,
+        context: {
+          observed: {
+            kind: "campaign",
+            sourceKey: "immutable-fact",
+            sourceRevision: 2,
+            cycle: { startsAt: "2015-01-01", finish: "2015-06-01" },
+          },
+        },
+      } as (typeof controls)[number]);
+      await getDb().insert(metrics).values({
+        businessId: f.businessId,
+        locationId: f.locationId,
+        day: "2026-09-01",
+        metric: "visits",
+        dimensionKind: "customer",
+        dimensionId: randomUUID(),
+        currencyCode: "USD",
+        minorUnit: 2,
+        amountMinor: 400n,
+        count: 4,
+        quantity: "4",
+      });
       const ids = controls.map(() => randomUUID());
       await getDb()
         .insert(states)
@@ -577,15 +653,21 @@ describe.skipIf(!permisosIntegrationEnabled)(
           .select()
           .from(states)
           .where(eq(states.businessId, f.businessId)),
-      ).toHaveLength(1);
+      ).toHaveLength(2);
       const compact = (
         await getDb()
           .select()
           .from(states)
-          .where(eq(states.businessId, f.businessId))
+          .where(
+            and(
+              eq(states.businessId, f.businessId),
+              eq(states.subjectKey, `campaign:${activeCampaign}`),
+            ),
+          )
       )[0];
       expect(compact.context).toEqual({
         compacted: true,
+        factCursor: "2026-06-01T12:00:00.000Z:recent",
         observed: {
           kind: "campaign",
           sourceKey: "immutable-fact",
@@ -605,7 +687,7 @@ describe.skipIf(!permisosIntegrationEnabled)(
           .select()
           .from(metrics)
           .where(eq(metrics.businessId, f.businessId)),
-      ).toHaveLength(56);
+      ).toHaveLength(57);
       const longer = focused(["3", "9", "12"], (c) => {
         c.lifetime.days = 3650;
         c.rules.find((r) => r.id === "12")!.parameters = {
@@ -613,6 +695,10 @@ describe.skipIf(!permisosIntegrationEnabled)(
           emissionDelayDays: daysBetween("2026-06-01", day),
         };
       });
+      await getDb()
+        .update(businesses)
+        .set({ timezone: "Pacific/Kiritimati" })
+        .where(eq(businesses.id, f.businessId));
       await evaluateBusiness(f.businessId, now, { policy: longer });
       expect(
         await getDb()
@@ -624,8 +710,34 @@ describe.skipIf(!permisosIntegrationEnabled)(
               sql`${states.cardKey} in ('9','12')`,
             ),
           ),
-      ).toHaveLength(1);
+      ).toHaveLength(2);
       expect(await content(f, "12")).toHaveLength(0);
+      const maxDelay = focused(["3", "9", "12"], (c) => {
+        c.lifetime.days = 3650;
+        c.rules.find((r) => r.id === "12")!.parameters = {
+          ...c.rules.find((r) => r.id === "12")!.parameters,
+          emissionDelayDays: 3650,
+        };
+      });
+      await getDb()
+        .update(businesses)
+        .set({ timezone: "Pacific/Pago_Pago" })
+        .where(eq(businesses.id, f.businessId));
+      await evaluateBusiness(f.businessId, now, { policy: maxDelay });
+      expect(await content(f, "12")).toHaveLength(0);
+      expect(
+        (
+          await getDb()
+            .select()
+            .from(metrics)
+            .where(
+              and(
+                eq(metrics.businessId, f.businessId),
+                eq(metrics.metric, "visits"),
+              ),
+            )
+        )[0],
+      ).toMatchObject({ count: 4, quantity: "4", amountMinor: 400n });
     }, 60000);
     it("captures recovery intraday even when it arrives after the newer shortage gauge", async () => {
       const f = await fixture();

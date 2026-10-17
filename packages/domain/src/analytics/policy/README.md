@@ -181,7 +181,7 @@ Estos parámetros no son ventas ni reglas nuevas. Cambian cuánto trabajo se pro
 | `fallbackWaitMs`           | ms `3000`           | Entero positivo.        | Espera del primer GET y `refreshAfterMs` de preparación. La UI usa el valor del DTO y deja de repetir cuando está ready. |
 | `desiredEvaluationMinutes` | Minutos `30`        | Entero positivo.        | Cadencia deseada del scheduler externo. Editarla no modifica un cron desplegado.                                         |
 | `cleanupBudgetMs`          | ms `10000`          | Entero positivo.        | Máximo de trabajo del servicio de limpieza por invocación.                                                               |
-| `cleanupBatchSize`         | Filas `500`         | Entero positivo.        | Lote máximo de limpieza; no elimina controles, eventos ni resúmenes de negocio.                                          |
+| `cleanupBatchSize`         | Filas `500`         | Entero positivo.        | Lote máximo de limpieza; no elimina controles necesarios por adelantado, eventos ni resúmenes de negocio.                                          |
 | `cleanupWeekday`           | Día semanal `0`     | Entero 0–6, domingo=0.  | Frecuencia semanal deseada de limpieza.                                                                                  |
 | `cleanupHour`              | Hora `3`            | Entero 0–23.            | Hora deseada de limpieza en `schedulerTimezone`.                                                                         |
 | `cleanupMinute`            | Minuto `30`         | Entero 0–59.            | Minuto deseado de limpieza.                                                                                              |
@@ -386,7 +386,7 @@ Ejemplo: marcaste como atendido un margen bajo. Cambias la ventana de 28 a 42 d�
 
 El contenido y los recordatorios de la tarjeta 12 caducan con el máximo configurado del episodio, **90 días por defecto**, aunque estén pendientes o pospuestos. Al llegar a ese corte se compacta el último control por campaña a su ciclo/cursor de snapshot (capturedAt/eventId y revisión de fuente) necesario: sin venta, descuento, texto de notificación ni log de decisiones. No se conserva una notificación visible durante diez años.
 
-Eliminar incluso ese control compacto exige una prueba más fuerte. Una configuración válida puede retrasar la emisión de una campaña usando `emissionDelayDays`. Por eso la poda definitiva de la 12 solo es segura después de `finishDay + máximo emissionDelayDays admitido por el registro`, y cumpliendo las demás pruebas de no reemisión. El máximo estructural actual del registro es **3650 días**. Purgar el control a los 90 y luego aceptar una configuración con retraso mayor podría volver a presentar el mismo ciclo como si nunca hubiera sido atendido.
+Eliminar incluso ese control compacto exige una prueba más fuerte. Una configuración válida puede retrasar la emisión de una campaña usando `emissionDelayDays`. Por eso la poda definitiva de la 12 solo es segura después de `finishDay + máximo emissionDelayDays admitido por el registro`, y además tras `finishOccurredAt` UTC demostrado + máximo TTL admitido ×24h, cumpliendo las demás pruebas de fuente/CAS/ausencia de contenido y recordatorio. Se requieren ambas fronteras: cambiar la zona horaria no puede volver elegible un ciclo ya podado. Si no se demuestra el instante UTC, se conserva el cursor compacto, sin inventarlo desde una fecha local. El máximo estructural actual del registro es **3650 días**. Purgar el control a los 90 y luego aceptar una configuración con retraso mayor podría volver a presentar el mismo ciclo como si nunca hubiera sido atendido.
 
 Ese límite de 3650 describe cuánto debe cubrir la demostración de no repetición; no es la vida de una tarjeta ni un recordatorio permitido. Durante ese intervalo solo queda el último ciclo/cursor compacto imprescindible. Una campaña con datos tardíos del mismo ciclo no se convierte en un informe nuevo ni vuelve a guardar sus totales en ese control compactado.
 
@@ -483,7 +483,18 @@ Una regla nueva puede reutilizar un handler, categoría, parámetros, plantillas
 
 No existe una CLI adicional de simulación. Las funciones puras están en `policy/simulation.ts`; el caso reproducible y su snapshot viven en `evaluation/policy-simulation.test.ts` (`simulationFixture`). No requieren credenciales, DB, reloj oculto ni escrituras.
 
-Desde la raíz, con Node 24, el siguiente comando real ejecuta los cinco archivos del congelado:
+Primero valida e inspecciona el catálogo modificado con este comando, que **no exige los valores iniciales**:
+
+```sh
+source ~/.nvm/nvm.sh && nvm use
+pnpm --filter @mi-pasaporte/merchant exec vitest run \
+  src/server/analytics/evaluation/policy-simulation.test.ts \
+  -t "inspects the configured catalog without assuming the initial balance"
+```
+
+Busca `ANALYTICS_CATALOG_INSPECTION`: muestra versión, elegibilidad, componentes, orden y caducidad reales de tu configuración sobre la fixture pura. La importación rechaza un catálogo inválido. Para simular datos propios, llama `simulateAnalytics(input, estados, instante, createAnalyticsPolicy(config))` con un snapshot completo explícito.
+
+Después de revertir el experimento al catálogo inicial, ejecuta la regresión completa. Esas pruebas sí fijan valores iniciales aprobados (por ejemplo TTL90 o plata1): un cambio de balance deliberado puede hacerlas fallar, y no corresponde relajar sus aserciones para inspeccionar un experimento. Desde la raíz, con Node24:
 
 ```sh
 source ~/.nvm/nvm.sh && nvm use
