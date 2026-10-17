@@ -21,8 +21,8 @@ original. La funcionalidad integrada anterior conserva sus handoffs y sus límit
 implementada. El owner confirmó categorías informativa/accionable y resumen diario renovable sin postergación.
 La tarjeta 11 queda parqueada por dependencia de Marketing. El owner sustituye la excepción de pendientes/pospuestos
 por una caducidad máxima de 90 días para todo aviso. Solo sigue pendiente la novedad al vencer un recordatorio
-accionable. Además está consultada la superficie del centralizador de políticas: archivo versionado o consola
-interna editable. No se lanza código mientras estos puntos estén sin resolver. [Contrato de implementación](../factory/0237-inbox-lifecycle-contract.md),
+accionable. El centralizador queda definido como archivos versionados y bien documentados, sin pantalla por
+ahora. No se lanza código mientras el default de novedad siga sin resolver. [Contrato de implementación](../factory/0237-inbox-lifecycle-contract.md),
 [adversarial](../factory/0237-inbox-lifecycle-adversarial.md).
 
 ## Problema
@@ -509,11 +509,34 @@ acciones de cada tarjeta. El motor de Analíticas sigue siendo core y siempre es
 una regla es configuración de su catálogo, no activar un módulo, un switch de servicio o una variable de entorno.
 La tarjeta 11 figura allí deshabilitada/parqueada; cambiar pesos de otras no la habilita indirectamente.
 
-Contrato de dominio propuesto: `AnalyticsPolicy` validada y versionada + registro `AnalyticsRuleDefinition`, con
-un snapshot inmutable por evaluación/delivery/comando. Los nombres de archivos definitivos dependen de la
-superficie consultada, pero se reserva packages/domain/src/analytics/policy/ para tipos, validación, defaults y
-catálogo. No implementar dos fuentes de verdad. La elección pendiente es archivo central versionado o consola
-interna editable por el owner de la plataforma; no se presupone una pantalla ni ajustes por comercio.
+Contrato de dominio: `AnalyticsPolicy` validada y versionada + registro `AnalyticsRuleDefinition`, con un snapshot
+inmutable por evaluación/delivery/comando. **Owner: archivos versionados por ahora; una pantalla podrá agregarse
+más adelante sobre el mismo contrato.** No implementar editor, API de configuración, persistencia de políticas en
+DB ni opciones por comercio en esta etapa.
+
+Conjunto acotado en `packages/domain/src/analytics/policy/`, con una sola entrada de consumo:
+
+| Archivo previsto | Responsabilidad |
+|---|---|
+| `config.ts` | Único lugar editable de valores, reglas habilitadas, pesos, frecuencias, umbrales, vigencia y claves de acciones. Datos declarativos tipados y comentarios de parámetros. |
+| `rules.ts` | Registro de evaluadores/condiciones/plantillas soportados por ID; no otro juego de valores o defaults. |
+| `schema.ts` | Contrato, unidades, validación de valores y coherencia. Sin parámetros de producto escondidos. |
+| `index.ts` | Entrada pública: valida y exporta el snapshot inmutable/versionado. Las capas consumidoras no importan archivos internos por separado. |
+| `README.md` | Guía en español para entender, modificar, simular, verificar y revertir la política. |
+
+La división puede ajustarse al implementar si mantiene estos límites y una sola fuente de valores. No crear un
+framework general ni duplicar un catálogo en servidor/UI. Las políticas se cargan desde los archivos de la versión
+del código en ejecución; editar el archivo no modifica procesos o despliegues ya publicados. La guía explica
+cómo recargar el entorno local y cómo preparar una revisión sin publicar automáticamente.
+
+La documentación es parte de la entrega y QA: mapa de archivos/flujo de consumo; tabla por parámetro con nombre,
+propósito, unidad, valor inicial, rango válido, consumidores y efecto; cada tarjeta con condición, sujeto, ventanas,
+frecuencia, peso, categoría, acciones y retiro; procedimientos para agregar/deshabilitar una regla y para cambiar
+un balance; ejemplos antes/después; cómo ejecutar validación/simulación y pruebas focales; efecto sobre episodios
+y versiones existentes; cuándo un dato/cálculo/acción nuevo necesita implementación; recuperación/reversión y
+relación con cron externo. Debe distinguir lo que cambia inmediatamente al cargar la política, lo que requiere
+reevaluación y lo que solo afecta episodios nuevos. Los comandos documentados deben existir y haberse probado;
+no presentar una herramienta futura como si ya estuviera disponible.
 
 | Área centralizada | Parámetros y decisiones que debe controlar |
 |---|---|
@@ -719,6 +742,7 @@ Revisión de ciclo de avisos (posterior, todavía no implementada):
 
 - [ ] Catálogo §3.8 y política única §3.11 cerrados e implementados; pesos/umbrales/frecuencia/ciclo/acciones sin parámetros dispersos.
 - [ ] Validación/versionado/simulación de política; dos balances coherentes entre evaluadores, consultas, API y cleanup.
+- [ ] Archivos de política y guía en español completos, con unidades/efectos y recetas probadas de modificación/reversión; sin pantalla de configuración.
 - [ ] Una ID por asunto vigente/pospuesto, sin crecimiento diario artificial; fuentes 5/9 y llegada tardía12 seguras.
 - [ ] Reapertura pertinente y controles anti-replay; stock posterior/recuperación, condiciones temporales y snoozes.
 - [ ] Migración conservadora del legado, permisos/tenant/Stock/dinero/histórico intactos y carreras con CAS/locks.
@@ -778,7 +802,8 @@ Pruebas adicionales de esta revisión:
 16. Política: defaults equivalentes a las tarjetas activas aprobadas; variar solo el catálogo para alterar peso,
     elegibilidad, frecuencia, acción y expiración. Validación negativa, versión incompatible, regla deshabilitada
     con contenido guardado, consultas con ventana cambiada, reducción de TTL sin resurrección al ampliarlo,
-    simulación sin escrituras y mismo snapshot de política entre capas. Superficie de edición según decisión pendiente.
+    simulación sin escrituras y mismo snapshot de política entre capas. Guía en español con parámetros/unidades/efectos,
+    ejemplos verificables y comandos reales para modificar, validar, simular y revertir los archivos centrales.
 
 ## Pendientes que no bloquean
 

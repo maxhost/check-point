@@ -270,15 +270,16 @@ reglas soportadas, con el mismo snapshot entre capas y simulación sin escritura
 Analíticas core ni relaja dinero exacto, permisos, deduplicación o corte Stock. Una acción/cálculo/dato nuevo debe
 implementarse y registrarse; no se ejecuta lógica arbitraria desde el catálogo. Cambiar política no reinicia edad
 ni borra decisiones; deshabilitar una regla retira su contenido sin borrar datos de negocio. Detalle en spec §3.11.
-Está consultado si el centralizador será un archivo versionado o una consola interna editable; no se presupone
-pantalla, almacenamiento nuevo ni edición por comercio.
+El owner confirma archivos versionados por ahora, con documentación en español de parámetros, funcionamiento,
+modificación e impacto y ejemplos comprobados. Una futura pantalla podrá usar el mismo contrato; no se implementa
+ahora editor, API de configuración, persistencia en DB ni ajustes por comercio.
 
 Esta decisión sustituye las formulaciones anteriores de aceptación/descarte como interacción de la tarjeta, sin
 modificar el patrón de eventos del ADR0153 ni el histórico de negocio. La
 [spec0237 §3.7–§3.10](../specs/0237-analiticas-inbox-y-resumenes-diarios.md) contiene reglas y pruebas;
 el [adversarial](../factory/0237-inbox-lifecycle-adversarial.md) requiere resolver el catálogo y la transición del
-legado antes de código. Siguen consultados al owner la superficie del centralizador y el tratamiento de novedad
-al vencer un recordatorio accionable dentro de su vigencia inicial de 90 días. El parqueo de 11 retira la pregunta de reaviso individual. No se atribuyen
+legado antes de código. Solo sigue consultado al owner el tratamiento de novedad al vencer un recordatorio
+accionable dentro de su vigencia inicial de 90 días. El parqueo de 11 retira la pregunta de reaviso individual. No se atribuyen
 respuestas ni se autoriza implementar con celdas pendientes. Aprobación documental no autoriza PROD ni publicación.
 
 ## Consecuencias
