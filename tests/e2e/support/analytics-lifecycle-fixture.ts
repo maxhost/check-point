@@ -95,6 +95,8 @@ export async function setupLifecycle(page: Page) {
     inbox: lifecycleEnvelope([informative, actionable]),
     reads: 0,
     holdRead: null as Promise<void> | null,
+    holdWrite: null as Promise<void> | null,
+    nextTransportFailure: false,
     writes: [] as { decision: string; body: Record<string, unknown> }[],
     nextError: null as { status: number; code: string; error: string } | null,
   };
@@ -111,6 +113,11 @@ export async function setupLifecycle(page: Page) {
     const decision = parts.at(-1)!;
     const body = request.postDataJSON() as Record<string, unknown>;
     fixture.writes.push({ decision, body });
+    if (fixture.nextTransportFailure) {
+      fixture.nextTransportFailure = false;
+      return route.abort("failed");
+    }
+    await fixture.holdWrite;
     if (fixture.nextError) {
       const failure = fixture.nextError;
       fixture.nextError = null;

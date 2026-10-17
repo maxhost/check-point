@@ -68,3 +68,18 @@ comprobó 19/19. Ningún skip o retry automático se usó como aprobación.
 El harness usa bind efímero 0 por patrón vigente y cierra conexiones/proceso en
 afterAll. Esta pieza no arrancó Next, accedió a DB ni certificó HTTP/servicios A2;
 su integración espera ese checkpoint y el QA independiente final.
+
+### Corrección de concurrencia tras revisión temprana
+
+Fuente previa de UI `cfe0c788`. Coordinador y QA detectaron que el finally de una
+lectura obsoleta podía liberar el indicador de otra lectura nueva. La revisión de
+contenido ya impedía aplicar el snapshot viejo, pero el foco podía emitir requests
+adicionales. `loading` ahora pertenece al token de su request; solo ese dueño lo
+libera. No se cambió política ni semántica de tarjetas.
+
+Prueba focal autorizada (mismo harness/config, retries 0): **4/4 PASS, 2,9 s**:
+recordatorio durante lectura pendiente, finally obsoleto con doble foco, retry de
+transporte que conserva operationId/cuerpo, y recordatorio durante una mutación.
+El resto conserva la evidencia 19/19 de `cfe0c788`, sin declarar que esos casos se
+volvieron a ejecutar. Types UI aislados/lint focal/diff-check sin errores. Sin DB,
+rutas nuevas ni certificación de servicios A2.

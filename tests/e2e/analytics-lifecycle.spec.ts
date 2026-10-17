@@ -240,3 +240,85 @@ test("a reminder due during a pending read queues one fresh snapshot", async ({
   await page.clock.fastForward(3_600_000);
   expect(fixture.reads).toBe(3);
 });
+
+test("an obsolete read cannot release the newer read's focus coalescing", async ({
+  page,
+}) => {
+  const { fixture } = await setupLifecycle(page);
+  await page.goto(harness.url);
+  await expect(page.getByRole("article")).toHaveCount(2);
+  let releaseOld!: () => void;
+  fixture.holdRead = new Promise<void>((resolve) => {
+    releaseOld = resolve;
+  });
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect.poll(() => fixture.reads).toBe(2);
+  let releaseNew!: () => void;
+  fixture.holdRead = new Promise<void>((resolve) => {
+    releaseNew = resolve;
+  });
+  fixture.nextError = {
+    status: 409,
+    code: "card_context_changed",
+    error: "El aviso cambió. Revisa la información.",
+  };
+  await page.getByRole("button", { name: "Solucionado" }).click();
+  await expect.poll(() => fixture.reads).toBe(3);
+  releaseOld();
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event("focus"));
+    window.dispatchEvent(new Event("focus"));
+  });
+  expect(fixture.reads).toBe(3);
+  fixture.holdRead = null;
+  releaseNew();
+  await expect.poll(() => fixture.reads).toBe(4);
+  await expect(page.getByRole("article")).toHaveCount(2);
+  expect(fixture.writes).toHaveLength(1);
+});
+
+test("transport retry keeps operationId and the original context", async ({
+  page,
+}) => {
+  const { fixture } = await setupLifecycle(page);
+  fixture.nextTransportFailure = true;
+  await page.goto(harness.url);
+  await page.getByRole("button", { name: "Visto", exact: true }).click();
+  await expect(
+    page.getByText("No pudimos guardar la acción. Intenta otra vez."),
+  ).toBeVisible();
+  await expect(page.getByRole("article")).toHaveCount(2);
+  await page.getByRole("button", { name: "Visto", exact: true }).click();
+  await expect(page.getByRole("article")).toHaveCount(1);
+  expect(fixture.writes).toHaveLength(2);
+  expect(fixture.writes[1]!.body).toEqual(fixture.writes[0]!.body);
+});
+
+test("a reminder due during a mutation queues one read after the command", async ({
+  page,
+}) => {
+  await page.clock.install({ time: new Date("2026-10-20T14:59:00Z") });
+  await page.clock.pauseAt(new Date("2026-10-20T15:00:00Z"));
+  const { fixture, actionable } = await setupLifecycle(page);
+  fixture.inbox.cards = [fixture.inbox.cards[0]!];
+  fixture.inbox.nextReminderAt = "2026-10-20T15:01:00.000Z";
+  let release!: () => void;
+  fixture.holdWrite = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.goto(harness.url);
+  await page.getByRole("button", { name: "Visto", exact: true }).click();
+  await expect.poll(() => fixture.writes.length).toBe(1);
+  await page.clock.fastForward(60_000);
+  expect(fixture.reads).toBe(1);
+  fixture.inbox.cards.push(actionable);
+  fixture.inbox.nextReminderAt = null;
+  release();
+  await expect(
+    page.getByRole("heading", { name: "Queda poca harina" }),
+  ).toBeVisible();
+  await expect.poll(() => fixture.reads).toBe(2);
+  expect(fixture.writes).toHaveLength(1);
+  await page.clock.fastForward(3_600_000);
+  expect(fixture.reads).toBe(2);
+});

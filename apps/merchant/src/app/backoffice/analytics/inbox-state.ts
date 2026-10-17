@@ -38,19 +38,19 @@ export function useAnalyticsInbox() {
   const [reminderError, setReminderError] = useState("");
   const [reminderTimezone, setReminderTimezone] = useState("UTC");
   const busy = useRef(false);
-  const loading = useRef(false);
+  const loading = useRef<number | null>(null);
   const refreshQueued = useRef(false);
   const revision = useRef(0);
   const firedReminder = useRef<string | null>(null);
   const operation = useRef<{ signature: string; id: string } | null>(null);
   const refresh = useCallback(() => {
-    if (busy.current || loading.current) refreshQueued.current = true;
+    if (busy.current || loading.current !== null) refreshQueued.current = true;
     else setReload((n) => n + 1);
   }, []);
   useEffect(() => {
     let active = true;
     const token = ++revision.current;
-    loading.current = true;
+    loading.current = token;
     void panelRequest<ClientInbox>("/api/analytics/inbox")
       .then((data) => {
         if (active && token === revision.current) {
@@ -66,7 +66,8 @@ export function useAnalyticsInbox() {
           setError("No pudimos leer tus avisos. Intenta otra vez.");
       })
       .finally(() => {
-        loading.current = false;
+        if (loading.current !== token) return;
+        loading.current = null;
         if (active && refreshQueued.current && !busy.current) {
           refreshQueued.current = false;
           setReload((n) => n + 1);
