@@ -11,11 +11,9 @@ export function customerCohorts(input: AnalyticsInput, rows = input.metrics) {
       r.count > 0 &&
       r.day <= input.today,
   );
-  return [
-    ...new Set(visits.map((r) => `${r.locationId ?? "all"}:${r.dimensionId}`)),
-  ].map((key) => {
+  return [...new Set(visits.map((r) => r.dimensionId!))].map((key) => {
     const records = visits
-      .filter((r) => `${r.locationId ?? "all"}:${r.dimensionId}` === key)
+      .filter((r) => r.dimensionId === key)
       .sort((a, b) => a.day.localeCompare(b.day));
     // Merge currencies/duplicate observations for intervals, never discard counts.
     const days = new Map<string, number>();
@@ -37,7 +35,6 @@ export function customerCohorts(input: AnalyticsInput, rows = input.metrics) {
     const spent = sumIntegers(known.map((r) => r.amountMinor));
     return {
       id: records[0]!.dimensionId!,
-      locationId: records[0]!.locationId,
       visits: sumIntegers([...days.values()]),
       visitDays: days.size,
       lastDay: previous!,

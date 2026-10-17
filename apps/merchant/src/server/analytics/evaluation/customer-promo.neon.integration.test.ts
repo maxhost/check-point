@@ -206,8 +206,8 @@ describe.skipIf(!permisosIntegrationEnabled)(
       expect(cards.find((c) => c.cardKey === "10")?.amountMinor).toBe(6400);
       expect(cards.filter((c) => c.cardKey === "11")).toHaveLength(1);
       expect(cards.find((c) => c.cardKey === "11")).toMatchObject({
-        locationId: localA,
-        amountMinor: 404,
+        locationId: null,
+        amountMinor: 606,
       });
       expect(
         buildCustomerPromoCandidates(await readInput(businessB, now)),

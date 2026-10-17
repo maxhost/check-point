@@ -83,7 +83,8 @@ describe("AN-3 cards", () => {
         row(day, "visits", 1, 101, id),
       ),
     );
-    expect(card(i, "11")?.amountMinor).toBe(202); // missed Oct6 and Oct18
+    expect(card(i, "11")?.amountMinor).toBe(202);
+    expect(card({ ...i, today: "2026-10-19" }, "11")).toBeDefined(); // missed Oct6 and Oct18
     expect(card({ ...i, today: "2026-10-18" }, "11")).toBeUndefined();
     expect(card({ ...i, today: "2026-12-23" }, "11")).toBeDefined();
     expect(card({ ...i, today: "2026-12-24" }, "11")).toBeUndefined();
@@ -115,6 +116,33 @@ describe("AN-3 cards", () => {
     expect(card(four, "11")?.amountMinor).toBe(250);
     expect(
       card(input([row("2026-09-01", "visits", 4, 400, id, "local", 4)]), "11"),
+    ).toBeUndefined();
+  });
+  it("11 merges visit dates and spending across the business and respects a recent visit anywhere", () => {
+    const i = input([
+      row("2026-08-20", "visits", 1, 100, id, "north"),
+      row("2026-09-01", "visits", 1, 100, id),
+      row("2026-09-13", "visits", 1, 100, id, "north"),
+      row("2026-09-25", "visits", 1, 100, id),
+      row("2026-09-25", "visits", 1, 100, id, "north"),
+    ]);
+    expect(card(i, "11")).toMatchObject({ locationId: null, amountMinor: 250 });
+    expect(customerCohorts(i)[0]).toMatchObject({
+      visitDays: 4,
+      visits: 5,
+      medianDays: 12,
+    });
+    expect(
+      card(
+        {
+          ...i,
+          metrics: [
+            ...i.metrics,
+            row("2026-10-19", "visits", 1, 100, id, "north"),
+          ],
+        },
+        "11",
+      ),
     ).toBeUndefined();
   });
   it("11 keeps known zero distinct from unknown money and COP integers exact", () => {

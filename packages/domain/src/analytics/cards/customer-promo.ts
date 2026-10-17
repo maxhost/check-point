@@ -133,15 +133,15 @@ export function buildCustomerPromoCandidates(
         ?.label || "Este cliente";
     add({
       cardKey: "11",
-      subjectKey: `customer:${customer.locationId ?? "all"}:${customer.id}`,
+      subjectKey: `customer:${customer.id}`,
       sender: "Clientes",
       title: "Un habitual lleva más tiempo sin venir",
-      body: `${name} venía cada ${med} días; van ${gap}.`,
+      body: `${name} solía venir cada ${med} días. Su última visita fue hace ${gap} días.`,
       amountMinor: amount,
       quality: "estimated",
       actionKey: "view_customer",
       actionHref: `/backoffice/customers/analytics/${customer.id}`,
-      locationId: customer.locationId,
+      locationId: null,
       ...(amount === null ? { fixedPlata: 1 } : {}),
     });
   }

@@ -70,7 +70,7 @@ for (const viewport of [
     await page.goto(harness.url);
     await expect(page.getByRole("article")).toHaveCount(3);
     await expect(
-      page.getByText("Juan venía cada 12 días; van 26."),
+      page.getByText("Juan solía venir cada 12 días. Su última visita fue hace 26 días."),
     ).toBeVisible();
     await expect(page.getByText(/Estas ventas no indican/)).toBeVisible();
     await page.screenshot({
