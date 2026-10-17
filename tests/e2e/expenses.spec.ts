@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
 import {
   choose,
+  changePaymentLocation,
+  setPaymentDay,
   completeManual,
   expenseId,
   historicalExpense,
@@ -93,15 +95,15 @@ test("Local pendiente no significa todo el negocio; fijo no requiere paso y mont
   const dialog = await openRegistration(page, harness.url, "Manual");
   const line = await completeManual(page, dialog);
   await expect(
-    line.getByRole("textbox", { name: "Fecha de pago", exact: true }),
-  ).toHaveValue("2026-10-16");
+    line.getByRole("group", { name: "Fecha de pago", exact: true }),
+  ).toHaveText("16/10/2026");
   await expect(
     dialog.getByRole("button", { name: "Confirmar pago", exact: true }),
   ).toBeDisabled();
   await line
     .getByRole("textbox", { name: "Monto (USD)", exact: true })
     .fill("90071992547409,93");
-  await choose(page, line, "Local del pago", "Todo el negocio");
+  await changePaymentLocation(page, line, "Todo el negocio");
   await expect(
     line.getByRole("checkbox", { name: /^Gasto fijo/ }),
   ).not.toBeChecked();
@@ -200,15 +202,13 @@ test("Histórico conserva moneda y correcciones en conflicto; recarga revisión 
     dialog.getByRole("textbox", { name: "Monto (USD)", exact: true }),
   ).toHaveValue("450.00");
   await expect(
-    dialog.getByRole("button", { name: /Centro · Archivado Local del pago/ }),
+    dialog.getByText("Local: Centro · Archivado", { exact: true }),
   ).toBeVisible();
   await dialog
     .getByRole("textbox", { name: "Monto (USD)", exact: true })
     .fill("490,25");
-  await dialog
-    .getByRole("textbox", { name: "Fecha de pago", exact: true })
-    .fill("2026-06-30");
-  await choose(page, dialog, "Local del pago", "Todo el negocio");
+  await setPaymentDay(page, dialog, "2026-06-30");
+  await changePaymentLocation(page, dialog, "Todo el negocio");
   await dialog
     .getByRole("button", { name: "Guardar cambios", exact: true })
     .click();

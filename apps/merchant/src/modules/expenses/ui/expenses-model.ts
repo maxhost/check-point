@@ -101,12 +101,18 @@ export function fromDraft(
     amount: moneyText(line.amountMinor, context.minorUnit),
     category: line.category ?? "",
     conceptId: line.conceptId,
-    conceptName: line.conceptName ?? "",
+    conceptName: line.conceptName?.trim()
+      ? line.conceptName
+      : (line.name ?? ""),
     name: line.name ?? "",
     isFixed: line.isFixed ?? false,
-    // null from an unresolved draft is never an implicit global selection.
+    // Inherit the explicit first-step choice; an unresolved selection never means global.
     location:
-      line.locationId ?? (explicitLocation === "business" ? "business" : ""),
+      line.locationId ??
+      (explicitLocation === "business" ||
+      context.locations.some((location) => location.id === explicitLocation)
+        ? explicitLocation
+        : ""),
     sourceText: line.sourceText,
   };
 }
@@ -135,10 +141,10 @@ export function confirmedLine(
   if (line.conceptId && (!concept || concept.category !== category))
     throw new Error("Revisa el concepto y su categoría.");
   const conceptName = (concept?.name ?? line.conceptName).trim();
-  const name = line.name.trim();
+  const name = line.name.trim() || conceptName;
   if (!conceptName || conceptName.length > 120 || !name || name.length > 120)
     throw new Error(
-      "Completa el concepto y el nombre del pago (hasta 120 caracteres).",
+      "Completa qué pagaste y revisa el detalle (hasta 120 caracteres).",
     );
   if (
     line.location !== "business" &&
