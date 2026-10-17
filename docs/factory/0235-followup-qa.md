@@ -33,7 +33,7 @@ El único rojo unitario propio fue62/63 por el test core de literales ya corregi
 Candidato separado **27a3befb6436ffdd21d7ebce5a766a96f8dea1ed**, CI integrado794140d4 más retiro1dfb776b, rama negocio-followup-qa. No se fusiona hacia dev/main. QA PASS local condicionado después de leer código, handoffs y logs:
 
 - Merchant typecheck EXIT0.
--67/67 unitarios, cinco archivos,2,81s: Marca37, fronteras10+9+7 y acceso4. El rojo de literales queda resuelto en combinación.
+- 67/67 unitarios, cinco archivos,2,81s: Marca37, fronteras10+9+7 y acceso4. El rojo de literales queda resuelto en combinación.
 - Un build Merchant Turbopack EXIT0: compilación9,7s, tipos10,2s,36 páginas estáticas. Next-env generado restaurado exactamente al contenido versionado; no quedó cambio de producto ni servidor propio.
 - DB/domain tipos del autor EXIT0, evidencia compatible; no se repitieron las14 pruebas DB ni las13 financieras originales sin cambio que lo justificara.
 
