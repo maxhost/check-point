@@ -119,3 +119,13 @@ Autor: unit focales, tipos Merchant/lint paths y guardia UI contra base congelad
 Fase actual solo documentos: diff--check, enlaces/paths, coherencia y secciones originales no afectadas, Node24. Archivos confirmados; no ampliar a almacenamiento/UI de edición por adelantado. Informe futuro de QA documental en docs/factory/0237-inbox-lifecycle-plan-qa.md; no afirmar PASS ni implementación hasta disponer de evidencia sobre fuente exacta. No DB, migración, servidor, cron o benchmark para aprobar texto.
 
 Entregas futuras: base/source/delivery SHAs, archivos/contrato, pruebas realmente corridas, fallos/casos no seleccionados, migración/hash, recursos/procesos y pendientes. Handoff de coordinador docs/factory/0237-inbox-lifecycle-handoff.md. Rendimiento y CI/PROD/clima/ciudades/«cuánto ahorraste» conservan sus diferidos; no se certifican por el ciclo funcional.
+
+## Kickoff local autorizado — 2026-10-17
+
+QA documental PASS de fuente74125ab9, entrega ae4c759222fa2c55c6c23395934306c2efd1b894 aceptada e integrada. Base funcional congelada **48d43abbfa71d5f478b0629aac53cca4d5dcd0d9**, merge de entrega058d7c48 exacta con0100; FAIL1817,621042ms conservado, no main/publicación. WIP diagnóstico a900bde2 preservado en ref analytics-performance-diagnostic-preserved y copias externas, excluido de esta base.
+
+A: agente /root/analytics_performance reutilizado, taskfactory analytics-performance, branch nueva analytics-lifecycle-data en /private/tmp/checkpass-analytics-perf/analytics-performance. Base común anterior; paths de A más nueva policy/, lifecycle/,0101 y handoff. No optimizar rendimiento ni editar WIP/0100. B: /root/analytics_lifecycle_ui, task/branch analytics-lifecycle-ui, WT homónimo bajo /private/tmp/checkpass-analytics-perf; mismo SHA común antes de checkpoint. QA: /root/an3_qa, task analytics-performance-qa, WT analytics-performance-qa, writer exclusivo nuevo informe de producto. Sin cuarto WT ni subdelegación.
+
+A debe entregar checkpoint temprano de tipos/contratos/política/esquema/servicios; B empieza producto solo después de consumir ese SHA mediante fast-forward/refresh por el coordinador. Hasta entonces B solo lectura/preparación. El DTO de inbox suma timezone como dato técnico aditivo para seleccionar fecha en zona del comercio, sin nuevo endpoint ni kit. El clock de caducidad usa expiresAt efectivo de política, no90 fijo en SQL.
+
+Recurso serial de replay para A: db:analytics-lifecycle-replay + migration:0101, entorno privado /private/tmp/checkpass-0237/migration.env. Nadie más usa DB hasta liberación explícita tras teardown. No CI compartida/perf/PROD. CI remoto sigue rojo en db3175d2 (Unit+Neon, stock-consumption count_changed); solo se leyó ci:status, no se reparó ni ejecutó suite global.
