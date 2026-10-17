@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { resolveAction } from "./index";
+import {
+  ANALYTICS_POLICY,
+  createAnalyticsPolicy,
+} from "@mi-pasaporte/domain/analytics/policy/index";
 const manifest = {
   id: "sample",
   name: "Sample",
@@ -77,6 +81,76 @@ describe("AN-1 action contract", () => {
       )?.href,
     ).toBe("/backoffice/catalog");
   });
+});
+
+it("uses injected policy labels without changing action destinations or permissions", () => {
+  const policy = createAnalyticsPolicy({
+    ...structuredClone(ANALYTICS_POLICY),
+    texts: {
+      ...ANALYTICS_POLICY.texts,
+      action_view_day: "Consultar ventas",
+      action_edit_product_price: "Revisar margen",
+      action_view_modules: "Completar herramientas",
+      action_record_expense: "Revisar gastos",
+    },
+  });
+  const owner = { role: "owner", permissions: [] };
+  expect(
+    resolveAction(
+      "view_day",
+      "/backoffice/analytics?date=2026-10-19",
+      owner,
+      new Set(),
+      [],
+      policy,
+    ),
+  ).toEqual({
+    label: "Consultar ventas",
+    href: "/backoffice/analytics?date=2026-10-19",
+  });
+  expect(
+    resolveAction(
+      "edit_product_price",
+      undefined,
+      { role: "staff", permissions: ["analytics"] },
+      new Set(),
+      [],
+      policy,
+    ),
+  ).toBeNull();
+  expect(
+    resolveAction(
+      "edit_product_price",
+      undefined,
+      owner,
+      new Set(),
+      [],
+      policy,
+    ),
+  ).toEqual({ label: "Revisar margen", href: "/backoffice/catalog" });
+  expect(
+    resolveAction(
+      "record_expense",
+      undefined,
+      owner,
+      new Set(["sample"]),
+      [manifest],
+      policy,
+    ),
+  ).toEqual({ label: "Revisar gastos", href: "/backoffice/sample" });
+  expect(
+    resolveAction(
+      "record_expense",
+      undefined,
+      owner,
+      new Set(),
+      [manifest],
+      policy,
+    ),
+  ).toEqual({ label: "Completar herramientas", href: "/backoffice/settings" });
+  expect(
+    resolveAction(null, "/backoffice/analytics", owner, new Set(), [], policy),
+  ).toBeNull();
 });
 
 it("preserves declared action destinations with a captured detail query and rejects foreign paths", () => {

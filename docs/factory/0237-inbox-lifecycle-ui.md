@@ -145,3 +145,20 @@ Ayuda documental externa, sin escrituras en policy: borrador
 `/private/tmp/checkpass-analytics-perf/lifecycle-policy-guide-draft.md`, entregado a
 A/coordinador. Incluye inventario y recetas; los TODO de integración/simulación
 señalan trabajo real pendiente y no se presentan como capacidad implementada.
+
+### Etiquetas de acciones desde el mismo snapshot
+
+`resolveAction` conserva el quinto argumento de manifests y añade el sexto de
+política. `actionContext` acepta el snapshot en el tercero; A debe pasarlo desde el
+lector. Seis etiquetas core se resuelven con `texts.action_<key>` del catálogo;
+para una acción declarada externamente se admite override opcional y, si no
+existe, se conserva su etiqueta declarada. No se copiaron nombres de módulos al
+core, ni se cambiaron permisos, destinos o navegación sin cierre.
+
+Caso focal seleccionado de snapshot inyectado: **1 PASS**, comprueba etiqueta
+custom, destinos iguales, permiso intacto, override/fallback y key null. Los otros
+tres casos de ese archivo no se seleccionaron; no se presentan como PASS. Suite
+completa pendiente de consumir el checkpoint de A con las seis claves canónicas y
+su validación; no se agregaron defaults duplicados en B para ocultar esa dependencia.
+Lint de actions y diff-check sin errores. Borrador externo de guía actualizado con
+las etiquetas y el override genérico.
