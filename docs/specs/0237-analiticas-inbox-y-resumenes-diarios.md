@@ -1,0 +1,382 @@
+---
+spec: 0237
+fecha: 2026-10-17
+estado: borrador
+resumen: Analíticas en tres etapas — resúmenes diarios por evento, inbox de hasta 5 tarjetas en el Dashboard, histórico en números y contexto externo guardado — para que el dueño accione cada mañana sin que abrir la pantalla calcule nada.
+disjunta: no; depende de 0236 (G) y 0235 (N) integradas; comparte module_event, contrato de módulos, permisos, Dashboard y el corte de conteo de Stock
+archivos: packages/db (esquema analytics, core.location.city_id, migraciones); packages/domain/src/analytics; apps/merchant/src/server/analytics; server/module-events; modules/{pos,recipes,expenses,stock}; app/backoffice (Dashboard, analytics); rutas api/analytics e api/internal/analytics; permissions-catalog
+---
+
+# 0237 — Analíticas: inbox, histórico y resúmenes diarios (AN)
+
+Spec L3 (toca dinero, aislamiento entre comercios y migración a PROD). [ADR0144](../adr/0144-factory-local-por-tarea.md),
+[verificación](../VERIFICACION.md). Diseño de producto cerrado en el [ADR0152](../adr/0152-analiticas-inbox-accionable.md),
+que manda sobre esta spec; amplía el [ADR0021](../adr/0021-analiticas-universales-y-lentes-por-rubro.md). Eventos de
+Gastos: [spec0236](0236-gastos-registro-de-pagos.md) y [ADR0151](../adr/0151-gastos-y-eventos-autosuficientes.md).
+Decisiones citadas: `docs/plan-margen-ganancia-2026-10-14.md`, secciones «AN — …».
+
+## Problema
+
+El Dashboard del merchant muestra un cartel «Aquí verás cómo va todo» y accesos (`app/backoffice/page.tsx`). No hay
+tablas, rutas ni UI de analíticas (`app/analytics.ts` son fixtures de demo del ADR0020). El dueño de barrio no sabe
+su margen ni su punto de equilibrio y no anticipa la demanda; el ADR0152 decidió un inbox accionable y un histórico
+en números, alimentados por resúmenes diarios.
+
+Leído en el código el 2026-10-17:
+
+- **El único evento que existe es `sale.closed`** (POS, `server/module-events/publish.ts`, en la tx del cierre).
+  Compras y ajustes de stock (`stock.movement`), anulaciones (`pos.pos_order.status='voided'`), canjes de cupón
+  (`core.coupon_redemption`) y visitas (`core.order`, `core.business_customer.last_visit_at`) solo escriben su tabla.
+- `EventSubscription.eventType` es el literal `"sale.closed"` (`server/module-events/types.ts:66`); `retry.ts`
+  decodifica toda delivery como venta. G generaliza el append y el decodificador (0236, «Eventos»).
+- La comisión de cada venta se congela en core al cerrar (`server/business/commission-close.ts`, tras N). El costo de
+  lo vendido no viaja en el evento: lo calcula Stock al aplicar el consumo de Recetas
+  (`modules/recipes/server/consumption-cost.ts` → `modules/stock/server/consumption-cost.ts`).
+- El corte del conteo de Stock (`modules/stock/count.ts`) toma todos los eventos del local y bloquea si hay
+  deliveries pendientes de esos eventos. G filtra por `sale.closed`; las deliveries de Analíticas sobre ventas lo
+  seguirían bloqueando (ver §2.4).
+- La zona horaria es del comercio (`core.business.timezone`); el local no tiene zona ni ciudad. `address_snapshot`
+  guarda el Details de Google Places (`addressComponents`), filas viejas de Geoapify o `{}` si el dueño tipeó.
+- `MODULE_EVENTS_ENABLED` encendido en PROD desde el 2026-10-16 según `docs/estado/claude-historico.md`; **verificar**
+  antes de AN-1.
+
+## Decisiones del owner (no se reabren)
+
+Del ADR0152 (13 tarjetas, hasta 5 a la vez con el resumen de ayer contando, peso = plata × urgencia × novedad, mínimo
+de un mes y 4 ocurrencias para comparar días, rangos, dato faltante = invitación, atribución honesta, histórico
+mes/3/6/9/12 con comparativa anual construida, contexto externo por ciudad sin acción, Visual Crossing gratis, sin
+reconstruir ventas anteriores a los eventos). Del 2026-10-17 (plan, «AN — decisiones del owner para la spec»):
+
+1. **Una spec, tres etapas**, cada una sale a live por separado (tabla de abajo).
+2. **El inbox va en el Dashboard**, en lugar del cartel; **el histórico en un ítem de menú «Analíticas»**. Permiso
+   nuevo `analytics`: dueño siempre, staff solo si se lo dan.
+3. **Ventas = solo POS.** Un futuro módulo de citas será el equivalente para quien no vende productos: el vocabulario
+   es genérico (`revenue` no sabe de qué módulo viene).
+4. **Tarjeta 10 = tickets abiertos anulados** (el POS no anula ventas cobradas).
+
+## Etapas
+
+| Etapa | Entra | Tarjetas | Eventos nuevos |
+|---|---|---|---|
+| **AN-1** | resúmenes diarios, suscriptor core, inbox, histórico, contexto externo (ciudades, clima, calendario) | 1, 2, 3, 4, 7, 13 | ninguno: traduce `sale.closed` y `expense.*` |
+| **AN-2** | stock y costos | 5, 6, 8, 9 | `stock.purchase.recorded`, `stock.adjustment.recorded`; consumo por receta como métrica |
+| **AN-3** | anulaciones, clientes y promos | 10, 11, 12 | `pos.order.voided`; visitas y canjes de core |
+
+**Ajuste de Claude, a confirmar por el owner (H1):** la tarjeta 7 (producto sin costo) pasa a AN-1 porque la meta
+del día (3) no se puede calcular sin saber qué parte de lo vendido tiene costo; sale de los mismos datos de venta.
+
+## Alcance y diseño
+
+### 1. Vocabulario de métricas (core)
+
+`packages/domain/src/analytics/metrics.ts` define el vocabulario; ningún nombre de módulo aparece en él. Cada métrica
+tiene tipo (`sum` o `gauge`: último valor del día), unidad (`money` en unidades menores + moneda, `quantity` decimal
+exacto, `count`) y tipo de dimensión (`none`, `product`, `item`, `concept`, `customer`, `campaign`).
+
+| Métrica | Tipo | Unidad | Dimensión | Etapa | Qué es |
+|---|---|---|---|---|---|
+| `revenue` | sum | money | none | 1 | cobrado neto de la venta (`money.collected`); `count` = tickets |
+| `product_revenue` | sum | money | product | 1 | neto de la línea (`lines[].money.net`) |
+| `units_sold` | sum | quantity | product | 1 | cantidad vendida |
+| `payment_commission` | sum | money | none | 1 | comisión congelada de la venta (core) |
+| `cost_of_goods` | sum | money | product | 1 | costo del consumo de la receta de esa línea |
+| `units_without_cost` | sum | quantity | product | 1 | unidades vendidas sin costo conocido |
+| `expense_fixed` / `expense_variable` | sum | money | concept | 1 | gasto por concepto según `isFixed` |
+| `stock_purchase` | sum | money + quantity | item | 2 | compra registrada |
+| `stock_unit_cost` | gauge | money | item | 2 | costo promedio por unidad después de la compra |
+| `stock_on_hand` | gauge | quantity | item | 2 | existencia teórica al cierre del día |
+| `stock_consumption` | sum | quantity | item | 2 | consumo por recetas |
+| `stock_count_gap` | sum | money + quantity | item | 2 | diferencia del conteo contra el teórico, al costo promedio |
+| `product_unit_cost_change` | sum | money | product | 2 | cambio del costo unitario de un producto por una compra |
+| `voided_tickets` | sum | money + count | none | 3 | tickets abiertos anulados y lo que tenían cargado |
+| `visits` | sum | count | customer | 3 | acreditaciones del cliente (no la bienvenida) |
+| `promo_discount` / `promo_sales` | sum | money | campaign | 3 | descuento del cupón y total de los tickets que lo llevaron |
+
+Los nombres de la dimensión (producto, insumo, concepto, cliente, campaña) viajan como **etiqueta** en cada aporte y
+se guardan en `analytics.dimension_label`: el core no lee tablas de módulos para escribir «café con leche».
+
+### 2. Resúmenes diarios
+
+#### 2.1 Tablas (esquema `analytics`, core)
+
+| Tabla | Forma |
+|---|---|
+| `metric_contribution` | aporte vigente de una fuente: `business_id`, `source_key` (`sale:<orderId>`, `expense:<expenseId>`, …), `source_revision` int, métrica, `location_id` nullable, `day` DATE local, dimensión (`kind`, `id` uuid nullable), `amount_minor` bigint, `currency_code`, `minor_unit`, `quantity` numeric, `count` int. Índice (`business_id`, `source_key`). |
+| `daily_metric` | suma por comercio × local × día × métrica × dimensión × moneda: `amount_minor`, `quantity`, `count`. Único con `NULLS NOT DISTINCT` (local y dimensión pueden ser null). Índice por (`business_id`, `day`). |
+| `daily_gauge` | último valor del día por comercio × local × día × métrica × dimensión, con `observed_at` (gana el más nuevo). AN-2. |
+| `dimension_label` | (`business_id`, kind, id) → etiqueta y `updated_at`; gana la más nueva. |
+
+El «día» es el día calendario en `core.business.timezone` del instante del hecho (`closedAt` de la venta; `paidOn`
+del gasto ya es día local y se usa tal cual). Un cambio futuro de zona no mueve lo ya guardado.
+
+#### 2.2 Traducción: cada módulo declara, el core aplica
+
+`ModuleServer` (`modules/route-table.ts`) suma `metricTranslators?: readonly MetricTranslator[]`:
+`{ eventType, translate(tx, event) → { sourceKey, sourceRevision, rows[] } | "not_ready" | "ignore" }`. El
+traductor puede leer tablas de **su** módulo, nunca de otro. Core declara los suyos en
+`server/analytics/core-translators.ts` (comisión de `sale.closed`; en AN-3 visitas y canjes).
+
+AN-1 declara: POS (`sale.closed` → `revenue`, `product_revenue`, `units_sold`), Recetas (`sale.closed` →
+`cost_of_goods` y `units_without_cost`; responde `not_ready` hasta que la delivery de consumo de Recetas de ese
+evento esté `applied`, e `ignore`→ todo sin costo si esa delivery quedó `skipped`), Gastos (`expense.*`) y core
+(`payment_commission`). Cada traductor usa su propio `sourceKey` (`sale:<id>:pos`, `sale:<id>:recipes`,
+`sale:<id>:commission`): reemplazar uno no borra el de otro.
+
+#### 2.3 Suscriptor core `core.analytics`
+
+- `server/module-events/` suma suscriptores **core** (lista en core, no en `SERVER_MODULES`). Al publicar cualquier
+  evento con al menos un traductor, se crea una delivery `core.analytics` además de las de módulos; nunca
+  `skipped` por módulos apagados.
+- Aplicar = en una tx: lock advisory por (`business_id`, `source_key`); si `source_revision` ≤ la guardada, no hace
+  nada (un `expense.updated` viejo que llega tarde no pisa uno nuevo); si no, resta de `daily_metric` los aportes
+  previos de ese `source_key`, los borra, inserta los nuevos y los suma (`on conflict do update`, filas en orden de
+  clave para no trabarse). Un `expense.deleted` deja cero aportes. Reaplicar la misma delivery no cambia nada.
+- `not_ready` vuelve a `pending` con el backoff actual (1, 5, 15, 30 min) sin contar como falla.
+- **Eventos ya guardados:** al encender AN-1 se crean deliveries `core.analytics` para los `module_event` existentes
+  (ventas desde el encendido de los eventos, 2026-10-16, y gastos). Lectura de Claude de «Analíticas cuenta desde que
+  los eventos están encendidos» (H2); nada se reconstruye desde tablas del POS.
+
+#### 2.4 Corte del conteo de Stock
+
+`validateCountCut` bloquea con deliveries pendientes de los eventos del corte. Una delivery `core.analytics`
+pendiente (p. ej. Recetas en `not_ready`) no cambia el stock y **no debe** bloquear un conteo: el chequeo de
+pendientes se limita a suscriptores de módulos que requieren `stock`. Test de regresión obligatorio (§Pruebas).
+
+### 3. Inbox (Dashboard)
+
+#### 3.1 Evaluación diaria
+
+- Cron `GET /api/internal/analytics/evaluate` (Bearer `CRON_SECRET`, cron-job.org, ADR0118), cada 30 min de 00:00 a
+  08:00 `America/Guayaquil`. Toma comercios cuyo día local empezó hace ≥ 3 h y no tienen `analytics.evaluation_run`
+  de hoy; claim con `SKIP LOCKED`, presupuesto 20 s, lote acotado, `pg_try_advisory_xact_lock` para no solapar.
+- Evaluar = leer `daily_metric`/`daily_gauge` del comercio, calcular cada tarjeta (funciones puras en
+  `packages/domain/src/analytics/cards/`), guardar candidatas en `analytics.card_candidate` (comercio, `card_key`,
+  `subject_key`, día evaluado, peso, monto en juego, parámetros del texto, `fingerprint`, local). Único por
+  (comercio, tarjeta, sujeto, día). Abrir el Dashboard solo lee.
+- **Si la tanda no corrió:** la primera apertura del día evalúa ese comercio (mismo código, mismo claim); si tarda más
+  de 3 s, muestra las de ayer con «Preparando lo de hoy» y termina en `after()`.
+- Tarjetas por hecho (5 al registrar una compra, 12 al terminar una campaña) se evalúan en la delivery que las
+  origina (AN-2/AN-3).
+- Comercios evaluados: activos con al menos una fila en `daily_metric` en los últimos 35 días, o sin ninguna (para
+  las invitaciones).
+
+#### 3.2 Peso, novedad y tope
+
+`packages/domain/src/analytics/weights.ts` concentra los coeficientes iniciales (se ajustan con uso, ADR0152 §3):
+
+- **Plata** `p = min(3, monto en juego / venta diaria promedio de 28 días)`; sin ventas, `monto / 20 USD`
+  equivalentes en la moneda del comercio. Tarjetas sin monto usan el `p` fijo de la tabla de §3.4.
+- **Urgencia** `u ∈ [0,2; 1]`, por tarjeta (§3.4).
+- **Novedad** `n`: 1 si es nueva o su `fingerprint` cambió de forma material; si ya se mostró igual, `0,6^días
+  mostrada`; **0** si se descartó o aceptó y el `fingerprint` no cambió. Material = otro sujeto o monto en otro
+  escalón `floor(log2(monto))`.
+- `peso = p × u × n`. El resumen de ayer tiene peso fijo 10 (siempre primero si existe).
+- Se muestran hasta **5** candidatas de hoy con peso ≥ 0,05, de mayor a menor. Al aceptar o descartar entra la
+  siguiente solo si supera ese umbral; si no, quedan menos de 5.
+- `analytics.card_state` (comercio, tarjeta, sujeto) guarda mostrada/aceptada/descartada, `fingerprint`, quién y
+  cuándo. **Aceptar** = tocar la acción; **descartar** = la X.
+
+#### 3.3 Acciones sin nombrar módulos
+
+`ModuleManifest` suma `analyticsActions?: { key, label, href }[]` (p. ej. Gastos declara `record_expense`, Recetas
+`set_product_cost`). La tarjeta pide una clave; el core resuelve el `href` en un módulo **encendido** que la declare
+y que el usuario pueda abrir (permiso). Si ninguno la declara encendida, el botón lleva al catálogo de módulos; si el
+usuario no tiene permiso, la tarjeta sale sin botón.
+
+#### 3.4 Tarjetas de AN-1 (texto en tuteo, montos en la moneda del comercio)
+
+| # | Remitente | Aparece si | Texto (ejemplo) | p · u | Acción |
+|---|---|---|---|---|---|
+| 1 | Ventas | hubo `revenue` ayer | «Ayer vendiste $210 en 34 tickets, 12% más que el martes pasado. Lo que más salió: café con leche (40).» La comparación solo si el mismo día de la semana anterior tuvo ventas. Con más de un local, una línea por local. | fijo 10 | «Ver el día» → histórico de ese día |
+| 2 | Ventas | ≥ 28 días desde la primera venta y ≥ 4 días iguales con venta | «Los martes se suelen vender unas 30 medialunas, 22 cafés con leche y 15 empanadas.» Mediana de los últimos 4–8 días iguales, top 3 por unidades. Antes del mínimo, como mucho una vez por semana: «Necesito 3 martes más para decirte qué se vende los martes.» | 0,1 · 1 | — |
+| 3 | Finanzas | hay ≥ 1 mes cerrado con gastos, cobertura de costo ≥ 80% de lo vendido en 28 días y la venta del mes va por debajo del ritmo | «Hoy necesitas vender $106 para cubrir el mes: te faltan $1.272 en 12 días de venta.» Marca «estimado» si algún concepto lo es. | brecha contra el ritmo · `1 − días restantes/días del mes`, ×1,5 en los últimos 10 días | «Ver el cálculo» → histórico, bloque del mes |
+| 4 | Finanzas | sin gastos fijos en 45 días, o sin mes cerrado con gastos | «Carga tus gastos fijos (alquiler, sueldos, luz) y te digo cuánto tienes que vender cada día para cubrir el mes.» Primer mes con gastos: «La meta se calcula al cerrar tu primer mes con gastos.» | 1 · 0,5 (0,8 en los últimos 10 días) | `record_expense` |
+| 7 | Costos | productos con `units_without_cost` en 28 días | «No sé cuánto ganas con café con leche y 4 productos más: vendiste $640 de ellos en 4 semanas.» Sujeto = el producto que más vendió. | monto = venta sin costo de 28 días / 4 · 0,6 (1 si la cobertura impide la meta) | `set_product_cost` |
+| 13 | Ventas | mismo mínimo que la 2; la venta esperada de hoy (mediana de días iguales) < 75% del promedio diario de 28 días; hay ≥ 2 productos con costo y ≥ 10 ventas en 28 días | «Los martes suelen ser flojos (unos $140, contra $210 de un día promedio). Si te piden recomendación: la pizza muzza te deja $3,10 por unidad y el flan $2,40.» Top 2 por ganancia unitaria. | `p` = promedio − esperado · 0,7 (1 si la 3 está activa) | — |
+
+**Meta del día (3), cálculo** (owner, plan «Preguntas de G» 1): gastos fijos del mes por concepto = lo pagado este mes
+si el concepto ya se pagó; si no, promedio de los meses (hasta 3) en que se pagó, marcado «estimado»; variables y
+sueltos = promedio mensual de los últimos 3 meses cerrados. Margen de contribución `m = (revenue − cost_of_goods −
+payment_commission) / revenue` de 28 días, solo sobre lo vendido con costo. Equilibrio del mes `E = gastos / m`.
+Días de venta restantes = días del resto del mes cuyo día de la semana tuvo ventas en las últimas 4 semanas, hoy
+incluido. Meta de hoy = `(E − revenue del mes) / días restantes`. Si ya se cubrió, no aparece. Si `m ≤ 0`, no hay meta
+y gana peso la 7 (AN-1) o la 6 (AN-2).
+
+**Composición:** sin mecanismo extra; a fin de mes, bajo el equilibrio, 3 + 13 (+ 6 en AN-2) suben juntas por peso.
+
+#### 3.5 HTTP (core)
+
+| Ruta | Contrato |
+|---|---|
+| `GET /api/analytics/inbox` | →200 `{ state: "ready" \| "preparing", preparedAt, cards: [{ id, cardKey, sender, title, body, amountAtStake: { amountMinor, currencyCode, minorUnit } \| null, quality: "observed" \| "estimated", action: { label, href } \| null }] }` |
+| `POST /api/analytics/inbox/:id/accept` y `/dismiss` | →200 `{ cards }` con el reemplazo; id ajeno o de otro día →404 `card_not_found` |
+| `GET /api/analytics/history?period=month\|3m\|6m\|9m\|12m&locationId=` | →200 bloques del §4; `locationId` ajeno →404 |
+| `GET /api/analytics/day?date=YYYY-MM-DD&locationId=` | →200 ventas por producto de ese día |
+| `GET /api/internal/analytics/evaluate`, `GET /api/internal/analytics/context` | Bearer `CRON_SECRET`; 401 sin él; 200 `{ processed, skipped }` |
+
+Todas las rutas no internas: sesión, membresía activa y permiso `analytics` (dueño por rol); 401/403 con el envelope
+existente. El comercio sale del guard, nunca del cuerpo ni de la query. Ninguna serializa claves de R2.
+
+#### 3.6 UI
+
+- **Dashboard** (`app/backoffice/page.tsx`): el cartel se reemplaza por el inbox para quien tiene `analytics`; los
+  accesos actuales quedan debajo. Cada tarjeta: remitente, título, cuerpo, monto en juego, «estimado» si aplica,
+  acción y X. Sin tarjetas: «Hoy no tengo nada para avisarte.» Sin datos todavía: «Analíticas empieza a contar con
+  tus ventas y gastos desde hoy.»
+- **Analíticas** (`app/backoffice/analytics`, ítem de menú core con permiso `analytics`): histórico (§4) y vista de
+  un día. Kit `ui/` existente (ADR0123), sin componentes nuevos de gráficos.
+
+### 4. Histórico en números
+
+Filtro de período (mes en curso, 3, 6, 9, 12 meses) y de local (todos o uno). En AN-1, en cifras y frases:
+
+- Ventas: total, tickets, ticket promedio, variación contra el período anterior de igual largo y los 5 productos que
+  más vendieron.
+- Ganancia bruta: `revenue − cost_of_goods − payment_commission`, con su cobertura («calculada sobre el 86% de lo
+  vendido»).
+- Gastos: fijos y variables; resultado = ganancia bruta − gastos, solo si la cobertura es ≥ 80%.
+- **Comparación con el mismo período del año anterior: construida**; se muestra solo si `daily_metric` del comercio
+  cubre todo ese período anterior. Hoy no aparece.
+
+AN-2 suma valor del stock y subas de insumos («en 6 meses tus insumos subieron en promedio 10%, cada unos 21 días»);
+AN-3 suma clientes y promos. «Cuánto ahorraste» no tiene medición en la v1 (H6).
+
+### 5. Contexto externo (AN-1, sin acción)
+
+| Tabla | Forma |
+|---|---|
+| `analytics.city` | país, provincia/estado, nombre, clave normalizada única (país, provincia, nombre), centro lat/lon, zona horaria, `active_since`, `active_until` |
+| `analytics.zone`, `analytics.city_zone` | zonas curadas por país (Ecuador: Sierra, Costa, Amazonía, Galápagos) y pertenencia de cada ciudad (por su provincia) |
+| `core.location.city_id` | nullable, FK a `analytics.city` |
+| `analytics.weather` (`eventos_clima`) | ciudad, fecha, tipo `forecast` \| `observed`, máxima, mínima, lluvia mm, probabilidad de lluvia, condición, fuente, `fetched_at`; único (ciudad, fecha, tipo, fuente) |
+| `analytics.calendar_event` (`eventos_calendario`) | fecha, alcance `country` \| `region` \| `zone` \| `city` + referencia, tipo `holiday` \| `holiday_moved` \| `payday` \| `school` \| `commercial` \| `sports`, nombre, fuente `rule` \| `curated`; único (fecha, alcance, referencia, tipo, nombre) |
+
+- **Ciudad del local:** al crear o editar un local se resuelve desde `address_snapshot` (Google: `locality`, si no
+  `administrative_area_level_2`; provincia = `administrative_area_level_1`; Geoapify: `city`/`state`). Local tipeado sin
+  datos: `city_id` null, sin contexto (H3). Script único para los locales existentes. Una ciudad se activa con su
+  primer local activo de un comercio activo y se desactiva sin ninguno; su histórico queda.
+- **Clima — Visual Crossing:** primer paso de AN-1, **probar la API** con la clave del owner para Cuenca (pronóstico
+  de hoy y dato de ayer, `include=days`) y confirmar cuántos registros cuenta cada llamada; si no sirve, se para y se
+  avisa (plan B pago: Open-Meteo Standard). Cron `GET /api/internal/analytics/context` cada hora: para cada ciudad
+  activa cuya hora local pasó las 06:00 sin dato de hoy, guarda el pronóstico de hoy y el observado de ayer (2 registros
+  por ciudad por día). Clave en `VISUAL_CROSSING_API_KEY` (la carga el owner en Vercel). Falla del proveedor = se
+  reintenta en la próxima hora; un pronóstico que no se tomó ese día no se rellena después.
+- **Calendario Ecuador:** feriados nacionales con traslado por regla (librería JS a elegir y comparar contra el decreto
+  oficial del año; `holidays` del ADR es Python) + archivo curado versionado con feriados locales (fundación de
+  Cuenca, Quito, Guayaquil), décimo tercero (nacional) y cuarto (por zona), quincenas, inicio de clases (Sierra y
+  Costa) y fechas comerciales, cada una con su fuente oficial anotada al cargarla. Tipo `sports` definido, sin carga.
+- **Nada de esto genera tarjetas, entra en un cálculo ni se le muestra al comerciante** (atribución de Visual Crossing
+  no aplica mientras no se muestre; antes de mostrarlo se revisan sus términos, ADR0152 §5).
+
+### 6. AN-2 — stock y costos
+
+- Stock publica en la tx de cada movimiento `stock.purchase.recorded` (insumo, local, cantidad, costo total, costo
+  promedio anterior y posterior, existencia después, `occurredAt`, etiqueta) y `stock.adjustment.recorded` (contado,
+  teórico anterior, diferencia en cantidad y al costo promedio, existencia después). `source_id` = id del movimiento;
+  ambos con local. Las entradas por lote (`stock/entries.ts`) publican uno por línea.
+- Recetas traduce `sale.closed` también a `stock_consumption` y `stock_on_hand` por insumo, y `stock.purchase.recorded`
+  a `product_unit_cost_change` para los productos cuya receta usa ese insumo (lee su propia composición).
+- Tarjetas (mismo formato que §3.4):
+  - **5 Suba de insumo**, evaluada en la delivery de la compra: costo unitario +5% o más contra el promedio anterior →
+    «La harina subió 12%: tu muzza te cuesta $0,18 más por unidad (≈$9 por semana con lo que vendes).» `p` = impacto
+    semanal; `u` = 1 el día de la compra, ×0,7 por día después. Acción: revisar precio (`set_product_price`, la declara
+    quien tenga el catálogo de precios; verificar en la etapa).
+  - **6 Margen bajo o negativo:** ganancia unitaria de 28 días negativa, o menor a la mitad de la mediana del comercio,
+    con ≥ 10 ventas. `p` = pérdida semanal o brecha semanal contra la mediana; `u` = 0,3, 1 si la meta del mes está en
+    riesgo. Acción: revisar precio.
+  - **8 Insumo que se acaba:** existencia teórica / consumo diario (p25 y p75 de los últimos 28 días) → «Te estás
+    quedando sin harina: queda para unas 20 masas y se acabaría entre el jueves y el sábado.» Aparece si el extremo
+    corto es ≤ 4 días; requiere el mes mínimo. `u = 1 − días/5`. Acción `record_purchase`.
+  - **9 Merma por conteo,** el día del conteo: diferencia ≥ max(3 USD, 1% de la venta semanal) → «Faltaron 3 kg de
+    harina (~$4) que no explican las ventas.» Decae ×0,7 por día. Acción: ver detalle del conteo.
+- El corte del conteo ya filtra `sale.closed` (G): los eventos nuevos de stock no lo alteran.
+
+### 7. AN-3 — anulaciones, clientes y promos
+
+- POS publica `pos.order.voided` (orden, local, `voidedAt`, líneas y monto cargado, usuario) en la tx de
+  `voidPosOrder`; traduce a `voided_tickets`.
+- Core aporta `visits` por cliente (pseudónimo = `business_customer.id`) desde `core.order` en su tx, y
+  `promo_discount`/`promo_sales` por campaña desde `sale.closed` v2 (`discountOrigin`) y `core.coupon_redemption`.
+- Tarjetas:
+  - **10 Anulaciones:** tickets anulados en 7 días por local > max(3, media + 2 desvíos de las 8 semanas previas) →
+    «Esta semana se anularon 9 tickets en Centro ($64 cargados), el triple de lo normal.» Requiere el mes mínimo.
+    Acción: ver anulados (la declara POS).
+  - **11 Habitual que se va:** ≥ 4 visitas, días desde la última > 2 × su mediana de intervalo y ≥ mediana + 7,
+    última visita en 90 días → «Juan venía cada 12 días; van 25.» `p` = gasto promedio por visita × visitas
+    perdidas del mes. Acción: mandar cupón si Marketing permite uno a un cliente; si no, ver cliente (verificar, H5).
+  - **12 Resultado de promo,** el día después de `ends_at` o de pasar a `ended`: «El cupón 20% te costó $30 en
+    descuentos y vino con $140 en ventas en los mismos tickets.» Sin decir que el cupón las causó. Acción: ver
+    resultados de la campaña (existente).
+
+## Archivos y paralelismo
+
+- **Esquema y eventos (writer único):** `packages/db/src/schema/analytics.ts`, `core.location.city_id`, migraciones;
+  `server/module-events/` (suscriptor core, deliveries, pendientes del conteo); contrato `modules/route-table.ts` y
+  `modules/contract.ts`; `permissions-catalog.ts`.
+- **Dominio puro:** `packages/domain/src/analytics/` (vocabulario, pesos, tarjetas, meta).
+- **Servidor:** `apps/merchant/src/server/analytics/` (aplicación de aportes, evaluación, contexto, lecturas);
+  `app/api/analytics/*`, `app/api/internal/analytics/*`; traductores en `modules/{pos,recipes,expenses}` (AN-1) y
+  `modules/stock` (AN-2).
+- **UI:** `app/backoffice/page.tsx`, `app/backoffice/analytics/`.
+- Orden en AN-1: esquema + suscriptor (uno) → en paralelo dominio/evaluación/HTTP y contexto externo (dos) → UI cuando
+  el HTTP esté fijado. QA independiente sobre la combinación. Core nunca importa ni nombra módulos (ADR0138/0139):
+  traductores y acciones se registran por contrato.
+- **Depende de:** 0236 (G) y 0235 (N) integradas en `dev`. Reserva de rama Neon y migración: coordinador.
+
+## Definition of Done
+
+AN-1:
+- [ ] Una venta POS y un gasto (alta, edición que mueve día/concepto/local, borrado) dejan `daily_metric` exacto en el
+  día local del comercio; reaplicar o recibir una revisión vieja no cambia nada.
+- [ ] Un conteo de Stock no se bloquea por una delivery de Analíticas pendiente.
+- [ ] El Dashboard muestra hasta 5 tarjetas (1, 2, 3, 4, 7, 13) con texto, monto y acción; aceptar/descartar trae la
+  siguiente solo si supera el umbral; una descartada sin cambio material no vuelve.
+- [ ] La meta del día da el número correcto con conceptos reales y estimados, y no aparece sin mes cerrado ni con
+  cobertura < 80%.
+- [ ] Histórico con los 5 períodos y filtro de local; comparativa anual oculta sin período previo completo.
+- [ ] Clima de Cuenca (pronóstico y observado) y calendario de Ecuador guardados por las rutas internas; nada visible.
+- [ ] Medición en rama Neon (§Pruebas 9) dentro del criterio.
+- [ ] Aislamiento: comercio B no ve ni toca tarjetas, histórico ni locales de A; permiso `analytics` respetado.
+
+AN-2 y AN-3: sus tarjetas con el mismo criterio y sus eventos atómicos con el movimiento/anulación.
+
+## Pruebas pertinentes
+
+Recortadas a lo que detecta un defecto plausible; suites Neon con `tools/neon-test.sh`, nunca contra `DATABASE_URL`.
+
+1. Neon: `sale.closed` v2 a las 23:30 locales (día UTC siguiente) cae en el día local; `revenue`, `product_revenue`,
+   `units_sold`, `payment_commission` exactos; misma delivery dos veces = sin doble suma.
+2. Neon: `expense.recorded` → `updated` que cambia día, concepto y local → `deleted`; el `updated` aplicado después del
+   `deleted` (revisión vieja) se ignora; «todo el negocio» queda con local null.
+3. Neon: traductor de Recetas `not_ready` hasta aplicar el consumo; producto sin receta → `units_without_cost`.
+4. Neon (regresión): conteo con delivery `core.analytics` pendiente no da 409; con consumo de Recetas pendiente sí.
+5. Unit: pesos y selección — tope 5 con el resumen adentro, umbral, novedad (`0,6^n`, descartada sin cambio = 0,
+   cambio de escalón vuelve).
+6. Unit: tarjetas 2, 3, 4, 7 y 13 con fixtures: mínimo de historia, meta con conceptos estimados, primer mes →
+   invitación, cobertura baja, ya cubierto, `m ≤ 0`.
+7. Neon: aislamiento y permisos de las rutas (§3.5), 404 por id ajeno, 401 del cron, evaluación idempotente por día y
+   fallback al abrir.
+8. Contexto: ciudad desde snapshots reales de Google (Cuenca) y Geoapify; ingesta de clima con proveedor simulado + una
+   prueba real con la clave; carga del calendario curado y unicidades.
+9. Medición en rama Neon efímera con datos sintéticos (repite ADR0152 §7): evaluación de un comercio ≤ 1 s con caché
+   fría; si no, se para y se informa.
+10. Navegador: Dashboard con datos de prueba — ver, aceptar (navega), descartar (entra la siguiente o no) — e
+    histórico con filtros.
+
+AN-2/AN-3: un caso Neon por evento nuevo (atómico con su movimiento, local correcto, sin alterar el corte) y unit por
+tarjeta con sus bordes.
+
+## Hallazgos a decidir (owner)
+
+- **H1** Tarjeta 7 en AN-1 (la meta la necesita). La 6 también podría entrar en AN-1: usa solo datos de venta.
+- **H2** Procesar los eventos ya guardados desde el 2026-10-16 (lectura de «cuenta desde que los eventos están
+  encendidos»).
+- **H3** Locales con dirección tipeada quedan sin ciudad y sin contexto; no se le pide nada al dueño.
+- **H4** Cuenta y clave de Visual Crossing: las crea el owner y la carga en Vercel (sin imprimirla).
+- **H5** «Mandar cupón» a un cliente (tarjeta 11): verificar en AN-3 si Marketing lo permite.
+- **H6** «Cuánto ahorraste en 9 meses» (ejemplo del owner para el histórico) no tiene medición en la v1.
+
+## Handoff y abierto
+
+Cada etapa: candidato en `dev` con QA independiente, `main` local y push solo con autorización; migración a PROD con
+autorización explícita. Falla dentro del alcance vuelve a corrección; cambio material vuelve a acuerdo.

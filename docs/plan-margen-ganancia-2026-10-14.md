@@ -418,6 +418,20 @@ proveedores).
 - **Proyecciones (flujo de caja, plan de crecimiento con techo): parqueado** (`docs/PARQUEADO.md`), solo son fiables con
   histórico y hoy no hay.
 
+### AN — decisiones del owner para la spec (2026-10-17)
+
+Contexto leído en el código ese día: el único evento que existe es `sale.closed` (POS); compras y ajustes de stock,
+anulaciones, cupones, canjes y visitas no publican eventos.
+
+1. **Una spec, 3 etapas**, cada una sale a live por separado: AN-1 resúmenes, inbox, histórico, contexto externo
+   (junta datos desde el día 1) y tarjetas de ventas + Gastos (1, 2, 3, 4, 13); AN-2 eventos de Stock y Recetas →
+   tarjetas 5–9; AN-3 anulaciones, clientes y promos → 10–12.
+2. **El inbox va en el Dashboard** (reemplaza el cartel «Aquí verás cómo va todo»); el histórico en números en un ítem
+   de menú «Analíticas». Permiso nuevo `analytics`: dueño siempre, staff solo si se lo dan.
+3. **Ventas = solo POS.** Owner: «hoy no tenemos forma, solo podemos saber lo que se vendió desde POS… tendrá que
+   existir en el futuro un módulo de calendarios o citas que será el equivalente a POS para esos negocios».
+4. **Tarjeta 10 = tickets abiertos anulados** (el POS no anula ventas cobradas).
+
 ## Prompt — Gastos (spec 0236 + ADR 0151; 2026-10-16; ajustado al ADR 0152 el mismo día; N ya está en `dev`)
 
 ```
