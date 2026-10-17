@@ -6,7 +6,7 @@ Encargo del owner: al guardar gastos intentar procesar sus entregas a Analítica
 
 - Tras éxito y commit de POST entries, PUT entries/:id y DELETE entries/:id, programar intento acotado no bloqueante de las entregas del comercio autenticado y los tipos expense.recorded/updated/deleted, exclusivamente suscriptor core.analytics. Usar retryModuleEvents existente; no sumar métricas directamente ni cambiar deduplicación, transacciones o corte Stock.
 - Como POS: after() cuando hay contexto Next; alternativa segura cuando no lo hay. El programador y su callback nunca convierten un gasto ya confirmado en respuesta de error. Un fallo del guardado no programa procesamiento. El callback debe empezar después del commit, no dentro de la transacción.
-- Presupuesto inicial2000ms/lote máximo50 como aceleración POS. No esperar su finalización en la respuesta. Batch de hasta30 gastos sigue siendo batch; sin disparar un worker por línea. Repetir solicitud idempotente no duplica eventos ni importes; puede ayudar a drenar pendientes del mismo comercio.
+- Presupuesto técnico20000ms/lote máximo50. No esperar su finalización en la respuesta. Batch de hasta30 gastos sigue siendo batch; sin disparar un worker por línea. Repetir solicitud idempotente no duplica eventos ni importes; puede ayudar a drenar pendientes del mismo comercio. Se conserva la estrategia de aceleración POS, con un presupuesto propio para Gastos.
 - HTTP mantiene permisos, validación, códigos y JSON existentes. No endpoint público nuevo ni configuración/env/switch para Analíticas. Traducción pura y dinero exacto/null/moneda siguen iguales. No reabrir condición de mes cerrado o cobertura para punto de equilibrio.
 - Existirán entregas pendientes si se agota tiempo, hay error o cae proceso; cron continúa como recuperación durable. No prometer actualización síncrona ni entrega garantizada antes de que el navegador navegue.
 
@@ -19,3 +19,9 @@ B: nuevo apps/merchant/src/modules/expenses/server/immediate.neon.integration.te
 QA: solo docs/factory/0237-expenses-immediate-qa.md. Dictámenes separados de entregas y combinación exacta; reutiliza evidencia compatible y señala límites. No implementar producto, subdelegar ni ejecutar suites por ceremonia. Coordinador integra en dev y registra handoff/estado. Candidato main local después de QA, dentro de la autorización de mantenimiento local; sin publicar. Si aparece contradicción material consultar al owner y parar.
 
 Pruebas proporcionales: unit focal nuevo, Merchant tipos/lint de paths, Neon focal nuevo y regresión de gastos solo si los cambios invalidan evidencia anterior. Node24.20.0. Evidencia ligada a SHAs/logs/comandos/resultados reales; skips/retries no son PASS. Rendimiento general FAIL y todos los diferidos se conservan.
+
+## Corrección técnica tras primera prueba real
+
+El presupuesto2000ms inicial era una elección técnica copiada de POS, no un límite solicitado por el owner. Focal combinado d93599f7: FAIL1/1; primer callback dejó core processing/attempts1 en vez de applied, log `/private/tmp/checkpass-expenses-immediate/expenses-immediate-b-neon-d93599f7.log`. Compatible con agotamiento del presupuesto después de claim, sin causalidad exclusiva demostrada por el log. No se ejecutaron fases de edición/borrado ni se declara PASS parcial. El intento durable sigue recuperable.
+
+Se ajusta a20000ms, tope que ya admite retryModuleEvents; ruta genérica tiene maxDuration60s, sin modificarla. No bloquea respuesta ni promete finalizar todo el backlog. Repetir el focal sobre código cambiado es comprobación de la corrección, no retry oculto; conservar asserts applied/exactitud/scope y registrar duración de callbacks solo como diagnóstico, no como benchmark general.

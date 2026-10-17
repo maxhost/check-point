@@ -202,7 +202,7 @@ borra el de otro.
 
 - Gastos intenta procesar sus entregas al confirmar alta, edición o borrado, después del commit y sin esperar
   su finalización para responder, como la aceleración de POS. El intento se acota a su comercio autenticado,
-  `expense.recorded/updated/deleted` y `core.analytics`, con presupuesto de 2 s y lote de hasta 50. Se programa con
+  `expense.recorded/updated/deleted` y `core.analytics`, con presupuesto de 20 s y lote de hasta 50. Se programa con
   `after()` y alternativa segura fuera de contexto Next; un fallo del intento no revierte ni presenta como fallido
   un gasto ya guardado. Persisten entrega, deduplicación y cron de respaldo: no garantiza sincronía ni elimina
   reintentos, y no cambia el requisito de mes cerrado/cobertura para calcular el punto de equilibrio.
