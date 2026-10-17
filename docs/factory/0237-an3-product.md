@@ -1,13 +1,13 @@
 # 0237 — AN-3 producto (B)
 
-Task `analytics-an2-product`, worktree `/private/tmp/checkpass-an2/analytics-an2-product`, rama homónima continuada. Base AN-3 `bebf26c99b42754f7915b392487162b408a51833`; fundamento A integrado por ff-only y factory refresh `6cecd378ab7a2926fc98df2206d1ce08a58058de`. **Fuente B congelada `24da3203`**, checkpoint revisable, sin atribuir QA PASS ni Neon todavía. Spec/contrato con aclaración owner `f7c81e5b`: hábito por cuatro fechas locales distintas.
+Task `analytics-an2-product`, worktree `/private/tmp/checkpass-an2/analytics-an2-product`, rama homónima continuada. Base AN-3 `bebf26c99b42754f7915b392487162b408a51833`; fundamento A integrado por ff-only y factory refresh `6cecd378ab7a2926fc98df2206d1ce08a58058de`. **Fuente B congelada `f30ed877`** (implementación inicial `24da3203`, corrección11 posterior), checkpoint revisable, sin atribuir QA PASS ni Neon todavía. Spec/contrato con aclaración owner `f7c81e5b`: hábito por cuatro fechas locales distintas.
 
 ## Implementación y contratos
 
 Tarjetas 10/11/12 agregadas sin cambiar las tarjetas AN-1/2. Histórico aditivo `customers: { count, visits, returning }` y `promos: [{ id, label, discountMinor, salesMinor, costMinor }]` en el HTTP existente de histórico, conservando períodos/local/tenant y bloques anteriores. Clientes cuenta personas distintas del período; visits conserva todas las operaciones; returning identifica clientes con visita anterior al inicio del período en el mismo alcance de local. Promos muestra descuentos y ventas de los mismos tickets, sin atribución causal. `costMinor` es null sin costo de premio capturado; cero explícito sigue siendo cero. No FX.
 
 - **10:** mínimo28 días desde la primera venta del local; últimos7 días completos contra ocho ventanas previas disjuntas de7 días, incluidos ceros. Cuenta estrictamente mayor que `max(3, media+2*desvío poblacional)`; importe exacto cargado en anulados del local. Acción genérica `view_voided_orders` declarada por A, sin nombres/imports de módulos en core.
-- **11:** ≥4 fechas locales distintas por cliente/local. Múltiples operaciones del mismo día conservan sus cantidades y dinero, pero forman un solo día para hábito e intervalos. Última fecha hasta90 días inclusive; ausencia estrictamente mayor a2 medianas y ≥mediana+7. Impacto estimado = suma exacta de importes / días visitados × días esperados perdidos del mes actual. Los días esperados se cuentan sobre la cadencia desde la última fecha, dentro del mes y hasta hoy; el redondeo monetario ocurre solo al final. Si falta algún importe, no se promete monto. La pausa por mediana0 quedó resuelta por owner mediante el mínimo de cuatro fechas distintas; no hay división por0.
+- **11:** ≥4 fechas locales distintas por cliente del comercio, uniendo todos sus locales. Múltiples operaciones del mismo día, incluso en locales distintos, conservan sus cantidades y dinero, pero forman un solo día para hábito e intervalos. La última visita se toma de cualquier local; tarjeta11 tiene locationId null y sujeto único del cliente. Última fecha hasta90 días inclusive; ausencia estrictamente mayor a2 medianas y ≥mediana+7. Impacto estimado = suma exacta de importes / días visitados × días esperados perdidos del mes actual. Los días esperados se cuentan sobre la cadencia desde la última fecha, dentro del mes y hasta hoy; el redondeo monetario ocurre solo al final. Si falta algún importe, no se promete monto. La pausa por mediana0 quedó resuelta por owner mediante el mínimo de cuatro fechas distintas; no hay división por0.
 - **12:** snapshot vigente versionado por capturedAt/eventId, evaluado al día siguiente del menor endsAt/endedAt. Las tres fechas de campaña se convierten en SQL a día local del negocio antes de entrar al dominio. Draft no produce resultados. Solo métricas de campaña desde su inicio hasta el fin local inclusive. Descuentos cero son datos válidos. El texto separa asociación de causalidad.
 
 Coeficientes que §7 no fija: urgencia10=0,8,11=0,7,12=0,6. Usan p monetario común; cuando11 no puede estimar importe y cuando12 tiene descuento cero se usa p fijo1. Fingerprints/materialidad/novedad, aceptación/descarte, tope5 y umbral0,05 comunes permanecen vigentes.
@@ -20,14 +20,14 @@ Nuevo contrato `GET /api/customers/analytics/:id`: sesión/membresía y permiso 
 
 ## Evidencia focal antes de DB
 
-Node24.20.0. Fuente funcional24da3203 sobre6cecd378. Sin push/deploy/PROD, verify global, benchmark, mutaciones, kit/guardias/CSS ni cambios en índices/estados comunes.
+Node24.20.0. Fuente funcionalf30ed877 sobre6cecd378. Sin push/deploy/PROD, verify global, benchmark, mutaciones, kit/guardias/CSS ni cambios en índices/estados comunes.
 
-- **33 unit PASS**:8AN-3 y25 previas (22dominio+3acciones), `/private/tmp/an3-product-unit.log`.
-- **Typecheck merchant PASS**, `/private/tmp/an3-product-types2.log`.
-- **ESLint focal PASS**, `/private/tmp/an3-product-lint2.log`.
+- **34 unit PASS**:9AN-3 y25 previas (22dominio+3acciones), `/private/tmp/an3-product-unit-business.log`; incluye4fechas repartidas en locales, importes de varias operaciones/mismo día, ausencia25d y visita ayer en otro local sin aviso. El checkpoint inicial tuvo33PASS, supersedido por esta cobertura.
+- **Typecheck merchant PASS**, `/private/tmp/an3-product-types-business.log`.
+- **ESLint focal PASS**, `/private/tmp/an3-product-lint2.log`; corrección11 PASS en `/private/tmp/an3-product-lint-business.log`.
 - **UIguard PASS**,2archivos sin aumentos contra6cecd378, `/private/tmp/an3-product-uiguard.log`.
 - Detector Impeccable `[]`; skill aplicada como extensión de interfaz existente. Inspección visual proporcional móvil390/escritorio1280 de histórico e inbox.
-- **Browser histórico2/2 PASS** (`/private/tmp/an3-product-browser.log`; posteriormente ambos volvieron a pasar en browser2) e **inbox2/2 PASS** (`/private/tmp/an3-product-browser-inbox.log`), sin retries. Histórico cambia período/local, cuenta todas operaciones y muestra vacíos honestos; inbox muestra10/11/12, descarta10 y acepta11 navegando al pseudónimo específico. Harness de componentes con kit/nav/CSS reales y HTTP simulado; **no smoke de app real**. Últimas capturas conservadas `test-results/analytics-an3/inbox-{390,1280}.png`; la selección posterior de inbox limpia capturas históricas del outputDir.
+- **Browser histórico2/2 PASS** (`/private/tmp/an3-product-browser.log`; posteriormente ambos volvieron a pasar en browser2) e **inbox2/2 PASS** (`/private/tmp/an3-product-browser-business.log`, posterior al fix11 y copy aprobado), sin retries. Histórico cambia período/local, cuenta todas operaciones y muestra vacíos honestos; inbox muestra10/11/12, descarta10 y acepta11 navegando al pseudónimo específico. Harness de componentes con kit/nav/CSS reales y HTTP simulado; **no smoke de app real**. Últimas capturas conservadas `test-results/analytics-an3/inbox-{390,1280}.png`; la selección posterior de inbox limpia capturas históricas del outputDir.
 
 Fallos reales preservados: arranque Chromium en sandbox falló por MachPort; escalación autorizada resolvió el entorno. La primera ejecución añadida de inbox falló por import dinámico Playwright/CommonJS (`exports is not defined`); se cambió a import estático del mismo dominio y se ejecutaron únicamente los dos casos afectados,2PASS sin retries. Typecheck detectó inicialmente dimensionKind ausente en fixture Neon; corregido sin cambiar producto. Un intento de lectura de captura histórica tras la selección inbox no la encontró porque Playwright limpia outputDir; no se presenta como evidencia nueva.
 
@@ -48,5 +48,7 @@ La DB sigue exclusiva de A; B no ha ejecutado DB. Preparados cuatro casos en `cu
 ```
 NEON_TEST_ENV_FILE=/private/tmp/checkpass-0237/migration.env tools/neon-test.sh src/server/analytics/evaluation/customer-promo.neon.integration.test.ts --no-file-parallelism
 ```
+
+Revisión coordinador detectó el defecto de agrupación11 por local en24da3203: podía avisar ausencia aunque el cliente había visitado otro local. Corregido enf30ed877, con copia «Juan solía venir cada12 días. Su última visita fue hace25 días.»; historial mantiene filtros/locales. QA avisado de la nueva fuente.
 
 No se declara PASS de esos cuatro casos ni QA independiente. No procesos B activos al congelar. Siguiente paso: revisión QA por blobs y turno DB; corregir defectos propios si aparecen y congelar revisión final antes de entrega factory.
