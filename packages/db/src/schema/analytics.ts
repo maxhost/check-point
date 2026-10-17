@@ -80,6 +80,20 @@ export const analyticsDailyMetrics = analytics.table(
       )
       .nullsNotDistinct(),
     index("analytics_daily_metric_day_idx").on(t.businessId, t.day),
+    index("analytics_daily_metric_account_idx")
+      .on(
+        t.businessId,
+        t.metric,
+        t.day,
+        t.locationId,
+        t.dimensionKind,
+        t.dimensionId,
+        t.currencyCode,
+        t.minorUnit,
+        t.amountMinor,
+        t.count,
+      )
+      .where(sql`${t.metric} in ('revenue','expense_fixed','expense_variable')`),
   ],
 );
 export const analyticsDimensionLabels = analytics.table(

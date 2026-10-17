@@ -152,5 +152,6 @@ CREATE UNIQUE INDEX "analytics_city_key_unique" ON "analytics"."city" USING btre
 CREATE UNIQUE INDEX "analytics_weather_unique" ON "analytics"."weather" USING btree ("city_id","day","type","source");--> statement-breakpoint
 CREATE UNIQUE INDEX "analytics_card_candidate_unique" ON "analytics"."card_candidate" USING btree ("business_id","day","card_key","subject_key");--> statement-breakpoint
 CREATE INDEX "analytics_daily_metric_day_idx" ON "analytics"."daily_metric" USING btree ("business_id","day");--> statement-breakpoint
+CREATE INDEX "analytics_daily_metric_account_idx" ON "analytics"."daily_metric" USING btree ("business_id","metric","day","location_id","dimension_kind","dimension_id","currency_code","minor_unit","amount_minor","count") WHERE "analytics"."daily_metric"."metric" in ('revenue','expense_fixed','expense_variable');--> statement-breakpoint
 CREATE INDEX "analytics_contribution_source_idx" ON "analytics"."metric_contribution" USING btree ("business_id","source_key");--> statement-breakpoint
 ALTER TABLE "core"."location" ADD CONSTRAINT "location_city_id_city_id_fk" FOREIGN KEY ("city_id") REFERENCES "analytics"."city"("id") ON DELETE no action ON UPDATE no action;
