@@ -134,19 +134,26 @@ if [ "$RELATED" -eq 1 ]; then
   NEON_INTEGRATION_DATABASE_URL="$CI_POOLED" NEON_INTEGRATION_ISOLATED=true \
     pnpm --filter "@mi-pasaporte/$APP" exec vitest related --run "$@"
 elif [ "$#" -eq 0 ]; then
-  # Las pruebas de migracion retroceden/aplican DDL dentro de transacciones.
-  # No pueden convivir con los teardowns que borran negocios: la 0079 causo
-  # deadlocks reales en POS. Mantener el resto paralelo y aislar solo estas.
-  migration_tests=()
-  while IFS= read -r migration_test; do
-    migration_tests+=("$migration_test")
-  done < <(git ls-files '*migration*.neon.integration.test.ts')
+  # Global DDL and failure-injection triggers must not overlap other suites or teardown.
+  # The same patterns select the serial phase and exclude it from the parallel phase.
+  isolated_patterns=(
+    '**/*migration*.neon.integration.test.ts'
+    '**/business-failures.neon.integration.test.ts'
+  )
+  isolated_tests=()
+  while IFS= read -r isolated_test; do
+    isolated_tests+=("$isolated_test")
+  done < <(git ls-files "${isolated_patterns[@]}")
+  exclude_args=()
+  for pattern in "${isolated_patterns[@]}"; do
+    exclude_args+=(--exclude "$pattern")
+  done
   NEON_INTEGRATION_DATABASE_URL="$CI_POOLED" NEON_INTEGRATION_ISOLATED=true \
-    pnpm exec vitest run --exclude '**/*migration*.neon.integration.test.ts'
-  if [ "${#migration_tests[@]}" -gt 0 ]; then
-    echo "→ pruebas de migracion aisladas (sin otros writers de DB)"
+    pnpm exec vitest run "${exclude_args[@]}"
+  if [ "${#isolated_tests[@]}" -gt 0 ]; then
+    echo "→ pruebas con DDL global aisladas (sin otros writers de DB)"
     NEON_INTEGRATION_DATABASE_URL="$CI_POOLED" NEON_INTEGRATION_ISOLATED=true \
-      pnpm exec vitest run "${migration_tests[@]}" --no-file-parallelism
+      pnpm exec vitest run "${isolated_tests[@]}" --no-file-parallelism
   fi
 else
   NEON_INTEGRATION_DATABASE_URL="$CI_POOLED" NEON_INTEGRATION_ISOLATED=true \

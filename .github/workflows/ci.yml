@@ -49,20 +49,27 @@ jobs:
             echo "::error::NEON_CI_CONSUMER_DATABASE_URL ausente: el oraculo del rol del cliente no correria"
             exit 1
           fi
-      # La rama de CI nace de `main` y se queda atras cuando llega una migracion nueva:
-      # drizzle-kit aplica solo las pendientes (idempotente), asi que se corre siempre.
-      - name: Migrar la rama Neon de CI
-        env:
-          DATABASE_URL_UNPOOLED: ${{ secrets.NEON_CI_DATABASE_URL_UNPOOLED }}
-        run: pnpm db:migrate
+      # One wrapper owns migration, the anti-PROD interlock and global-DDL isolation.
       - name: Unit + integracion Neon
         env:
-          NEON_INTEGRATION_DATABASE_URL: ${{ secrets.NEON_CI_DATABASE_URL }}
-          NEON_INTEGRATION_CONSUMER_DATABASE_URL: ${{ secrets.NEON_CI_CONSUMER_DATABASE_URL }}
-          # Interlock deliberado del repo: sin `true` explicito, los tests no apuntan a
-          # ninguna base aunque tengan la URL. Evita correrlos contra prod por accidente.
-          NEON_INTEGRATION_ISOLATED: "true"
-        run: pnpm test
+          NEON_CI_DATABASE_URL: ${{ secrets.NEON_CI_DATABASE_URL }}
+          NEON_CI_DATABASE_URL_UNPOOLED: ${{ secrets.NEON_CI_DATABASE_URL_UNPOOLED }}
+          NEON_CI_CONSUMER_DATABASE_URL: ${{ secrets.NEON_CI_CONSUMER_DATABASE_URL }}
+        run: |
+          umask 077
+          export NEON_TEST_ENV_FILE="$(mktemp "${RUNNER_TEMP}/checkpass-neon-ci.XXXXXX")"
+          trap 'rm -f "$NEON_TEST_ENV_FILE"' EXIT
+          node --input-type=module <<'NODE'
+          import { writeFileSync } from "node:fs";
+          const keys = ["NEON_CI_DATABASE_URL", "NEON_CI_DATABASE_URL_UNPOOLED", "NEON_CI_CONSUMER_DATABASE_URL"];
+          const lines = keys.map((key) => {
+            const value = process.env[key];
+            if (!value || /[\r\n]/.test(value)) throw new Error(`${key} ausente o inválida`);
+            return `${key}=${value}`;
+          });
+          writeFileSync(process.env.NEON_TEST_ENV_FILE, lines.join("\n") + "\n", { mode: 0o600 });
+          NODE
+          tools/neon-test.sh
       # Los browsers NO vienen con `pnpm install`: el paquete @playwright/test trae la
       # libreria, los binarios se bajan aparte a ~/.cache/ms-playwright, vacio en un
       # runner limpio (spec 0048). Solo chromium: playwright.config.ts no declara

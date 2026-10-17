@@ -619,39 +619,89 @@ run("0227 durable consumption and count cut", { timeout: 60000 }, () => {
     );
     const e = await publish(1);
     let completed = 0;
-    handler = async (tx) => {
-      for (let step = 0; step < 10; step++) {
-        await tx.execute(sql`select pg_sleep(0.1)`);
+    let insertedMovementId: string | undefined;
+    handler = async (tx, event) => {
+      const [movement] = await tx
+        .insert(stockMovements)
+        .values({
+          businessId: world.businessId,
+          itemId,
+          locationId: world.locationId,
+          kind: "consumption",
+          quantity: "-1.000",
+          sourceOrderId: e.order,
+          sourceLineId: event.payload.lines[0].sourceLineId,
+          productId: event.payload.lines[0].productId!,
+          occurredAt: new Date(event.payload.closedAt),
+          createdByUserId: world.ownerId,
+        })
+        .returning({ id: stockMovements.id });
+      insertedMovementId = movement.id;
+      completed++;
+      // 9 × 0.3s exceeds 2s on the server alone, independent of network RTT.
+      for (let step = 1; step < 10; step++) {
+        await tx.execute(sql`select pg_sleep(0.3)`);
         completed++;
       }
     };
-    const started = Date.now();
-    const result = await retryModuleEvents({
-      businessId: world.businessId,
-      eventIds: [e.eventId],
-      budgetMs: 2000,
-      force: true,
-    });
-    expect(Date.now() - started).toBeLessThan(2500);
-    expect(completed).toBeGreaterThanOrEqual(1);
-    expect(completed).toBeLessThan(10);
-    expect(result.failed).toBe(1);
-    expect(result.applied).toBe(0);
-    expect(
-      await getDb()
+    try {
+      const started = Date.now();
+      const result = await retryModuleEvents({
+        businessId: world.businessId,
+        eventIds: [e.eventId],
+        budgetMs: 2000,
+        force: true,
+      });
+      const elapsedMs = Date.now() - started;
+      console.info("stock-retry-budget", {
+        elapsedMs,
+        completed,
+        insertedBeforeTimeout: Boolean(insertedMovementId),
+        result,
+      });
+      expect(elapsedMs).toBeLessThan(2500);
+      expect(completed).toBeGreaterThanOrEqual(1);
+      expect(completed).toBeLessThan(10);
+      expect(insertedMovementId).toBeDefined();
+      expect(result.failed).toBe(1);
+      expect(result.applied).toBe(0);
+      expect(
+        await getDb()
+          .select()
+          .from(stockMovements)
+          .where(eq(stockMovements.sourceOrderId, e.order)),
+      ).toHaveLength(0);
+      const [delivery] = await getDb()
         .select()
-        .from(stockMovements)
-        .where(eq(stockMovements.sourceOrderId, e.order)),
-    ).toHaveLength(0);
-    resetHandler();
-    await getDb()
-      .update(moduleEventDeliveries)
-      .set({ state: "pending", claimToken: null, claimUntil: null })
-      .where(eq(moduleEventDeliveries.eventId, e.eventId));
-    await retryModuleEvents({
-      businessId: world.businessId,
-      eventIds: [e.eventId],
-      force: true,
-    });
+        .from(moduleEventDeliveries)
+        .where(
+          and(
+            eq(moduleEventDeliveries.eventId, e.eventId),
+            eq(moduleEventDeliveries.subscriberId, subscriber),
+          ),
+        );
+      expect(delivery.state).not.toBe("applied");
+      resetHandler();
+      await getDb()
+        .update(moduleEventDeliveries)
+        .set({ state: "pending", claimToken: null, claimUntil: null })
+        .where(
+          and(
+            eq(moduleEventDeliveries.eventId, e.eventId),
+            eq(moduleEventDeliveries.subscriberId, subscriber),
+          ),
+        );
+      expect(
+        (
+          await retryModuleEvents({
+            businessId: world.businessId,
+            eventIds: [e.eventId],
+            force: true,
+          })
+        ).applied,
+      ).toBe(1);
+    } finally {
+      resetHandler();
+    }
   });
 });
