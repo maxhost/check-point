@@ -248,7 +248,7 @@ describe.runIf(enabled)(
                 ),
               ),
             )
-        )[0].amountMinor,
+        ).find((row) => row.metric === "cost_of_goods")?.amountMinor,
       ).toBe(200n);
       expect(
         await getDb()
