@@ -11,26 +11,23 @@
 
 
 
-## ⇥ ESTADO (2026-10-16) — GASTOS/NEGOCIO/ANALÍTICAS REDISEÑADOS CON EL OWNER; EVENTOS ENCENDIDOS EN PROD
+## ⇥ ESTADO (2026-10-16, noche) — G CERRADA; SIGUE DISEÑAR ANALÍTICAS (AN) CON EL OWNER
 
 **Sesión de diseño, sin código de producto de Claude.** Fuente de verdad: **`docs/plan-margen-ganancia-2026-10-14.md`**
-→ tabla de etapas (filas EV, N, G, AN nuevas) y secciones «F rediseñada — Gastos, Medios y Analíticas», «Revisión de la
-0231», «Decisiones del owner sobre la revisión», prompts de encendido y de Negocio (0235/0150).
+→ tabla de etapas (al día), «Preguntas de G — respuestas del owner», «AN — visión del owner», «Prompt — Gastos».
 
-**Hecho y verificado:**
-- **EV:** `MODULE_EVENTS_ENABLED` encendido en PROD (GPT + owner). `origin/main` = `5b834ca0` (incluye fix retry Stock
-  `036615c0`). SQL de solo lectura en PROD (autorizado por el owner): 1 `sale.closed` v2, 2 entregas, venta de prueba
-  en F5 (comercio de prueba del owner). Cron de reintentos cada 1 h.
-- **N:** GPT escribió spec 0235 + ADR 0150 (`209f5937`). Claude NO los revisó todavía.
+**Próxima sesión: diseñar AN juntos con el owner** (él lo pidió; «no será tan simple como crees»). Analíticas como
+base expansible por rubro (odontólogo, cafetería, barbero, taller…): lo que el dueño abre cada mañana — «hoy espero
+que suceda esto, necesito preparar esto, tengo que lograr esto antes de esto». Antecedente: ADR 0021. Leer la sección
+«AN — visión del owner» del plan antes de proponer nada; las 3 preguntas abiertas están ahí.
 
-**Decisiones del owner (2026-10-15/16, en el plan):** módulo «Rentabilidad» → **Gastos** (`expenses`), solo gastos,
-criterio de caja, sueldos como nombre libre, tablas nuevas (se borra la 0231). Medios de pago → **core**, espacio
-**«Negocio»** (con Regional y Fiscal, mudados de Marca; permiso `business`). Toda la info → **Analíticas core** (opción
-C: resúmenes por día). Menú sin agrupar hasta tener 2–3 rubros. Orden: N → G → AN, en serie.
+**Hecho y verificado (git, 2026-10-16):** 0, 1.1, 1.2, 2, R1, 1.3, P1, EV en PROD (`origin/main` `5b834ca0`). **N**
+(spec 0235) implementada local por GPT, QA PASS, en `main` local `e2cd4544`, sin push ni migración PROD; GPT arregla
+el CI rojo de `origin/main` y prepara el retiro de compatibilidad (`docs/estado/gpt.md`). S1/S2 fuera de la tabla.
 
-**Qué sigue:** revisar 0235/0150 contra las respuestas del owner; implementación de N (GPT); prompt de G; ADR de AN.
-Abiertos: 1.3-B (costo en ficha de Catálogo), 6 (merma), estimar recurrentes en Gastos (sugerencia de Claude sin
-confirmar). Spec 0231 sigue con `estado: cerrada`.
+**Orden:** N → ADR de AN (con el owner) → G (prompt escrito; revisarlo contra el ADR de AN: decisión 13 y
+`module_event`) → AN → Smart Menu → 6. Commits de esta sesión: `1c0081fb`, `1c49279a`, `b68168a4`, `1300a07b`,
+`61140bc7`.
 
-**Gotchas:** F5 Futbol Evolution es del owner (prueba en PROD). Maduro de F5 sin costo (Bolón con Seco sale
-«incompleto»). No se puede anular una venta cobrada. Escribir en PROD solo por la app, nunca por SQL.
+**Gotchas:** F5 Futbol Evolution es del owner (prueba en PROD). No se puede anular una venta cobrada. Escribir en PROD
+solo por la app, nunca por SQL.
