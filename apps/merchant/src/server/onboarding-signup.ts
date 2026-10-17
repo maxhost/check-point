@@ -1,4 +1,3 @@
-import { paymentStorageReady } from "./business/storage";
 import { initializePaymentMethods } from "./business/payment-catalog";
 import { randomUUID } from "node:crypto";
 import { withDbTransaction } from "@mi-pasaporte/db";
@@ -151,8 +150,7 @@ export async function createOwnerWithBusiness(input: {
       }),
     ];
     for (const operation of operations) await operation;
-    if (await paymentStorageReady(db))
-      await initializePaymentMethods(db, { businessId });
+    await initializePaymentMethods(db, { businessId });
     return { userId: owner.userId, businessId, slug };
   });
 }

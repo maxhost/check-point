@@ -46,7 +46,6 @@ export async function publishSaleClosed(
     businessId: string;
     settlement?: FinancialSettlement;
     capture?: ResourceCapture;
-    coreCommission?: boolean;
     paymentsMetadata?: readonly PaymentMetadata[];
     sourceOrderId: string;
     locationId: string;
@@ -174,12 +173,6 @@ export async function publishSaleClosed(
   for (const [subscriberId, server] of Object.entries(SERVER_MODULES))
     for (const subscription of server.eventSubscriptions ?? []) {
       if (subscription.eventType !== "sale.closed") continue;
-      if (
-        args.coreCommission &&
-        subscription.resourceType === "payment_method" &&
-        subscription.slot === "commission"
-      )
-        continue;
       const eligible = [subscriberId, ...subscription.requiredModules].every(
         (id) => row.enabled.includes(id),
       );

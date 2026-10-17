@@ -5,7 +5,6 @@ import { and, eq } from "drizzle-orm";
 import {
   businessModules,
   businesses,
-  moduleEvents,
   moduleResourceVersions,
   paymentMethodCatalog,
   paymentMethods,
@@ -28,7 +27,6 @@ import {
   publishSaleClosed,
   retryModuleEvents,
   setResourceVersion,
-  type SaleClosedEvent,
 } from "../server/module-events";
 import {
   saveCommission,
@@ -41,7 +39,8 @@ const readSaleCommissions = (
   location: unknown,
 ) => readCoreSaleCommissions(businessId, id, location, "pos");
 import { businessHttp } from "../server/business/http";
-import { commissionSubscriptions } from "./profitability/server/commissions/apply";
+import { freezeSaleCommission } from "../server/business/commission-close";
+import { captureSaleResources } from "../server/module-events/publish";
 let world: ModuleWorld, other: ModuleWorld;
 const providerId = "core",
   registry = SERVER_MODULES as Record<string, ModuleServer>,
@@ -91,14 +90,6 @@ beforeAll(async () => {
     routes: [],
     resourceProviders: [
       {
-        resourceType: "payment_method",
-        list: async (_tx, businessId) => methods.get(businessId) ?? [],
-        read: async (_tx, businessId, ids) =>
-          (methods.get(businessId) ?? []).filter((r) =>
-            ids.includes(r.resourceId),
-          ),
-      },
-      {
         resourceType: "sale_settlement",
         read: async (_tx, businessId, ids) =>
           ids.flatMap((id) => {
@@ -129,30 +120,49 @@ async function sale(
     discount: null,
     payments: payments.map((p) => ({ ...p, paymentId: randomUUID() })),
   });
-  const event = await withDbTransaction((tx) =>
-    publishSaleClosed(tx, {
+  const event = await withDbTransaction(async (tx) => {
+    const lines = [{ sourceLineId, productId: null, quantity: 1 }];
+    const paymentsMetadata = settlement.payments.map((p) => {
+      const method = methods
+        .get(world.businessId)!
+        .find((m) => m.resourceId === p.methodId)!;
+      return {
+        paymentId: p.paymentId,
+        methodId: p.methodId,
+        methodProviderId: providerId,
+        methodName: String(method.metadata.name),
+        chargeShape: method.metadata.chargeShape as
+          "none" | "percent" | "fixed" | "percent_and_fixed",
+      };
+    });
+    const capture = await captureSaleResources(tx, {
+      businessId: world.businessId,
+      settlement,
+      lines,
+    });
+    const event = await publishSaleClosed(tx, {
       businessId: world.businessId,
       sourceOrderId,
       locationId: world.locationId,
       closedAt: new Date(),
       userId: world.ownerId,
-      lines: [{ sourceLineId, productId: null, quantity: 1 }],
+      lines,
       settlement,
-      paymentsMetadata: settlement.payments.map((p) => {
-        const method = methods
-          .get(world.businessId)!
-          .find((m) => m.resourceId === p.methodId)!;
-        return {
-          paymentId: p.paymentId,
-          methodId: p.methodId,
-          methodProviderId: providerId,
-          methodName: String(method.metadata.name),
-          chargeShape: method.metadata.chargeShape as
-            "none" | "percent" | "fixed" | "percent_and_fixed",
-        };
-      }),
-    }),
-  );
+      paymentsMetadata,
+      capture,
+    });
+    await freezeSaleCommission(tx, {
+      businessId: world.businessId,
+      sourceProviderId: "pos",
+      sourceOrderId,
+      locationId: world.locationId,
+      settlement,
+      paymentsMetadata,
+      capture,
+      eventId: event?.eventId ?? null,
+    });
+    return event;
+  });
   return { sourceOrderId, eventId: event?.eventId };
 }
 const drain = (eventId: string) =>
@@ -237,11 +247,7 @@ describe.skipIf(!modulesIntegrationEnabled)(
         percent: "50",
         fixed: "1.00",
       });
-      expect(await read(closed.sourceOrderId)).toMatchObject({
-        state: "pendiente",
-        total: null,
-      });
-      expect((await drain(closed.eventId!)).applied).toBe(1);
+      expect((await drain(closed.eventId!)).applied).toBe(0);
       expect(await read(closed.sourceOrderId)).toMatchObject({
         state: "completo",
         total: "0.33",
@@ -249,17 +255,7 @@ describe.skipIf(!modulesIntegrationEnabled)(
       });
       const before = await rows(closed.eventId!);
       expect(before[0].commissionRevisionId).toBe(configured.revisionId);
-      const [event] = await getDb()
-        .select()
-        .from(moduleEvents)
-        .where(eq(moduleEvents.id, closed.eventId!));
-      await withDbTransaction((tx) =>
-        commissionSubscriptions[0].handler(tx, {
-          id: event.id,
-          businessId: world.businessId,
-          payload: event.payload as SaleClosedEvent,
-        }),
-      );
+      expect((await drain(closed.eventId!)).applied).toBe(0);
       expect(await rows(closed.eventId!)).toEqual(before);
       await expect(
         getDb()
@@ -291,7 +287,7 @@ describe.skipIf(!modulesIntegrationEnabled)(
         { methodId: methodIds.fixed, amount: "4.00" },
         { methodId: methodIds.mixed, amount: "5.00" },
       ]);
-      expect((await drain(closed.eventId!)).applied).toBe(1);
+      expect((await drain(closed.eventId!)).applied).toBe(0);
       expect(await read(closed.sourceOrderId)).toMatchObject({
         state: "incompleto",
         total: "0.40",
@@ -317,7 +313,7 @@ describe.skipIf(!modulesIntegrationEnabled)(
         expectedRevisionId: null,
         percent: "10",
       });
-      expect((await drain(absent.eventId!)).applied).toBe(1);
+      expect((await drain(absent.eventId!)).applied).toBe(0);
       expect(await read(absent.sourceOrderId)).toMatchObject({
         state: "incompleto",
         total: "0.00",
@@ -366,7 +362,7 @@ describe.skipIf(!modulesIntegrationEnabled)(
       });
       expect(await read(closed.sourceOrderId)).toMatchObject({ total: null });
     }, 40000);
-    it("disabled positive close stays without data; explicit zero needs no handler or tariff", async () => {
+    it("disabling the former commission module cannot disable core results or explicit zero", async () => {
       await getDb()
         .update(businessModules)
         .set({ enabled: false })
@@ -380,9 +376,9 @@ describe.skipIf(!modulesIntegrationEnabled)(
         { methodId: methodIds.none, amount: "9.00" },
       ]);
       expect(await read(positive.sourceOrderId)).toMatchObject({
-        state: "incompleto",
-        total: null,
-        reasons: ["commission_module_disabled"],
+        state: "completo",
+        total: "0.00",
+        reasons: [],
       });
       const zero = await sale([], "0.00");
       expect(await read(zero.sourceOrderId)).toMatchObject({
@@ -392,7 +388,9 @@ describe.skipIf(!modulesIntegrationEnabled)(
       });
       await enableModules(world, ["profitability"]);
       await drain(positive.eventId!);
-      expect(await read(positive.sourceOrderId)).toMatchObject({ total: null });
+      expect(await read(positive.sourceOrderId)).toMatchObject({
+        total: "0.00",
+      });
     }, 30000);
     it("without event only a persisted canonical zero can supply known zero", async () => {
       const id = randomUUID(),
@@ -425,13 +423,13 @@ describe.skipIf(!modulesIntegrationEnabled)(
         readSaleCommissions(world.businessId, id, other.locationId),
       ).rejects.toMatchObject({ status: 404 });
     }, 25000);
-    it("a bad later captured reference rolls back every payment snapshot and acknowledgment", async () => {
+    it("a bad captured reference commits a marked result and creates no asynchronous obligation", async () => {
       await withDbTransaction((tx) =>
         setResourceVersion(tx, {
           businessId: world.businessId,
           resourceType: "payment_method",
           resourceId: methodIds.fixed,
-          providerId: "profitability",
+          providerId: "core",
           slot: "commission",
           versionId: randomUUID(),
         }),
@@ -440,12 +438,15 @@ describe.skipIf(!modulesIntegrationEnabled)(
         { methodId: methodIds.none, amount: "4.00" },
         { methodId: methodIds.fixed, amount: "5.00" },
       ]);
-      expect((await drain(closed.eventId!)).failed).toBe(1);
-      expect(await rows(closed.eventId!)).toEqual([]);
+      expect(await drain(closed.eventId!)).toMatchObject({
+        failed: 0,
+        applied: 0,
+      });
+      expect(await rows(closed.eventId!)).toHaveLength(2);
       expect(await read(closed.sourceOrderId)).toMatchObject({
-        state: "pendiente",
+        state: "incompleto",
         total: null,
-        reasons: ["application_failed"],
+        reasons: ["commission_configuration_invalid"],
       });
     }, 30000);
     it("onEnable shares rollback with activation and is not rerun by idempotent enable", async () => {
