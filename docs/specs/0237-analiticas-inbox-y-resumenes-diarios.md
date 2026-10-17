@@ -18,7 +18,7 @@ Decisiones citadas: `docs/plan-margen-ganancia-2026-10-14.md`, secciones «AN �
 **Revisión posterior a AN-1/AN-2/AN-3 (owner, 2026-10-17):** se aprueban avisos persistentes, cierre explícito,
 postergación y retención de 90 días/semanal de §3.7–§3.10. Sustituyen la copia diaria y «aceptar = navegar» del corte
 original. La funcionalidad integrada anterior conserva sus handoffs y sus límites; esta revisión todavía no está
-implementada. El catálogo §3.8 tiene dos aclaraciones consultadas al owner; mientras figuren pendientes no se lanza
+implementada. El catálogo §3.8 y los recordatorios tienen tres aclaraciones consultadas al owner; mientras figuren pendientes no se lanza
 código. [Contrato de implementación](../factory/0237-inbox-lifecycle-contract.md),
 [adversarial](../factory/0237-inbox-lifecycle-adversarial.md).
 
@@ -239,6 +239,11 @@ alimentan**: sin POS no hay ventas, sin Recetas no hay costo; Analíticas lo dic
 
 #### 3.2 Peso, novedad y tope
 
+**Pendiente del owner:** al vencer un recordatorio, renovar la novedad para recuperar elegibilidad o mantener el
+decaimiento anterior. QA detectó que una informativa con peso base 0,1 y dos exposiciones puede quedar en
+0,036, bajo el mínimo 0,05, aunque el usuario haya elegido volver a verla. Revisión detenida hasta respuesta;
+no implementar una política implícita.
+
 `packages/domain/src/analytics/weights.ts` mantiene los coeficientes y dinero exacto:
 
 - Plata `p = min(3,monto en juego / venta diaria promedio de 28 días)`; sin ventas, referencia de 20 unidades mayores de
@@ -297,13 +302,15 @@ totales; las métricas auxiliares no vuelven a sumarse allí.
 #### 3.5 HTTP (core)
 
 Contrato v2 del inbox, sin flag ni variable de entorno. `id` persistente identifica la tarjeta; `version` opaca
-identifica el contexto que vio el usuario. Las decisiones envían `{ expectedVersion, operationId }`; posponer añade
+identifica el contexto y la revisión de decisión/recordatorio que vio el usuario; cambiar estado o remindAt
+invalida comandos anteriores, aunque los datos de negocio coincidan. Una lectura/exposición no cambia esa revisión
+por sí sola. Las decisiones envían `{ expectedVersion, operationId }`; posponer añade
 `remindAt`, ISO8601 con zona/offset convertido a instante UTC, futuro válido sin máximo artificial de 90 días. Se
 muestra/elige en zona del comercio, conservando el instante elegido si después cambia la zona.
 
 | Ruta | Contrato |
 |---|---|
-| `GET /api/analytics/inbox` | 200 `{ contractVersion:2,state,preparedAt,nextReminderAt,cards:[{ id,version,cardKey,sender,title,body,period,quality,amountAtStake,action,decisions }] }`. `period` indica origen y se muestra si no corresponde a hoy/ayer. `nextReminderAt` es el próximo recordatorio autorizado del comercio, o null. |
+| `GET /api/analytics/inbox` | 200 `{ contractVersion:2,state,preparedAt,nextReminderAt,cards:[{ id,version,cardKey,sender,title,body,period,quality,amountAtStake,action,decisions }] }`. `period` indica origen y se muestra si no corresponde a hoy/ayer. `nextReminderAt` es el mínimo instante estrictamente futuro de pospuestos vigentes/autorizados, o null; los ya debidos van en cards, no en ese campo. |
 | `POST /api/analytics/inbox/:id/resolve` | Solucionado: 200 `{ cards,nextReminderAt }`, elimina contenido y guarda control/decisión sin afirmar resolución observada. |
 | `POST /api/analytics/inbox/:id/ignore` | Ignorar: mismo cierre técnico, motivo distinto; no cambia stock ni datos de negocio. |
 | `POST /api/analytics/inbox/:id/seen` | Visto para informes; mismo contrato de cierre, permitido según capacidades del tipo. |
@@ -317,8 +324,11 @@ muestra/elige en zona del comercio, conservando el instante elegido si después 
 Todas las rutas públicas mantienen sesión, membresía activa y permiso analytics; comercio derivado del guard,
 nunca del cuerpo/query. ID ajeno o desconocido 404; sin sesión 401/sin permiso 403. Versión presentada obsoleta 409
 `card_context_changed`, sin cerrar datos nuevos no vistos. Fecha de recordatorio inválida/pasada 422. Repetir la
-misma operación sobre el mismo contexto es idempotente, incluso si el contenido ya fue eliminado; otro comando
-sobre una tarjeta ya cerrada no la resucita. Identificar retry con el control compacto, sin tabla nueva de log.
+misma operación ya reconocida es idempotente, incluso sin contenido: devuelve estado actual sin volver a aplicar.
+El control retiene la última operación/digest y la revisión de estado; reutilizar su operationId con otro cuerpo
+no modifica nada y devuelve 409. Un retry antiguo ya sustituido que no se pueda reconocer devuelve 409 por revisión
+obsoleta (o 404 si el ID ya no existe), nunca sobrescribe una postergación/decisión posterior. No se promete guardar
+respuestas de todas las operaciones ni se crea un log. Otro comando sobre una tarjeta cerrada no la resucita.
 
 #### 3.6 UI
 

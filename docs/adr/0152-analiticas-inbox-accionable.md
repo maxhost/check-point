@@ -252,7 +252,7 @@ Esta decisión sustituye las formulaciones anteriores de aceptación/descarte co
 modificar el patrón de eventos del ADR0153 ni el histórico de negocio. La
 [spec0237 §3.7–§3.10](../specs/0237-analiticas-inbox-y-resumenes-diarios.md) contiene reglas y pruebas;
 el [adversarial](../factory/0237-inbox-lifecycle-adversarial.md) requiere resolver el catálogo y la transición del
-legado antes de código. El catálogo mantiene explícitas dos aclaraciones consultadas al owner; no se atribuyen
+legado antes de código. El catálogo y los recordatorios mantienen explícitas tres aclaraciones consultadas al owner; no se atribuyen
 respuestas ni se autoriza implementar con celdas pendientes. Aprobación documental no autoriza PROD ni publicación.
 
 ## Consecuencias

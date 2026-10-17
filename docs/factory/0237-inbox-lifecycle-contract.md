@@ -8,7 +8,7 @@ Coordinador writer único de docs/specs/0237-analiticas-inbox-y-resumenes-diario
 
 ## Cierre de producto antes de lanzar código
 
-Dos aclaraciones se consultaron al owner para que el implementador no elija caducidades ni reavisos: tarjetas informativas/del día al vencer su período (con pospuestos protegidos), y nuevo umbral temporal de la11 tras cierre. Se completará el catálogo con la respuesta; **no anunciar listo para implementar con celdas pendientes**. El resto de reglas aprobadas se documenta y revisa mientras se espera. Ante nueva contradicción material: preguntar y parar.
+Tres aclaraciones se consultaron al owner para que el implementador no elija caducidades ni reavisos: tarjetas informativas/del día al vencer su período (con pospuestos protegidos), y nuevo umbral temporal de la11 tras cierre. Se completará el catálogo con la respuesta; **no anunciar listo para implementar con celdas pendientes**. El resto de reglas aprobadas se documenta y revisa mientras se espera. Ante nueva contradicción material: preguntar y parar.
 
 ## Alcance de implementación futura
 
@@ -58,7 +58,7 @@ Pruebas proporcionales: unit de estado/contexto/orden crítico y bordes temporal
 
 ## Comandos y evidencia de esta fase
 
-Solo documentos, Node24 y comprobaciones proporcionales: diff--check, enlaces/paths relativos, frontmatter coherente, formato de archivos tocados y revisión independiente del catálogo/contrato. No suites de producto, DB, migraciones, servidores ni benchmarks para aprobar texto. Registrar SHAs y límites en docs/factory/0237-inbox-lifecycle-plan-qa.md. No presentar el plan como lanzable hasta cerrar las dos aclaraciones pendientes y el dictamen documental.
+Solo documentos, Node24 y comprobaciones proporcionales: diff--check, enlaces/paths relativos, frontmatter coherente, formato de archivos tocados y revisión independiente del catálogo/contrato. No suites de producto, DB, migraciones, servidores ni benchmarks para aprobar texto. Registrar SHAs y límites en docs/factory/0237-inbox-lifecycle-plan-qa.md. No presentar el plan como lanzable hasta cerrar las tres aclaraciones pendientes y el dictamen documental.
 
 ## Entrega y pruebas focales del agente
 
@@ -69,3 +69,15 @@ DB única de aceptación inicial: NEON_TEST_ENV_FILE=/private/tmp/checkpass-0237
 Comprobaciones locales de autor: unit focales de lifecycle/contextos/selección y HTTP; tipos Merchant y lint de paths tocados; guardia UI vigente comparada con su base congelada; navegador390/1280 con navegación independiente, tres decisiones y recordatorio, sin retries/skips como aprobación. Las pruebas de concurrency/tenant/migración requieren Neon real por wrapper; browser con HTTP simulado no las reemplaza. Las pruebas/fuentes compatibles se reutilizan; no hay verify global ni builds/DB extra por ceremonia.
 
 Cada entrega incluye base/source/delivery SHAs, archivos y contratos finales, logs de pruebas realmente corridas, fallos corregidos, casos no seleccionados, migración/hash, procesos/recursos pendientes y límites. QA entrega no equivale a QA combinación. No declarar solucionado el objetivo de rendimiento ni main/publicación habilitados si solo pasó el ciclo funcional. Handoff final del coordinador docs/factory/0237-inbox-lifecycle-handoff.md.
+
+## Precisiones de concurrencia y recordatorio de la revisión documental
+
+La version opaca incluye el contexto de negocio y la revisión de decisiones/remindAt; no solo el fingerprint de datos. Un retry de snoozeA no puede sobrescribir snoozeB posterior aunque el stock no cambie. El control compacto retiene última operationId, digest y revisión suficientes: retry reconocido retorna resultado actual sin aplicar de nuevo; ID reutilizado con otro comando/cuerpo devuelve409; retry antiguo ya sustituido y no reconocible devuelve409/404 sin efectos. No guardar un log ilimitado para prometer respuestas200 eternas. Lecturas/shownDays no cambian por sí solas la versión de decisión que el cliente acaba de recibir.
+
+nextReminderAt es mínimo estrictamente futuro entre pospuestos vigentes/autorizados. Un recordatorio ya debido se filtra como candidato disponible, nunca devuelve una fecha pasada que vuelva a programar refrescos inmediatos en bucle. Si ninguno queda, null. Añadir pruebas de dos postergaciones/retardo de retry y de recordatorio debido más otro futuro, sin modificar políticas de producto.
+
+## Pausa de revisión documental
+
+QA detectó un tercer punto de producto: un recordatorio vencido puede seguir bajo el mínimo por novedad acumulada. Consultado al owner renovar novedad al vencer, manteniendo ID, tope de cinco y prioridad crítica, o conservar decaimiento. No se presume respuesta. Revisión y ejecución detenidas hasta contestación, junto con las aclaraciones de vigencia y tarjeta 11.
+
+Hallazgos técnicos registrados para retomar después: verificar recuperación intradiaria de stock también con deliveries fuera de orden; actualizar el inventario de rendimiento de la spec con el FAIL de 1817,621042 ms sin borrar los anteriores. Las precisiones CAS e idempotencia ya escritas son borrador pendiente de revisión sobre el próximo SHA.
