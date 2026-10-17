@@ -64,3 +64,21 @@ Se avisó inmediatamente a coordinador, A y QA. No se aumentó el presupuesto de
 2000 ms, cambió expectativa ni ejecutó drenaje posterior/cron/retry para ocultar
 el fallo. Setup y teardown concluyeron sin errores de hooks; el runner terminó.
 El recurso DB continúa reservado hasta la indicación del coordinador.
+
+## Preparación de segundo intento, sin ejecutarlo
+
+El coordinador y QA revisaron el presupuesto técnico que inicialmente se había
+copiado de POS: spec/contrato `d4590f57` ahora fijan el máximo existente de retry,
+**20000 ms**, con respuesta todavía no bloqueante, lote 50 y mismo scope, sin
+force. A cambia producto/unit y maxDuration de la ruta; B no fija el presupuesto
+desde el test ni modifica sus asserts de aplicado/dinero/tenant/corte.
+
+El test añade únicamente diagnóstico `EXPENSE_IMMEDIATE_CALLBACK` por fase:
+create, create-replay, update, delete y delete-replay. Registra tiempo real del
+callback esperado, sin aserción artificial de velocidad, drenaje posterior,
+cron ni retry externo. El FAIL y las fases no ejecutadas de la primera corrida
+se conservan arriba; un eventual resultado nuevo no los sustituye.
+
+Se espera combinación del nuevo producto de A, fuente congelada y GO del
+coordinador antes de tocar DB otra vez. Este checkpoint no tiene nueva evidencia
+Neon ni cambia el resultado de `d93599f7`.
