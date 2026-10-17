@@ -129,3 +129,13 @@ A: agente /root/analytics_performance reutilizado, taskfactory analytics-perform
 A debe entregar checkpoint temprano de tipos/contratos/política/esquema/servicios; B empieza producto solo después de consumir ese SHA mediante fast-forward/refresh por el coordinador. Hasta entonces B solo lectura/preparación. El DTO de inbox suma timezone como dato técnico aditivo para seleccionar fecha en zona del comercio, sin nuevo endpoint ni kit. El clock de caducidad usa expiresAt efectivo de política, no90 fijo en SQL.
 
 Recurso serial de replay para A: db:analytics-lifecycle-replay + migration:0101, entorno privado /private/tmp/checkpass-0237/migration.env. Nadie más usa DB hasta liberación explícita tras teardown. No CI compartida/perf/PROD. CI remoto sigue rojo en db3175d2 (Unit+Neon, stock-consumption count_changed); solo se leyó ci:status, no se reparó ni ejecutó suite global.
+
+### Checkpoints A1/A2 y preparación B
+
+A1 congelado25b56583 entrega política/validación/registro y DTOs v2, no0101 ni servicios. Evidencia5/5unitpolicy+Merchanttypes/lint; LegacyInboxCard solo interno, no etiquetaHTTPviejo comoV2. B preparación636ddbe2 solo pruebas/fixtures v2 y adaptación explícita de accept/dismiss/11, sin suitescontraUIvieja ni PASS funcional. Ambos integrados en dev40f1cb68; ByaFF/refresheda40 yGOUIconDTOs, HTTPesperaA2serviciosreales. AcontinúaA2sobreA1, sin mover su checkout por detrás. No ritual de entrega/aceptación funcional para checkpoints incompletos; entregas finales conservan todas las fuentes.
+
+QA temprano de A1 detectó tres defectos a corregir enA2: dos reglas del mismo handler admitidas pero segunda ignorada, comparisonDays fuera de ventanaSQLderivada y guards por truthiness que omiten validaciones cruzadas con0. A los reconoció; no se presentan como PASS global. A2debe incluir pruebas de esos bordes.
+
+B recibió extensión factory a tests/e2e/analytics.spec.ts, analytics-an2.spec.ts, analytics-an3.spec.ts y sus tres fixtures para mantener regresiones del histórico y actualizar solamente el contrato obsoleto aprobado. Harness de componentes aislado, configexterno sin webServers/retries; se permite puertoefímero del patrón existente con puertoefectivo y cierre registrados, no lanzar apps globales.
+
+Adiciones técnicas delDTO: timezone y refreshAfterMs (derivado fallbackWaitMs de política, nullready) para no duplicar valores ni importar Nodecrypto albrowser. No nuevas decisiones de producto. Fechas largas dentro delTTL no deben desbordar setTimeout ni generar loops; pantalla retira/refresca expiración efectiva sin esperar cron.
