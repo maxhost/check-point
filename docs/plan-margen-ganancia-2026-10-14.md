@@ -60,8 +60,8 @@ trabajo, es ignorarlo». Los cupones entran porque ya se aplican en el POS al ve
 | **6** | **Costo real por conteos:** conteos periodicos de los insumos clave → factor de merma por insumo (consumo real / teorico) aplicado al costo; reglas en «Notas para las etapas futuras» | 2 (y R1 para el teorico por receta) | **en el plan** (owner 2026-10-14). El ajuste por conteo ya existe en Stock. Entra al costo de lo vendido como `costo promedio × factor` (factor 1 hasta esta pieza) |
 | **EV** | **Eventos de venta encendidos en PROD** (`MODULE_EVENTS_ENABLED`) | 0, 2, P1 | ✅ 2026-10-16: push `5b834ca0`, flag en Vercel Production, redeploy READY; venta de prueba en F5 → 1 `sale.closed` v2 con 2 entregas (leído por SQL 00:39 UTC). Cron de reintentos en cron-job.org cada 1 h (owner). Doc `docs/factory/release-module-events-2026-10-16.md` (GPT: faltaba la llamada a reintentos y el cierre) |
 | **N** | **Espacio core «Negocio»:** Medios de pago (+comisión), Regional y Fiscal (mudados desde Marca); permiso `business`, ruta `/backoffice/business`; medios al core, POS consume; comisión calculada en la transacción de cierre | P1 | ✅ **local** (GPT, 2026-10-16): spec 0235 `implementada`, QA PASS (`docs/factory/0235-qa.md`), en `main` local `e2cd4544`, **sin push ni migración PROD**. Para publicar: puente `e5eaa741` → migraciones 0093–0095 en PROD → drenaje → retiro de compatibilidad (worker en curso). CI de `origin/main` rojo (deadlock Stock / teardown permisos), worker arreglándolo |
-| **G** | **Gastos** (módulo `expenses`, renombra `profitability`): registro de pagos dictado/foto, criterio de caja, sueldos como nombre libre; tablas nuevas, se borra la 0231 | N (en serie) | decisiones del owner cerradas (2026-10-16, «Preguntas de G»); prompt escrito (spec 0236 + ADR 0151). **Se lanza después del ADR de AN** (la forma de los eventos `expense.*` la define AN; revisar la decisión 13 y el ítem de `module_event` del prompt contra ese ADR) |
-| **AN** | **Analíticas core**: lo que el dueño abre cada mañana (ver «AN — visión del owner»). Base expansible por rubro; ADR 0021 como antecedente | EV, N, G (implementación) | **ADR 0152 propuesto** (2026-10-16, borrador de Claude, revisión del owner pendiente). Su ADR va **antes de la spec de G**. Absorbe SM-datos y el punto de equilibrio (por concepto, «Preguntas de G» 1) |
+| **G** | **Gastos** (módulo `expenses`, renombra `profitability`): registro de pagos dictado/foto, criterio de caja, sueldos como nombre libre; tablas nuevas, se borra la 0231 | N (en serie) | decisiones del owner cerradas (2026-10-16, «Preguntas de G»); prompt (spec 0236 + ADR 0151) **ajustado al ADR 0152** (2026-10-16: decisión 13 y `module_event`). Listo para lanzar |
+| **AN** | **Analíticas core**: lo que el dueño abre cada mañana (ver «AN — visión del owner»). Base expansible por rubro; ADR 0021 como antecedente | EV, N, G (implementación) | **ADR 0152 aceptado** (owner, 2026-10-16). Su ADR va **antes de la spec de G**. Absorbe SM-datos y el punto de equilibrio (por concepto, «Preguntas de G» 1) |
 
 **Regla transversal a decidir en las specs:** lo que es por orden (comision, cupon sobre el total, bolsa) se reparte
 entre las lineas para la rentabilidad por producto. Recomendacion: proporcional al importe de cada linea.
@@ -416,7 +416,7 @@ proveedores).
 - **Proyecciones (flujo de caja, plan de crecimiento con techo): parqueado** (`docs/PARQUEADO.md`), solo son fiables con
   histórico y hoy no hay.
 
-## Prompt — Gastos (spec 0236 + ADR 0151; 2026-10-16; lanzar cuando N esté integrado)
+## Prompt — Gastos (spec 0236 + ADR 0151; 2026-10-16; ajustado al ADR 0152 el mismo día; N ya está en `dev`)
 
 ```
 # Encargo: SPEC chica + ADR — módulo Gastos (`expenses`, reemplaza a `profitability`)
@@ -425,11 +425,13 @@ proveedores).
 ## Reglas
 - Leé CLAUDE.md, docs/TRABAJO-EN-PARALELO.md, docs/VERIFICACION.md, docs/MODULOS.md, la spec 0235 y el ADR 0150
   (tal como quedaron integrados). Del plan `docs/plan-margen-ganancia-2026-10-14.md` solo: «F rediseñada — Gastos,
-  Medios y Analíticas» con sus subsecciones, incluida «Preguntas de G — respuestas del owner».
+  Medios y Analíticas» con sus subsecciones, incluida «Preguntas de G — respuestas del owner». Del ADR 0152
+  (Analíticas, aceptado) solo §4 «Eventos que Gastos (G) tiene que publicar»: manda sobre cualquier otra mención de
+  eventos de este encargo.
 - No edites docs/INDEX.md, docs/TASKS.md ni los docs de estado de Claude. Sin push.
 - Nivel L2 (dinero + migración a PROD): spec CHICA (`docs/specs/TEMPLATE-CHICA.md`) + ADR. Números: **spec 0236,
   ADR 0151** (verificá que sigan libres).
-- Arrancá recién con N (0235) integrado en `dev`: los dos tocan `profitability`.
+- N (0235) ya está integrado en `dev`; partí de `dev` actualizado (los dos tocan `profitability`).
 
 ## Orden obligatorio
 1. Verificá «Lo que hay hoy» contra el código. Si aparece una decisión de producto que no está abajo, preguntale al
@@ -440,7 +442,7 @@ proveedores).
 ## Para qué sirve
 El dueño registra lo que paga («pagué de alquiler 900, de agua 20, compré una garrafa por 3.2, pagué a Luis su sueldo
 450») dictando o con una foto; la IA arma las entradas y el dueño confirma. Es la fuente de gastos para el punto de
-equilibrio y lo que el comercio gana o pierde, que calculará Analíticas (pieza AN, después, con su propio ADR).
+equilibrio y lo que el comercio gana o pierde, que calculará Analíticas (pieza AN, después; diseño en el ADR 0152).
 
 ## Lo que hay hoy (leído en el código el 2026-10-16; verificalo después de N)
 - Módulo `apps/merchant/src/modules/profitability/` (label «Rentabilidad»): costos fijos de la 0231 (`fixed_cost`,
@@ -474,7 +476,10 @@ equilibrio y lo que el comercio gana o pierde, que calculará Analíticas (pieza
     ese momento) y después se descarta. Nada en R2 de forma permanente.
 12. **Permiso propio `expenses`** además del owner (los sueldos son sensibles).
 13. **Publica eventos desde ya** (`expense.recorded`, `expense.updated`, `expense.deleted`) para los resúmenes por día
-    de AN, aunque AN todavía no exista.
+    de AN, aunque AN todavía no exista. Forma fijada por el ADR 0152 §4: versionados; fecha de pago (día local), monto
+    en unidades menores y moneda del comercio, categoría, concepto estable, fijo/variable, local o «todo el negocio»;
+    `updated` y `deleted` llevan el **estado completo resultante**, no un delta. El evento tiene que bastarse solo: AN
+    lo leerá después sin consultar las tablas del módulo.
 14. Fuera de G: estimados y punto de equilibrio (AN los calcula con el concepto y el check fijo/variable).
 
 ## La spec y el ADR tienen que dejar escrito
@@ -485,8 +490,13 @@ equilibrio y lo que el comercio gana o pierde, que calculará Analíticas (pieza
   se equivoca (el dueño lo corrige al confirmar).
 - «Mes en curso» según la zona horaria del comercio; qué pasa al registrar una fecha de un mes pasado (hallazgo a
   decidir con el owner: con meses congelados, recomendación = no se permite).
-- Cómo se generaliza `module_event` para publicar `expense.*` (mínimo necesario; sin construir Analíticas). Si exige
-  más que eso, decilo como hallazgo.
+- Cómo se generaliza `module_event` para publicar `expense.*` (hoy `publish.ts` solo publica `sale.closed`; mínimo
+  necesario, sin construir Analíticas). Resolvé los dos hallazgos del ADR 0152 §4:
+  - `module_event` es único por (comercio, tipo, `source_id`): el `source_id` de cada `expense.updated` tiene que ser
+    el de esa edición, no el del gasto, o la segunda edición choca;
+  - `location_id` es obligatorio y un gasto de «todo el negocio» no tiene local: proponé columna nullable o una
+    convención explícita, con tu recomendación, como **hallazgo a decidir** con el owner. Nunca un local al azar.
+  Si exige más que eso, decilo como hallazgo.
 - Dónde vive la foto mientras dura el borrador y cómo se descarta.
 - Qué se borra (rutas, tablas, código, textos «Rentabilidad», permiso viejo) sin redirects a rutas borradas.
 - Pruebas mínimas y enfocadas: alta confirmada desde un borrador, concepto reconocido entre dos pagos, edición/borrado
@@ -494,8 +504,8 @@ equilibrio y lo que el comercio gana o pierde, que calculará Analíticas (pieza
   publicado. No suites enteras.
 
 ## Fuera de alcance
-Analíticas, punto de equilibrio, estimados, Smart Menu, medios de pago y comisiones (ya en N), reparto entre locales,
-comprobantes guardados, gastos recurrentes automáticos.
+Analíticas (resúmenes por día, vocabulario de métricas, inbox: son de AN), punto de equilibrio, estimados, Smart Menu,
+medios de pago y comisiones (ya en N), reparto entre locales, comprobantes guardados, gastos recurrentes automáticos.
 
 ## Entrega
 `docs/specs/0236-...md` y `docs/adr/0151-...md` en `dev`, con las decisiones del owner citadas. Sin push. Lista de

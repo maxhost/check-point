@@ -1,13 +1,13 @@
 ---
 adr: 0152
 fecha: 2026-10-16
-estado: propuesta
+estado: aceptada
 resumen: Analíticas es un inbox de hasta 5 tarjetas accionables con peso por contexto más un histórico en números con filtros de período; todo sale de resúmenes diarios con vocabulario de métricas del core que los módulos alimentan por eventos, y el contexto externo se guarda desde ya sin acción.
 ---
 
 # 0152 — Analíticas: inbox accionable, histórico en números y resúmenes diarios
 
-**Estado: propuesta.** Borrador de Claude para revisión del owner (pedido el 2026-10-16: «escribilo vos»). Diseño
+**Estado: aceptada** por el owner el 2026-10-16 (redactado por Claude a pedido del owner: «escribilo vos»). Diseño
 documental: no autoriza implementación, migración, push ni operación PROD. Amplía el ADR 0021 (núcleo universal, lentes
 por rubro, calidad de cada métrica), que sigue vigente salvo donde este lo reemplaza.
 
