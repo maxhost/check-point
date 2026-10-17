@@ -169,7 +169,7 @@ run(
         laterBefore.rows,
       );
     });
-    it("measures the NULL Infinity loophole and rejects nonfinite dates, malformed months and monetary values", async () => {
+    it("measures the NULL Infinity loophole and retains staff finite-month and permission constraints", async () => {
       const sample = await getDb().execute(
         sql`select extract(day from 'infinity'::date) as day, ((extract(day from 'infinity'::date)=1) is not false) as would_pass`,
       );

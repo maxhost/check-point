@@ -182,9 +182,15 @@ run(
             .where(eq(moduleEvents.businessId, world.businessId)),
         ]);
       const before = await count();
-      await withDbTransaction(async tx => {
-        await tx.execute(sql.raw(`create function core.expense_event_failure_probe() returns trigger language plpgsql as $$ begin if NEW.business_id='${world.businessId}'::uuid and NEW.event_type like 'expense.%' and NEW.payload->>'name'='Second' then raise exception 'event failure probe'; end if; return NEW; end $$`));
-        await tx.execute(sql`create trigger expense_event_failure_probe before insert on core.module_event for each row execute function core.expense_event_failure_probe()`);
+      await withDbTransaction(async (tx) => {
+        await tx.execute(
+          sql.raw(
+            `create function core.expense_event_failure_probe() returns trigger language plpgsql as $$ begin if NEW.business_id='${world.businessId}'::uuid and NEW.event_type like 'expense.%' and NEW.payload->>'name'='Second' then raise exception 'event failure probe'; end if; return NEW; end $$`,
+          ),
+        );
+        await tx.execute(
+          sql`create trigger expense_event_failure_probe before insert on core.module_event for each row execute function core.expense_event_failure_probe()`,
+        );
       });
       const operationId = randomUUID();
       const body = {
@@ -207,9 +213,13 @@ run(
         ).rejects.toBeDefined();
         expect(await count()).toEqual(before);
       } finally {
-        await withDbTransaction(async tx => {
-          await tx.execute(sql`drop trigger expense_event_failure_probe on core.module_event`);
-          await tx.execute(sql`drop function core.expense_event_failure_probe()`);
+        await withDbTransaction(async (tx) => {
+          await tx.execute(
+            sql`drop trigger expense_event_failure_probe on core.module_event`,
+          );
+          await tx.execute(
+            sql`drop function core.expense_event_failure_probe()`,
+          );
         });
       }
       expect(

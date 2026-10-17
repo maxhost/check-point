@@ -227,4 +227,41 @@ run("0236 expenses.neon.integration.test.ts", { timeout: 60000 }, () => {
         .where(eq(businesses.id, f.world.businessId));
     }
   });
+  it("concurrent identical operation commits one revision; concurrent edits serialize the expected revision", async () => {
+    const body = post([line({ amountMinor: "100" })]);
+    const results = await Promise.all([
+      createExpenses(f.world.businessId, f.world.ownerId, body),
+      createExpenses(f.world.businessId, f.world.ownerId, body),
+    ]);
+    expect(results[0]).toEqual(results[1]);
+    const expense = results[0].expenses[0];
+    expect(await eventsFor(expense.id)).toHaveLength(1);
+    const edit = {
+      ...line({ amountMinor: "200" }),
+      expectedRevision: 1,
+      expectedCurrencyCode: "USD",
+    };
+    const edited = await Promise.allSettled([
+      mutateExpense(
+        f.world.businessId,
+        f.world.ownerId,
+        expense.id,
+        "updated",
+        { ...edit, operationId: randomUUID() },
+      ),
+      mutateExpense(
+        f.world.businessId,
+        f.world.ownerId,
+        expense.id,
+        "updated",
+        { ...edit, operationId: randomUUID() },
+      ),
+    ]);
+    expect(
+      edited.filter((result) => result.status === "fulfilled"),
+    ).toHaveLength(1);
+    const rejected = edited.find((result) => result.status === "rejected");
+    expect(rejected).toMatchObject({ reason: { code: "expense_conflict" } });
+    expect(await eventsFor(expense.id)).toHaveLength(2);
+  });
 });
