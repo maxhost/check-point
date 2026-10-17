@@ -1,3 +1,4 @@
+import { buildCustomerPromoCandidates } from "./customer-promo";
 import { buildStockCandidates } from "./stock";
 import {
   addDays,
@@ -585,5 +586,9 @@ export function buildCandidates(
       });
     }
   }
-  return [...candidates, ...buildStockCandidates(input, states)];
+  return [
+    ...candidates,
+    ...buildStockCandidates(input, states),
+    ...buildCustomerPromoCandidates(input, states),
+  ];
 }

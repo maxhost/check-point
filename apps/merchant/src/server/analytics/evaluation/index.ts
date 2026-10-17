@@ -214,7 +214,8 @@ export async function evaluateDueBusinesses(now = new Date()) {
     and ((${now.toISOString()}::timestamptz at time zone b.timezone)::time >= time '03:00')
     and not exists (select 1 from analytics.evaluation_run e where e.business_id=b.id and e.day=(${now.toISOString()}::timestamptz at time zone b.timezone)::date and e.status='ready')
     and (exists (select 1 from analytics.daily_metric m where m.business_id=b.id and m.day >= ((${now.toISOString()}::timestamptz at time zone b.timezone)::date - 35))
-      or not exists(select 1 from analytics.daily_metric m where m.business_id=b.id)) order by b.id limit 20`);
+      or not exists(select 1 from analytics.daily_metric m where m.business_id=b.id)
+      or exists(select 1 from analytics.campaign_snapshot c where c.business_id=b.id and (least(c.ends_at,c.ended_at) at time zone b.timezone)::date=((${now.toISOString()}::timestamptz at time zone b.timezone)::date-1))) order by b.id limit 20`);
   for (const row of due.rows) {
     if (Date.now() >= deadline) {
       skipped++;

@@ -24,6 +24,22 @@ export function resolveAction(
       label: key === "view_day" ? "Ver el día" : "Ver el cálculo",
       href: href ?? "/backoffice/analytics",
     };
+  if (key === "view_customer" || key === "view_campaign_results") {
+    const customer = key === "view_customer";
+    const prefix = customer
+      ? "/backoffice/customers/analytics/"
+      : "/backoffice/marketing/";
+    if (
+      !permitted(customer ? "counter" : "marketing") ||
+      !href ||
+      !href.startsWith(prefix) ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        href.slice(prefix.length),
+      )
+    )
+      return null;
+    return { label: customer ? "Ver cliente" : "Ver resultados", href };
+  }
   if (key === "edit_product_price")
     return permitted("catalog")
       ? { label: "Revisar precio", href: "/backoffice/catalog" }

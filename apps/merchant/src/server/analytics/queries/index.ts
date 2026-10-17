@@ -19,6 +19,7 @@ import {
   summarizeHistory,
   type HistoryPeriod,
 } from "@mi-pasaporte/domain/analytics/history";
+import { summarizeCustomerPromoHistory } from "@mi-pasaporte/domain/analytics/customer-promo-history";
 import { summarizeStockHistory } from "@mi-pasaporte/domain/analytics/stock-history";
 import { calculateGoal } from "@mi-pasaporte/domain/analytics/cards/index";
 export class AnalyticsError extends Error {
@@ -72,13 +73,17 @@ export function inputStatement(
       union all select m.* from b join analytics.daily_metric m on m.business_id=b.id and m.day>=date_trunc('month',b.today) and m.day<b.today-28 where m.metric='expense_fixed' ${location}
       union all select m.* from b join analytics.daily_metric m on m.business_id=b.id and m.day>=date_trunc('month',b.today)-interval '3 months' and m.day<b.today-28 where m.metric='expense_variable' ${location}
       union all select m.* from b join analytics.daily_metric m on m.business_id=b.id and m.day>=b.today-56 and m.day<b.today-28 where m.metric='revenue' ${location}
+      union all select m.* from b join analytics.daily_metric m on m.business_id=b.id and m.day<b.today-28 where m.metric in ('visits','promo_discount','promo_sales','promo_cost') ${location}
+      union all select m.* from b join analytics.daily_metric m on m.business_id=b.id and m.day between b.today-63 and b.today-29 where m.metric='voided_tickets' ${location}
       union all select m.* from b join same_days sd on true join analytics.daily_metric m on m.business_id=b.id and m.day=sd.day where m.day<b.today-28 and m.metric='units_sold' ${location}
       union all select m.* from b join same_days sd on true join analytics.daily_metric m on m.business_id=b.id and m.day=sd.day where m.day<b.today-56 and m.metric='revenue' ${location}),
-    metrics as (select m.day::text,m.metric,case when m.day=b.today-1 or m.metric in ('stock_consumption','units_sold','revenue') then m.location_id else null end as "locationId",m.dimension_id as "dimensionId",sum(m.amount_minor)::text as "amountMinor",m.currency_code as "currencyCode",m.minor_unit as "minorUnit",sum(m.quantity)::text as quantity,sum(m.count)::int as count
-      from metric_rows m,b group by m.day,m.metric,case when m.day=b.today-1 or m.metric in ('stock_consumption','units_sold','revenue') then m.location_id else null end,m.dimension_id,m.currency_code,m.minor_unit
+    metrics as (select m.day::text,m.metric,case when m.day=b.today-1 or m.metric in ('stock_consumption','units_sold','revenue','voided_tickets','visits','promo_discount','promo_sales','promo_cost') then m.location_id else null end as "locationId",m.dimension_id as "dimensionId",sum(m.amount_minor)::text as "amountMinor",m.currency_code as "currencyCode",m.minor_unit as "minorUnit",sum(m.quantity)::text as quantity,sum(m.count)::int as count
+      from metric_rows m,b group by m.day,m.metric,case when m.day=b.today-1 or m.metric in ('stock_consumption','units_sold','revenue','voided_tickets','visits','promo_discount','promo_sales','promo_cost') then m.location_id else null end,m.dimension_id,m.currency_code,m.minor_unit
       union all select day::text,'expense_fixed',null,dimension_id,amount,currency_code,minor_unit,'0',0 from fixed_months where rank<=3)
     select b.currency_code as "currencyCode",b.timezone,b.today::text,
       (select min(day)::text from account_money where metric='revenue' and (count>0 or amount_minor>0)) as "firstSaleDay",
+      coalesce((select jsonb_agg(jsonb_build_object('locationId',location_id,'day',day)) from (select location_id,min(day)::text AS day from account_money where metric='revenue' and (count>0 or amount_minor>0) group by location_id) first_sales),'[]'::jsonb) as "firstSaleDays",
+      coalesce((select jsonb_agg(c) from (select campaign_id as "campaignId",label,status,(starts_at at time zone b.timezone)::date::text as "startsAt",(ends_at at time zone b.timezone)::date::text as "endsAt",(ended_at at time zone b.timezone)::date::text as "endedAt",captured_at as "capturedAt",event_id as "eventId" from analytics.campaign_snapshot where business_id=b.id) c),'[]'::jsonb) as campaigns,
       exists(select 1 from analytics.daily_metric m where m.business_id=b.id ${location}) as "hasData",
       exists(select 1 from account_money where metric in ('expense_fixed','expense_variable') and day<date_trunc('month',b.today) and amount_minor>0) as "hasClosedExpenseMonth",
       coalesce((select jsonb_agg(jsonb_build_array(day,metric,"locationId","dimensionId","amountMinor","currencyCode","minorUnit",quantity,count)) from metrics),'[]'::jsonb) as metrics,
@@ -118,6 +123,8 @@ export function inputFromRow(
         locationId: c.locationId ? String(c.locationId) : null,
       }),
     ),
+    campaigns: (row.campaigns ?? []) as AnalyticsInput["campaigns"],
+    firstSaleDays: (row.firstSaleDays ?? []) as AnalyticsInput["firstSaleDays"],
     today: String(row.today),
     firstSaleDay: row.firstSaleDay ? String(row.firstSaleDay) : null,
     currencyCode,
@@ -201,6 +208,15 @@ export async function readHistory(
     range.to,
     locationId,
   );
+  const customerPromoRows = await getDb().execute(
+    sql`select day::text,metric,location_id as "locationId",dimension_id as "dimensionId",amount_minor::text as "amountMinor",quantity,count,currency_code as "currencyCode",minor_unit as "minorUnit" from analytics.daily_metric where business_id=${businessId} and day<=${range.to}::date and metric in ('visits','promo_discount','promo_sales','promo_cost') ${location}`,
+  );
+  const customerPromo = summarizeCustomerPromoHistory(
+    { ...input, metrics: customerPromoRows.rows.map(metricRow) },
+    range.from,
+    range.to,
+    locationId,
+  );
   const current = summary("current");
   const previous = summary("previous");
   return {
@@ -211,6 +227,7 @@ export async function readHistory(
     minorUnit: input.minorUnit,
     ...current,
     stock,
+    ...customerPromo,
     previous: {
       revenueMinor: previous.revenueMinor,
       variation:
