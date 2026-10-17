@@ -78,39 +78,36 @@ describe.skipIf(!posIntegrationEnabled)("0235 business-financial", () => {
       expectedRevisionId: null,
       percent: "2.5",
     });
-    try {
-      const { order, response } = await close(method.id);
-      expect(response.status).toBe(200);
-      await saveCommission(world.seed.business.id, method.id, {
-        expectedRevisionId: a.revisionId,
-        percent: "10",
-      });
-      const frozen = await getDb()
-        .select()
-        .from(paymentCommissions)
-        .where(eq(paymentCommissions.sourceOrderId, order.id));
-      expect(frozen[0]).toMatchObject({
-        commissionRevisionId: a.revisionId,
-        percent: "2.500000",
-        result: { commission: "0.05", configured: true },
-      });
-      const [event] = await getDb()
-        .select()
-        .from(moduleEvents)
-        .where(eq(moduleEvents.sourceId, order.id));
-      expect(JSON.stringify(event.payload)).toContain(a.revisionId!);
-      const next = await close(method.id);
-      expect(next.response.status).toBe(200);
-      expect(
-        await readSaleCommissions(
-          world.seed.business.id,
-          next.order.id,
-          world.seed.locationId,
-          "pos",
-        ),
-      ).toMatchObject({ total: "0.20", state: "completo" });
-    } finally {
-    }
+    const { order, response } = await close(method.id);
+    expect(response.status).toBe(200);
+    await saveCommission(world.seed.business.id, method.id, {
+      expectedRevisionId: a.revisionId,
+      percent: "10",
+    });
+    const frozen = await getDb()
+      .select()
+      .from(paymentCommissions)
+      .where(eq(paymentCommissions.sourceOrderId, order.id));
+    expect(frozen[0]).toMatchObject({
+      commissionRevisionId: a.revisionId,
+      percent: "2.500000",
+      result: { commission: "0.05", configured: true },
+    });
+    const [event] = await getDb()
+      .select()
+      .from(moduleEvents)
+      .where(eq(moduleEvents.sourceId, order.id));
+    expect(JSON.stringify(event.payload)).toContain(a.revisionId!);
+    const next = await close(method.id);
+    expect(next.response.status).toBe(200);
+    expect(
+      await readSaleCommissions(
+        world.seed.business.id,
+        next.order.id,
+        world.seed.locationId,
+        "pos",
+      ),
+    ).toMatchObject({ total: "0.20", state: "completo" });
   }, 120000);
   it("partial rate and currency mismatch are committed outcomes, never blocked sales", async () => {
     const method = await createPaymentMethod(world.seed.business.id, {
