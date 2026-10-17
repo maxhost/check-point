@@ -1,6 +1,6 @@
 # 0237 — AN-3 producto (B)
 
-Task `analytics-an2-product`, worktree `/private/tmp/checkpass-an2/analytics-an2-product`, rama homónima continuada. Base AN-3 `bebf26c99b42754f7915b392487162b408a51833`; fundamento A integrado por ff-only y factory refresh `6cecd378ab7a2926fc98df2206d1ce08a58058de`. **Fuente B congelada `421ef60c`** (implementación inicial `24da3203`, corrección11 `f30ed877`, reconciliación12 posterior), checkpoint revisable, sin atribuir QA PASS. Spec/contrato con aclaración owner `f7c81e5b`: hábito por cuatro fechas locales distintas.
+Task `analytics-an2-product`, worktree `/private/tmp/checkpass-an2/analytics-an2-product`, rama homónima continuada. Base AN-3 `bebf26c99b42754f7915b392487162b408a51833`; fundamento A integrado por ff-only y factory refresh `6cecd378ab7a2926fc98df2206d1ce08a58058de`. **Fuente B congelada `421ef60c`** (implementación inicial `24da3203`, corrección11 `f30ed877`, reconciliación12 posterior), entrega propia implementada y verificada con 5 casos Neon; cableado de A y QA de combinación pendientes. Spec/contrato con aclaración owner `f7c81e5b`: hábito por cuatro fechas locales distintas.
 
 ## Implementación y contratos
 
@@ -18,9 +18,9 @@ H5 confirmado en APIs: Marketing ofrece campañas y audiencias, sin envío manua
 
 Nuevo contrato `GET /api/customers/analytics/:id`: sesión/membresía y permiso `counter`; negocio exclusivamente del guard. 200 `{ name, enrolledAt, lastVisitAt }`; 404 para pseudónimo inválido/ajeno/inexistente; 401/403 existentes. El destino de Clientes usa el mismo guard. **Fuera de cálculos Analíticas**, el reader normal `customer_reader`/RLS resuelve el UUIDv5 con `public.digest(bytes,'sha1')` usando namespace/name canónicos exportados por A; la proyección solo devuelve tres campos permitidos. No columna ni backfill de business_customer. El filtro requiere recorrer los clientes del tenant para calcular el UUID; no se abrió optimización general.
 
-## Evidencia focal antes de DB
+## Evidencia focal
 
-Node24.20.0. Fuente funcionalf30ed877 sobre6cecd378. Sin push/deploy/PROD, verify global, benchmark, mutaciones, kit/guardias/CSS ni cambios en índices/estados comunes.
+Node24.20.0. Fuente final `421ef60c` sobre `6cecd378`; dominio/UI permanecen idénticos a `f30ed877`, con evidencia compatible. Sin push/deploy/PROD, verify global, benchmark, mutaciones, kit/guardias/CSS ni cambios en índices/estados comunes.
 
 - **34 unit PASS**:9AN-3 y25 previas (22dominio+3acciones), `/private/tmp/an3-product-unit-business.log`; incluye4fechas repartidas en locales, importes de varias operaciones/mismo día, ausencia25d y visita ayer en otro local sin aviso. El checkpoint inicial tuvo33PASS, supersedido por esta cobertura.
 - **Typecheck merchant PASS**, `/private/tmp/an3-product-types-business.log`.
@@ -41,9 +41,9 @@ pnpm exec playwright test --config tests/e2e/support/analytics-an3-fixture.ts --
 node tools/ui-guard.ts --base 6cecd378
 ```
 
-## Pendiente de DB y QA
+## Consultas y detalle de cliente verificados
 
-La DB sigue exclusiva de A; B no ha ejecutado DB. Preparados cuatro casos en `customer-promo.neon.integration.test.ts`: conservación local/count/dinero y hábito por fechas; snapshot23:30Guayaquil (UTC día siguiente), ediciones y draft sin duplicados; histórico período/local/tenant; UUIDv5 Node↔SQL bajo customer_reader con dos homónimos, otro comercio y guardias401/403/404. Ejecutar solo tras GO del coordinador:
+Tras GO del coordinador y transferencia exclusiva de la DB aislada a B, pasaron los cuatro casos originales de `customer-promo.neon.integration.test.ts`: conservación local/count/dinero y hábito por fechas; snapshot23:30Guayaquil (UTC día siguiente), ediciones y draft sin duplicados; histórico período/local/tenant; UUIDv5 Node↔SQL bajo customer_reader con dos homónimos, otro comercio y guardias401/403/404. El quinto caso del hook también pasó, como se detalla abajo. Comando utilizado con el recurso asignado:
 
 ```
 NEON_TEST_ENV_FILE=/private/tmp/checkpass-0237/migration.env tools/neon-test.sh src/server/analytics/evaluation/customer-promo.neon.integration.test.ts --no-file-parallelism
@@ -51,7 +51,7 @@ NEON_TEST_ENV_FILE=/private/tmp/checkpass-0237/migration.env tools/neon-test.sh 
 
 Revisión coordinador detectó el defecto de agrupación11 por local en24da3203: podía avisar ausencia aunque el cliente había visitado otro local. Corregido enf30ed877, con copia «Juan solía venir cada12 días. Su última visita fue hace25 días.»; historial mantiene filtros/locales. QA avisado de la nueva fuente.
 
-No se declara PASS de esos cuatro casos ni QA independiente. No procesos B activos al congelar. Siguiente paso: revisión QA por blobs y turno DB; corregir defectos propios si aparecen y congelar revisión final antes de entrega factory.
+Los cuatro casos originales y el quinto de reconciliación están verificados: 5/5 PASS, sin skips ni retries. No hay procesos B activos. La entrega B fue registrada mediante factory. Solo quedan el cableado de ingesta de A, su prueba combinada y el dictamen independiente; este handoff no declara QA PASS.
 
 ## Reconciliación de resultados tardíos — fuente421ef60c
 
