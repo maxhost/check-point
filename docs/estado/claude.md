@@ -11,19 +11,17 @@
 
 
 
-## ⇥ ESTADO (2026-10-17) — AN-1 EN MAIN LOCAL (REVISADA); AN-2 CORRIENDO EN GPT; PROMPT AN-3 LISTO
+## ⇥ ESTADO (2026-10-17) — ARCO AN COMPLETO EN PROD; QUEDA LO OPERATIVO
 
-**Sesión de documentos y revisión, sin código de producto.** Commit `e4ba665c` en `dev` (sin push): «Prompt — AN-3»
-en `docs/plan-margen-ganancia-2026-10-14.md`.
+**Sesión de documentos y lectura PROD (solo SELECT por MCP), sin código.** Commit `221116ac` en `dev`: spec 0237
+`implementada`, fila de INDEX y filas N/G/AN del plan al día.
 
-**AN-1:** GPT la integró en `dev` y `main` local (`0f543dd8`); `origin/main` sigue en `db3175d2`. Revisada: QA
-independiente PASS funcional (`docs/factory/0237-an1-qa.md`); re-medido por Claude: 32/32 unit de analytics
-(Node 24), `MODULE_EVENTS_ENABLED` sin usos en código, core sin imports de módulos, una migración 0097.
-Pendientes: rendimiento 2.082 ms frío contra ≤1 s (parqueado por el owner); CI compartida con el hash viejo de
-0097 (el fixture fallará: antes del push hay que elegir DB de replay o reconciliar CI); ciudades existentes y cron
-cron-job.org sin ejecutar; prueba real de clima diferida a AN-3; `app/analytics.ts` (demo ADR 0020) quedó sin uso.
+**AN:** AN-1, AN-2 y AN-3 con QA PASS (`docs/factory/0237-an*-qa.md`), más ciclo del inbox, Gastos al guardar y
+POS/costos L1 de GPT. Publicado por GPT: `origin/main` `90ebe18f` (push sin pre-push autorizado por el owner);
+ledger PROD leído por Claude: 0096–0101 aplicadas. Deploy de Vercel no verificado por Claude.
 
-**AN-2:** GPT corriendo en `/private/tmp/checkpass-an2/` (contrato `bc632860`); preguntó al owner por el umbral de
-3 USD de la tarjeta 9 sin conversión.
-
-**Siguiente:** lanzar AN-3 cuando AN-2 tenga QA PASS e integrada en dev.
+**Pendiente:** jobs en cron-job.org (`/api/internal/analytics/evaluate` y `/context`); script de ciudades de locales
+existentes; `VISUAL_CROSSING_API_KEY` en Vercel y quitar `MODULE_EVENTS_ENABLED`; QA manual del owner (POS/costos
+L1); rendimiento FAIL 1.817 ms > 1 s; CI compartida con 0097 vieja; `huellas-prod.txt` sin publicar; borrar
+`app/analytics.ts`. Después: Smart Menu, pieza 6. Uso PROD 17-oct: Plátano 4 ventas $38,45 antes del deploy (sin
+Analíticas, esperado); TAJ sin uso.
