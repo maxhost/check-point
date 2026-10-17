@@ -101,12 +101,13 @@ describe.skipIf(!permisosIntegrationEnabled || (!prepare && !verify))(
         const oldOrigin = afterCleanup
           ? (
               await db.execute(
-                sql`select status,episode_started_at,expires_at from analytics.card_state where business_id=${business} and candidate_id=${row("cost-origin-only")}`,
+                sql`select status,remind_at,episode_started_at,expires_at from analytics.card_state where business_id=${business} and candidate_id=${row("cost-origin-only")}`,
               )
             ).rows[0]
           : contents.rows.find((c) => c.id === row("cost-origin-only"))!;
         if (afterCleanup) {
           expect(oldOrigin.status).toBe("expired");
+          expect(oldOrigin.remind_at).toBeNull();
           expect(
             contents.rows.some((c) => c.id === row("cost-origin-only")),
           ).toBe(false);
@@ -140,10 +141,15 @@ describe.skipIf(!permisosIntegrationEnabled || (!prepare && !verify))(
           status: "open",
           context: { legacyOriginalStatus: "accepted" },
         });
-        for (const key of ["5", "6", "9"])
-          expect(controls.rows.find((c) => c.card_key === key)?.status).toBe(
-            "open",
-          );
+        for (const id of [
+          "cost-unknown",
+          "cost-invalid-origin",
+          "margin-new",
+          "count",
+        ])
+          expect(
+            controls.rows.find((c) => c.candidate_id === row(id))?.status,
+          ).toBe("open");
         expect(JSON.stringify(controls.rows)).not.toContain("LEGACY-CONTENT");
         expect(JSON.stringify(controls.rows)).not.toContain(
           "NEVER-COPY-TO-CONTROL",

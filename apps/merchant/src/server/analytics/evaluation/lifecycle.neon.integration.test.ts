@@ -382,7 +382,8 @@ describe.skipIf(!permisosIntegrationEnabled)(
       await readyPromise;
       try {
         const result = await cleanupInbox(now, { batchSize: 1 });
-        expect(result.deleted).toBe(1);
+        // Cleanup is global; assert our two IDs below, not an unrelated global count.
+        expect(result.deleted).toBeGreaterThanOrEqual(1);
         expect(result.skipped).toBeGreaterThanOrEqual(1);
         expect(
           await getDb()
