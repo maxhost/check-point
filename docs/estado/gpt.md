@@ -3,7 +3,17 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — NEGOCIO0235 EN PROD; VENTA REAL F5 VERIFICADA (2026-10-16)
+## ESTADO — GASTOS: SPEC0236 + ADR0151 DOCUMENTALES EN DEV (2026-10-16)
+
+Encargo del owner terminado **solo documentos; detenerse antes de implementar**. Candidato integrado en `dev` **a82d179d75a505163b056f63fd143bde421e4430**, base **45a3f2269320c8e28e202f7369a89f4fedee1009** (N y últimas decisiones del owner integrados). [Spec0236](../specs/0236-gastos-registro-de-pagos.md) cerrada como diseño, DoD de implementación pendiente; [ADR0151](../adr/0151-gastos-y-eventos-autosuficientes.md) propuesta técnica, sin atribuir su aceptación al owner. Decisiones de producto citadas desde F rediseñada y el encargo; eventos mandados por ADR0152 §4. No nuevas decisiones de producto bloqueantes.
+
+Flujo: dos autores en worktrees propios y QA independiente `/root/qa_gastos_docs`. Entregas **35f8895ec6e7a823c52a6ab83381fa57b725b2e8** (spec) y **f2a8b8889f72e21f828787ffd8241ed3fca00c5f** (ADR), ambas aceptadas en factory; merge conserva sus commits. QA de entrega documental y combinación **PASS** exacto a82d179d: blobs/scope, fuentes de código y decisiones/contratos coherentes. Coordinador reprodujo fuentes y comprobó Node24.20.0, Prettier de ambos documentos, check-numbers, diff --check y15 enlaces locales existentes; EXIT0. **0 mutaciones/DB/suites de producto/operaciones PROD/push**, ningún SQL generado. No se operó main local ni remoto.
+
+Hallazgos técnicos separados del owner: además de source_id por edición y location_id nullable, hay que discriminar decoder/retry por tipo y acotar los tres predicados de Stock a sale.closed; filtros opcionales para sus callers de retry/pendingSummary. El test residual de comisión core se reubica, no se pierde al retirar profitability. Compatibilidad histórica de N se conserva; no DROP CASCADE indiscriminado. Los conteos PROD vacíos son históricos proporcionados: **antes de implementar, volver a verificarlos con autorización específica del owner**. Este encargo no habilita implementación, migración ni publicación.
+
+Dos worktrees limpios aceptados conservados en `/private/tmp/checkpass-gastos-docs/`: `gastos-0236-spec` y `gastos-0151-adr`; no retirados porque la entrega pedida queda en dev y aún no es ancestro de main local. Sin servidores ni DB asignados. Copia congelada QA sin env en `qa-a82d179d`. Sandbox exigió escalaciones locales para refs/índices Git; aprobadas, no fallos del producto. No INDEX/TASKS/estados de Claude editados; assets/skills/config ajenos sin seguimiento preservados. El estado de release Negocio y venta F5 se conserva debajo.
+
+## HISTÓRICO — NEGOCIO0235 EN PROD; VENTA REAL F5 VERIFICADA (2026-10-16)
 
 Release publicado **db3175d237cdcf4ec41e32d70cc1c4f1e06ab2cf**, migraciones0093–95 en PROD/journal96,4deploysREADY ysmoke6/6PASS como abajo. **Nueva prueba del owner**: «hice la prueba con el negocio F5 cerre session, inicie de nuevo, abri una orden, la cobre». SQL2026-10-17T03:36:51.028Z, RepeatableRead ReadOnly yguardendpointbf545fdce7a0: **PASS venta530b45ab-11ff-49b2-b80d-8fa70a53d67e**, negocio5fcaebc2-82f2-4b8c-ba5c-27a44c802c40/local11560a0c-e7db-4909-b19c-968ef2ada93c, cerrada03:35:32.629UTC, **ARS9.50**. Única cerrada trasdeploy; pago6d642ce3-d287-409a-aa72-3c5a234e6893, Efectivo41aa1364-e75e-4884-aebe-805d7cfae819 activo/mismo comercio, **method_provider_id=core**.
 
