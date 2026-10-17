@@ -14,6 +14,7 @@ import {
   Palette,
   QrCode,
   Shop,
+  StatsUpSquare,
   Xmark,
 } from "iconoir-react";
 import { useSelectedLayoutSegment } from "next/navigation";
@@ -43,6 +44,14 @@ type MenuName = "business" | "loyalty" | "more";
  * que no la ofrece. Cuando una pantalla mas migre, se marca acá y aparece sola.
  */
 const businessLinks = [
+  {
+    href: "/backoffice/analytics",
+    label: "Analíticas",
+    icon: StatsUpSquare,
+    segment: "analytics",
+    permission: "analytics",
+    delegado: true,
+  },
   {
     href: "/backoffice/business",
     label: "Negocio",
@@ -88,6 +97,18 @@ const businessLinks = [
 /** Lo que ve un integrante: solo las pantallas delegadas para las que tiene permiso. */
 export function delegatedLinks(permissions: string[]) {
   return [
+    ...(permissions.includes("analytics")
+      ? [
+          {
+            href: "/backoffice",
+            label: "Inicio",
+            icon: HomeSimple,
+            segment: null,
+            permission: "analytics",
+            delegado: true,
+          },
+        ]
+      : []),
     ...businessLinks,
     {
       href: "/backoffice/customers",
@@ -481,7 +502,7 @@ export function BackofficeNavigation({
           <>
             {(isOwner || delegados.length > 0) && (
               <>
-                {isOwner && (
+                {(isOwner || permissions.includes("analytics")) && (
                   <NavLink
                     href="/backoffice"
                     icon={HomeSimple}

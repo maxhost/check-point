@@ -21,6 +21,10 @@ const PERMISSION_COPY: Record<
   PermissionScope,
   { label: string; detail: string }
 > = {
+  analytics: {
+    label: "Analíticas",
+    detail: "Ver avisos, ventas, costos y gastos del negocio.",
+  },
   counter: {
     label: "Mostrador",
     detail: "Acreditar compras y canjear premios.",
