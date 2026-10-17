@@ -43,7 +43,9 @@ acordado: **margen → costos → stock → clientes**.
 - **Histórico en números**, con filtro de período: **mes en curso, 3, 6, 9 y 12 meses** (reemplaza «año en curso,
   3/6/9» de la opción C). Owner: «esto sería un filtro, no para las tarjetas… para ver cómo crecieron las ventas en 3
   meses, cómo subió nuestro costo de stock en 6 meses, cuánto dinero ahorramos en 9 meses». Se cuenta en cifras y frases
-  que el comerciante entiende, no en gráficos de picos. Comparación contra el mismo período del año anterior: *a decidir*.
+  que el comerciante entiende, no en gráficos de picos. **Comparación contra el mismo período del año anterior: se
+  construye ya** y se muestra cuando exista ese período (owner, 2026-10-16: «hoy no habría histórico, pero sí podemos
+  dejarlo construido»).
 
 ### 2. Las 13 tarjetas de la primera versión
 
@@ -73,9 +75,9 @@ Reglas de contenido:
 - **Rangos, no puntos**, donde hay proyección (tarjeta 8). Sin plazo del proveedor: obligaría a cargarlo y mantenerlo.
 - **Dato faltante = invitación**, nunca se oculta en silencio ni se inventa (tarjetas 4 y 7; ADR 0021: «la UI no estima
   ni sustituye una fuente no disponible»).
-- **Mínimo de historia:** las tarjetas que comparan días (2, 8, 13) no aparecen con menos de 4 ocurrencias del mismo día
-  de semana; mientras tanto, a lo sumo, «necesito 3 martes más para decirte qué se vende los martes» (propuesta de
-  Claude; el umbral se ajusta con uso real).
+- **Mínimo de historia:** las tarjetas que comparan días (2, 8, 13) exigen **al menos un mes de datos** y 4
+  ocurrencias del mismo día de semana (owner, 2026-10-16: «es clave que exista un mínimo de un mes de datos para ese
+  tipo de tarjetas»); mientras tanto, a lo sumo, «necesito 3 martes más para decirte qué se vende los martes».
 - **Atribución honesta:** la tarjeta 12 dice lo que costó y lo que vino junto con el cupón, no que el cupón lo causó
   (ADR 0021: sin atribución causal sin baseline). El simulador de una promo antes de lanzarla **no es de Analíticas**:
   vive en fidelización/marketing (owner).
@@ -204,11 +206,8 @@ ADR: esta medición la reemplaza para la propuesta; la spec repite la medición 
 - G se lanza después de aprobar este ADR, con los eventos `expense.*` del §4 y sus dos hallazgos.
 - La spec de AN (L3: toca dinero) define el vocabulario de métricas, la tabla de resúmenes, la tabla de contexto, el
   estado del inbox, los coeficientes iniciales del peso y el texto de cada tarjeta.
-- **Pendiente a decidir con el owner:**
-  - ventas anteriores al encendido de los eventos: ¿se reconstruyen hacia atrás desde el detalle de los módulos o se
-    cuenta desde el encendido? (PROD tenía 17 órdenes POS el 2026-10-16);
-  - comparación contra el mismo período del año anterior en el histórico;
-  - umbral mínimo de historia (4 ocurrencias propuestas).
+- **Ventas anteriores al encendido de los eventos: no se reconstruyen** (owner, 2026-10-16). Analíticas cuenta desde
+  que los eventos están encendidos.
 
 ## Referencias
 
