@@ -11,6 +11,14 @@ conserva).
 Regla al sacar algo de aca: **nada toca codigo sin su spec cerrada.** Varias de estas filas dicen
 explicitamente «necesita spec» — eso es literal.
 
+## PARQUEADO 2026-10-16 — AN: proyecciones y plan de crecimiento
+
+Owner 2026-10-16: «sobre proyecciones yo lo dejaria parqueado ahora porque justamente solo es fiable con historico, y es
+algo que hoy no hay». Incluye flujo de caja proyectado y el simulador de metas con techo de capacidad (mesas, asientos,
+duración de mesa, horario). Idea y respuestas: `docs/plan-margen-ganancia-2026-10-14.md` («AN — tabla capacidad→valor»).
+También parqueado: **cuadre/cierre de caja** (fuera; sí se usan las anulaciones) y **el dueño como fuente de eventos**
+(5 locales en la red).
+
 ## PARQUEADO 2026-10-15 — P2: para llevar y packaging
 
 Owner 2026-10-15: «vamos a dejar el tema de packaging de momento, porque no sabemos como se usara ni como impactara».

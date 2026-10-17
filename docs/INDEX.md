@@ -75,6 +75,7 @@ desactualizado es peor que no tenerlo.
 
 | 0145 | 2026-10-13 | Consumo de Stock mediante evento durable genérico de cierre, revisiones inmutables y aplicación posterior por local. | aceptada; implementación local autorizada | `adr/0145-consumo-stock-al-cobrar.md` |
 | 0146 | 2026-10-14 | Promedio ponderado móvil por insumo/local, apertura única del último costo local y compras válidas aun con pendientes. | aceptada; implementada en candidato07393f2, QA PASS | `adr/0146-costo-promedio-ponderado-por-local.md` |
+| 0152 | 2026-10-16 | **Analíticas: inbox accionable, histórico en números y resúmenes diarios.** **Que es:** hasta 5 tarjetas (13 en la v1) con peso = plata en juego × urgencia × novedad, que aparecen por contexto; histórico en números con filtro mes/3/6/9/12; resúmenes diarios con vocabulario de métricas del core que los módulos alimentan por eventos (incluye forma de `expense.*` para G); contexto externo (clima, feriados) guardado sin acción; escala medida. **Por que importa:** destraba G y es la base de AN. | **propuesta** (borrador de Claude, revisión del owner pendiente) | `adr/0152-analiticas-inbox-accionable.md` |
 
 ## Specs — que se construye
 

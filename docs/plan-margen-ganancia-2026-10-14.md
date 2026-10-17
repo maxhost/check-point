@@ -61,7 +61,7 @@ trabajo, es ignorarlo». Los cupones entran porque ya se aplican en el POS al ve
 | **EV** | **Eventos de venta encendidos en PROD** (`MODULE_EVENTS_ENABLED`) | 0, 2, P1 | ✅ 2026-10-16: push `5b834ca0`, flag en Vercel Production, redeploy READY; venta de prueba en F5 → 1 `sale.closed` v2 con 2 entregas (leído por SQL 00:39 UTC). Cron de reintentos en cron-job.org cada 1 h (owner). Doc `docs/factory/release-module-events-2026-10-16.md` (GPT: faltaba la llamada a reintentos y el cierre) |
 | **N** | **Espacio core «Negocio»:** Medios de pago (+comisión), Regional y Fiscal (mudados desde Marca); permiso `business`, ruta `/backoffice/business`; medios al core, POS consume; comisión calculada en la transacción de cierre | P1 | ✅ **local** (GPT, 2026-10-16): spec 0235 `implementada`, QA PASS (`docs/factory/0235-qa.md`), en `main` local `e2cd4544`, **sin push ni migración PROD**. Para publicar: puente `e5eaa741` → migraciones 0093–0095 en PROD → drenaje → retiro de compatibilidad (worker en curso). CI de `origin/main` rojo (deadlock Stock / teardown permisos), worker arreglándolo |
 | **G** | **Gastos** (módulo `expenses`, renombra `profitability`): registro de pagos dictado/foto, criterio de caja, sueldos como nombre libre; tablas nuevas, se borra la 0231 | N (en serie) | decisiones del owner cerradas (2026-10-16, «Preguntas de G»); prompt escrito (spec 0236 + ADR 0151). **Se lanza después del ADR de AN** (la forma de los eventos `expense.*` la define AN; revisar la decisión 13 y el ítem de `module_event` del prompt contra ese ADR) |
-| **AN** | **Analíticas core**: lo que el dueño abre cada mañana (ver «AN — visión del owner»). Base expansible por rubro; ADR 0021 como antecedente | EV, N, G (implementación) | **diseño con el owner en curso** (próxima sesión). Su ADR va **antes de la spec de G**. Absorbe SM-datos y el punto de equilibrio (por concepto, «Preguntas de G» 1) |
+| **AN** | **Analíticas core**: lo que el dueño abre cada mañana (ver «AN — visión del owner»). Base expansible por rubro; ADR 0021 como antecedente | EV, N, G (implementación) | **ADR 0152 propuesto** (2026-10-16, borrador de Claude, revisión del owner pendiente). Su ADR va **antes de la spec de G**. Absorbe SM-datos y el punto de equilibrio (por concepto, «Preguntas de G» 1) |
 
 **Regla transversal a decidir en las specs:** lo que es por orden (comision, cupon sobre el total, bolsa) se reparte
 entre las lineas para la rentabilidad por producto. Recomendacion: proporcional al importe de cada linea.
@@ -315,6 +315,106 @@ diseñar la entrada de Analíticas sin Analíticas.
 **Preguntas abiertas que Claude ya tenía (para la sesión de diseño):** qué muestra la primera versión; ventas
 anteriores al 2026-10-16 (eventos apagados: ¿backfill o desde el encendido?); «clientes que vinieron esta semana» sale
 de pases/sellos (core), ¿entra?
+
+### AN — lo que el owner imagina ver (2026-10-16, sesión de diseño)
+
+**Camino:** el owner dice lo que imagina ver → se buscan productos que lo hagan (o mejor) → se juega e idea qué da
+valor al dueño. No se arranca por el inventario de eventos.
+
+**A quién sirve:** el comerciante de barrio hace todo él, con uno o dos empleados en el mejor caso; lleva stock, excel o
+libreta; le cuesta calcular el punto de equilibrio; no sabe los márgenes reales; intuye la demanda pero no la anticipa;
+pierde y gana dinero sin saberlo; no sabe qué implica una decisión (promoción, descuento, no hacerlo); conoce solo a
+los clientes frecuentes.
+
+**Propósito:** que el dueño pueda **accionar**, no solo ver gráficos. El histórico se cuenta en frases que entiende, no
+en gráficos de picos. Ejemplos del owner (textuales):
+- «El valor de tu stock es de $500 aproximadamente»
+- «En los últimos 6 meses tus insumos subieron en promedio un 10%, y las subas se dieron aproximadamente cada 21 días»
+- «Hoy es martes, sueles vender estos productos con más frecuencia»
+- «Te estás quedando sin harina, revisa tu stock, porque queda para preparar unas 20 masas de pizza y al ritmo actual
+  se acabarán probablemente el viernes»
+- «Hoy probablemente sea un día de ventas bajo, trata de recomendar este plato de tu menú que tiene mayores márgenes»
+- «Tienes que vender $x hoy para alcanzar el punto de equilibrio en x días»
+
+**Períodos (owner):** mes en curso, 3, 6, 9 y 12 meses (reemplaza «año en curso, 3/6/9» de arriba). Quizás
+comparativa contra el mismo período del año anterior (*a decidir*).
+
+**Investigación de mercado:** `docs/analisis-analiticas-mercado-2026-10-16.md` (tres informes; evidencia casi toda de
+proveedores).
+
+### AN — decisiones del owner sobre la investigación (2026-10-16)
+
+- **Todo vive en Analíticas.** Dentro de esa pantalla, un **inbox** con los mensajes accionables. Es «la parte más
+  smart»: como si tuvieras un empleado por departamento y este fuera el email donde te mandan lo que hay y las acciones
+  concretas que necesitan de vos. Invita a hacer lo que falta, corregir, completar, crear, diseñar.
+- **Dato faltante = invitación** en el inbox, no se oculta.
+- **Sí:** clientes habituales que se están yendo; alerta al cargar la factura del proveedor (suba de insumo → plato);
+  resumen de ayer («puede ser interesante»); meta de hoy; suba de insumos.
+- **«Se acaba el viernes» con rango** (margen de error aceptable). **Sin plazo del proveedor:** obligaría a cargarlo y
+  mantenerlo, y no se sostiene.
+- **Merma:** sale del stock y los ajustes que ya existen, por cálculo; la consistencia se sabrá en el mundo real.
+- **Recomendar plato: dinámico**, disparado por una situación («hoy será un día bajo, recomendá los de más margen»), no
+  una matriz fija.
+- **Confirmar/romper creencias → función de Smart Menu «diseñar nueva carta»**: «este es el menú que mejor rinde, produce
+  el 70% de los ingresos; los otros se pueden eliminar, ahorrás $x sin impacto significativo en ventas».
+- **Simular la promo antes de lanzarla no es de Analíticas:** va en el módulo de fidelización/marketing. Analíticas
+  mide el resultado: «el cupón 20% te costó $X y te generó $Y; tus ventas subieron/bajaron $Z».
+- **Contexto externo: le gusta mucho, «podría ser muy potente».** Clima: buscar API gratis. Feriados nacionales tienen
+  calendarios públicos por país, no por ciudad; eventos del barrio no tienen calendario. Encargó investigar qué
+  software (restauración, hotelería, odontología, etc.) ya lo hace, cómo, y qué resultado le da al dueño.
+
+### AN — contexto externo y criterio de valor (owner, 2026-10-16)
+
+- **Contexto externo empieza como DATO en la base, asociado a la actividad (p. ej. ventas con clima), sin ninguna
+  acción para el owner.** Objetivo: ir juntando histórico desde ya; lo accionable viene después.
+- **El dueño como fuente: no ahora** (5 locales en la red).
+- **Siguiente análisis:** para qué se usa cada software investigado y qué datos le da al dueño → por cada capacidad:
+  ¿nos interesa? si sí, ¿cómo hacerlo sin fricción para el dueño de barrio? ¿qué impacto tiene en él?
+- **Criterio de valor:** el comerciante de barrio quiere **ahorrar dinero, ahorrar tiempo o ganar más dinero**; su
+  preocupación usual es traer más clientes, pero «quizás un cliente que te deja $5 de ganancia no sea ni siquiera tan
+  rentable como ahorrarle $10 optimizando su stock».
+
+### AN — tabla capacidad→valor: respuestas del owner (2026-10-16)
+
+- **Turnos vacíos y recordatorios:** sí, más adelante, cuando haya agenda.
+- **Conteo de inventario:** ya existe en stock y es solo de insumos de producción, no del producto final; correcto así.
+  El panadero NO carga «40 medialunas, 20 panes»: la producción se infiere de ventas + stock + ajustes.
+- **Turnos y costo de personal:** fuera.
+- **Contabilidad / flujo de caja:** no la versión compleja; aprender de patrones y proyectar con el tiempo. Idea del
+  owner: **plan de crecimiento realista** — «si hoy facturás $1000 y te quedan $500, para ganar $1000 tendrías que
+  crecer acá, vender más esto, más clientes por esto… ¿es realista? necesitás 10 mesas y tenés 5: ni lleno llegás; o
+  vendé más del plato de mayor margen y llegás a $800, no a $1000».
+- **De acuerdo:** el resumen de ayer es la primera tarjeta; orden de valor margen → costos → stock → clientes; todo
+  dato sale de algo que el dueño ya hace y si falta se invita a completar; Gastos alimenta meta del día, suba y margen.
+- **Facturación SRI: fuera.** CheckPass no factura fiscalmente ni busca reemplazar a quien lo hace.
+- Pendiente de explicar: cuadre de caja y anulaciones.
+
+**Merma y producción (owner, 2026-10-16):**
+- La diferencia del ajuste por conteo contra el stock teórico ES la merma; **no se pide motivo**: el owner pone una
+  nota si quiere. Lo importante es avisar.
+- **Compras no cargadas: no se persigue.** Se asume que cargan; si no, todo es inconsistente, no solo la merma.
+- **Sobrante de producción (lo hecho y no vendido):** preferencia por **inferencia, sin carga manual**. Aceptable como
+  respaldo: preguntar cada tanto por UN producto distinto (hoy medialunas, mañana pan de maíz), nunca todos. Nivel de
+  ambición del owner: «armar una balanza que vaya debajo del canasto y sacar cantidades por merma de peso».
+- **Inferencia del sobrante: fuera** hasta que se ocurra un método (owner, 2026-10-16; ni hora de agotamiento, ni foto,
+  ni balanza por ahora). En su lugar, solo lo vendido: **«los martes se suelen vender 30 medialunas»** — el comerciante
+  sabe cuánto tiene y se prepara. No se le dice cuánto producir.
+- **Anulaciones: sí, ya** (el POS las registra).
+
+**Inbox (owner, 2026-10-16):**
+- **Las 13 tarjetas del borrador de Claude: aprobadas** («no son 100 posibilidades, son 13, es genial»); se suman más
+  aprendiendo. Borrador: resumen de ayer; qué se vende hoy (día de semana); meta del día; invitación a cargar gastos
+  fijos; suba de insumo → plato; margen bajo/negativo; producto sin costo; insumo que se acaba (rango); merma por
+  conteo; anulaciones anómalas; habitual que pasó su frecuencia; resultado de promo; día flojo → recomendar margen.
+- **Hasta 5 a la vez**, descartables; **el resumen de ayer cuenta entre las 5**; al aceptar o descartar entra otra solo
+  si hay algo que avisar.
+- **Cada tarjeta tiene un PESO y aparece por CONTEXTO, cuando se necesita**, no todos los días. Ejemplo del owner:
+  margen bajo no se muestra a diario; tiene sentido si faltan 10 días para cerrar el mes y se está a $x del punto de
+  equilibrio, para ajustar y garantizar llegar.
+- **Períodos (mes en curso, 3/6/9/12) son un filtro del histórico en NÚMEROS, no del inbox**: cómo crecieron las
+  ventas en 3 meses, cómo subió el costo del stock en 6, cuánto se ahorró en 9. **Cuadre/cierre de caja: fuera.**
+- **Proyecciones (flujo de caja, plan de crecimiento con techo): parqueado** (`docs/PARQUEADO.md`), solo son fiables con
+  histórico y hoy no hay.
 
 ## Prompt — Gastos (spec 0236 + ADR 0151; 2026-10-16; lanzar cuando N esté integrado)
 
