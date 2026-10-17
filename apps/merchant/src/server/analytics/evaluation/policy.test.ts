@@ -10,6 +10,33 @@ import {
 import type { AnalyticsPolicyConfig } from "@mi-pasaporte/domain/analytics/policy/index";
 const copy = (): AnalyticsPolicyConfig => structuredClone(ANALYTICS_POLICY);
 describe("versioned analytics policy foundation", () => {
+  it("rejects inverted zero-valued cross-field limits and derives distant comparison windows", () => {
+    for (const values of [
+      { fastQuantile: 0, slowQuantile: 0.75 },
+      { riskDays: 0, criticalDays: 1 },
+    ]) {
+      const config = copy();
+      Object.assign(config.rules.find((r) => r.id === "8")!.parameters, values);
+      expect(() => createAnalyticsPolicy(config)).toThrow("Política inválida");
+    }
+    const config = copy();
+    Object.assign(config.rules.find((r) => r.id === "1")!.parameters, {
+      comparisonDays: 90,
+    });
+    expect(
+      policyWindows(createAnalyticsPolicy(config)).recentDays,
+    ).toBeGreaterThanOrEqual(91);
+  });
+  it("canonicalizes configuration keys without dependence on insertion order", () => {
+    const config = copy();
+    const reordered = Object.fromEntries(
+      Object.entries(config).reverse(),
+    ) as AnalyticsPolicyConfig;
+    expect(createAnalyticsPolicy(reordered).version).toBe(
+      createAnalyticsPolicy(config).version,
+    );
+  });
+
   it("validates one immutable complete snapshot and keeps card11 parked", () => {
     expect(() =>
       validatePolicy(ANALYTICS_POLICY, ANALYTICS_RULE_DEFINITIONS),

@@ -143,6 +143,7 @@ export type AnalyticsInboxResponse = {
   state: "ready" | "preparing";
   preparedAt: string | null;
   nextReminderAt: string | null;
+  refreshAfterMs: number | null;
   cards: InboxCard[];
 };
 export type AnalyticsInboxMutation = Pick<

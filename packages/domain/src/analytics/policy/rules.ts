@@ -1,3 +1,5 @@
+/** Bump when supported evaluator/lifecycle semantics change. */
+export const ANALYTICS_EVALUATOR_VERSION = "inbox-lifecycle-v2.1";
 import type { AnalyticsRuleDefinition } from "./schema";
 const integer = { minimum: 1, integer: true };
 const ratio = { minimum: 0, maximum: 1 };

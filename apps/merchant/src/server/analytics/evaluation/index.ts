@@ -1,3 +1,4 @@
+import { lockAnalyticsBusiness } from "../lifecycle";
 import { and, eq, sql } from "drizzle-orm";
 import { getDb, withDbTransaction, type DbTransaction } from "@mi-pasaporte/db";
 import {
@@ -53,6 +54,7 @@ export async function evaluateBusiness(
 ): Promise<boolean> {
   const connecting = performance.now();
   return withDbTransaction(async (tx) => {
+    await lockAnalyticsBusiness(tx, businessId);
     options.trace?.("transaction_connection", performance.now() - connecting);
     const claimStarted = performance.now();
     const budget = Math.max(1, Math.floor(options.budgetMs ?? 20_000));
@@ -114,6 +116,7 @@ export async function reconcileCampaignCandidates(
   businessId: string,
   now = new Date(),
 ) {
+  await lockAnalyticsBusiness(tx, businessId);
   await tx.execute(
     sql`select pg_advisory_xact_lock(hashtextextended('analytics:evaluate:'||${businessId}||':'||(${now.toISOString()}::timestamptz at time zone timezone)::date::text,0)) from core.business where id=${businessId}`,
   );
@@ -150,6 +153,7 @@ export async function evaluateAnalyticsFacts(
   },
 ) {
   if (!context.facts.length) return;
+  await lockAnalyticsBusiness(tx, context.businessId);
   const now = context.now ?? new Date();
   const clock = await tx
     .select({ timezone: businesses.timezone })
@@ -330,6 +334,7 @@ export async function readInbox(
   }
   const resolve = await actionContext(businessId, viewer);
   const cards = await withDbTransaction(async (tx) => {
+    await lockAnalyticsBusiness(tx, businessId);
     await tx.execute(
       sql`select pg_advisory_xact_lock(hashtextextended(${evaluationLockKey(businessId, day)}, 0))`,
     );
@@ -397,6 +402,7 @@ export async function actOnCard(
 ) {
   const today = await businessDay(businessId, now);
   await withDbTransaction(async (tx) => {
+    await lockAnalyticsBusiness(tx, businessId);
     await tx.execute(
       sql`select pg_advisory_xact_lock(hashtextextended(${evaluationLockKey(businessId, today)}, 0))`,
     );

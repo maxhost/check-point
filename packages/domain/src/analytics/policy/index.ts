@@ -1,6 +1,9 @@
 import { createHash } from "node:crypto";
 import { ANALYTICS_POLICY_CONFIG } from "./config";
-import { ANALYTICS_RULE_DEFINITIONS } from "./rules";
+import {
+  ANALYTICS_RULE_DEFINITIONS,
+  ANALYTICS_EVALUATOR_VERSION,
+} from "./rules";
 import {
   validatePolicy,
   type AnalyticsPolicy,
@@ -14,13 +17,16 @@ export type {
   AnalyticsRulePolicy,
   AnalyticsRuleHandler,
 } from "./schema";
-export { ANALYTICS_RULE_DEFINITIONS } from "./rules";
+export {
+  ANALYTICS_RULE_DEFINITIONS,
+  ANALYTICS_EVALUATOR_VERSION,
+} from "./rules";
 export { validatePolicy } from "./schema";
 function canonical(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
   if (value && typeof value === "object")
     return `{${Object.entries(value)
-      .sort(([a], [b]) => a.localeCompare(b))
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
       .map(([key, v]) => `${JSON.stringify(key)}:${canonical(v)}`)
       .join(",")}}`;
   return JSON.stringify(value);
@@ -42,7 +48,15 @@ export function createAnalyticsPolicy(
   validatePolicy(copy, ANALYTICS_RULE_DEFINITIONS);
   return immutable({
     ...copy,
-    version: `${copy.revision}:${createHash("sha256").update(canonical(copy)).digest("hex")}`,
+    version: `${copy.revision}:${createHash("sha256")
+      .update(
+        canonical({
+          config: copy,
+          definitions: ANALYTICS_RULE_DEFINITIONS,
+          evaluatorVersion: ANALYTICS_EVALUATOR_VERSION,
+        }),
+      )
+      .digest("hex")}`,
   });
 }
 /** One immutable snapshot per process; callers may explicitly inject another validated snapshot. */
@@ -77,6 +91,7 @@ export function policyWindows(policy: AnalyticsPolicy) {
       value("salesDays"),
       value("consumptionDays"),
       value("missingFixedDays"),
+      value("comparisonDays") + 1,
     ),
     closedMonths: value("closedMonths"),
     sameWeekdays: value("maximumOccurrences"),

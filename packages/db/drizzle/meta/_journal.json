@@ -708,6 +708,13 @@
       "when": 1792246822106,
       "tag": "0100_analytics_metric_lookup",
       "breakpoints": true
+    },
+    {
+      "idx": 101,
+      "version": "7",
+      "when": 1792254967552,
+      "tag": "0101_analytics_inbox_lifecycle",
+      "breakpoints": true
     }
   ]
 }
