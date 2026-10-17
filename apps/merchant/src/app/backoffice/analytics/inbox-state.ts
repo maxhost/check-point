@@ -9,8 +9,6 @@ import type {
 } from "@mi-pasaporte/domain/analytics/types";
 import { PanelRequestError, panelRequest } from "../panel-request";
 
-/** Temporary additive DTO typing until A2 is integrated; the server supplies this value. */
-type ClientInbox = AnalyticsInboxResponse & { refreshAfterMs?: number | null };
 const validCards = (cards: InboxCard[]) =>
   cards.filter((card) => Date.parse(card.expiresAt) >= Date.now());
 /** Browser timers cap delays at 2^31−1 ms; intermediate wakes never request data. */
@@ -29,7 +27,7 @@ function atInstant(instant: number, callback: () => void) {
   return () => clearTimeout(timer);
 }
 export function useAnalyticsInbox() {
-  const [inbox, setInbox] = useState<ClientInbox | null>(null);
+  const [inbox, setInbox] = useState<AnalyticsInboxResponse | null>(null);
   const [error, setError] = useState("");
   const [pending, setPending] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
@@ -51,7 +49,7 @@ export function useAnalyticsInbox() {
     let active = true;
     const token = ++revision.current;
     loading.current = token;
-    void panelRequest<ClientInbox>("/api/analytics/inbox")
+    void panelRequest<AnalyticsInboxResponse>("/api/analytics/inbox")
       .then((data) => {
         if (active && token === revision.current) {
           if (data.contractVersion !== 2) throw new Error("inbox-contract");

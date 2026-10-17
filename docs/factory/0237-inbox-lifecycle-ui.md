@@ -88,3 +88,40 @@ QA pidió una barrera explícita en el oráculo del finally viejo: antes del dob
 foco ahora se espera la respuesta del GET anterior, `response.finished()` y dos
 frames del navegador para completar consumo/promesas. Solo se repitió ese caso:
 **1/1 PASS**, sin cambiar el producto ni ejecutar ninguna mutación del hook.
+
+## Pieza HTTP sobre A2
+
+Base integrada `72077840`, con A2 corregido `3340037f` y B `923da085`. El handler
+usa directamente `lifecycle/readInbox`, `decideInboxCard` y `cleanupInbox` reales.
+Rutas nuevas resolve/ignore/seen/snooze, sesión/membresía/permiso existentes,
+tenant/actor exclusivos del guard, validación de JSON y fecha ISO con zona real.
+Errores 404/409/422 se conservan desde el servicio común. Las rutas anteriores
+accept/dismiss devuelven 409 sin ejecutar una decisión; un ID malformado retorna
+404 después del guard. Cleanup usa Bearer CRON_SECRET y devuelve solo agregados;
+no se configuró scheduler remoto. Histórico y sus rutas quedan intactos.
+
+Fallback usa `policy.operation.fallbackWaitMs`; su test ya no representa un resumen
+viejo como fallback válido, sino otro aviso persistente que el lector permite.
+`refreshAfterMs` ya es requerido del DTO real y se quitó la intersección temporal
+del hook. Fixture v2 incluye el campo.
+
+- **23/23 PASS** unit HTTP/fallback (servicios y auth simulados), Node 24.20.0,
+  `cd apps/merchant && pnpm exec vitest run --config vitest.config.ts
+  src/server/analytics/http/lifecycle.test.ts
+  src/server/analytics/http/fallback.test.ts`.
+- Nuevo único browser focal de preparación: **1/1 PASS, 1,8 s**, verifica que el
+  intervalo viene del DTO (1000 ms en fixture) y cesa al quedar ready. Evidencias
+  UI anteriores se reutilizan; no se repitieron los 19 por este cableado.
+- Lint focal, ui-guard y diff-check ejecutados separadamente. El primer lint
+  señaló parámetro legacy sin uso; se corrigió validando sintaxis del ID antes
+  de responder 409, sin tocar guardias.
+- **Merchant typecheck FAIL** por tres consumidores legacy de `cardPOST` en
+  `evaluation/evaluation.neon.integration.test.ts:219/264/284`, todavía enviados
+  accepted/dismissed. Es dependencia combinada del encargo A3; A y coordinador
+  informados, sin editar su archivo ni relajar la firma v2. El candidato final
+  debe ejecutar typecheck real después de actualizar esos casos.
+
+Primer intento de Vitest usó config Merchant desde cwd raíz y encontró cero
+tests (exit 1). Se corrigió cwd; solo la ejecución real 23/23 cuenta como PASS.
+Los mocks no certifican DB ni tenant real en Neon. B no ejecutó DB, migración,
+PROD, push, deploy, verify global ni mutaciones. Recurso DB pertenece a A.

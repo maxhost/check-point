@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { ANALYTICS_POLICY } from "@mi-pasaporte/domain/analytics/policy/index";
 const state = vi.hoisted(() => ({
   ready: false,
   resolve: () => {},
@@ -16,13 +17,16 @@ vi.mock("../evaluation", () => ({
         resolve();
       };
     }),
+  evaluateDueBusinesses: vi.fn(),
+}));
+vi.mock("../lifecycle", () => ({
+  decideInboxCard: vi.fn(),
+  cleanupInbox: vi.fn(),
   readInbox: async () => ({
     state: state.ready ? "ready" : "preparing",
     preparedAt: null,
-    cards: state.ready ? [{ id: "today" }] : [{ id: "yesterday" }],
+    cards: state.ready ? [{ id: "today" }] : [{ id: "persisted-stock" }],
   }),
-  actOnCard: vi.fn(),
-  evaluateDueBusinesses: vi.fn(),
 }));
 vi.mock("../../api-permission", () => ({
   requireApiPermissionSinGateDeEmail: vi.fn(),
@@ -34,16 +38,18 @@ afterEach(() => {
   state.after = [];
 });
 describe("AN-1 first-open budget", () => {
-  it("returns yesterday after three seconds and registers completion with after", async () => {
+  it("returns valid persisted notices at the configured budget and completes with after", async () => {
     vi.useFakeTimers();
     const pending = inboxWithFallback("business", {
       role: "owner",
       permissions: ["analytics"],
     });
-    await vi.advanceTimersByTimeAsync(2999);
+    await vi.advanceTimersByTimeAsync(
+      ANALYTICS_POLICY.operation.fallbackWaitMs - 1,
+    );
     expect(state.after).toHaveLength(1);
     await vi.advanceTimersByTimeAsync(1);
-    expect((await pending).cards[0]?.id).toBe("yesterday");
+    expect((await pending).cards[0]?.id).toBe("persisted-stock");
     state.resolve();
     await state.after[0]!();
     expect(state.ready).toBe(true);
