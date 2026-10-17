@@ -13,6 +13,7 @@ import { getDb, withDbTransaction } from "@mi-pasaporte/db";
 import { and, eq } from "drizzle-orm";
 import {
   moduleEvents,
+  moduleEventDeliveries,
   posOrderItems,
   posOrderPayments,
   posOrders,
@@ -224,10 +225,32 @@ describe.skipIf(!modulesIntegrationEnabled)(
         });
       });
       expect((await eventOf(sourceOrderId)).eventVersion).toBe(1);
-      expect(await drain(event!.eventId)).toMatchObject({
-        applied: 2,
+      const deliveries = () =>
+        getDb()
+          .select({
+            subscriberId: moduleEventDeliveries.subscriberId,
+            state: moduleEventDeliveries.state,
+            appliedAt: moduleEventDeliveries.appliedAt,
+          })
+          .from(moduleEventDeliveries)
+          .where(eq(moduleEventDeliveries.eventId, event!.eventId));
+      // Only Recipes consumes newly published events after 0235; core commissions are synchronous.
+      expect(await deliveries()).toEqual([
+        { subscriberId: "recipes", state: "pending", appliedAt: null },
+      ]);
+      expect(await drain(event!.eventId)).toEqual({
+        claimed: 1,
+        applied: 1,
+        pending: 0,
         failed: 0,
       });
+      expect(await deliveries()).toEqual([
+        {
+          subscriberId: "recipes",
+          state: "applied",
+          appliedAt: expect.any(Date),
+        },
+      ]);
       expect(await movements(sourceOrderId)).toMatchObject([
         { quantity: "-0.500" },
       ]);
