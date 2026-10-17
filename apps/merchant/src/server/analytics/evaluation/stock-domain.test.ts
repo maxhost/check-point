@@ -62,7 +62,7 @@ const input = (): AnalyticsInput => ({
   labels: [{ kind: "item", id: "flour", label: "harina" }],
   metrics: [
     metric("units_sold", 200, 0, "2026-10-19", "center", "pizza"),
-    metric("revenue", 0, 100000, "2026-10-19", "center", null),
+    metric("revenue", 0, 10000, "2026-10-19", "center", null),
   ],
   gauges: [gauge("stock_on_hand")],
   firstConsumptionDays: [
@@ -140,6 +140,22 @@ describe("AN-2 cost increase", () => {
     expect(c.body).not.toContain("$0.00 más");
     const after = carryFactCandidate({ ...i, today: "2026-10-30" }, c)!;
     expect(after.weight).toBeCloseTo(c.weight * 0.7 ** 10);
+  });
+  it("sums fractional sales exactly before rounding a half minor unit", () => {
+    const i = input();
+    i.metrics = [
+      metric("units_sold", 0.1, 0, "2026-10-18", "center", "pizza"),
+      metric("units_sold", 0.7, 0, "2026-10-19", "center", "pizza"),
+    ];
+    expect(
+      facts(i, [
+        cost({
+          itemUnitCostAfter: "1.05",
+          unitCostBefore: "2",
+          unitCostAfter: "2.025",
+        }),
+      ])[0]?.amountMinor,
+    ).toBe(1);
   });
   it("honors dismissals until a material change and rejects facts in another currency", () => {
     const i = input(),
@@ -240,7 +256,7 @@ describe("AN-2 count loss", () => {
     expect(facts(i, [gap({ quantity: "3", amountMinor: "300" })])).toEqual([]);
     const high = {
       ...i,
-      metrics: [metric("revenue", 0, 160000, "2026-10-19", "center", null)],
+      metrics: [metric("revenue", 0, 40000, "2026-10-19", "center", null)],
     };
     expect(facts(high, [gap()])).toEqual([]);
     expect(facts(high, [gap({ amountMinor: "-400" })])).toHaveLength(1);
@@ -311,6 +327,18 @@ describe("AN-2 stock history", () => {
     expect(h.averageIncrease).toBeCloseTo(0.21);
     expect(h.increaseDays).toBe(2);
     expect(h.averageDaysBetweenIncreases).toBe(10);
+    const fluctuating = {
+      ...i,
+      gauges: [
+        gauge("stock_unit_cost", "2026-09-01", "0", "100"),
+        gauge("stock_unit_cost", "2026-10-01", "0", "110"),
+        gauge("stock_unit_cost", "2026-10-05", "0", "100"),
+        gauge("stock_unit_cost", "2026-10-11", "0", "110"),
+      ],
+    };
+    expect(
+      summarizeStockHistory(fluctuating, "2026-10-01", i.today).averageIncrease,
+    ).toBeCloseTo(0.1);
     expect(
       summarizeStockHistory(i, "2026-10-10", i.today, "center")
         .averageDaysBetweenIncreases,

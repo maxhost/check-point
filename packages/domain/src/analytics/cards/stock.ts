@@ -1,3 +1,4 @@
+import { add, rational } from "../../financial/rational";
 import type { AnalyticsFact } from "../metrics";
 import type {
   AnalyticsGauge,
@@ -202,15 +203,17 @@ export function buildFactCandidates(
         fact.unitCostBefore,
       );
       if (productDelta.n <= 0n) return [];
-      const units = rows
+      const q = rows
         .filter(
           (r) =>
             r.metric === "units_sold" &&
             r.dimensionId === fact.productId &&
             r.locationId === fact.locationId,
         )
-        .reduce((n, r) => n + r.quantity, 0);
-      const q = decimal(String(units));
+        .reduce(
+          (total, r) => add(total, decimal(String(r.quantity))),
+          rational(0n),
+        );
       const weekly = moneyRatio(
         productDelta.n * 10n ** BigInt(input.minorUnit) * q.n,
         productDelta.d * q.d * 4n,
@@ -244,16 +247,20 @@ export function buildFactCandidates(
     const loss = safeInteger(-BigInt(fact.amountMinor)),
       quantity = -Number(fact.quantity);
     const weeklySales = sumIntegers(
-      rows
+      input.metrics
         .filter(
-          (r) => r.metric === "revenue" && r.locationId === fact.locationId,
+          (r) =>
+            r.metric === "revenue" &&
+            r.locationId === fact.locationId &&
+            r.day >= addDays(originDay, -7) &&
+            r.day < originDay,
         )
         .map((r) => r.amountMinor),
     );
     if (
       quantity <= 0 ||
       loss < 3 * 10 ** input.minorUnit ||
-      BigInt(loss) * 400n < BigInt(weeklySales)
+      BigInt(loss) * 100n < BigInt(weeklySales)
     )
       return [];
     return [

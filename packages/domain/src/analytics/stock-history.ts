@@ -1,3 +1,4 @@
+import { add, multiply } from "../financial/rational";
 import { daysBetween } from "./date";
 import { decimal, moneyRatio } from "./money";
 import { latestGauges } from "./cards/stock";
@@ -32,9 +33,7 @@ export function summarizeStockHistory(
     }
     const q = decimal(stock.quantity),
       c = decimal(cost.amountMinor);
-    const n = q.n * c.n,
-      d = q.d * c.d;
-    value = { n: value.n * d + n * value.d, d: value.d * d };
+    value = add(value, multiply(q, c));
     valuedItems++;
   }
   const knownValueMinor = moneyRatio(value.n, value.d);
@@ -59,7 +58,6 @@ export function summarizeStockHistory(
         a.eventId.localeCompare(b.eventId),
     );
     let previous: (typeof observations)[number] | undefined,
-      factor = 1,
       firstRise: string | undefined,
       lastRise: string | undefined,
       rises = 0;
@@ -68,7 +66,6 @@ export function summarizeStockHistory(
         const a = decimal(current.amountMinor),
           b = decimal(previous.amountMinor);
         if (b.n > 0n && a.n * b.d > b.n * a.d) {
-          factor *= Number(a.n * b.d) / Number(a.d * b.n);
           firstRise ??= current.day;
           lastRise = current.day;
           rises++;
@@ -76,9 +73,16 @@ export function summarizeStockHistory(
       }
       previous = current;
     }
-    // A series with no comparison is unknown, rather than a measured zero rise.
-    if (observations.some((g, i) => i > 0 && g.day >= from))
-      changes.push(factor - 1);
+    // Net first/last change, retaining the last baseline before the selected period.
+    const baseline =
+      observations.filter((g) => g.day < from).at(-1) ?? observations[0];
+    const last = observations.at(-1);
+    if (baseline && last && baseline !== last && last.day >= from) {
+      const start = decimal(baseline.amountMinor),
+        end = decimal(last.amountMinor);
+      if (start.n > 0n)
+        changes.push(Number(end.n * start.d) / Number(end.d * start.n) - 1);
+    }
     increaseDays += rises;
     if (rises > 1 && firstRise && lastRise)
       intervals.push(daysBetween(firstRise, lastRise) / (rises - 1));

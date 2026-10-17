@@ -130,14 +130,51 @@ export async function evaluateAnalyticsFacts(
   );
   const snapshot = await tx.execute(inputStatement(context.businessId, now));
   const input = inputFromRow(snapshot.rows[0]);
-  const cards = buildFactCandidates(
-    input,
-    context.facts,
-    context.eventId,
-    (instant) => localDay(new Date(instant), clock[0]!.timezone),
-    input.states,
-  );
+  const cards: CardCandidate[] = [];
+  const dayOf = (instant: string) =>
+    localDay(new Date(instant), clock[0]!.timezone);
+  const factDays = [
+    ...new Set(context.facts.map((fact) => dayOf(fact.occurredAt))),
+  ];
+  for (const originDay of factDays) {
+    const facts = context.facts.filter(
+      (fact) => dayOf(fact.occurredAt) === originDay,
+    );
+    // A delayed delivery uses sales before the fact, never sales from its future.
+    const factSnapshot =
+      originDay === day
+        ? input
+        : inputFromRow(
+            (
+              await tx.execute(
+                inputStatement(
+                  context.businessId,
+                  new Date(facts[0]!.occurredAt),
+                ),
+              )
+            ).rows[0],
+          );
+    for (const card of buildFactCandidates(
+      factSnapshot,
+      facts,
+      context.eventId,
+      dayOf,
+      input.states,
+    )) {
+      const current = carryFactCandidate(input, card, input.states);
+      if (current) cards.push(current);
+    }
+  }
   for (const card of cards) {
+    const previous = input.factCards.find(
+      (c) => c.cardKey === card.cardKey && c.subjectKey === card.subjectKey,
+    );
+    if (
+      previous?.originObservedAt &&
+      card.originObservedAt &&
+      previous.originObservedAt > card.originObservedAt
+    )
+      continue;
     const values = {
       weight: String(card.weight),
       amountMinor: card.amountMinor === null ? null : BigInt(card.amountMinor),
