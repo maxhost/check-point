@@ -1,111 +1,96 @@
 import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-
 const url = process.env.NEON_INTEGRATION_DATABASE_URL;
 const enabled =
   Boolean(url) && process.env.NEON_INTEGRATION_ISOLATED === "true";
-// getDb() reads DATABASE_URL lazily; point it at the isolated integration branch.
 if (enabled) process.env.DATABASE_URL = url;
-
-import { getDb } from "@mi-pasaporte/db";
-import { businesses, memberships, users } from "@mi-pasaporte/db/schema";
 import {
   BrandError,
   ownerBusiness,
   saveBrand,
 } from "@mi-pasaporte/domain/server/brand";
-
-const brandInput = (revision: number) => ({
-  name: "Marca Integración",
-  timezone: "America/Guayaquil",
-  brandPrimaryColor: "#176548",
-  brandComplementaryColor: "#2D8B68",
-  brandAccentColor: "#E78132",
-  revision,
-  logoAction: "keep" as const,
-});
-
+import { readConfiguration, saveConfiguration } from "./business/configuration";
+import {
+  brandInput,
+  seedBrandWorld,
+  dropBrandWorld,
+} from "./brand-integration-support";
 describe.skipIf(!enabled)("brand service against Neon", () => {
-  const userId = `brand-int-${randomUUID()}`;
-  const businessId = randomUUID();
-
+  let world: Awaited<ReturnType<typeof seedBrandWorld>>, other: typeof world;
   beforeAll(async () => {
-    const db = getDb();
-    await db.insert(users).values({
-      id: userId,
-      name: "Owner Marca",
-      email: `${userId}@example.test`,
-      emailVerified: true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-    await db.insert(businesses).values({
-      id: businessId,
-      name: "Marca QA",
-      countryCode: "EC",
-      timezone: "America/Guayaquil",
-    });
-    await db.insert(memberships).values({ businessId, userId, role: "owner" });
+    world = await seedBrandWorld();
+    other = await seedBrandWorld();
   }, 30_000);
-
   afterAll(async () => {
-    const db = getDb();
-    await db.delete(memberships).where(eq(memberships.businessId, businessId));
-    await db.delete(businesses).where(eq(businesses.id, businessId));
-    await db.delete(users).where(eq(users.id, userId));
+    await dropBrandWorld(world);
+    await dropBrandWorld(other);
   }, 30_000);
-
   it("starts a new business at false/null/false without guessing a country rate", async () => {
-    expect(await ownerBusiness(userId)).toMatchObject({
+    expect(await readConfiguration(world.businessId, "fiscal")).toMatchObject({
       chargesVat: false,
       saleVatRate: null,
       recoversPurchaseVat: false,
     });
   });
-
-  it("bumps the revision on save and rejects a stale save with 409", async () => {
-    // Fresh business starts at brand_revision = 1; the first save matches and bumps to 2.
-    const saved = await saveBrand(userId, brandInput(1));
+  it("bumps the revision on branding save and rejects a stale save with409", async () => {
+    const saved = await saveBrand(world.userId, brandInput(1));
     expect(saved.brandRevision).toBe(2);
-    // The client-facing route strips it, but the service still returns the key column.
     expect(saved).toHaveProperty("logoObjectKey");
-
-    // A second save with the now-stale revision 1 must not silently succeed.
-    await expect(saveBrand(userId, brandInput(1))).rejects.toMatchObject({
+    await expect(saveBrand(world.userId, brandInput(1))).rejects.toMatchObject({
       status: 409,
     });
-    // Saving with the current revision 2 succeeds again.
-    const again = await saveBrand(userId, brandInput(2));
-    expect(again.brandRevision).toBe(3);
+    expect(await ownerBusiness(world.userId)).toEqual(saved);
+    expect((await saveBrand(world.userId, brandInput(2))).brandRevision).toBe(
+      3,
+    );
   }, 30_000);
-
-  it("rejects a user without an owner business with 403", async () => {
+  it("rejects a user without an owner business with403", async () => {
     await expect(
       saveBrand(`ghost-${randomUUID()}`, brandInput(1)),
     ).rejects.toMatchObject({ status: 403 });
   });
-
-  it("still surfaces BrandError for a malformed payload as 422", async () => {
+  it("still surfaces BrandError for a malformed payload as422 without modifying the business", async () => {
+    const before = await ownerBusiness(world.userId);
     await expect(
-      saveBrand(userId, { ...brandInput(3), brandPrimaryColor: "green" }),
+      saveBrand(world.userId, {
+        ...brandInput(before!.brandRevision),
+        brandPrimaryColor: "green",
+      }),
     ).rejects.toBeInstanceOf(BrandError);
+    expect(await ownerBusiness(world.userId)).toEqual(before);
   });
-
-  it("round-trips the currency now owned by brand config", async () => {
-    const before = await ownerBusiness(userId);
-    // Seeded without an explicit currency → the column default applies.
-    expect(before?.currencyCode).toBe("USD");
-    const saved = await saveBrand(userId, {
-      ...brandInput(before!.brandRevision),
+  it("Regional owns currency; branding rejects its old fields and preserves both businesses", async () => {
+    const before = (await ownerBusiness(world.userId))!,
+      foreign = await ownerBusiness(other.userId);
+    const regional = await readConfiguration(world.businessId, "regional");
+    expect(regional).toMatchObject({ currencyCode: "USD" });
+    await expect(
+      saveBrand(world.userId, {
+        ...brandInput(before.brandRevision),
+        currencyCode: "BRL",
+      }),
+    ).rejects.toMatchObject({ status: 422 });
+    expect(await ownerBusiness(world.userId)).toEqual(before);
+    const saved = await saveConfiguration(world.businessId, "regional", {
+      ...regional,
       currencyCode: "BRL",
     });
-    expect(saved.currencyCode).toBe("BRL");
-  });
-  it("round-trips exact fiscal values, legacy omissions, retention and null versus zero", async () => {
-    const current = (await ownerBusiness(userId))!;
-    const saved = await saveBrand(userId, {
-      ...brandInput(current.brandRevision),
+    expect(saved).toMatchObject({ currencyCode: "BRL" });
+    const branded = await saveBrand(
+      world.userId,
+      brandInput(before.brandRevision),
+    );
+    expect(branded.currencyCode).toBe("BRL");
+    expect(await readConfiguration(world.businessId, "regional")).toEqual(
+      saved,
+    );
+    expect(await ownerBusiness(other.userId)).toEqual(foreign);
+  }, 30_000);
+  it("Fiscal preserves exact values, branding omissions, retention, null/zero and failed-save atomicity", async () => {
+    const initial = await readConfiguration(world.businessId, "fiscal");
+    const currentBrand = (await ownerBusiness(world.userId))!;
+    const saved = await saveConfiguration(world.businessId, "fiscal", {
+      ...initial,
       chargesVat: true,
       saleVatRate: "015.2",
       recoversPurchaseVat: true,
@@ -115,35 +100,54 @@ describe.skipIf(!enabled)("brand service against Neon", () => {
       saleVatRate: "15.20",
       recoversPurchaseVat: true,
     });
-    const legacy = await saveBrand(userId, brandInput(saved.brandRevision));
-    expect(legacy).toMatchObject({
+    const branded = await saveBrand(
+      world.userId,
+      brandInput(currentBrand.brandRevision),
+    );
+    expect(branded).toMatchObject({
       chargesVat: true,
       saleVatRate: "15.20",
       recoversPurchaseVat: true,
     });
-    const off = await saveBrand(userId, {
-      ...brandInput(legacy.brandRevision),
+    expect(await readConfiguration(world.businessId, "fiscal")).toEqual(saved);
+    const off = await saveConfiguration(world.businessId, "fiscal", {
+      ...saved,
       chargesVat: false,
     });
-    expect(off.saleVatRate).toBe("15.20");
-    const zero = await saveBrand(userId, {
-      ...brandInput(off.brandRevision),
+    expect(off).toMatchObject({ saleVatRate: "15.20" });
+    const zero = await saveConfiguration(world.businessId, "fiscal", {
+      ...off,
       chargesVat: true,
       saleVatRate: "0",
     });
-    expect(zero.saleVatRate).toBe("0.00");
-    const empty = await saveBrand(userId, {
-      ...brandInput(zero.brandRevision),
+    expect(zero).toMatchObject({ saleVatRate: "0.00" });
+    const empty = await saveConfiguration(world.businessId, "fiscal", {
+      ...zero,
       chargesVat: false,
       saleVatRate: null,
     });
-    expect(empty.saleVatRate).toBeNull();
+    expect(empty).toMatchObject({ saleVatRate: null });
+    const beforeFailure = await ownerBusiness(world.userId);
     await expect(
-      saveBrand(userId, {
-        ...brandInput(empty.brandRevision),
+      saveConfiguration(world.businessId, "fiscal", {
+        ...empty,
         chargesVat: true,
       }),
     ).rejects.toMatchObject({ status: 422 });
-    expect(await ownerBusiness(userId)).toEqual(empty);
+    expect(await readConfiguration(world.businessId, "fiscal")).toEqual(empty);
+    expect(await ownerBusiness(world.userId)).toEqual(beforeFailure);
+    await expect(
+      saveConfiguration(world.businessId, "fiscal", {
+        ...saved,
+        chargesVat: false,
+      }),
+    ).rejects.toMatchObject({
+      status: 409,
+      code: "business_revision_conflict",
+    });
+    expect(await readConfiguration(world.businessId, "fiscal")).toEqual(empty);
+    expect((await ownerBusiness(world.userId))!.brandRevision).toBe(
+      branded.brandRevision,
+    );
   }, 30_000);
 });
