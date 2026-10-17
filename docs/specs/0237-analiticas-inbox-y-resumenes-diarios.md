@@ -92,7 +92,7 @@ exacto, `count`) y tipo de dimensión (`none`, `product`, `item`, `concept`, `cu
 | `product_revenue` | sum | money | product | 1 | `sale.closed` → neto de la línea (`lines[].money.net`) |
 | `units_sold` | sum | quantity | product | 1 | `sale.closed` → cantidad vendida |
 | `payment_commission` | sum | money | none | 1 | `sale.commission.frozen` → comisión congelada de la venta |
-| `cost_of_goods` | sum | money | product | 1 | `recipes.consumption.applied` → costo del consumo de la línea |
+| `cost_of_goods` | sum | money | product | 1 | `recipes.consumption.applied` → costo del consumo de la línea; `count` cuenta las líneas con costo conocido |
 | `units_with_cost` | sum | quantity | product | 1 | `recipes.consumption.applied` → unidades con costo conocido; cobertura = `units_with_cost / units_sold` |
 | `revenue_with_cost` | sum | money | product | 1 | `recipes.consumption.applied` → neto exacto de las líneas cuyo costo se conoce; `count` cuenta esas líneas |
 | `payment_commission_with_cost` | sum | money | product | 1 | `recipes.consumption.applied` → comisión congelada asignada a esas líneas; `count` cuenta solo líneas con comisión conocida, incluido cero explícito |
@@ -262,8 +262,8 @@ y ganan peso la 6 y la 7.
 Para conservar exactamente «solo sobre lo vendido con costo», el numerador y denominador de `m` usan
 `revenue_with_cost`, `cost_of_goods` y `payment_commission_with_cost`. No se prorratea el neto agregado por
 unidades ni por precio promedio: cambiar precios entre ventas no cambia qué líneas tenían costo conocido.
-Si hay líneas con costo pero su comisión es desconocida (`count` de comisión conocido menor que el del neto
-conocido), no se promete margen/meta exactos. La ganancia unitaria de las tarjetas 6/13 usa esas mismas métricas
+Si los `count` de costo, neto conocido y comisión conocida no coinciden, no se promete margen/meta exactos
+(incluye eventos legacy sin neto y comisiones desconocidas). La ganancia unitaria de las tarjetas 6/13 usa esas mismas métricas
 por producto y `units_with_cost`. El bruto del histórico conserva la fórmula literal del §4 con revenue y comisión
 totales; las métricas auxiliares no vuelven a sumarse allí.
 
@@ -419,11 +419,15 @@ Recortadas a lo que detecta un defecto plausible; suites Neon con `tools/neon-te
 3. Neon: `recipes.consumption.applied` y `sale.commission.frozen` se publican en la tx de su origen (si esa tx
    revierte, no hay evento); producto sin receta → línea con costo null y cobertura menor; módulos apagados → sin
    evento de consumo. Unit: cada traductor es puro (misma entrada, misma salida; sin acceso a base).
+   Regresión H2: consumir una venta predeploy pendiente completa Stock sin aportes analytics; una venta nueva con
+   delivery core pendiente conserva elegibilidad aunque el consumo se aplique antes del revenue.
 4. Neon (regresión): conteo con delivery `core.analytics` pendiente no da 409; con consumo de Recetas pendiente sí.
 5. Unit: pesos y selección — tope 5 con el resumen adentro, umbral, novedad (`0,6^n`, descartada sin cambio = 0,
    cambio de escalón vuelve).
 6. Unit: tarjetas 2, 3, 4, 6, 7 y 13 con fixtures: mínimo de historia, meta con conceptos estimados, primer mes →
    invitación, cobertura baja, ya cubierto, `m ≤ 0`.
+   Precisión: mismo producto/día con precios distintos y cobertura parcial conserva el neto exacto costeado,
+   comisión de un centavo repartida sin pérdida, null distinto de cero y datos legacy incompletos sin meta ficticia.
 7. Neon: aislamiento y permisos de las rutas (§3.5), 404 por id ajeno, 401 del cron, evaluación idempotente por día y
    fallback al abrir.
 8. Contexto: ciudad desde snapshots reales de Google (Cuenca) y Geoapify; ingesta de clima con proveedor simulado + una
