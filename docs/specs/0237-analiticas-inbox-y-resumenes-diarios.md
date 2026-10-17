@@ -19,8 +19,9 @@ Decisiones citadas: `docs/plan-margen-ganancia-2026-10-14.md`, secciones «AN �
 postergación y retención de 90 días/semanal de §3.7–§3.10. Sustituyen la copia diaria y «aceptar = navegar» del corte
 original. La funcionalidad integrada anterior conserva sus handoffs y sus límites; esta revisión todavía no está
 implementada. El owner confirmó categorías informativa/accionable y resumen diario renovable sin postergación.
-Siguen pendientes el reaviso de 11 y la novedad al vencer un recordatorio accionable; no se lanza código mientras
-estén sin resolver. [Contrato de implementación](../factory/0237-inbox-lifecycle-contract.md),
+La tarjeta 11 queda parqueada por dependencia de Marketing. El owner sustituye la excepción de pendientes/pospuestos
+por una caducidad máxima de 90 días para todo aviso. Solo sigue pendiente la novedad al vencer un recordatorio
+accionable; no se lanza código mientras esté sin resolver. [Contrato de implementación](../factory/0237-inbox-lifecycle-contract.md),
 [adversarial](../factory/0237-inbox-lifecycle-adversarial.md).
 
 ## Problema
@@ -78,13 +79,19 @@ reconstruir ventas anteriores a los eventos). Del 2026-10-17 (plan, «AN — dec
    informes. Recordarme luego conserva identidad y fecha elegida. Solo cambios pertinentes posteriores justifican
    reabrir; stock necesita evidencia propia del insumo/local, no una venta ajena ni un replay. La prioridad protege
    stock con riesgo ≤ 24 h frente a invitaciones. §3.7–§3.10 mandan para esta revisión (owner, 2026-10-17).
-9. **Retención aprobada:** limpieza semanal,90 días móviles desde cierre/vencimiento probado, solo residuos
-   cerrados/vencidos. Pendientes/pospuestos de cualquier edad y control anti-repetición necesario excluidos. Los
-   cierres nuevos eliminan contenido al acto; no se crea un log para conservarlo 90 días. Histórico numérico y
-   deduplicación de eventos fuera del cleanup.
+9. **Retención corregida por el owner:** limpieza semanal y caducidad máxima de 90 días móviles para el contenido
+   de cualquier aviso, incluso pendiente o pospuesto. No hay excepción para posposiciones indefinidas. El reloj
+   nace con el episodio y no se reinicia por recálculo, exposición o postergación (§3.10). Cerrar elimina el texto
+   inmediatamente; no se crea un log nuevo. Solo persiste el control compacto aún necesario para evitar
+   reapariciones con los mismos datos. Histórico numérico y deduplicación de eventos quedan fuera del cleanup.
 10. **Categorías y resumen diario:** las tarjetas declaran si son informativas o accionables. Las puramente
     informativas no ofrecen Solucionado ni Recordarme luego. El resumen de ayer marcado se retira; si no se marca,
     se actualiza con el siguiente día, sin acumular informes de anteayer. Su navegación al histórico no lo marca.
+11. **Marketing y tarjeta 11 parqueada:** la retención/reactivación de clientes es categoría Marketing y debe
+    respetar sus reglas oficiales; no se diseña otro criterio de ausencia desde Analíticas. Por ahora no generar
+    ni exponer la tarjeta 11, tampoco candidatas ya guardadas. No crear veinte avisos por veinte clientes ni una
+    campaña agregada nueva en este encargo. Se conservan eventos, métricas e histórico de clientes. La futura
+    presentación agregada y la acción de campaña/cupón dependen de Marketing y quedan parqueadas.
 
 ## Etapas
 
@@ -224,6 +231,8 @@ alimentan**: sin POS no hay ventas, sin Recetas no hay costo; Analíticas lo dic
 - Se mantiene la evaluación diaria por `GET /api/internal/analytics/evaluate` (Bearer `CRON_SECRET`, cron-job.org,
   ADR0118), cada 30 min de 00:00 a 08:00 America/Guayaquil. Claim por comercio/día con SKIP LOCKED, presupuesto de 20 s
   y exclusión de evaluaciones concurrentes. `evaluation_run` registra trabajo, no la vigencia del inbox.
+- La tarjeta 11 está fuera del catálogo activo por decisión del owner, sin flag ni variable de entorno. Evaluación
+  y lectura omiten su generación/exposición; la transición elimina su contenido anterior sin tocar datos de clientes.
 - Evaluar lee solo resúmenes/contexto de Analíticas, calcula las funciones puras y sincroniza los asuntos. Una
   tarjeta activa/pospuesta conserva `id` entre días, deliveries y recordatorios. Un recálculo idéntico no inserta
   una fila ni crea un episodio. La unicidad de contenido vigente pasa de (comercio,tipo,sujeto,día) a
@@ -237,7 +246,8 @@ alimentan**: sin POS no hay ventas, sin Recetas no hay costo; Analíticas lo dic
   fallback existente, con umbral de 3 s/after(); no presenta datos viejos como si fueran de hoy.
 - El cron sigue atendiendo comercios activos con datos recientes de 35 días o sin datos, y además pendientes que
   requieren revalidación temporal/recordatorio aunque no haya actividad reciente. El mero paso de 35 días no borra
-  ni vuelve inaccesible un aviso. Un comercio inactivo conserva estado para revalidar al volver.
+  ni vuelve inaccesible un aviso todavía vigente. Superados los 90 días del episodio, vence aunque el comercio
+  esté inactivo; al volver no se presenta contenido vencido ni se lo recrea con los mismos datos.
 - Tarjetas por hecho 5/9 y reconciliación de 12 sincronizan el mismo ciclo dentro de la delivery, sin reabrir un run
   ready ni pisar snoozes. Fuentes5/9 no dependen de copiar el texto de otra candidata: se conserva el contexto
   factual necesario del episodio dentro del estado estructurado existente y su control de orden/revisión.
@@ -310,12 +320,13 @@ Contrato v2 del inbox, sin flag ni variable de entorno. `id` persistente identif
 identifica el contexto y la revisión de decisión/recordatorio que vio el usuario; cambiar estado o remindAt
 invalida comandos anteriores, aunque los datos de negocio coincidan. Una lectura/exposición no cambia esa revisión
 por sí sola. Las decisiones envían `{ expectedVersion, operationId }`; posponer añade
-`remindAt`, ISO8601 con zona/offset convertido a instante UTC, futuro válido sin máximo artificial de 90 días. Se
-muestra/elige en zona del comercio, conservando el instante elegido si después cambia la zona.
+`remindAt`, ISO8601 con zona/offset convertido a instante UTC, futuro válido y no posterior a `expiresAt` del
+episodio. No se permite posponer 180 días ni extender la vigencia original. Se muestra/elige en zona del comercio,
+conservando el instante elegido si después cambia la zona.
 
 | Ruta | Contrato |
 |---|---|
-| `GET /api/analytics/inbox` | 200 `{ contractVersion:2,state,preparedAt,nextReminderAt,cards:[{ id,version,cardKey,category,sender,title,body,period,quality,amountAtStake,action,decisions }] }`. `category` es `informational` o `actionable` y determina capacidades. `period` indica origen y se muestra si no corresponde a hoy/ayer. `nextReminderAt` es el mínimo instante estrictamente futuro de pospuestos accionables vigentes/autorizados, o null; los ya debidos van en cards, no en ese campo. |
+| `GET /api/analytics/inbox` | 200 `{ contractVersion:2,state,preparedAt,nextReminderAt,cards:[{ id,version,cardKey,category,expiresAt,sender,title,body,period,quality,amountAtStake,action,decisions }] }`. `category` distingue `informational`, `actionable` y `marketing`; esta última queda reservada, sin tarjetas activas en este encargo. `expiresAt` es la caducidad del episodio y determina el máximo del recordatorio. `period` indica origen y se muestra si no corresponde a hoy/ayer. `nextReminderAt` es el mínimo instante estrictamente futuro de pospuestos accionables vigentes/autorizados, o null; los ya debidos van en cards, no en ese campo. |
 | `POST /api/analytics/inbox/:id/resolve` | Solucionado: 200 `{ cards,nextReminderAt }`, elimina contenido y guarda control/decisión sin afirmar resolución observada. |
 | `POST /api/analytics/inbox/:id/ignore` | Ignorar: mismo cierre técnico, motivo distinto; no cambia stock ni datos de negocio. |
 | `POST /api/analytics/inbox/:id/seen` | Visto para informes; mismo contrato de cierre, permitido según capacidades del tipo. |
@@ -328,7 +339,7 @@ muestra/elige en zona del comercio, conservando el instante elegido si después 
 
 Todas las rutas públicas mantienen sesión, membresía activa y permiso analytics; comercio derivado del guard,
 nunca del cuerpo/query. ID ajeno o desconocido 404; sin sesión 401/sin permiso 403. Versión presentada obsoleta 409
-`card_context_changed`, sin cerrar datos nuevos no vistos. Fecha de recordatorio inválida/pasada 422. Repetir la
+`card_context_changed`, sin cerrar datos nuevos no vistos. Fecha de recordatorio inválida/pasada o posterior a expiresAt: 422 sin efectos. Aviso ya vencido: 409 `card_expired` (404 si su ID ya se eliminó), sin reabrirlo. Repetir la
 misma operación ya reconocida es idempotente, incluso sin contenido: devuelve estado actual sin volver a aplicar.
 El control retiene la última operación/digest y la revisión de estado; reutilizar su operationId con otro cuerpo
 no modifica nada y devuelve 409. Un retry antiguo ya sustituido que no se pueda reconocer devuelve 409 por revisión
@@ -343,7 +354,8 @@ semántica explícita, independiente del remitente y del destino de navegación:
 | Categoría | Tarjetas del catálogo | Decisiones disponibles |
 |---|---|---|
 | Informativa (`informational`) | 1/2/9/12/13 y variante «Tu primer mes con gastos» de 4 | Visto / Ignorar. Sin Solucionado ni Recordarme luego. |
-| Accionable (`actionable`) | 3/4 invitación a cargar gastos/5/6/7/8/10/11 | Solucionado / Ignorar / Recordarme luego. |
+| Accionable (`actionable`) | 3/4 invitación a cargar gastos/5/6/7/8/10 | Solucionado / Ignorar / Recordarme luego, dentro de su vigencia. |
+| Marketing (`marketing`) | 11, parqueada | Ninguna por ahora: no generar ni exponer. Futuras acciones dependen de Marketing. |
 
 «Ver el día», «Ver cliente», «Registrar compra», etc. solo abren el destino resuelto por contrato/permiso; no hacen
 POST de cierre. Una tarjeta informativa puede enlazar al histórico sin convertirse por eso en accionable. Se
@@ -355,7 +367,7 @@ tarjeta/ID y su versión; no se conserva otra pendiente de anteayer. La decisió
 el siguiente: sus datos nuevos habilitan el resumen diario correspondiente. Una decisión atrasada con la versión
 anterior no puede retirar el nuevo. No hay postergación ni archivo de tarjetas del resumen; el histórico permanece.
 
-Recordarme luego permite elegir fecha/hora con kit existente, sin límite de 90 días; error de versión actualiza el contexto
+Recordarme luego permite elegir fecha/hora con kit existente, solo hasta expiresAt; error de versión actualiza el contexto
 antes de pedir otra decisión. No hacer doble envío mientras la acción esté pendiente.
 
 El recordatorio se vuelve elegible al llegar su instante sin cron externo por cada tarjeta. El cliente usa
@@ -371,7 +383,8 @@ nuevos. Un aviso accionable pospuesto de un período pasado dice su fecha, no «
 Estados semánticos: abierto, pospuesto, solucionado, ignorado, visto y vencido. Contenido solo para abierto o
 pospuesto; los otros conservan exclusivamente el control mínimo aún necesario. Cerrar se ejecuta atómicamente con
 la eliminación del texto y la memoria del contexto atendido. Una condición que se resuelve de forma observada
-retira la tarjeta y cancela el recordatorio, sin atribuirle una acción al owner.
+retira la tarjeta y cancela el recordatorio, sin atribuirle una acción al owner. Superar los 90 días también vence
+el contenido y cancela el recordatorio; ese vencimiento no afirma que el problema se haya solucionado.
 
 Mientras exista aviso abierto/pospuesto de un asunto, nuevos datos actualizan el mismo id; no se crea otro por
 cada venta o día. Tras cierre, contexto idéntico no vuelve. Una 8 se reabre por consumo real posterior del mismo
@@ -382,7 +395,8 @@ intradiaria. Traductores siguen puros y core no lee tablas de origen ni nombra m
 
 Posponer conserva id y remindAt; actualizaciones no anticipan ni reinician el recordatorio. Al vencer, se presenta
 la versión vigente de ese mismo asunto, con período explícito. La condición realmente resuelta lo cancela; la mera
-salida de la ventana de emisión no prueba resolución. §3.8 diferencia ambas cosas.
+salida de la ventana de emisión no prueba resolución. La caducidad de 90 días sí limita todo aviso; no se
+prolonga por posponerlo. §3.8 diferencia vigencia, emisión y resolución.
 
 Acción, evaluación, ingesta, reconciliación y limpieza comparten exclusión por comercio/tipo/asunto y un orden
 estable de locks; el lock por día no basta para tarjetas que cruzan medianoche. Usar versión/CAS para que cerrar
@@ -394,7 +408,9 @@ retoma luego. No cerrar un contexto posterior no visto ni reiniciar estado desde
 No usar un hash de todo el input, una revisión global del comercio o el importe null como identidad del contexto.
 Cada comparador declara sus métricas/dimensiones/período, orden de la fuente y criterio de cambio pertinente.
 El esquema concreto se diseña dentro de las tablas actuales; no inventar observaciones que el evento no capturó.
-Los umbrales originales de emisión de §3.4/§6/§7 se conservan.
+Los umbrales originales de emisión de §3.4/§6/§7 se conservan para las tarjetas activas. El tope de 90 días de
+§3.10 aplica a todas las filas; ninguna mención de vigencia o condición persistente da permanencia indefinida.
+La tarjeta 11 es una excepción de alcance explícita: queda parqueada.
 
 | Tarjeta | Asunto / evidencia pertinente | Vigencia y reaparición después del cierre |
 |---|---|---|
@@ -408,15 +424,16 @@ Los umbrales originales de emisión de §3.4/§6/§7 se conservan.
 |8 Stock | Insumo/local; gauge observado/revisión, cantidad, consumo pertinente y recuperación del episodio; no fingerprint por importe null. | Mes mínimo y riesgo original presentes. Cierre silencia versión atendida; consumo posterior menor y reposición→escasez permiten nuevo episodio. Se retira al desaparecer riesgo. Snooze respeta fecha; crítico no anula cierre/snooze. |
 |9 Conteo | Conteo/evento+insumo+local. Conteos distintos son asuntos distintos, aunque el insumo coincida. | Informativa sin snooze. Informe factual abierto no caduca por cambiar el día o tener poco peso. Otro conteo pertinente emite asunto nuevo; mismo evento no se duplica. No agrupar mermas diferentes para reducir filas. |
 |10 Anulaciones | Local y anomalía del conjunto pertinente de anulaciones/ventanas originales; soporte de conteo/monto y referencias. | Mientras se cumpla anomalía; resuelta retira. Nuevas anulaciones pertinentes que cambien el contexto habilitan otro, no ventas o movimientos ajenos. |
-|11 Habitual | Cliente del comercio y episodio desde su última visita, mediana y ausencia; fechas unidas entre locales como en AN-3. | Nueva visita resuelve ausencia; >90 días de última visita deja de cumplir condición original y retira, incluso con recordatorio. **Pendiente de aclaración del owner:** reaviso al duplicarse ausencia atendida o solo otro episodio tras visita. Sin reaviso diario implícito. |
+|11 Clientes / Marketing | Parqueada. No usar la mediana de Analíticas como regla de segmentación ni inventar reavisos. | No generar ni exponer, tampoco avisos históricos ya persistidos. Futura fuente oficial de etapas, presentación agregada y acción de campaña/cupón a resolver en Marketing; sin habilitar funciones hoy apagadas. |
 |12 Promo | Campaña/ciclo terminado, snapshot causal y métricas asociadas sin doble conteo. Emisión al día siguiente no es caducidad. | Informativa sin snooze. Informe sigue vigente abierto después de ese día. Canje tardío actualiza mismo id sin crear copias. Snapshot que invalida fin retira; nuevo fin/ciclo pertinente puede emitir. Cierre no permite que el replay del viejo ciclo lo resucite. |
 |13 Día flojo | Día objetivo, previsión y productos/márgenes pertinentes; no día de consulta. | Informativa sin snooze. Solo se muestra para el día objetivo; la previsión siguiente sustituye a la anterior sin acumular pendientes ni recomendar retrospectivamente como si fuera hoy. |
 
 Antes de código se congelan comparadores y ejemplos de aceptación por tipo. Los controles de asuntos permanentes
 se actualizan; para asuntos de períodos/hechos se retiran solo cuando se prueba que el contexto no puede volver a
 entrar y no tiene aviso/recordatorio/reconciliación pendiente. No usar el hecho de que ya no se muestra entre los 5
-como prueba de que está vencido. Una tabla contenida por asuntos reales no tiene tamaño constante si se acumulan
-hechos distintos sin atender.
+como prueba de que está vencido. El contenido pendiente también vence al superar 90 días; no conservar una
+fila de aviso por cada hecho para siempre. Controles por hecho se depuran cuando las reglas de edad y
+deduplicación impiden reemitirlo; controles permanentes se actualizan por asunto, sin log de decisiones.
 
 #### 3.9 Transición y datos
 
@@ -426,9 +443,11 @@ separar contexto factual (5/9), presentación y control de atención; no reconst
 
 El legado no tiene closedAt/expiredAt por candidata ni contexto completo visto en cada interacción. accepted antiguo
 significaba navegar: no convertirlo en Solucionado observado o declarado. Clasificar de manera conservadora las
-versiones vigentes/duplicadas/cerradas solo con evidencia; desconocidos se conservan y no entran al cleanup. Un
-updatedAt de otra versión, fecha antigua, importe bajo o ausencia de mostrada no prueba cierre. No inventar tiempos
-ni borrar potenciales pendientes para simplificar una restricción nueva.
+versiones vigentes/duplicadas/cerradas solo con evidencia. Para edad usar el inicio más antiguo demostrable del
+episodio, no el último duplicado diario. Si no existe fecha demostrable, registrar una sola vez el instante de
+transición como inicio de retención, sin afirmar una edad o cierre histórico inventados. También esos casos
+vencen después de 90 días, sin renovar el inicio en cada ejecución. Un updatedAt de otra versión, importe bajo o
+ausencia de mostrada no prueba cierre. No borrar datos de negocio para simplificar una restricción nueva.
 
 La capacidad de posponer informes existía solo en este borrador, no en el producto integrado. No crear recordatorios
 informativos en la migración; no usar la nueva categoría como motivo para descartar legado cuyo significado sea
@@ -439,27 +458,42 @@ histórico, contratos de eventos de origen ni corte Stock. Fuentes nuevas de con
 ADR0153: completar eventos, nunca leer tablas de origen desde Analíticas. Si hace falta ampliar productores,
 contrato y asignación explícita del coordinador antes de editar; sin decidir producto por cuenta propia.
 
-#### 3.10 Limpieza semanal
+#### 3.10 Caducidad y limpieza semanal
+
+Todo aviso tiene un inicio de episodio y expiresAt = inicio + 90×24 h. El inicio queda fijo durante ese episodio:
+una lectura, exposición, recálculo idéntico, actualización del texto o postergación no lo reinicia. Los hechos con
+fecha de origen conocida no rejuvenecen al insertarlos tarde: usar su fecha efectiva; una condición calculada usa
+su primer contexto elegible persistido. Un período diario nuevo reemplaza al anterior como precisa §3.8, sin archivo
+de contenido. Datos nuevos pertinentes posteriores a un cierre/vencimiento pueden justificar otro episodio; el
+mero calendario, el mismo contexto, un replay o una delivery vieja no recrean lo borrado.
+
+Superados 90 días, el contenido vence aunque esté abierto o pospuesto. El lector lo excluye, cancela el recordatorio
+y nunca depende de que el job ya haya borrado la fila. Un recordatorio debe ser futuro y ≤ expiresAt; postergarlo
+no mueve la caducidad. En el límite exacto de 90 días se conserva; pasado ese instante se excluye. No ofrecer
+fechas a 180 días ni mantener avisos indefinidamente pospuestos. Una condición que deja de ser válida puede
+retirarse antes, sin esperar el máximo de edad.
 
 `GET /api/internal/analytics/cleanup`, autenticada por CRON_SECRET. Frecuencia semanal; horario operativo propuesto
 domingo 03:30 America/Guayaquil (configurarlo remotamente requiere otro encargo autorizado). Corte único por llamada:
-instante UTC de inicio menos 90×24 h. Elegible solo resto cerrado/vencido con fecha efectiva probada **estrictamente
-anterior** al corte; igualdad se conserva. Nunca por mes, createdAt, fecha de candidata o actualización automática.
-El 10 de abril de 2026 el corte por fecha es 10 de enero: no borrar febrero/marzo enteros.
+instante UTC de inicio menos 90×24 h. Elimina contenido cuyo inicio de episodio sea estrictamente anterior al corte,
+incluidos pendientes/pospuestos; también residuos cerrados con cierre efectivo anterior al corte. Igualdad se
+conserva. No usar el mes ni auto-updatedAt. El 10 de abril de 2026 el corte por fecha es 10 de enero: no borrar
+febrero/marzo enteros. Para el legado rige el anclaje de edad de §3.9, sin una excepción permanente por desconocimiento.
 
-Cierres nuevos eliminan contenido inmediatamente. Los 90 días son red de seguridad/restos históricos, no obligación
-de conservar un log nuevo. Pendientes/pospuestos válidos, incluso de seis meses o con recordatorio futuro > 90 días,
-no se borran por edad. El control mínimo anti-repetición no tiene TTL ciego: solo se depura con prueba de que ya no
-hará falta. Si esa prueba no existe, se conserva su único estado por asunto. Eventos, revisiones/contribuciones,
-resúmenes numéricos e histórico del negocio quedan fuera.
+Los cierres nuevos eliminan el texto inmediatamente; no crean un log de 90 días. Caducar guarda únicamente el control
+compacto necesario para no recrear la misma condición al evaluar mañana. No conservar contenido disfrazado de
+control ni una fila histórica por decisión. Para hechos antiguos, la fecha de origen y las revisiones/deduplicación
+ya persistidas deben permitir depurar su control cuando no pueden reemitirse. Para asuntos permanentes se conserva
+solo el último contexto atendido/vencido necesario por asunto. Eventos, revisiones/contribuciones, resúmenes numéricos
+e histórico del negocio quedan fuera: la antigüedad del aviso no borra ventas, existencias, visitas o resultados.
 
 Lotes iniciales de hasta 500, presupuesto de 10 s por invocación, búsqueda indexada por elegibilidad/corte y desempate
 estable. Transacciones cortas, omitir ocupadas/revalidar bajo lock/CAS y volver a intentarlas; progreso solo después
 del commit. Corridas concurrentes/repetidas son idempotentes, sin barridos o locks globales. Si se agota presupuesto,
 se conserva el resto y se informa budgetExhausted; siguiente corrida retoma. Medir elegibles/procesadas/omitidas y
-último éxito sin exponer datos personales; fallos/backlog nunca justifican vaciar pendientes. Semanal no garantiza
-borrado antes de 97 días si hay backlog o fallos; en duda se retiene. No habilitar esta ruta sobre el modelo legado
-sin completar su transición y pruebas.
+último éxito sin exponer datos personales. Bajo backlog/fallos puede quedar una fila física vieja hasta la siguiente
+limpieza, pero nunca visible ni pospuesta activamente después de su vigencia. No habilitar esta ruta sobre el modelo
+legado sin completar su transición y pruebas.
 
 ### 4. Histórico en números
 
@@ -547,11 +581,11 @@ AN-3 suma clientes y promos. «Cuánto ahorraste» no tiene medición en la v1 (
   - **10 Anulaciones:** tickets anulados en 7 días por local > max(3, media + 2 desvíos de las 8 semanas previas) →
     «Esta semana se anularon 9 tickets en Centro ($64 cargados), el triple de lo normal.» Requiere el mes mínimo.
     Acción: ver anulados (la declara POS).
-  - **11 Habitual que se va:** ≥ 4 días distintos con visitas, días desde el último día visitado > 2 × la mediana
-    de los intervalos entre esos días y ≥ mediana + 7; última visita en 90 días → «Juan solía venir cada 12 días.
-    Su última visita fue hace 25 días.» Para esta tarjeta, varias visitas en la misma fecha local cuentan como
-    un solo día visitado; las operaciones y sus importes se conservan completos (owner, 2026-10-17).
-    `p` = gasto promedio por día visitado × días de visita esperados perdidos del mes. Acción: «Ver cliente»; H5 verificado en AN-3: Marketing no ofrece envío manual individual.
+  - **11 Clientes / Marketing — PARQUEADA por el owner:** no generar ni mostrar avisos individuales de ausencia.
+    La implementación histórica de AN-3 usaba mediana por ≥4 días distintos y «Ver cliente»; se conserva como
+    antecedente en su handoff, no como regla vigente de Marketing. La futura tarjeta respetará su fuente oficial
+    de segmentación y una acción de campaña/cupón disponible; evaluar presentación agregada antes de generar
+    una tarjeta por cliente. Sin implementar esa alternativa ni habilitar campañas apagadas en esta revisión.
   - **12 Resultado de promo,** el día después de `ends_at` o de pasar a `ended`: «El cupón 20% te costó $30 en
     descuentos y vino con $140 en ventas en los mismos tickets.» Sin decir que el cupón las causó. Acción: ver
     resultados de la campaña (existente).
@@ -607,7 +641,8 @@ Revisión de ciclo de avisos (posterior, todavía no implementada):
 - [ ] Una ID por asunto vigente/pospuesto, sin crecimiento diario artificial; fuentes 5/9 y llegada tardía12 seguras.
 - [ ] Reapertura pertinente y controles anti-replay; stock posterior/recuperación, condiciones temporales y snoozes.
 - [ ] Migración conservadora del legado, permisos/tenant/Stock/dinero/histórico intactos y carreras con CAS/locks.
-- [ ] Cleanup de 90 días/semanal probado con límites exactos, pendientes/pospuestos/control protegidos y fallos/backlog.
+- [ ] Caducidad de todo contenido >90 días y cleanup semanal, incluidos pendientes/pospuestos; control mínimo y datos de negocio protegidos.
+- [ ] Tarjeta 11 parqueada: no generación/exposición ni recuperación por fallback; métricas e histórico de clientes intactos.
 - [ ] UI kit/tuteo, navegación independiente, decisiones explícitas, versión y recordatorio en 390/1280.
 - [ ] QA independiente de entregas/combinación exacta; sin afirmar performance≤1s a partir del PASS funcional.
 
@@ -647,21 +682,26 @@ tarjeta con sus bordes.
 Pruebas adicionales de esta revisión:
 
 12. Unit por cada tipo: contexto/episodio, dato relevante/ajeno/viejo, ventana de emisión distinta de vigencia,
-    pospuesto accionable fuera del período y temporalidad de 11 según decisión del catálogo. Ningún clock/hash global reabre8.
+    pospuesto accionable dentro de su caducidad y exclusión de 11 por decisión del owner. Ningún clock/hash global reabre8.
     Categorías/capacidades: informativa rechaza resolve/snooze; resumen sin marcar renueva la misma ID, marcado
     permite el siguiente período, una versión anterior no retira el nuevo y nunca se acumula anteayer con ayer.
 13. Neon focal: cerrar A mientras se publica B no cierra B; retry del POST tras borrar contenido es idempotente;
     posponer accionable compite con cleanup; delivery tardía de 12 actualiza sin duplicar. Medianoche no libera exclusión. Reposición y consumo intradiarios se
-    conservan como episodio aunque el gauge final coincida con el atendido. Sin cambios al corte de Stock.
-14. Neon de cleanup: 90 días exactos/justo antes, pendiente antiguo, snooze > 90 días, control necesario, legado desconocido,
-    rollback parcial/concurrencia, lote ocupado que luego se retoma; no tocar métricas ni revisiones.
+    conservan como episodio aunque el gauge final coincida con el atendido, también con deliveries fuera de orden. Sin cambios al corte de Stock.
+14. Neon de cleanup: 90 días exactos/justo después, pendiente y pospuesto antiguos eliminados, snooze posterior a expiresAt
+    rechazado, cambios/posposición no reinician edad, control necesario, legado con ancla única demostrable o de transición,
+    rollback/concurrencia, lote ocupado retomado. Sin cron ejecutado el lector tampoco muestra vencidos. No tocar
+    métricas ni revisiones y no recrear el aviso vencido mañana con la misma información.
 15. Migración/replay aislado: tablas existentes/punteros conservados, hashes previos intactos y 0100 coordinada;
     sin sembrar/reparar/replay global de CI compartida. Solo tools/neon-test.sh/Node24 en DB reservada.
 
 ## Pendientes que no bloquean
 
 - **Rendimiento AN-1:** optimizaciones pausadas por decisión expresa del owner al autorizar el cierre y `main` local.
-  Fríos reales: 12.767,59 → 4.795,88 → 2.082,39 ms TOTAL; §Pruebas 9 sigue sin cumplir, no se reduce su umbral.
+  Fríos reales: 12.767,59 → 4.795,88 → 2.082,39 ms TOTAL. Experimento posterior AN-3: 1.817,621042 ms, FAIL;
+  fuente b3ca9c6f, entrega 058d7c48 rechazada, 0100 preservada sin integrar. §Pruebas 9 sigue sin cumplir, no se reduce su umbral.
+- **Tarjeta 11 / Marketing:** parqueada; etapas oficiales, presentación agregada y acción de campaña/cupón pendientes
+  de Marketing. No habilitar reactivación desde este encargo. Investigación de código documentada en el contrato del ciclo.
 - **Operación del clima:** la prueba real H4 quedó cerrada en AN-3. La carga de `VISUAL_CROSSING_API_KEY`
   en Vercel y cron remoto siguen siendo operaciones posteriores del owner; no se ejecutaron en este encargo.
 

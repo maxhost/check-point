@@ -243,24 +243,33 @@ seguida de nueva escasez puede justificar otro episodio. Cada tipo distingue emi
 Se mantienen mínimos de historia, umbrales y dinero exacto, con prioridad de stock con riesgo ≤24h sobre
 invitaciones dentro de los cinco cupos, respetando cierres y postergaciones.
 
-El owner distingue categorías explícitas: informativa (`informational`) y accionable (`actionable`). Las puramente
+El owner distingue categorías explícitas: informativa (`informational`), accionable (`actionable`) y Marketing (`marketing`). Las puramente
 informativas no se posponen ni se declaran solucionadas; tienen Visto/Ignorar. Las accionables conservan
 Solucionado/Ignorar/Recordarme luego. El resumen diario marcado se retira; si no se marca, se actualiza con el día
 siguiente conservando una sola tarjeta, sin acumular anteayer con ayer. El histórico numérico no se borra. Un enlace
 para consultar detalles no convierte un informe en accionable ni marca la tarjeta al navegar.
 
-Limpieza semanal con corte móvil de 90 días desde cierre/vencimiento probado, solo residuos cerrados/vencidos;
-pendientes/pospuestos válidos y control anti-repetición aún necesario quedan excluidos. El contenido de un cierre
-nuevo se elimina al cerrar: los 90 días no crean un archivo nuevo. Eventos, resúmenes numéricos y deduplicación de
-fuentes se conservan. Una revisión monetaria opaca o un TTL ciego no reemplazan el contrato de contexto por tipo.
+La tarjeta 11 queda **parqueada**: no generar/exponer avisos individuales de ausencia ni inventar segmentación o
+campañas agregadas desde Analíticas. Su categoría futura es Marketing y depende de sus reglas oficiales y de una
+acción de campaña/cupón disponible. No habilitar funciones hoy apagadas; eventos/métricas e histórico de clientes
+se conservan. El criterio individual de AN-3 queda como antecedente en su handoff, no como nueva regla de Marketing.
+
+El owner corrige la retención anterior: **todo contenido de aviso vence al superar 90 días**, también pendiente o
+pospuesto. Limpieza semanal; fecha de episodio fija, sin renovarla al recalcular, exponer, actualizar texto o posponer.
+No se puede elegir un recordatorio posterior a expiresAt ni conservar uno a 180 días. El lector excluye vencidos
+sin esperar al job; este elimina contenido viejo, no ventas ni hechos de negocio. Cerrar elimina texto de inmediato.
+Solo se conserva el último control compacto necesario por asunto para no recrear la misma condición mañana; no un
+log de avisos o decisiones. Controles por hechos se depuran cuando su edad/deduplicación impide que reaparezcan.
+Eventos, revisiones, contribuciones y resúmenes numéricos se conservan. Esta regla sustituye explícitamente la
+excepción anterior que protegía pendientes/pospuestos de cualquier edad.
 
 Esta decisión sustituye las formulaciones anteriores de aceptación/descarte como interacción de la tarjeta, sin
 modificar el patrón de eventos del ADR0153 ni el histórico de negocio. La
 [spec0237 §3.7–§3.10](../specs/0237-analiticas-inbox-y-resumenes-diarios.md) contiene reglas y pruebas;
 el [adversarial](../factory/0237-inbox-lifecycle-adversarial.md) requiere resolver el catálogo y la transición del
-legado antes de código. Quedan dos aclaraciones consultadas al owner: reaviso de la tarjeta 11 tras cierre y
-novedad al vencer un recordatorio accionable. No se atribuyen respuestas ni se autoriza implementar con celdas
-pendientes. Aprobación documental no autoriza PROD ni publicación.
+legado antes de código. Solo queda consultado al owner el tratamiento de novedad al vencer un recordatorio
+accionable dentro de los 90 días. El parqueo de 11 retira la pregunta de reaviso individual. No se atribuyen
+respuestas ni se autoriza implementar con celdas pendientes. Aprobación documental no autoriza PROD ni publicación.
 
 ## Consecuencias
 
