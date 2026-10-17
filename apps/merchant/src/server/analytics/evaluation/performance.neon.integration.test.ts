@@ -42,6 +42,6 @@ describe.skipIf(
     );
     expect(result).toBe(true);
     // The owner/coordinator fixes which observed clock is the acceptance criterion before execution.
-    expect(elapsed - connection).toBeLessThanOrEqual(1000);
+    expect(elapsed).toBeLessThanOrEqual(1000);
   }, 30000);
 });
