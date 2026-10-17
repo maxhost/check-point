@@ -69,3 +69,19 @@ Logs locales preservados: `/private/tmp/an1-product-perf-seed.log`, `/private/tm
 3. COP: usar `minorUnitForCurrency` canónico (COP0, Intl2 es incorrecto). Validar overflow al combinar importes enteros y al calcular meta/candidatas.
 4. Vacío común sin«desdehoy» si hay histórico; reservar ese copy para ausencia de datos. Señales de existencia desde resúmenes para negocios inactivos y mes cerrado anterior a3meses. Reconocer ventas gratuitas por tickets>0 en primera venta/weekday/resumen/días restantes.
 5. Focales afectados y appreal Dashboard/navegación/equipo; QA independiente sobre combinación congelada. Ninguna aceptación/factorydeliver final se afirma aquí.
+
+## Checkpoint de optimización autorizado tras FAIL
+
+El owner autorizó optimizar la consulta. Se preserva la primera observación fría como FAIL; no se ejecutó otra medición fría ni se borró su corrida. Este checkpoint sirve para integrar A+B antes de los ajustes de exactitud y una medición final coordinada.
+
+`queries/index.ts` reemplaza el MIN que recorría resúmenes mediante accesos aleatorios por claves materializadas desde el índice único existente, obtiene importes históricos solo para revenue/fijos y reutiliza esa lectura para primera venta, weekdays y meses fijos pagados. Las ventanas de métricas usan UNION ALL acotado; incluyen el inicio del mes actual cuando cae fuera de28días y weekdays anteriores a56días. No hay índice ni migración nueva. `evaluation/index.ts` integra día/claim/snapshot en una llamada dentro de la misma transacción y persiste candidatas/READY en otra llamada. Mantiene advisory lock, SKIP LOCKED, timeout, idempotencia y commit atómico; el cronómetro sigue incluyendo toda la función.
+
+Planes reales sobre la misma carga, por wrapper y EXPLAIN ANALYZE BUFFERS:
+
+- Baseline e9:10445.189ms servidor; primera venta7331.5ms, OR1703.6ms y fijos1386ms. Log `/private/tmp/an1-product-explain-before.log`.
+- Variante ORDER/LIMIT+UNION:38.397ms en caliente; aún hacía accesos inconvenientes para frío. Log `/private/tmp/an1-product-explain-union.log`.
+- Consulta congelada con claves:189.303ms servidor,752 SharedReadBlocks; Index Only Scan118260claves,40heap fetches;730importes revenue,4724métricas útiles. Log `/private/tmp/an1-product-explain-keys.log`. Es evidencia de plan, **no PASS del requisito frío TOTAL≤1s**.
+
+Validación del checkpoint: typecheck merchant PASS y lint focal PASS (logs `/private/tmp/an1-product-opt-types2.log`, `/private/tmp/an1-product-opt-lint.log`). Los seis casos Neon existentes pasaron con producción optimizada; la séptima regresión nueva falló inicialmente por estar montada fuera del describe y ejecutarse después del teardown (FK en fixture). Se corrigió el montaje y se ejecutó solo esa regresión:1PASS,6no seleccionadas, sin retry (`/private/tmp/an1-product-opt-neon.log`, `/private/tmp/an1-product-opt-window.log`). No se presenta esa ejecución como7/7PASS.
+
+Paths relevantes para QA: `apps/merchant/src/server/analytics/queries/index.ts`, `apps/merchant/src/server/analytics/evaluation/index.ts`, `apps/merchant/src/server/analytics/evaluation/evaluation.neon.integration.test.ts`. Se añaden harness focales `performance-explain.neon.integration.test.ts` y `performance-reset.neon.integration.test.ts`; reset está preparado pero **no ejecutado**. Continúan pendientes la integración A, exactitud de margen/COP/overflow, señales históricas/vacío y QA de combinación descritos arriba. Ningún proceso DB B activo al congelar.

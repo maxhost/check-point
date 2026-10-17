@@ -27,7 +27,7 @@ vi.mock("next/server", async (original) => ({
   },
 }));
 import { evaluateBusiness, readInbox, actOnCard } from "./index";
-import { readHistory } from "../queries";
+import { readInput, readHistory } from "../queries";
 import { inboxGET, historyGET, dayGET, cardPOST, evaluateGET } from "../http";
 import { localDay, addDays } from "@mi-pasaporte/domain/analytics/date";
 const businessA = randomUUID(),
@@ -94,15 +94,13 @@ describe.skipIf(!permisosIntegrationEnabled)(
             addressSnapshot: {},
           },
         ]);
-      await getDb()
-        .insert(labels)
-        .values({
-          businessId: businessA,
-          kind: "product",
-          id: product,
-          label: "Café",
-          updatedAt: new Date(),
-        });
+      await getDb().insert(labels).values({
+        businessId: businessA,
+        kind: "product",
+        id: product,
+        label: "Café",
+        updatedAt: new Date(),
+      });
       await getDb()
         .insert(metrics)
         .values([
@@ -320,6 +318,105 @@ describe.skipIf(!permisosIntegrationEnabled)(
         sql`select count(*)::int n from analytics.evaluation_run where business_id=${businessB} and day=${today}`,
       );
       expect(state.rows[0]?.n).toBe(1);
+    }, 30000);
+    it("bounded windows retain current fixed/variable expenses, distant paid concepts and sparse weekdays", async () => {
+      const concept = randomUUID();
+      await getDb().insert(labels).values({
+        businessId: businessA,
+        kind: "concept",
+        id: concept,
+        label: "Alquiler",
+        updatedAt: new Date(),
+      });
+      await getDb()
+        .insert(metrics)
+        .values([
+          ...[
+            ["2026-05-05", 3000],
+            ["2026-09-20", 2000],
+            ["2026-10-01", 1100],
+          ].map(([day, amount]) => ({
+            businessId: businessA,
+            locationId: null,
+            day: String(day),
+            metric: "expense_fixed",
+            dimensionKind: "concept",
+            dimensionId: concept,
+            amountMinor: BigInt(amount),
+            currencyCode: "USD",
+            minorUnit: 2,
+          })),
+          ...[
+            ["2026-07-01", 900],
+            ["2026-10-01", 600],
+          ].map(([day, amount]) => ({
+            businessId: businessA,
+            locationId: null,
+            day: String(day),
+            metric: "expense_variable",
+            dimensionKind: "concept",
+            dimensionId: concept,
+            amountMinor: BigInt(amount),
+            currencyCode: "USD",
+            minorUnit: 2,
+          })),
+          ...["2026-07-04", "2026-08-01", "2026-08-08", "2026-08-15"].flatMap(
+            (day) => [
+              {
+                businessId: businessA,
+                locationId: localA,
+                day,
+                metric: "revenue",
+                dimensionKind: "none",
+                amountMinor: 8000n,
+                currencyCode: "USD",
+                minorUnit: 2,
+                count: 1,
+              },
+              {
+                businessId: businessA,
+                locationId: localA,
+                day,
+                metric: "product_revenue",
+                dimensionKind: "product",
+                dimensionId: product,
+                amountMinor: 8000n,
+                currencyCode: "USD",
+                minorUnit: 2,
+                count: 1,
+              },
+              {
+                businessId: businessA,
+                locationId: localA,
+                day,
+                metric: "units_sold",
+                dimensionKind: "product",
+                dimensionId: product,
+                quantity: "10",
+              },
+            ],
+          ),
+        ]);
+      const input = await readInput(
+        businessA,
+        new Date("2026-10-31T08:00:00Z"),
+      );
+      expect(input.firstSaleDay).toBe("2026-07-04");
+      for (const [metric, day, amount] of [
+        ["expense_fixed", "2026-10-01", 1100],
+        ["expense_variable", "2026-10-01", 600],
+        ["expense_variable", "2026-07-01", 900],
+        ["expense_fixed", "2026-05-05", 3000],
+      ] as const)
+        expect(
+          input.metrics.find((r) => r.metric === metric && r.day === day)
+            ?.amountMinor,
+        ).toBe(amount);
+      expect(
+        input.metrics.find(
+          (r) => r.metric === "units_sold" && r.day === "2026-07-04",
+        )?.quantity,
+      ).toBe(10);
     }, 30000);
   },
 );

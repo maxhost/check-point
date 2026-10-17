@@ -13,7 +13,12 @@ import type {
   CardCandidate,
   InboxCard,
 } from "@mi-pasaporte/domain/analytics/types";
-import { AnalyticsError, readInput, safeMoney } from "../queries";
+import {
+  AnalyticsError,
+  inputStatement,
+  inputFromRow,
+  safeMoney,
+} from "../queries";
 import { actionContext, type AnalyticsViewer } from "../actions";
 export const evaluationLockKey = (businessId: string, day: string) =>
   `analytics:evaluate:${businessId}:${day}`;
@@ -40,60 +45,59 @@ export async function evaluateBusiness(
     trace?: (stage: string, milliseconds: number) => void;
   } = {},
 ): Promise<boolean> {
-  const started = performance.now();
-  const day = await businessDay(businessId, now);
-  options.trace?.("business_clock_and_connection", performance.now() - started);
   const connecting = performance.now();
   return withDbTransaction(async (tx) => {
     options.trace?.("transaction_connection", performance.now() - connecting);
     const claimStarted = performance.now();
     const budget = Math.max(1, Math.floor(options.budgetMs ?? 20_000));
-    const claimed =
-      await tx.execute(sql`with settings as materialized (select set_config('statement_timeout',${String(Math.max(1, budget - 100))},true),set_config('transaction_timeout',${String(budget)},true)),
-      acquired as materialized (select pg_try_advisory_xact_lock(hashtextextended(${evaluationLockKey(businessId, day)},0)) ok from settings),
-      inserted as (insert into analytics.evaluation_run(business_id,day,status,claimed_at) select ${businessId}::uuid,${day}::date,'preparing',${now.toISOString()}::timestamptz from acquired where ok on conflict do nothing returning business_id),
-      existing as (select r.business_id from analytics.evaluation_run r,acquired where acquired.ok and r.business_id=${businessId} and r.day=${day}::date and r.status<>'ready' for update of r skip locked)
-      select business_id from inserted union all select business_id from existing`);
-    if (!claimed.rows.length) return false;
-    options.trace?.("claim_round_trip", performance.now() - claimStarted);
-    const reading = performance.now();
-    const input = await readInput(businessId, now, tx);
-    options.trace?.("summary_read_round_trip", performance.now() - reading);
+    const result =
+      await tx.execute(sql`with business_clock as materialized (select (${now.toISOString()}::timestamptz at time zone timezone)::date as day from core.business where id=${businessId}),
+      settings as materialized (select set_config('statement_timeout',${String(Math.max(1, budget - 100))},true),set_config('transaction_timeout',${String(budget)},true)),
+      acquired as materialized (select business_clock.day,pg_try_advisory_xact_lock(hashtextextended('analytics:evaluate:'||${businessId}||':'||business_clock.day::text,0)) ok from business_clock,settings),
+      inserted as (insert into analytics.evaluation_run(business_id,day,status,claimed_at) select ${businessId}::uuid,day,'preparing',${now.toISOString()}::timestamptz from acquired where ok on conflict do nothing returning business_id),
+      existing as (select r.business_id from analytics.evaluation_run r,acquired where acquired.ok and r.business_id=${businessId} and r.day=acquired.day and r.status<>'ready' for update of r skip locked),
+      claim as materialized (select business_clock.day::text as day,exists(select business_id from inserted union all select business_id from existing) claimed from business_clock)
+      select claim.day,claim.claimed,case when claim.claimed then (select row_to_json(snapshot) from (${inputStatement(businessId, now)}) snapshot) else null end payload from claim`);
+    const claimed = result.rows[0];
+    if (!claimed)
+      throw new AnalyticsError(
+        404,
+        "business_not_found",
+        "No encontramos el negocio.",
+      );
+    if (!claimed.claimed) return false;
+    const day = String(claimed.day);
+    const input = inputFromRow(claimed.payload as Record<string, unknown>);
+    options.trace?.(
+      "claim_and_summary_round_trip",
+      performance.now() - claimStarted,
+    );
     const calculating = performance.now();
     const cards = buildCandidates(input, input.states);
     options.trace?.("pure_calculation", performance.now() - calculating);
     const writing = performance.now();
-    if (cards.length)
-      await tx
-        .insert(candidates)
-        .values(
-          cards.map((card) => ({
-            businessId,
-            day,
-            cardKey: card.cardKey,
-            subjectKey: card.subjectKey,
-            weight: String(card.weight),
-            amountMinor:
-              card.amountMinor === null ? null : BigInt(card.amountMinor),
-            currencyCode: card.currencyCode,
-            minorUnit: card.minorUnit,
-            parameters: {
-              sender: card.sender,
-              title: card.title,
-              body: card.body,
-              quality: card.quality,
-              actionKey: card.actionKey,
-              actionHref: card.actionHref,
-            },
-            fingerprint: card.fingerprint,
-            locationId: card.locationId,
-          })),
-        )
-        .onConflictDoNothing();
-    await tx
-      .update(runs)
-      .set({ status: "ready", preparedAt: new Date() })
-      .where(and(eq(runs.businessId, businessId), eq(runs.day, day)));
+    const rows = cards.map((card) => ({
+      card_key: card.cardKey,
+      subject_key: card.subjectKey,
+      weight: String(card.weight),
+      amount_minor: card.amountMinor === null ? null : String(card.amountMinor),
+      currency_code: card.currencyCode,
+      minor_unit: card.minorUnit,
+      parameters: {
+        sender: card.sender,
+        title: card.title,
+        body: card.body,
+        quality: card.quality,
+        actionKey: card.actionKey,
+        actionHref: card.actionHref,
+      },
+      fingerprint: card.fingerprint,
+      location_id: card.locationId,
+    }));
+    await tx.execute(sql`with saved as (insert into analytics.card_candidate(business_id,day,card_key,subject_key,weight,amount_minor,currency_code,minor_unit,parameters,fingerprint,location_id)
+      select ${businessId}::uuid,${day}::date,c.card_key,c.subject_key,c.weight,c.amount_minor,c.currency_code,c.minor_unit,c.parameters,c.fingerprint,c.location_id
+      from jsonb_to_recordset(${JSON.stringify(rows)}::jsonb) as c(card_key text,subject_key text,weight numeric,amount_minor bigint,currency_code text,minor_unit int,parameters jsonb,fingerprint text,location_id uuid) on conflict do nothing returning id)
+      update analytics.evaluation_run set status='ready',prepared_at=clock_timestamp() where business_id=${businessId} and day=${day}::date`);
     options.trace?.("persistence_round_trips", performance.now() - writing);
     return true;
   });
