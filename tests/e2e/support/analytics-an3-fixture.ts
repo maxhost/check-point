@@ -2,6 +2,10 @@ import { buildCustomerPromoCandidates } from "../../../packages/domain/src/analy
 import path from "node:path";
 import { defineConfig, type Page } from "@playwright/test";
 import { analyticsInput, setupAnalytics } from "./analytics-fixture";
+import {
+  lifecycleEnvelope,
+  withLifecycle,
+} from "./analytics-lifecycle-fixture";
 import { buildHistory } from "../../../packages/domain/src/analytics/history";
 export { startAnalyticsHarness } from "./analytics-fixture";
 export default defineConfig({
@@ -108,42 +112,49 @@ export async function setupCustomerPromoInbox(page: Page) {
       metric("2026-10-19", "promo_sales", 1, 14000, campaign),
     ],
   };
-  let cards = buildCustomerPromoCandidates(input).map((c) => ({
-    id: `card${c.cardKey}`,
-    cardKey: c.cardKey,
-    title: c.title,
-    body: c.body,
-    sender: c.sender,
-    quality: c.quality,
-    amountAtStake:
-      c.amountMinor === null
-        ? null
-        : {
-            amountMinor: c.amountMinor,
-            currencyCode: c.currencyCode,
-            minorUnit: c.minorUnit,
+  let cards = buildCustomerPromoCandidates(input)
+    .filter((c) => c.cardKey !== "11")
+    .map((c) =>
+      withLifecycle(
+        {
+          id: `00000000-0000-4000-8000-${String(c.cardKey).padStart(12, "0")}`,
+          cardKey: c.cardKey,
+          title: c.title,
+          body: c.body,
+          sender: c.sender,
+          quality: c.quality,
+          amountAtStake:
+            c.amountMinor === null
+              ? null
+              : {
+                  amountMinor: c.amountMinor,
+                  currencyCode: c.currencyCode,
+                  minorUnit: c.minorUnit,
+                },
+          action: {
+            label:
+              c.cardKey === "10"
+                ? "Ver anulados"
+                : c.cardKey === "11"
+                  ? "Ver cliente"
+                  : "Ver resultados",
+            href: c.actionHref ?? "/backoffice/sample?status=voided",
           },
-    action: {
-      label:
-        c.cardKey === "10"
-          ? "Ver anulados"
-          : c.cardKey === "11"
-            ? "Ver cliente"
-            : "Ver resultados",
-      href: c.actionHref ?? "/backoffice/sample?status=voided",
-    },
-  }));
+        },
+        c.cardKey === "12" ? "informational" : "actionable",
+      ),
+    );
   const writes: string[] = [];
   await page.route(/\/api\/analytics\/inbox(?:\/.*)?$/, (route) => {
     if (route.request().method() === "POST") {
       writes.push(route.request().url());
       const id = route.request().url().split("/").at(-2);
       cards = cards.filter((c) => c.id !== id);
-      return route.fulfill({ json: { cards } });
+      return route.fulfill({ json: { cards, nextReminderAt: null } });
     }
     return route.fulfill({
-      json: { state: "ready", preparedAt: "2026-10-20T08:00Z", cards },
+      json: lifecycleEnvelope(cards),
     });
   });
-  return { writes, customer };
+  return { writes, customer, campaign };
 }

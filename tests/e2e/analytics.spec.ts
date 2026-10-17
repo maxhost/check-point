@@ -14,7 +14,7 @@ for (const viewport of [
   { width: 1280, height: 900 },
   { width: 390, height: 844 },
 ])
-  test(`Dashboard inbox accepts, navigates and replaces dismissed cards at ${viewport.width}px`, async ({
+  test(`Dashboard inbox ignores, navigates without closing and replaces handled cards at ${viewport.width}px`, async ({
     page,
   }) => {
     await page.setViewportSize(viewport);
@@ -26,21 +26,26 @@ for (const viewport of [
     await expect(page.getByRole("article")).toHaveCount(5);
     await expect(page.getByText(/Ayer vendiste/)).toHaveCount(1);
     await page
-      .getByRole("button", { name: "Descartar Falta conocer tus costos" })
+      .getByRole("article")
+      .filter({
+        has: page.getByRole("heading", { name: "Falta conocer tus costos" }),
+      })
+      .getByRole("button", { name: "Ignorar", exact: true })
       .click();
     await expect(
       page.getByRole("heading", { name: "Aviso adicional 2" }),
     ).toBeVisible();
     expect(fixture.writes).toHaveLength(1);
     await page
-      .getByRole("button", { name: "Ver el día", exact: true })
+      .getByRole("link", { name: "Ver el día", exact: true })
       .first()
       .click();
     await expect(page).toHaveURL(/\/backoffice\/analytics\?date=2026-10-19/);
     await expect(
       page.getByText("El 2026-10-19 vendiste", { exact: false }),
     ).toBeVisible();
-    expect(fixture.writes.some((url) => url.endsWith("/accept"))).toBe(true);
+    expect(fixture.writes).toHaveLength(1);
+    expect(fixture.writes[0]).toMatch(/\/ignore$/);
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -82,22 +87,24 @@ test("history has five periods and local filter, suppresses incomplete annual co
   ).toHaveCount(0);
 });
 
-test("after dismissing every card, historical business has no new-business invitation", async ({
+test("after ignoring every card, historical business has no new-business invitation", async ({
   page,
 }) => {
   const fixture = await setupAnalytics(page);
   await page.goto(harness.url);
   await expect(page.getByRole("article")).toHaveCount(5);
-  while (await page.getByRole("button", { name: /^Descartar / }).count()) {
+  while (
+    await page.getByRole("button", { name: "Ignorar", exact: true }).count()
+  ) {
     const writes = fixture.writes.length;
     await page
-      .getByRole("button", { name: /^Descartar / })
+      .getByRole("button", { name: "Ignorar", exact: true })
       .first()
       .click();
     await expect.poll(() => fixture.writes.length).toBe(writes + 1);
     await expect(
       page
-        .getByRole("button", { name: /^Descartar / })
+        .getByRole("button", { name: "Ignorar", exact: true })
         .and(page.getByRole("button", { disabled: true })),
     ).toHaveCount(0);
   }

@@ -3,15 +3,16 @@ import os from "node:os";
 import path from "node:path";
 import { defineConfig, type Page } from "@playwright/test";
 import { startCatalogHarness } from "./catalog-harness-server";
+import {
+  lifecycleEnvelope,
+  withLifecycle,
+} from "./analytics-lifecycle-fixture";
 import { buildCandidates } from "../../../packages/domain/src/analytics/cards/index";
 import {
   buildHistory,
   buildDay,
 } from "../../../packages/domain/src/analytics/history";
-import type {
-  AnalyticsInput,
-  InboxCard,
-} from "../../../packages/domain/src/analytics/types";
+import type { AnalyticsInput } from "../../../packages/domain/src/analytics/types";
 export default defineConfig({
   testDir: "..",
   testMatch: ["analytics.spec.ts"],
@@ -100,31 +101,43 @@ export async function setupAnalytics(page: Page) {
   const reads: string[] = [];
   const writes: string[] = [];
   const built = buildCandidates(analyticsInput);
-  const candidates: InboxCard[] = built.map((c, i) => ({
-    id: `00000000-0000-4000-8000-${String(i).padStart(12, "0")}`,
-    cardKey: c.cardKey,
-    sender: c.sender,
-    title: c.title,
-    body: c.body,
-    amountAtStake:
-      c.amountMinor === null
-        ? null
-        : {
-            amountMinor: c.amountMinor,
-            currencyCode: c.currencyCode,
-            minorUnit: c.minorUnit,
-          },
-    quality: c.quality,
-    action: c.actionKey
-      ? {
-          label: c.cardKey === "1" ? "Ver el día" : "Completar datos",
-          href: c.actionHref ?? "/backoffice/analytics",
-        }
-      : null,
-  }));
+  const candidates = built.map((c, i) =>
+    withLifecycle(
+      {
+        id: `00000000-0000-4000-8000-${String(i).padStart(12, "0")}`,
+        cardKey: c.cardKey,
+        sender: c.sender,
+        title: c.title,
+        body: c.body,
+        amountAtStake:
+          c.amountMinor === null
+            ? null
+            : {
+                amountMinor: c.amountMinor,
+                currencyCode: c.currencyCode,
+                minorUnit: c.minorUnit,
+              },
+        quality: c.quality,
+        action: c.actionKey
+          ? {
+              label: c.cardKey === "1" ? "Ver el día" : "Completar datos",
+              href: c.actionHref ?? "/backoffice/analytics",
+            }
+          : null,
+      },
+      c.cardKey === "1" || c.cardKey === "2" || c.cardKey === "13"
+        ? "informational"
+        : "actionable",
+    ),
+  );
   const extra = Array.from({ length: 3 }, (_, i) => ({
-    ...candidates[0]!,
-    id: `10000000-0000-4000-8000-${String(i).padStart(12, "0")}`,
+    ...withLifecycle(
+      {
+        ...candidates[0]!,
+        id: `10000000-0000-4000-8000-${String(i).padStart(12, "0")}`,
+      },
+      "actionable",
+    ),
     title: `Aviso adicional ${i + 1}`,
     body: "Un aviso para revisar tus costos.",
     action: null,
@@ -149,14 +162,12 @@ export async function setupAnalytics(page: Page) {
       writes.push(url);
       const id = url.split("/").at(-2);
       cards = cards.filter((c) => c.id !== id);
-      return route.fulfill({ json: { cards: cards.slice(0, 5) } });
+      return route.fulfill({
+        json: { cards: cards.slice(0, 5), nextReminderAt: null },
+      });
     }
     return route.fulfill({
-      json: {
-        state: "ready",
-        preparedAt: "2026-10-20T08:00Z",
-        cards: cards.slice(0, 5),
-      },
+      json: lifecycleEnvelope(cards.slice(0, 5)),
     });
   });
   await page.route(/\/api\/analytics\/history\?/, (route) => {

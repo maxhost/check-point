@@ -62,34 +62,41 @@ for (const viewport of [
   { width: 1280, height: 900 },
   { width: 390, height: 844 },
 ]) {
-  test(`AN-3 inbox cards accept and dismiss at ${viewport.width}px`, async ({
+  test(`AN-3 inbox honors category decisions and parks customer marketing at ${viewport.width}px`, async ({
     page,
   }) => {
     await page.setViewportSize(viewport);
     const fixture = await setupCustomerPromoInbox(page);
     await page.goto(harness.url);
-    await expect(page.getByRole("article")).toHaveCount(3);
+    await expect(page.getByRole("article")).toHaveCount(2);
     await expect(
-      page.getByText("Juan solía venir cada 12 días. Su última visita fue hace 26 días."),
-    ).toBeVisible();
+      page.getByText(
+        "Juan solía venir cada 12 días. Su última visita fue hace 26 días.",
+      ),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("link", { name: "Ver cliente", exact: true }),
+    ).toHaveCount(0);
     await expect(page.getByText(/Estas ventas no indican/)).toBeVisible();
     await page.screenshot({
       path: `test-results/analytics-an3/inbox-${viewport.width}.png`,
       fullPage: true,
     });
     await page
-      .getByRole("button", { name: "Descartar Más tickets anulados" })
+      .getByRole("article")
+      .filter({
+        has: page.getByRole("heading", { name: "Más tickets anulados" }),
+      })
+      .getByRole("button", { name: "Ignorar", exact: true })
       .click();
-    await expect(page.getByRole("article")).toHaveCount(2);
+    await expect(page.getByRole("article")).toHaveCount(1);
     await page
-      .getByRole("button", { name: "Ver cliente", exact: true })
+      .getByRole("link", { name: "Ver resultados", exact: true })
       .click();
     await expect(page).toHaveURL(
-      new RegExp(`/backoffice/customers/analytics/${fixture.customer}$`),
+      new RegExp(`/backoffice/marketing/${fixture.campaign}$`),
     );
-    expect(fixture.writes.some((u) => u.endsWith("/card10/dismiss"))).toBe(
-      true,
-    );
-    expect(fixture.writes.some((u) => u.endsWith("/card11/accept"))).toBe(true);
+    expect(fixture.writes).toHaveLength(1);
+    expect(fixture.writes[0]).toMatch(/000000000010\/ignore$/);
   });
 }
