@@ -120,7 +120,7 @@ describe.skipIf(!modulesIntegrationEnabled)(
         {
           id: "profitability",
           name: "Rentabilidad",
-          description: "Costos fijos, sueldos y comisiones de tus ventas",
+          description: "Costos fijos y sueldos de tu negocio",
           requires: [],
           enabled: false,
           suggested: true,
@@ -129,7 +129,7 @@ describe.skipIf(!modulesIntegrationEnabled)(
             {
               id: "profitability",
               label: "Rentabilidad",
-              description: "Ver y editar costos fijos, sueldos y márgenes.",
+              description: "Ver y editar costos fijos y sueldos.",
             },
           ],
         },

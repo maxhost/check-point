@@ -59,20 +59,56 @@ describe.skipIf(!modulesIntegrationEnabled)(
   () => {
     it("los esquemas de modulo existen y tienen tablas (piso: si no, la consulta no mira nada)", async () => {
       const result = await rolledBack((tx) =>
-        tx.execute<{ schema: string; tables: number }>(sql`
-          select n.nspname as schema, count(c.oid)::int as tables
+        tx.execute<{ schema: string; tables: number; names: string[] }>(sql`
+          select n.nspname as schema, count(c.oid)::int as tables, array_agg(c.relname::text order by c.relname) as names
           from pg_namespace n join pg_class c on c.relnamespace = n.oid and c.relkind = 'r'
           where n.nspname = any(${textArray(MODULES.map((m) => m.id))})
           group by 1 order by 1`),
       );
-      // Spec 0220: POS tiene cuatro tablas mudadas desde core por 0079; 0091 agrega tres
-      // de pagos. Rentabilidad es modulo (registro), con tres tablas de 0086 y dos de 0091.
+      // 0235 moves methods/initialization and both commission tables into core.
+      // POS retains operational orders/payments; profitability retains its three cost tables.
       // Mesas no tiene esquema propio (ADR 0141 §6), asi que `tables` no aparece.
       expect(result.rows).toEqual([
-        { schema: "pos", tables: 7 },
-        { schema: "profitability", tables: 5 },
-        { schema: "recipes", tables: expect.any(Number) },
-        { schema: "stock", tables: expect.any(Number) },
+        {
+          schema: "pos",
+          tables: 5,
+          names: [
+            "dining_table",
+            "order_payment",
+            "pos_order",
+            "pos_order_item",
+            "ticket_settings",
+          ],
+        },
+        {
+          schema: "profitability",
+          tables: 3,
+          names: ["fixed_cost", "fixed_cost_allocation", "fixed_cost_period"],
+        },
+        {
+          schema: "recipes",
+          tables: expect.any(Number),
+          names: expect.any(Array),
+        },
+        {
+          schema: "stock",
+          tables: expect.any(Number),
+          names: expect.any(Array),
+        },
+      ]);
+      const moved = await rolledBack((tx) =>
+        tx.execute<{ schema: string; name: string }>(sql`
+        select n.nspname as schema, c.relname as name from pg_namespace n
+        join pg_class c on c.relnamespace=n.oid and c.relkind='r'
+        where n.nspname in ('core','pos','profitability')
+          and c.relname = any(${textArray(["payment_method", "payment_method_initialization", "commission_revision", "payment_commission"])})
+        order by c.relname, n.nspname`),
+      );
+      expect(moved.rows).toEqual([
+        { schema: "core", name: "commission_revision" },
+        { schema: "core", name: "payment_commission" },
+        { schema: "core", name: "payment_method" },
+        { schema: "core", name: "payment_method_initialization" },
       ]);
     }, 120_000);
 

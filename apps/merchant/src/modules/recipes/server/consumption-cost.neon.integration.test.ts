@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { and, eq, ne, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { getDb, withDbTransaction } from "@mi-pasaporte/db";
 import {
   locations,
@@ -206,15 +206,13 @@ run("0230 frozen cost and captured sale coverage", { timeout: 60000 }, () => {
     await apply(s);
     expect(
       await getDb()
-        .select({ state: moduleEventDeliveries.state })
+        .select({
+          subscriberId: moduleEventDeliveries.subscriberId,
+          state: moduleEventDeliveries.state,
+        })
         .from(moduleEventDeliveries)
-        .where(
-          and(
-            eq(moduleEventDeliveries.eventId, s.eventId!),
-            ne(moduleEventDeliveries.subscriberId, "recipes"),
-          ),
-        ),
-    ).toEqual([{ state: "skipped" }]);
+        .where(eq(moduleEventDeliveries.eventId, s.eventId!)),
+    ).toEqual([{ subscriberId: "recipes", state: "applied" }]);
     expect(await readSaleConsumptionCost(s)).toMatchObject({
       state: "completo",
       knownCost: "0",
