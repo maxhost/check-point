@@ -277,6 +277,25 @@ Medios: `pos.payment_method` **22 filas**, `pos.payment_method_initialization` 4
 que apuntan a medios), `pos.pos_order` 17. `core.module_event`: 0 (la publicación de eventos está apagada en PROD).
 → Borrar la 0231 y renombrar el módulo no toca datos reales; mover medios a core **sí** (22 medios + 2 pagos).
 
+### Preguntas de G — respuestas del owner (2026-10-16)
+
+1. **Estimados / punto de equilibrio: ABIERTA.** Owner: con criterio de caja, el 15 del mes faltan alquiler, internet y
+   sueldos → «tu punto de equilibrio son $120» es falso. Propuesta de Claude (sin confirmar): el punto de equilibrio del
+   mes en curso usa, por **concepto** (categoría + nombre normalizado: «alquiler», «personal · Luis»), lo pagado este mes
+   si ya se pagó y si no el promedio de los últimos meses, marcado «estimado»; al cerrar el mes queda el real. Para G
+   implica guardar un concepto estable por gasto. El cálculo vive en AN.
+2. **Permiso propio** (`expenses`) además del owner.
+3. **Local:** cada gasto va a un local o a «todo el negocio»; por defecto el local donde está el dueño. Sin reparto
+   `equal/manual`.
+4. **Editar y borrar** libremente **solo dentro del mes en curso**; los meses pasados quedan congelados (histórico).
+5. **Categorías fijas + «otro» con texto libre.**
+6. **Foto:** no se guarda como comprobante. Se conserva hasta que el gasto se guarda (por si hay que reanalizarla en
+   ese momento) y después se descarta.
+7. **G publica eventos** (`expense.recorded/updated/deleted`) desde ya, para los resúmenes por día de AN.
+8. **Fijo / variable lo marca la IA**, no lo elige el dueño ni lo deduce la categoría: lo que se consume (agua, gas) es
+   variable; lo que no aparece de la nada (alquiler) es fijo. Se muestra como un check. Abierto: si el dueño puede
+   corregirlo.
+
 ## Prompt — encender `MODULE_EVENTS_ENABLED` en PROD (2026-10-16; lanzar cuando el owner lo diga)
 
 ```
