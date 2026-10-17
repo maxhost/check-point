@@ -32,6 +32,7 @@
  */
 export const PERMISSIONS = [
   "brand",
+  "business",
   "catalog",
   "counter",
   "locations",
