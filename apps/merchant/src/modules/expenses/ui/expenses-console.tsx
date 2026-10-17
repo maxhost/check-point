@@ -162,29 +162,34 @@ export function ExpensesConsole() {
               </Button>
             </div>
             <Form
+              aria-label="Filtrar gastos"
+              className="gap-3"
               onSubmit={(event) => {
                 event.preventDefault();
                 applyFilters();
               }}
             >
-              <div className="grid items-end gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid min-w-0 items-start gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <TextField
+                  className="min-w-0 grid-cols-1"
                   label="Desde"
-                  description="AAAA-MM-DD"
+                  aria-describedby="expenses-filter-dates-help"
                   value={filters.from}
                   onChange={(from) =>
                     setFilters((current) => ({ ...current, from }))
                   }
                 />
                 <TextField
+                  className="min-w-0 grid-cols-1"
                   label="Hasta"
-                  description="AAAA-MM-DD, incluido"
+                  aria-describedby="expenses-filter-dates-help"
                   value={filters.to}
                   onChange={(to) =>
                     setFilters((current) => ({ ...current, to }))
                   }
                 />
                 <SelectField
+                  className="min-w-0 grid-cols-1"
                   label="Local del registro"
                   selectedKey={filters.location}
                   onSelectionChange={(key) =>
@@ -204,10 +209,17 @@ export function ExpensesConsole() {
                     { id: "business", label: "Todo el negocio" },
                   ]}
                 />
-                <Button type="submit" variant="secondary">
+                <Button
+                  type="submit"
+                  variant="secondary"
+                  className="min-w-0 self-end"
+                >
                   Filtrar gastos
                 </Button>
               </div>
+              <Text variant="small" id="expenses-filter-dates-help">
+                Fechas en formato AAAA-MM-DD. Incluye ambos días del rango.
+              </Text>
               {filterError && <Alert kind="error" title={filterError} />}
             </Form>
             {notice && <Alert kind="success" title={notice} />}
