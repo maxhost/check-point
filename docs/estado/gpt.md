@@ -3,9 +3,9 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — ANALÍTICAS 0237 AN-3 QA PASS; CIERRE LOCAL (2026-10-17)
+## ESTADO — ANALÍTICAS 0237 AN-3 EN MAIN LOCAL CON QA PASS (2026-10-17)
 
-AN-3 implementada sobre AN-1/AN-2. **QA independiente PASS de entregas y combinación `1713d9423d3761a05daebeef660ddeb8502cd788`**, informe `3e901602fa5354186be53cd9d4660e4286c4fbc5` ya integrado en dev. [Handoff de cierre](../factory/0237-an3-handoff.md), [QA](../factory/0237-an3-qa.md), [contrato](../factory/0237-an3-contract.md). Owner autorizó continuar hasta main local; siguiente paso mecánico: fast-forward de main al cierre documental y factory integrate/cleanup de las tres tareas aceptadas. Sin push, deploy, operaciones PROD, verify global ni mutaciones. INDEX/TASKS/estado Claude y archivos ajenos sin seguimiento preservados.
+AN-3 implementada sobre AN-1/AN-2. **QA independiente PASS de entregas y combinación `1713d9423d3761a05daebeef660ddeb8502cd788`**, informe `3e901602fa5354186be53cd9d4660e4286c4fbc5` integrado en dev y main local. [Handoff de cierre](../factory/0237-an3-handoff.md), [QA](../factory/0237-an3-qa.md), [contrato](../factory/0237-an3-contract.md). Main local avanzó por fast-forward autorizado hasta el cierre `7465914c`, conservando AN-1/AN-2. Este ajuste posterior solo documenta el retiro ya verificado; dev y main recibirán también este cierre documental, con producto idéntico al candidato QA. Sin push, deploy, operaciones PROD, verify global ni mutaciones. INDEX/TASKS/estado Claude y archivos ajenos sin seguimiento preservados.
 
 A entrega `99eac508`, fuente final `482cc115`: productores atómicos pos.order.voided, visit.recorded, coupon.redeemed, snapshots de campaña, traductores puros y deduplicación POS/core. B entrega `ef3b4227`, fuente `421ef60c`: tarjetas 10/11/12, clientes e histórico promos, reconciliador tardío en la misma tx después de aplicar todos los grupos. Ningún rediseño de AN-1/AN-2 ni alteración del corte Stock. Una 0099 para analytics.campaign_snapshot, probada solo en DB aislada; 0097/0098 intactas. SQL SHA256 `2ff9057ef236676792e1a7d47b59f6f70946a3429cebf64d8aa42a2fbaf76105`.
 
@@ -17,7 +17,7 @@ Evidencia focal con SHA/alcance/fallos en los handoffs: A 6/6 Neon de productore
 
 **Diferidos conservados:** rendimiento AN-1 último frío 2082,39 ms FAIL frente a 1000 ms, CI compartida con hash 0097 original y CI remoto histórico rojo, housekeeping de candidatas bajo 0,05, ciudades/cron operativos y «cuánto ahorraste». Prueba real de clima y H5 ahora cerrados. No ampliar este encargo para resolver los diferidos. Origin/main referencia local `db3175d237cdcf4ec41e32d70cc1c4f1e06ab2cf` sin publicar. Los bloques históricos siguientes describen sus cortes anteriores; este bloque vigente los actualiza.
 
-Tres tareas factory aceptadas, recursos vacíos y sin procesos propios; worktrees limpios en `/private/tmp/checkpass-an2/analytics-an2-{events,product,qa}` reutilizados por continue. Retiro pendiente exclusivamente del fast-forward main local, sin force/discard.
+Tres tareas factory aceptadas, integradas y **retiradas** (`analytics-an2-{events,product,qa}`, IDs históricos continuados para AN-3). Worktrees y ramas propias retirados sin force/discard tras comprobar ancestros de main, limpieza y ausencia de procesos. Solo queda el checkout principal en dev; no hay reservas activas ni recursos DB propios. El registro retirado QA conserva la etiqueta histórica harness:an3-qa; no es una reserva activa. Archivos ajenos sin seguimiento intactos. Encargo terminado; no continuar con los diferidos por iniciativa propia.
 
 ## HISTÓRICO — ANALÍTICAS0237 AN-2 EN DEV CON QA PASS (2026-10-17)
 
