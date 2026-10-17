@@ -19,7 +19,7 @@
 **Hecho:** ADR **0152** aceptado (`docs/adr/0152-analiticas-inbox-accionable.md`): inbox de hasta 5 tarjetas (13 en la
 v1) con peso = plata en juego × urgencia × novedad, histórico en números con filtro mes/3/6/9/12 y comparativa anual
 construida; resúmenes diarios con vocabulario de métricas del core alimentados por `module_event`; contexto externo
-por **ciudad** (`eventos_clima` pronóstico + observado, `eventos_calendario` con alcance país/provincia/zona/ciudad y
+por **ciudad** (`eventos_clima` pronóstico + observado con Visual Crossing gratis, `eventos_calendario` con alcance país/provincia/zona/ciudad y
 tipo deportivo preparado), guardado sin acción; escala medida en Postgres local (no Neon). Decisiones y citas en
 `docs/plan-margen-ganancia-2026-10-14.md` (secciones «AN — …»); investigación en
 `docs/analisis-analiticas-mercado-2026-10-16.md`. Parqueado (proyecciones, cuadre de caja, dueño como fuente) en
