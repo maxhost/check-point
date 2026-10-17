@@ -115,6 +115,7 @@ describe("AN-1 weights and selection", () => {
           subjectKey: "coffee",
           fingerprint,
           amountMinor: 6000,
+          currencyCode: "USD",
           minorUnit: 2,
           urgency: 1,
         } as CardCandidate,
@@ -346,4 +347,21 @@ it("includes uncatalogued sales in coverage and missing-cost cards", () => {
   expect(
     buildCandidates(input).find((c) => c.cardKey === "7")?.subjectKey,
   ).toBe("unlisted");
+});
+it("without sales uses twenty major units in the business currency, without FX", () => {
+  for (const [currencyCode, minorUnit, amountMinor] of [
+    ["ARS", 2, 4000],
+    ["JPY", 0, 40],
+  ] as const) {
+    const card = {
+      cardKey: "7",
+      subjectKey: "product",
+      fingerprint: "x",
+      currencyCode,
+      minorUnit,
+      amountMinor,
+      urgency: 1,
+    } as CardCandidate;
+    expect(cardWeight(card, 0)).toBe(2);
+  }
 });

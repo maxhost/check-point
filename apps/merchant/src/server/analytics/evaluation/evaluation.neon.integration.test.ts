@@ -1,0 +1,325 @@
+import { randomUUID } from "node:crypto";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { and, eq, sql } from "drizzle-orm";
+import {
+  permisosIntegrationEnabled,
+  seedOwnerDeNegocio,
+  cookieDe,
+  limpiarNegocios,
+  conCookie,
+} from "../../permissions-integration-support";
+import { hashPin } from "../../staff-pin";
+import { getDb } from "@mi-pasaporte/db";
+import {
+  analyticsDailyMetrics as metrics,
+  analyticsCardCandidates as candidates,
+  analyticsEvaluationRuns as runs,
+  analyticsDimensionLabels as labels,
+  locations,
+  memberships,
+  users,
+} from "@mi-pasaporte/db/schema";
+const callbacks = vi.hoisted(() => ({ all: [] as (() => Promise<void>)[] }));
+vi.mock("next/server", async (original) => ({
+  ...(await original<typeof import("next/server")>()),
+  after: (work: () => Promise<void>) => {
+    callbacks.all.push(work);
+  },
+}));
+import { evaluateBusiness, readInbox, actOnCard } from "./index";
+import { readHistory } from "../queries";
+import { inboxGET, historyGET, dayGET, cardPOST, evaluateGET } from "../http";
+import { localDay, addDays } from "@mi-pasaporte/domain/analytics/date";
+const businessA = randomUUID(),
+  businessB = randomUUID(),
+  ownerA = randomUUID(),
+  ownerB = randomUUID(),
+  staff = randomUUID(),
+  localA = randomUUID(),
+  localB = randomUUID(),
+  product = randomUUID();
+let cookieA = "",
+  cookieB = "",
+  cookieStaff = "";
+const today = localDay(new Date(), "America/Guayaquil");
+const viewer = {
+  role: "owner",
+  permissions: ["analytics", "catalog", "business"],
+};
+describe.skipIf(!permisosIntegrationEnabled)(
+  "AN-1 persisted evaluation, real guards and tenant boundaries",
+  () => {
+    beforeAll(async () => {
+      await seedOwnerDeNegocio(ownerA, businessA, `analytics-a-${businessA}`);
+      await seedOwnerDeNegocio(ownerB, businessB, `analytics-b-${businessB}`);
+      await getDb()
+        .insert(users)
+        .values({
+          id: staff,
+          name: "Analytics Staff",
+          email: `${staff}@staff.invalid`,
+          emailVerified: false,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      await getDb()
+        .insert(memberships)
+        .values({
+          businessId: businessA,
+          userId: staff,
+          role: "staff",
+          status: "active",
+          handle: "analyticsstaff",
+          pinHash: await hashPin("123456"),
+          permissions: ["counter"],
+          pinMustChange: false,
+        });
+      await getDb()
+        .insert(locations)
+        .values([
+          {
+            id: localA,
+            businessId: businessA,
+            name: "Centro",
+            addressLabel: "Centro",
+            countryCode: "EC",
+            addressSnapshot: {},
+          },
+          {
+            id: localB,
+            businessId: businessB,
+            name: "Otro",
+            addressLabel: "Otro",
+            countryCode: "EC",
+            addressSnapshot: {},
+          },
+        ]);
+      await getDb()
+        .insert(labels)
+        .values({
+          businessId: businessA,
+          kind: "product",
+          id: product,
+          label: "Café",
+          updatedAt: new Date(),
+        });
+      await getDb()
+        .insert(metrics)
+        .values([
+          {
+            businessId: businessA,
+            locationId: localA,
+            day: addDays(today, -1),
+            metric: "revenue",
+            dimensionKind: "none",
+            amountMinor: 21000n,
+            currencyCode: "USD",
+            minorUnit: 2,
+            count: 34,
+          },
+          {
+            businessId: businessA,
+            locationId: localA,
+            day: addDays(today, -1),
+            metric: "product_revenue",
+            dimensionKind: "product",
+            dimensionId: product,
+            amountMinor: 21000n,
+            currencyCode: "USD",
+            minorUnit: 2,
+            count: 34,
+          },
+          {
+            businessId: businessA,
+            locationId: localA,
+            day: addDays(today, -1),
+            metric: "units_sold",
+            dimensionKind: "product",
+            dimensionId: product,
+            quantity: "40",
+          },
+        ]);
+      [cookieA, cookieB, cookieStaff] = await Promise.all([
+        cookieDe(ownerA),
+        cookieDe(ownerB),
+        cookieDe(staff),
+      ]);
+    }, 120000);
+    afterAll(async () => {
+      for (const callback of callbacks.all) await callback();
+      await limpiarNegocios([businessA, businessB], [ownerA, ownerB, staff]);
+    }, 120000);
+    it("real session guard denies anonymous and staff without analytics", async () => {
+      expect(
+        (
+          await historyGET(
+            new Request("http://localhost/api/analytics/history"),
+          )
+        ).status,
+      ).toBe(401);
+      expect(
+        (
+          await historyGET(
+            conCookie("/api/analytics/history", "GET", cookieStaff),
+          )
+        ).status,
+      ).toBe(403);
+      await getDb()
+        .update(memberships)
+        .set({ permissions: ["analytics"] })
+        .where(
+          and(
+            eq(memberships.businessId, businessA),
+            eq(memberships.userId, staff),
+          ),
+        );
+      expect(
+        (
+          await historyGET(
+            conCookie("/api/analytics/history", "GET", cookieStaff),
+          )
+        ).status,
+      ).toBe(200);
+    });
+    it("fallback on opening persists one complete run and repeated evaluations are idempotent", async () => {
+      const response = await inboxGET(
+        conCookie("/api/analytics/inbox", "GET", cookieA),
+      );
+      expect(response.status).toBe(200);
+      const inbox = await response.json();
+      expect(inbox.state).toBe("ready");
+      expect(inbox.cards.length).toBeGreaterThan(1);
+      const before = await getDb()
+        .select()
+        .from(candidates)
+        .where(eq(candidates.businessId, businessA));
+      expect(await evaluateBusiness(businessA)).toBe(false);
+      const after = await getDb()
+        .select()
+        .from(candidates)
+        .where(eq(candidates.businessId, businessA));
+      expect(after.map((c) => c.id).sort()).toEqual(
+        before.map((c) => c.id).sort(),
+      );
+      const [run] = await getDb()
+        .select()
+        .from(runs)
+        .where(eq(runs.businessId, businessA));
+      expect(run?.status).toBe("ready");
+    }, 30000);
+    it("foreign cards and locations return 404; other tenant history stays empty", async () => {
+      const inbox = await readInbox(businessA, viewer);
+      const id = inbox.cards[0]!.id;
+      expect(
+        (
+          await cardPOST(
+            conCookie(`/api/analytics/inbox/${id}/dismiss`, "POST", cookieB),
+            id,
+            "dismissed",
+          )
+        ).status,
+      ).toBe(404);
+      expect(
+        (
+          await historyGET(
+            conCookie(
+              `/api/analytics/history?locationId=${localA}`,
+              "GET",
+              cookieB,
+            ),
+          )
+        ).status,
+      ).toBe(404);
+      expect(
+        (
+          await dayGET(
+            conCookie(
+              `/api/analytics/day?date=${today}&locationId=${localA}`,
+              "GET",
+              cookieB,
+            ),
+          )
+        ).status,
+      ).toBe(404);
+      expect((await readHistory(businessB, "month")).revenueMinor).toBe(0);
+    });
+    it("accept and dismiss remove cards and unchanged dismissed fingerprints do not return", async () => {
+      const inbox = await readInbox(businessA, viewer);
+      const id = inbox.cards.find((c) => c.cardKey === "7")!.id;
+      const result = await actOnCard(
+        businessA,
+        ownerA,
+        id,
+        "dismissed",
+        viewer,
+      );
+      expect(result.cards.some((c) => c.id === id)).toBe(false);
+      const second = await readInbox(businessA, viewer);
+      expect(second.cards.some((c) => c.id === id)).toBe(false);
+      const summary = second.cards.find((c) => c.cardKey === "1")!;
+      const accepted = await cardPOST(
+        conCookie(`/api/analytics/inbox/${summary.id}/accept`, "POST", cookieA),
+        summary.id,
+        "accepted",
+      );
+      expect(accepted.status).toBe(200);
+      const yesterday = new Date(Date.now() - 86400000);
+      await evaluateBusiness(businessA, yesterday);
+      const old = await getDb()
+        .select()
+        .from(candidates)
+        .where(
+          and(
+            eq(candidates.businessId, businessA),
+            eq(candidates.day, addDays(today, -1)),
+          ),
+        );
+      if (old[0])
+        expect(
+          (
+            await cardPOST(
+              conCookie("/", "POST", cookieA),
+              old[0].id,
+              "dismissed",
+            )
+          ).status,
+        ).toBe(404);
+    }, 30000);
+    it("cron is authenticated; malformed dates/periods do not reach SQL", async () => {
+      expect(
+        (
+          await evaluateGET(
+            new Request("http://localhost/api/internal/analytics/evaluate"),
+          )
+        ).status,
+      ).toBe(401);
+      expect(
+        (
+          await dayGET(
+            conCookie("/api/analytics/day?date=2026-02-30", "GET", cookieA),
+          )
+        ).status,
+      ).toBe(400);
+      expect(
+        (
+          await historyGET(
+            conCookie("/api/analytics/history?period=all", "GET", cookieA),
+          )
+        ).status,
+      ).toBe(400);
+    });
+    it("a concurrent claim evaluates an empty business only once", async () => {
+      const results = await Promise.all([
+        evaluateBusiness(businessB),
+        evaluateBusiness(businessB),
+      ]);
+      expect(results.filter(Boolean)).toHaveLength(1);
+      const inbox = await readInbox(businessB, viewer);
+      expect(inbox.cards.map((c) => c.cardKey)).toEqual(["4"]);
+      const state = await getDb().execute(
+        sql`select count(*)::int n from analytics.evaluation_run where business_id=${businessB} and day=${today}`,
+      );
+      expect(state.rows[0]?.n).toBe(1);
+    }, 30000);
+  },
+);

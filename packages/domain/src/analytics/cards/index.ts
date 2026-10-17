@@ -422,9 +422,13 @@ export function buildCandidates(
       title: firstMonth
         ? "Tu primer mes con gastos"
         : "Completa tus gastos fijos",
-      body: firstMonth
-        ? "La meta se calcula al cerrar tu primer mes con gastos."
-        : "Carga tus gastos fijos (alquiler, sueldos, luz) y te digo cuánto tienes que vender cada día para cubrir el mes.",
+      body:
+        (firstMonth
+          ? "La meta se calcula al cerrar tu primer mes con gastos."
+          : "Carga tus gastos fijos (alquiler, sueldos, luz) y te digo cuánto tienes que vender cada día para cubrir el mes.") +
+        (metrics.length === 0
+          ? " Analíticas empieza a contar con tus ventas y gastos desde hoy."
+          : ""),
       amountMinor: null,
       fixedPlata: 1,
       urgency: lastTen ? 0.8 : 0.5,

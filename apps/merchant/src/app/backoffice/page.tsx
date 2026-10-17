@@ -1,5 +1,6 @@
 import { billingPlanName } from "./subscription/billing-state";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import {
   ArrowRight,
@@ -10,12 +11,13 @@ import {
   Package,
   Palette,
   Shop,
-  StatsUpSquare,
 } from "iconoir-react";
-import { requireOwner } from "../../server/auth-guards";
+import { requireBackofficeSession } from "../../server/auth-guards";
 import { statusLabel } from "../../server/billing";
 import { getDb } from "@mi-pasaporte/db";
 import { subscriptions } from "@mi-pasaporte/db/schema";
+
+import { AnalyticsInbox } from "./analytics/inbox";
 
 export const dynamic = "force-dynamic";
 
@@ -96,7 +98,14 @@ function SectionItem({
 }
 
 export default async function BackofficePage() {
-  const { business: owned, userName } = await requireOwner();
+  const {
+    business: owned,
+    userName,
+    membership,
+  } = await requireBackofficeSession();
+  const isOwner = membership.role === "owner";
+  if (!isOwner && !membership.permissions.includes("analytics"))
+    redirect("/backoffice/counter");
   const [subscription] = await getDb()
     .select({ plan: subscriptions.plan, status: subscriptions.status })
     .from(subscriptions)
@@ -115,73 +124,56 @@ export default async function BackofficePage() {
           <h1>{greeting}</h1>
           <p>Este es el espacio de {owned.name}.</p>
         </div>
-        <Link className="dashboard-plan" href="/backoffice/subscription">
-          <CreditCard aria-hidden="true" width={18} height={18} />
-          <span>{billingPlanName(plan)}</span>
-          <small>{statusLabel(status)}</small>
-        </Link>
+        {isOwner && (
+          <Link className="dashboard-plan" href="/backoffice/subscription">
+            <CreditCard aria-hidden="true" width={18} height={18} />
+            <span>{billingPlanName(plan)}</span>
+            <small>{statusLabel(status)}</small>
+          </Link>
+        )}
       </header>
 
-      <section
-        className="dashboard-preview"
-        aria-labelledby="dashboard-preview-title"
-      >
-        <div className="dashboard-preview-icon">
-          <StatsUpSquare
-            aria-hidden="true"
-            width={29}
-            height={29}
-            strokeWidth={1.6}
-          />
-        </div>
-        <div>
-          <p className="eyebrow">Tu negocio, de un vistazo</p>
-          <h2 id="dashboard-preview-title">Aquí verás cómo va todo</h2>
-          <p>
-            Estamos preparando un resumen claro de visitas, clientes y
-            resultados. Mientras tanto, puedes gestionar cada parte de tu
-            negocio desde aquí.
-          </p>
-        </div>
-      </section>
+      {membership.permissions.includes("analytics") && <AnalyticsInbox />}
 
-      <div className="dashboard-groups">
-        <section
-          className="dashboard-section"
-          aria-labelledby="business-section-title"
-        >
-          <header>
-            <div>
-              <p className="eyebrow">Tu espacio</p>
-              <h2 id="business-section-title">Mi negocio</h2>
+      {isOwner && (
+        <div className="dashboard-groups">
+          <section
+            className="dashboard-section"
+            aria-labelledby="business-section-title"
+          >
+            <header>
+              <div>
+                <p className="eyebrow">Tu espacio</p>
+                <h2 id="business-section-title">Mi negocio</h2>
+              </div>
+              <p>Todo lo que tus clientes ven y tu equipo necesita.</p>
+            </header>
+            <div className="dashboard-section-list">
+              {businessItems.map((item) => (
+                <SectionItem item={item} key={item.title} />
+              ))}
             </div>
-            <p>Todo lo que tus clientes ven y tu equipo necesita.</p>
-          </header>
-          <div className="dashboard-section-list">
-            {businessItems.map((item) => (
-              <SectionItem item={item} key={item.title} />
-            ))}
-          </div>
-        </section>
+          </section>
 
-        <section
-          className="dashboard-section loyalty"
-          aria-labelledby="loyalty-section-title"
-        >
-          <header>
-            <div>
-              <p className="eyebrow">Haz que vuelvan</p>
-              <h2 id="loyalty-section-title">Fidelización</h2>
+          <section
+            className="dashboard-section loyalty"
+            aria-labelledby="loyalty-section-title"
+          >
+            <header>
+              <div>
+                <p className="eyebrow">Haz que vuelvan</p>
+                <h2 id="loyalty-section-title">Fidelización</h2>
+              </div>
+              <p>Premia a tus clientes y mantén viva la relación.</p>
+            </header>
+            <div className="dashboard-section-list">
+              {loyaltyItems.map((item) => (
+                <SectionItem item={item} key={item.title} />
+              ))}
             </div>
-            <p>Premia a tus clientes y mantén viva la relación.</p>
-          </header>
-          <div className="dashboard-section-list">
-            {loyaltyItems.map((item) => (
-              <SectionItem item={item} key={item.title} />
-            ))}
-          </div>
-        </section>
-      </div>
+          </section>
+        </div>
+      )}
     </main>
   );
 }

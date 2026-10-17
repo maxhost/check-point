@@ -25,14 +25,15 @@ export function cardWeight(
   const n = novelty(card.fingerprint, state);
   if (!n) return 0;
   if (card.cardKey === "1") return 10;
+  const denominator =
+    averageDailyMinor > 0
+      ? averageDailyMinor
+      : WEIGHTS.noSalesDailyMajor * 10 ** card.minorUnit;
   const p =
     card.fixedPlata ??
     Math.min(
       WEIGHTS.maximumPlata,
-      Math.abs(card.amountMinor ?? 0) /
-        (averageDailyMinor > 0
-          ? averageDailyMinor
-          : WEIGHTS.noSalesDailyMajor * 10 ** card.minorUnit),
+      Math.abs(card.amountMinor ?? 0) / (denominator ?? 1),
     );
   return (
     p *
