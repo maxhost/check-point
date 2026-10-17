@@ -115,8 +115,8 @@ describe.skipIf(!modulesIntegrationEnabled)(
       expect(response.status).toBe(200);
       const event = await eventOf(order.id),
         payload = event.payload as SaleClosedEvent;
-      expect(payload.eventVersion).toBe(2);
-      if (payload.eventVersion !== 2)
+      expect(payload.eventVersion).toBe(3);
+      if (payload.eventVersion !== 3)
         throw new Error("expected financial event");
       expect(payload.money.collected).toBe("18.00");
       expect(payload.lines[0].resourceVersions).toContainEqual({
@@ -147,7 +147,7 @@ describe.skipIf(!modulesIntegrationEnabled)(
           world.locationId.toUpperCase(),
         ),
       ).toMatchObject({ state: "completo", total: "0.55" });
-      expect(await drain(event.id)).toMatchObject({ applied: 1, failed: 0 });
+      expect(await drain(event.id)).toMatchObject({ applied: 2, failed: 0 });
       expect(await movements(order.id)).toMatchObject([
         { quantity: "-4.000", consumptionUnitCost: "3.000000" },
       ]);
@@ -234,17 +234,21 @@ describe.skipIf(!modulesIntegrationEnabled)(
           })
           .from(moduleEventDeliveries)
           .where(eq(moduleEventDeliveries.eventId, event!.eventId));
-      // Only Recipes consumes newly published events after 0235; core commissions are synchronous.
-      expect(await deliveries()).toEqual([
+      // Module consumption and core analytics are independent durable deliveries.
+      expect(
+        (await deliveries()).filter((d) => d.subscriberId !== "core.analytics"),
+      ).toEqual([
         { subscriberId: "recipes", state: "pending", appliedAt: null },
       ]);
       expect(await drain(event!.eventId)).toEqual({
-        claimed: 1,
-        applied: 1,
+        claimed: 2,
+        applied: 2,
         pending: 0,
         failed: 0,
       });
-      expect(await deliveries()).toEqual([
+      expect(
+        (await deliveries()).filter((d) => d.subscriberId !== "core.analytics"),
+      ).toEqual([
         {
           subscriberId: "recipes",
           state: "applied",
@@ -283,7 +287,6 @@ describe.skipIf(!modulesIntegrationEnabled)(
       const free = await seedProduct(world, "Actual zero sale", "0.00"),
         zero = await open(free),
         positive = await open();
-      process.env.MODULE_EVENTS_ENABLED = "false";
       try {
         expect(
           (
@@ -303,8 +306,8 @@ describe.skipIf(!modulesIntegrationEnabled)(
             })
           ).status,
         ).toBe(200);
-        expect(await eventOf(zero.id)).toBeUndefined();
-        expect(await eventOf(positive.id)).toBeUndefined();
+        expect((await eventOf(zero.id)).eventVersion).toBe(3);
+        expect((await eventOf(positive.id)).eventVersion).toBe(3);
         await setModuleEnabled(world.businessId, "pos", { enabled: false });
         const staff = await moduleStaff(world, ["business"]);
         const response = await businessHttp(
@@ -354,7 +357,6 @@ describe.skipIf(!modulesIntegrationEnabled)(
           readSaleCommissions(world.businessId, zero.id, other.locationId),
         ).rejects.toMatchObject({ status: 404 });
       } finally {
-        process.env.MODULE_EVENTS_ENABLED = "true";
         await setModuleEnabled(world.businessId, "pos", { enabled: true });
       }
     }, 40000);
@@ -425,7 +427,7 @@ describe.skipIf(!modulesIntegrationEnabled)(
     it("a persisted contradictory zero never becomes known commission zero", async () => {
       const real = await eventOf(state.closedId),
         payload = structuredClone(real.payload) as SaleClosedEvent;
-      if (payload.eventVersion !== 2)
+      if (payload.eventVersion !== 3)
         throw new Error("expected financial event");
       const sourceOrderId = randomUUID();
       payload.sourceOrderId = sourceOrderId;
@@ -448,7 +450,7 @@ describe.skipIf(!modulesIntegrationEnabled)(
       await getDb().insert(moduleEvents).values({
         businessId: world.businessId,
         eventType: "sale.closed",
-        eventVersion: 2,
+        eventVersion: payload.eventVersion,
         sourceId: sourceOrderId,
         locationId: world.locationId,
         payload,

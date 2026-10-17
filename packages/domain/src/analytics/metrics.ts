@@ -17,6 +17,7 @@ export type MetricEvent = {
   eventType: string;
   eventVersion: number;
   payload: unknown;
+  capturedAt?: string;
 };
 export type MetricRow = {
   metric: Metric;

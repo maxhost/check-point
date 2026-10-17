@@ -17,7 +17,7 @@ export function decodeSaleClosedEvent(value: unknown): SaleClosedEvent {
     throw new Error("Invalid event envelope");
   const v = value as SaleClosedEvent;
   if (
-    ![1, 2].includes(v.eventVersion) ||
+    ![1, 2, 3].includes(v.eventVersion) ||
     !isUuid(v.sourceOrderId) ||
     !isUuid(v.locationId) ||
     typeof v.closedAt !== "string" ||
@@ -36,8 +36,9 @@ export function decodeSaleClosedEvent(value: unknown): SaleClosedEvent {
     )
   )
     throw new Error("Invalid event envelope");
-  if (v.eventVersion === 2) {
-    const m = v.money;
+  if (v.eventVersion >= 2) {
+    const financial = v as Exclude<SaleClosedEvent, { eventVersion: 1 }>;
+    const m = financial.money;
     assertFinancialSettlement({
       ...m,
       originals: {
@@ -45,11 +46,11 @@ export function decodeSaleClosedEvent(value: unknown): SaleClosedEvent {
         discount: m.originalDiscount,
         net: m.originalNet,
       },
-      lines: v.lines,
-      payments: v.payments,
-      paymentOriginals: v.paymentOriginals,
+      lines: financial.lines,
+      payments: financial.payments,
+      paymentOriginals: financial.paymentOriginals,
     });
-    for (const p of v.payments)
+    for (const p of financial.payments)
       if (
         !isUuid(p.paymentId) ||
         !isUuid(p.methodId) ||
@@ -64,5 +65,10 @@ export function decodeSaleClosedEvent(value: unknown): SaleClosedEvent {
       )
         throw new Error("Invalid financial payment");
   }
+  if (
+    v.eventVersion === 3 &&
+    v.lines.some((l) => typeof l.productLabel !== "string" || !l.productLabel)
+  )
+    throw new Error("Missing product label");
   return v;
 }

@@ -1,3 +1,4 @@
+import { appendModuleEvent } from "../module-events/append";
 import type { DbTransaction } from "@mi-pasaporte/db";
 import {
   commissionRevisions,
@@ -148,6 +149,26 @@ export async function freezeSaleCommission(
         ? null
         : exact(subtract(minorRational(total, settlement.minorUnit), original)),
   });
+  if (
+    total !== null &&
+    args.paymentsMetadata.some((p) => p.chargeShape !== "none")
+  )
+    await appendModuleEvent(tx, {
+      businessId: args.businessId,
+      eventType: "sale.commission.frozen",
+      eventVersion: 1,
+      sourceId: args.sourceOrderId,
+      locationId: args.locationId,
+      payload: {
+        eventVersion: 1,
+        sourceOrderId: args.sourceOrderId,
+        locationId: args.locationId,
+        closedAt: new Date(args.capture.captured_at).toISOString(),
+        amountMinor: String(total),
+        currencyCode: settlement.currencyCode,
+        minorUnit: settlement.minorUnit,
+      },
+    });
 }
 function unavailable() {
   return {

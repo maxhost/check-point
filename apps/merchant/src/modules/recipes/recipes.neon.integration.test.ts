@@ -217,8 +217,6 @@ describe.skipIf(!modulesIntegrationEnabled)(
         recipes: [{ recipeId: recipe.id, quantity: "1.000" }],
         expectedRevisionId: null,
       });
-      const previousFlag = process.env.MODULE_EVENTS_ENABLED;
-      process.env.MODULE_EVENTS_ENABLED = "true";
       let event;
       try {
         event = await withDbTransaction((tx) =>
@@ -232,9 +230,7 @@ describe.skipIf(!modulesIntegrationEnabled)(
           }),
         );
       } finally {
-        if (previousFlag === undefined)
-          delete process.env.MODULE_EVENTS_ENABLED;
-        else process.env.MODULE_EVENTS_ENABLED = previousFlag;
+        // Publication is mandatory in AN-1; no switch to restore.
       }
       expect(event?.eventId).toBeTruthy();
       const changed = await updateRecipe(world.businessId, recipe.id, {

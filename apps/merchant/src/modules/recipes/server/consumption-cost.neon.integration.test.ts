@@ -5,6 +5,7 @@ import { getDb, withDbTransaction } from "@mi-pasaporte/db";
 import {
   locations,
   moduleEventDeliveries,
+  moduleEvents,
   stockItemLocations,
 } from "@mi-pasaporte/db/schema";
 import {
@@ -29,7 +30,6 @@ run("0230 frozen cost and captured sale coverage", { timeout: 60000 }, () => {
     sale: Fixture["sale"],
     rows: Fixture["rows"],
     clearRecipe: Fixture["clearRecipe"];
-  const previous = process.env.MODULE_EVENTS_ENABLED;
   beforeAll(async () => {
     ({
       world,
@@ -42,11 +42,8 @@ run("0230 frozen cost and captured sale coverage", { timeout: 60000 }, () => {
       rows,
       clearRecipe,
     } = await setupCostWorld());
-    process.env.MODULE_EVENTS_ENABLED = "true";
   });
   afterAll(async () => {
-    if (previous === undefined) delete process.env.MODULE_EVENTS_ENABLED;
-    else process.env.MODULE_EVENTS_ENABLED = previous;
     await dropModuleWorld(world);
     await dropModuleWorld(other);
   });
@@ -300,8 +297,9 @@ run("0230 frozen cost and captured sale coverage", { timeout: 60000 }, () => {
       .set({ status: "archived" })
       .where(eq(locations.id, second));
     expect((await readSaleConsumptionCost(next)).knownCost).toBe("9.00");
-    process.env.MODULE_EVENTS_ENABLED = "false";
     const absent = await sale(null);
+    // Model an order from before durable events: AN-1 never backfills it.
+    await getDb().delete(moduleEvents).where(and(eq(moduleEvents.businessId,world.businessId),eq(moduleEvents.sourceId,absent.sourceOrderId)));
     const noContext = await readSaleConsumptionCost(absent);
     expect(noContext).toMatchObject({
       state: "incompleto",
@@ -322,6 +320,5 @@ run("0230 frozen cost and captured sale coverage", { timeout: 60000 }, () => {
       knownCost: null,
       lines: [{ state: "incompleto", sourceLineId: absent.sourceLineId }],
     });
-    process.env.MODULE_EVENTS_ENABLED = "true";
   });
 });

@@ -1,8 +1,21 @@
-import { and, eq, sql } from "drizzle-orm";
+import { SERVER_MODULES } from "../server-registry";
+import { and, eq, sql, inArray } from "drizzle-orm";
 import { type DbTransaction, getDb } from "@mi-pasaporte/db";
 import { moduleEvents, moduleEventDeliveries } from "@mi-pasaporte/db/schema";
 import { ModuleError } from "../errors";
 /** Explicit committed IDs, never a timestamp heuristic. */
+export const stockSubscribers = () =>
+  Object.entries(SERVER_MODULES)
+    .filter(
+      ([id, server]) =>
+        id === "stock" ||
+        server.eventSubscriptions?.some(
+          (s) =>
+            s.eventType === "sale.closed" &&
+            s.requiredModules.includes("stock"),
+        ),
+    )
+    .map(([id]) => id);
 export async function captureCountCut(businessId: string, locationId: string) {
   const rows = await getDb()
     .select({ id: moduleEvents.id })
@@ -41,6 +54,7 @@ export async function validateCountCut(
       "count_changed",
       "Hubo una venta mientras contabas. Actualiza e intenta otra vez.",
     );
+  const subscribers = stockSubscribers();
   const [pending] = await tx
     .select({ id: moduleEventDeliveries.id })
     .from(moduleEventDeliveries)
@@ -50,6 +64,7 @@ export async function validateCountCut(
         eq(moduleEvents.businessId, businessId),
         eq(moduleEvents.eventType, "sale.closed"),
         eq(moduleEvents.locationId, locationId),
+        inArray(moduleEventDeliveries.subscriberId, subscribers),
         sql`${moduleEventDeliveries.state} in ('pending','processing')`,
       ),
     )

@@ -6,6 +6,7 @@ import {
   moduleEventDeliveries,
 } from "@mi-pasaporte/db/schema";
 import { isUuid } from "@mi-pasaporte/domain/server/counter/core";
+import { hasMetricTranslator } from "../analytics/ingestion/registry";
 import { SERVER_MODULES } from "../../modules/server-registry";
 
 /** Mandatory transactional log append. Producers validate their complete versioned payload. */
@@ -25,7 +26,7 @@ export async function appendModuleEvent<T extends { eventVersion: number }>(
     !isUuid(args.businessId) ||
     !isUuid(args.sourceId) ||
     (args.locationId !== null && !isUuid(args.locationId)) ||
-    !/^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$/.test(args.eventType) ||
+    !/^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+$/.test(args.eventType) ||
     !Number.isSafeInteger(args.eventVersion) ||
     args.eventVersion < 1 ||
     args.payload.eventVersion !== args.eventVersion
@@ -48,6 +49,14 @@ export async function appendModuleEvent<T extends { eventVersion: number }>(
         .filter((s) => s.eventType === args.eventType)
         .map((subscription) => ({ subscriberId, subscription })),
   );
+  if (hasMetricTranslator(args.eventType))
+    await tx
+      .insert(moduleEventDeliveries)
+      .values({
+        eventId: event.id,
+        subscriberId: "core.analytics",
+        state: "pending",
+      });
   if (!subscriptions.length) return { eventId: event.id };
   const enabled =
     args.enabledModuleIds ??

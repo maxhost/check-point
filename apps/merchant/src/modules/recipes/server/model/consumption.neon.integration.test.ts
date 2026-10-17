@@ -29,15 +29,11 @@ import { readSaleConsumptionCost } from "../consumption-cost";
 import { eventSubscriptions } from "../consumption";
 import * as provenance from "./provenance";
 let world: ModuleWorld;
-const flag = process.env.MODULE_EVENTS_ENABLED;
 beforeAll(async () => {
   world = await seedModuleWorld("R1 consumption");
   await enableModules(world, ["stock", "recipes"]);
-  process.env.MODULE_EVENTS_ENABLED = "true";
 }, 120_000);
 afterAll(async () => {
-  if (flag === undefined) delete process.env.MODULE_EVENTS_ENABLED;
-  else process.env.MODULE_EVENTS_ENABLED = flag;
   await dropModuleWorld(world);
 }, 120_000);
 const rows = (sourceOrderId: string) =>

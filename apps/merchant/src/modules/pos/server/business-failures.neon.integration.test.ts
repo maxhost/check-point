@@ -103,7 +103,6 @@ describe.skipIf(!posIntegrationEnabled)("0235 business-failures", () => {
         }
         return frozen;
       });
-    process.env.MODULE_EVENTS_ENABLED = "true";
     try {
       const sale = await close(method.id);
       expect(sale.response.status).toBe(200);
@@ -123,7 +122,6 @@ describe.skipIf(!posIntegrationEnabled)("0235 business-failures", () => {
       expect(JSON.stringify(event.payload)).toContain(a.revisionId!);
     } finally {
       spy.mockRestore();
-      process.env.MODULE_EVENTS_ENABLED = "false";
     }
   }, 120000);
   it("inconsistent captured reference persists a marked unknown commission without blocking close", async () => {

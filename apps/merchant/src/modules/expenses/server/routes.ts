@@ -1,3 +1,4 @@
+import { metricTranslators } from "./metrics";
 import { NextResponse } from "next/server";
 import type { ModuleRoute, ModuleServer } from "../../route-table";
 import { ModuleError } from "../../errors";
@@ -122,4 +123,4 @@ export const routes: readonly ModuleRoute[] = handlers.map((route) => ({
     }
   },
 }));
-export const server: ModuleServer = { routes };
+export const server: ModuleServer = { metricTranslators, routes };

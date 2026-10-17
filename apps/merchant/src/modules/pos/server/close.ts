@@ -261,11 +261,14 @@ export async function closePosOrder(
         userId,
         settlement,
         paymentsMetadata,
-        lines: lines.map(({ sourceLineId, productId, quantity }) => ({
-          sourceLineId,
-          productId,
-          quantity,
-        })),
+        lines: lines.map(
+          ({ sourceLineId, productId, quantity, nameSnapshot }) => ({
+            productLabel: nameSnapshot,
+            sourceLineId,
+            productId,
+            quantity,
+          }),
+        ),
       });
       await freezeSaleCommission(tx, {
         businessId: business.id,

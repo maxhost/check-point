@@ -1,3 +1,4 @@
+import { stockSubscribers } from "./count";
 import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
 import { type DbTransaction, getDb, withDbTransaction } from "@mi-pasaporte/db";
 import {
@@ -248,6 +249,7 @@ export async function attemptPurchaseConsumption(
 ): Promise<void> {
   await retryModuleEvents({
     eventTypes: ["sale.closed"],
+    subscriberIds: stockSubscribers(),
     businessId,
     locationId,
     budgetMs: 2000,
@@ -314,6 +316,7 @@ export async function recordAdjustment(
   const cut = await captureCountCut(businessId, location.id);
   await retryModuleEvents({
     eventTypes: ["sale.closed"],
+    subscriberIds: stockSubscribers(),
     businessId,
     locationId: location.id,
     eventIds: cut,

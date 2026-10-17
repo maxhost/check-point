@@ -43,8 +43,7 @@ import { freezeSaleCommission } from "../server/business/commission-close";
 import { captureSaleResources } from "../server/module-events/publish";
 let world: ModuleWorld, other: ModuleWorld;
 const providerId = "core",
-  registry = SERVER_MODULES as Record<string, ModuleServer>,
-  flag = process.env.MODULE_EVENTS_ENABLED;
+  registry = SERVER_MODULES as Record<string, ModuleServer>;
 const methodIds = {
   none: randomUUID(),
   percent: randomUUID(),
@@ -99,12 +98,9 @@ beforeAll(async () => {
       },
     ],
   };
-  process.env.MODULE_EVENTS_ENABLED = "true";
 }, 120000);
 afterAll(async () => {
   delete registry[providerId];
-  if (flag === undefined) delete process.env.MODULE_EVENTS_ENABLED;
-  else process.env.MODULE_EVENTS_ENABLED = flag;
   await dropModuleWorld(world);
   await dropModuleWorld(other);
 }, 120000);

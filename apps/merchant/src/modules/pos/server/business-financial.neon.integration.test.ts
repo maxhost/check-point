@@ -78,7 +78,6 @@ describe.skipIf(!posIntegrationEnabled)("0235 business-financial", () => {
       expectedRevisionId: null,
       percent: "2.5",
     });
-    process.env.MODULE_EVENTS_ENABLED = "true";
     try {
       const { order, response } = await close(method.id);
       expect(response.status).toBe(200);
@@ -111,7 +110,6 @@ describe.skipIf(!posIntegrationEnabled)("0235 business-financial", () => {
         ),
       ).toMatchObject({ total: "0.20", state: "completo" });
     } finally {
-      process.env.MODULE_EVENTS_ENABLED = "false";
     }
   }, 120000);
   it("partial rate and currency mismatch are committed outcomes, never blocked sales", async () => {

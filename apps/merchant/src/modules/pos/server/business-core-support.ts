@@ -12,7 +12,6 @@ import {
 import { businessHttp } from "../../../server/business/http";
 
 export let world: PosWorld, other: PosWorld;
-const flag = process.env.MODULE_EVENTS_ENABLED;
 const req = (
   path: string,
   method = "GET",
@@ -55,11 +54,8 @@ export function setupBusinessWorld() {
   beforeAll(async () => {
     world = await seedPosWorld("N core");
     other = await seedPosWorld("N other");
-    process.env.MODULE_EVENTS_ENABLED = "false";
   }, 240000);
   afterAll(async () => {
-    if (flag === undefined) delete process.env.MODULE_EVENTS_ENABLED;
-    else process.env.MODULE_EVENTS_ENABLED = flag;
     await dropPosWorld(world);
     await dropPosWorld(other);
   }, 240000);

@@ -44,6 +44,12 @@ export type ModuleLocationAction = {
 };
 
 export type ModuleManifest = {
+  analyticsActions?: readonly {
+    key: string;
+    label: string;
+    href: string;
+    permission?: string;
+  }[];
   id: string;
   name: string;
   description: string;

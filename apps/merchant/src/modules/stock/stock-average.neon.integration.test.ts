@@ -39,7 +39,6 @@ run(
       pendingItem: string;
     let mode: "ok" | "fail" | "timeout" = "ok",
       attempts = 0;
-    const previous = process.env.MODULE_EVENTS_ENABLED;
     beforeAll(async () => {
       world = await seedModuleWorld("average");
       other = await seedModuleWorld("average-other");
@@ -56,7 +55,6 @@ run(
         })
         .returning({ id: locations.id });
       second = local.id;
-      process.env.MODULE_EVENTS_ENABLED = "true";
       (SERVER_MODULES as Record<string, ModuleServer>)[subscriber] = {
         routes: [],
         eventSubscriptions: [
@@ -83,8 +81,6 @@ run(
     });
     afterAll(async () => {
       delete (SERVER_MODULES as Record<string, ModuleServer>)[subscriber];
-      if (previous === undefined) delete process.env.MODULE_EVENTS_ENABLED;
-      else process.env.MODULE_EVENTS_ENABLED = previous;
       await dropModuleWorld(world);
       await dropModuleWorld(other);
     });

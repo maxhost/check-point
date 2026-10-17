@@ -2,6 +2,7 @@
  * Spec 0216 / ADR 0139 §3 — LA TABLA DE RUTAS DE API DE UN MODULO y como se busca una ruta en ella.
  * Puro: lo usan `modules/<id>/server/routes.ts` (que declaran la tabla), el despachador y los tests.
  */
+import type { MetricTranslator } from "@mi-pasaporte/domain/analytics/metrics";
 import type { DbTransaction } from "@mi-pasaporte/db";
 import type { EventSubscription } from "../server/module-events/types";
 import type { ModuleError } from "./errors";
@@ -43,6 +44,7 @@ export type BeforeDisable = (
 /** Lo que un modulo aporta a `server-registry.ts`: sus rutas y, si las tiene, sus reglas. */
 export type ModuleServer = {
   routes: readonly ModuleRoute[];
+  metricTranslators?: readonly MetricTranslator[];
   onEnable?: (
     tx: DbTransaction,
     context: { businessId: string },
