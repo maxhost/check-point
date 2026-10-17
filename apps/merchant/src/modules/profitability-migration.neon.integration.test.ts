@@ -28,9 +28,11 @@ const readMigration = (name: string) =>
 const migration = readMigration("0086_rentabilidad_y_personas"),
   finite = readMigration("0087_meses_finitos");
 const laterObjects = sql`select
-  to_regclass('profitability.commission_revision')::oid::text as commission_revision,
-  to_regclass('profitability.payment_commission')::oid::text as payment_commission,
-  to_regprocedure('profitability.p1_immutable()')::oid::text as immutable_function`;
+  to_regclass('core.commission_revision')::oid::text as commission_revision,
+  to_regclass('core.payment_commission')::oid::text as payment_commission,
+  to_regprocedure('core.p1_immutable()')::oid::text as immutable_function,
+  (select md5(coalesce(string_agg(t::text,'|' order by t.id),'')) from core.commission_revision t) as commission_revision_hash,
+  (select md5(coalesce(string_agg(t::text,'|' order by t.id),'')) from core.payment_commission t) as payment_commission_hash`;
 
 run(
   "0231 six-table migration and strict monthly boundaries (isolated DDL)",
@@ -116,6 +118,8 @@ run(
           commission_revision: expect.stringMatching(/^\d+$/),
           payment_commission: expect.stringMatching(/^\d+$/),
           immutable_function: expect.stringMatching(/^\d+$/),
+          commission_revision_hash: expect.stringMatching(/^[0-9a-f]{32}$/),
+          payment_commission_hash: expect.stringMatching(/^[0-9a-f]{32}$/),
         },
       ]);
       const rollback = new Error("rollback-0231-ddl");
@@ -129,12 +133,9 @@ run(
             .select()
             .from(sessions)
             .where(eq(sessions.userId, userId));
-          // Recreate the 0086 boundary without the later 0091 tables and 0092 function.
-          // Dropping their tables removes only their own triggers; no broad CASCADE.
+          // Replay only the 0086 cost/staff boundary. The later commission objects
+          // moved to core in 0235 and remain intact, including the sale header trigger.
           await tx.execute(sql`
-            drop table profitability.payment_commission;
-            drop table profitability.commission_revision;
-            drop function profitability.p1_immutable();
             drop table profitability.fixed_cost_allocation;
             drop table profitability.fixed_cost_period;
             drop table profitability.fixed_cost;
@@ -146,6 +147,9 @@ run(
           for (const source of [migration, finite])
             for (const statement of source.split("--> statement-breakpoint"))
               await tx.execute(sql.raw(statement));
+          expect((await tx.execute(laterObjects)).rows).toEqual(
+            laterBefore.rows,
+          );
           const people = await tx
             .select()
             .from(staffPersons)
