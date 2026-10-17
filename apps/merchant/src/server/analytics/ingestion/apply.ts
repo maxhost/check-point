@@ -119,7 +119,7 @@ export async function applyAnalyticsEvent(
   for (const row of result.rows) {
     if (row.dimensionId && row.dimensionLabel) {
       const updatedAt = new Date(
-          event.capturedAt ?? row.occurredAt ?? `${row.day}T00:00:00Z`,
+          row.occurredAt ?? event.capturedAt ?? `${row.day}T00:00:00Z`,
         ),
         key = row.dimensionKind + ":" + row.dimensionId;
       const prior = labels.get(key);

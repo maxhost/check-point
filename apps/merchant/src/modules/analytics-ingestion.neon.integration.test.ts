@@ -299,6 +299,69 @@ describe.runIf(enabled)(
         )[0].label,
       ).toBe("Nombre actual");
     });
+    it("a late consumption keeps the older product label snapshot behind a newer sale", async () => {
+      const productId = randomUUID();
+      const consume = (
+        sourceOrderId: string,
+        productLabel: string,
+        closedAt: string,
+        capturedAt: string,
+      ) =>
+        withDbTransaction((tx) =>
+          applyAnalyticsEvent(tx, {
+            id: randomUUID(),
+            businessId: world.businessId,
+            eventType: "recipes.consumption.applied",
+            eventVersion: 1,
+            capturedAt,
+            payload: {
+              eventVersion: 1,
+              sourceOrderId,
+              locationId: world.locationId,
+              closedAt,
+              lines: [
+                {
+                  productId,
+                  sourceLineId: randomUUID(),
+                  productLabel,
+                  quantity: "1",
+                  cost: {
+                    amountMinor: "100",
+                    currencyCode: "USD",
+                    minorUnit: 2,
+                  },
+                },
+              ],
+              items: [],
+            },
+          }),
+        );
+      await consume(
+        randomUUID(),
+        "Nombre actual",
+        "2026-10-16T15:00:00Z",
+        "2026-10-16T15:01:00Z",
+      );
+      await consume(
+        randomUUID(),
+        "Nombre anterior",
+        "2026-10-12T15:00:00Z",
+        "2026-10-17T15:01:00Z",
+      );
+      expect(
+        (
+          await getDb()
+            .select()
+            .from(analyticsDimensionLabels)
+            .where(
+              and(
+                eq(analyticsDimensionLabels.businessId, world.businessId),
+                eq(analyticsDimensionLabels.id, productId),
+              ),
+            )
+        )[0].label,
+      ).toBe("Nombre actual");
+    });
     it("does not create deliveries or backfill predeploy events", async () => {
       const sourceId = randomUUID();
       const [old] = await getDb()
