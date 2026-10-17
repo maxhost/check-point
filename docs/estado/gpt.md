@@ -3,6 +3,14 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
+## ESTADO — ACELERACIÓN DE GASTOS AUTORIZADA, EN IMPLEMENTACIÓN (2026-10-17)
+
+Owner pidió que Gastos intente entregar inmediatamente como POS, evitando esperar al cron. Contrato reservado `e76825db`, precisión spec§2.3 `c0f72774`; sin push/deploy/PROD ni nueva migración. Alta/edición/borrado por rutas tras commit programan intento after/fallback seguro, business+expenseevents+core.analytics,2s/lote50. No bloquear respuesta ni transformar éxito en error; cron/dedup durable siguen. [Contrato](../factory/0237-expenses-immediate-contract.md).
+
+Tres WTs nuevos desde c0f72774 en /private/tmp/checkpass-expenses-immediate/: expenses-immediate-a (agente analytics_performance, routes/delivery/unit/handoff), expenses-immediate-b (analytics_lifecycle_ui, nuevo Neon focal/handoff, exclusivo db:analytics-lifecycle-replay), expenses-immediate-qa (an3_qa, solo informe). Reservas factory registradas; A sin DB, B espera GO tras integración A/refresh para usar solo wrapper y replay /private/tmp/checkpass-0237/migration.env. Ningún env de PROD copiado, Node24. No más agentes ni subdelegación. Coordinador integra serialmente y main local después de QA, sin publicación. Ante contradicción material preguntar y parar.
+
+QA manual local previo: dev-business configura Docker local, cuenta Joyas de Cutilan8032fb73-f6d6-450f-8d3e-51f0bf76f7ad/local Principal e78e71e4-42f4-40a8-b364-459c02d0970d. Owner autorizó aplicar0097–0101 en Docker con migrador local protegido: EXIT0, ledger102/102hashes correctos/estructuras presentes, sin seeds/PROD. Lectura posterior: cuatro gastos nuevosUSD450fijos+63variables tienen deliveriescore pending/attempts0; ventaUSD13yaaplicada, consumo/stock/anulaciones pendientes. DosgastosMXN previos sin deliverycore no se backfillean/mezclan. Sin mes anterior con gastos ni margen28d: punto de equilibrio null correcto según spec, no se reabre esa decisión. No se procesó cola ni se cambió dinero en diagnóstico. Rendimiento y todos los diferidos anteriores conservados. Main/dev de producto819dec19 antes de este ajuste; solo dev lleva contrato/spec nuevos hasta QA.
+
 ## ESTADO — CICLO DEL INBOX EN MAIN LOCAL CON QA PASS (2026-10-17)
 
 Owner autorizó «Pasemos a main local», resolviendo el gate de pase local y conservando rendimiento como pendiente. Main avanzó por fast-forward al candidato `d8584fa45361332780fd62c8047cb394ed453a36`; este cierre documental también se integra por fast-forward, con producto idéntico al revisado. Checkout principal vuelve a dev. Origin/main local permanece `db3175d237cdcf4ec41e32d70cc1c4f1e06ab2cf`; no push/deploy/PROD ni operaciones DB, clima o benchmark en este cierre.
