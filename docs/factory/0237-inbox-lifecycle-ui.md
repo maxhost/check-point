@@ -162,3 +162,33 @@ completa pendiente de consumir el checkpoint de A con las seis claves canónicas
 su validación; no se agregaron defaults duplicados en B para ocultar esa dependencia.
 Lint de actions y diff-check sin errores. Borrador externo de guía actualizado con
 las etiquetas y el override genérico.
+
+## Cierre del alcance propio B
+
+Fuente congelada combinada para los checks propios: `f5b92a38`, que incorpora
+defaults/validación de etiquetas A `197821a1` y los commits B `636ddbe2`, `cfe0c788`,
+`6324dec6`, `923da085`, `acc58d01`, `a871a89e`, `3c35094f`. Se ejecutaron juntos
+actions/HTTP/fallback: **28/28 PASS, 1,72 s**, sin skips ni retries. Esto cierra la
+dependencia del catálogo de etiquetas del apartado anterior. Lint focal final de
+actions, HTTP, rutas y vista/hook EXIT 0; ui-guard desde `65b5152e`: dos archivos,
+sin aumentos. Diff-check sin errores.
+
+Se reutiliza la evidencia browser de los mismos archivos UI conforme a sus
+cambios: 19/19 base, cuatro casos de concurrencia/retry, un caso con barrera
+reforzada y el único caso nuevo de cadencia del DTO. No se presenta esa composición
+como una corrida browser completa nueva. Las etiquetas de acciones servidoras no
+alteraron el contrato visual ni los componentes.
+
+Pendientes de combinación, no ocultados: Merchant typecheck completo exige que A3
+actualice tres consumidores legacy; reader/commands/cleanup y sus locks requieren
+la evidencia Neon y QA propios de A/candidato. B solo probó sus límites HTTP con
+mocks. No se declara QA PASS combinado, rendimiento frío PASS ni producto listo
+para main por esta entrega. La decisión deshabilitada durante preparing queda
+conservada por indicación del coordinador.
+
+Sin procesos de B pendientes: los runners finalizaron y afterAll cerró los
+harnesses/conexiones efímeros; no se usó el puerto fijo 43142 ni se dejó un servidor
+Next. El número efímero no se registró en el log de estas corridas. Se liberan los
+recursos de puerto/harness al entregar. No retirar worktree hasta aceptación y
+ancestro de main conforme a factory. Guía externa entregada a A; él conserva el
+writer de README y verificará sus recetas sobre A3.
