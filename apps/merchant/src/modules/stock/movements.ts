@@ -317,13 +317,9 @@ export async function recordAdjustment(
     eventIds: cut,
     budgetMs: 2000,
     force: true,
-  }).catch(() => {
-    throw new ModuleError(
-      409,
-      "consumption_pending",
-      "No pudimos aplicar los consumos pendientes. Intenta el conteo otra vez.",
-    );
-  });
+  }).catch(() => {});
+  // The final transaction checks the committed cut before unresolved deliveries.
+  // A bounded drain failure must not hide a new sale committed while draining.
   try {
     return await withDbTransaction(async (tx) => {
       await tx.execute(sql`set transaction isolation level serializable`);

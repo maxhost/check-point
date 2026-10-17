@@ -1,5 +1,13 @@
 import { randomUUID } from "node:crypto";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import { and, eq, sql } from "drizzle-orm";
 import { getDb, withDbTransaction } from "@mi-pasaporte/db";
 import {
@@ -26,6 +34,7 @@ import {
   retryModuleEvents,
   type CapturedModuleEvent,
 } from "../../server/module-events";
+import * as eventService from "../../server/module-events";
 import { onHandSql, waitForLockWaiters } from "./stock-integration-support";
 const run = modulesIntegrationEnabled ? describe : describe.skip;
 const subscriber = "integration-consumer";
@@ -60,6 +69,10 @@ run("0227 durable consumption and count cut", { timeout: 60000 }, () => {
     if (previous === undefined) delete process.env.MODULE_EVENTS_ENABLED;
     else process.env.MODULE_EVENTS_ENABLED = previous;
     await dropModuleWorld(world);
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    resetHandler();
   });
   function resetHandler() {
     handler = async (tx, event) =>
@@ -290,53 +303,73 @@ run("0227 durable consumption and count cut", { timeout: 60000 }, () => {
       ).applied,
     ).toBe(1);
   });
-  it("new confirmed close during drain invalidates only count; no POS lock held", async () => {
-    const e = await publish(1);
-    let release!: () => void, entered!: () => void;
-    const gate = new Promise<void>((r) => (release = r)),
-      seen = new Promise<void>((r) => (entered = r));
-    const apply = handler;
-    handler = async (tx, event) => {
-      entered();
-      await gate;
-      await apply(tx, event);
-    };
-    const count = recordAdjustment(world.businessId, world.ownerId, itemId, {
-      countedQuantity: "1000",
-    });
-    const outcome = count.then(
-      (value) => ({ value, error: null }),
-      (error) => ({ value: null, error }),
-    );
-    await seen;
-    const newer = await publish(1);
-    release();
-    const result = await outcome;
-    expect(result.error).toMatchObject({ code: "count_changed" });
-    handler = apply;
-    // A deadline can leave the claim abandoned: simulate lease expiry and recover it.
-    await getDb()
-      .update(moduleEventDeliveries)
-      .set({ claimUntil: new Date(0) })
-      .where(eq(moduleEventDeliveries.eventId, e.eventId));
-    await retryModuleEvents({
-      businessId: world.businessId,
-      eventIds: [e.eventId, newer.eventId],
-      force: true,
-    });
-    expect(
-      await getDb()
-        .select()
-        .from(stockMovements)
-        .where(eq(stockMovements.sourceOrderId, e.order)),
-    ).toHaveLength(1);
-    expect(
-      await getDb()
-        .select()
-        .from(stockMovements)
-        .where(eq(stockMovements.sourceOrderId, newer.order)),
-    ).toHaveLength(1);
-  });
+  it.each([false, true])(
+    "new confirmed close during drain invalidates only count; no POS lock held (drain rejects: %s)",
+    async (rejectDrain) => {
+      const retry = eventService.retryModuleEvents;
+      const drain = rejectDrain
+        ? vi
+            .spyOn(eventService, "retryModuleEvents")
+            .mockImplementationOnce(async (options) => {
+              await retry(options);
+              throw new Error("Claim query exceeded retry deadline");
+            })
+        : null;
+      const e = await publish(1);
+      let release!: () => void, entered!: () => void;
+      const gate = new Promise<void>((r) => (release = r)),
+        seen = new Promise<void>((r) => (entered = r));
+      const apply = handler;
+      handler = async (tx, event) => {
+        entered();
+        await gate;
+        await apply(tx, event);
+      };
+      const count = recordAdjustment(world.businessId, world.ownerId, itemId, {
+        countedQuantity: "1000",
+      });
+      const outcome = count.then(
+        (value) => ({ value, error: null }),
+        (error) => ({ value: null, error }),
+      );
+      try {
+        await seen;
+        const newer = await publish(1);
+        release();
+        const result = await outcome;
+        drain?.mockRestore();
+        expect(result.error).toMatchObject({ code: "count_changed" });
+        handler = apply;
+        // A deadline can leave the claim abandoned: simulate lease expiry and recover it.
+        await getDb()
+          .update(moduleEventDeliveries)
+          .set({ claimUntil: new Date(0) })
+          .where(eq(moduleEventDeliveries.eventId, e.eventId));
+        await retryModuleEvents({
+          businessId: world.businessId,
+          eventIds: [e.eventId, newer.eventId],
+          force: true,
+        });
+        expect(
+          await getDb()
+            .select()
+            .from(stockMovements)
+            .where(eq(stockMovements.sourceOrderId, e.order)),
+        ).toHaveLength(1);
+        expect(
+          await getDb()
+            .select()
+            .from(stockMovements)
+            .where(eq(stockMovements.sourceOrderId, newer.order)),
+        ).toHaveLength(1);
+      } finally {
+        release();
+        drain?.mockRestore();
+        handler = apply;
+        await outcome;
+      }
+    },
+  );
   it("close overlapping final SERIALIZABLE predicate is ordered before/after count without lost consumption", async () => {
     let release!: () => void, entered!: () => void;
     const gate = new Promise<void>((r) => (release = r)),
