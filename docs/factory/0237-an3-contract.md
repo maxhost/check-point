@@ -1,6 +1,6 @@
 # 0237 — Contrato AN-3
 
-Encargo del owner: SOLO AN-3 (§7 y comunes §1–§4), ADR0152/0153, sobre dev `dfe9ea70e02f6e026d3bc57f6b8b6266edf395c5`. Coordinador, dos implementadores y QA independiente. Candidato local en dev, sin avance de main local, push, deploy, lectura o migración PROD. Sin INDEX/TASKS/estado Claude, verify global ni mutaciones. No cambiar tarjetas AN-1/AN-2 ni reabrir rendimiento, housekeeping, ciudades/cron operativos o «cuánto ahorraste». Prueba real Visual Crossing ahora sí entra, con clave leída exclusivamente en memoria y sin imprimirla.
+Encargo del owner: SOLO AN-3 (§7 y comunes §1–§4), ADR0152/0153, sobre dev `dfe9ea70e02f6e026d3bc57f6b8b6266edf395c5`. Coordinador, dos implementadores y QA independiente. Candidato integrado primero en dev; el owner autorizó después continuar autónomamente hasta QA PASS y merge en main local. Sin push, deploy, lectura o migración PROD. Sin INDEX/TASKS/estado Claude, verify global ni mutaciones. No cambiar tarjetas AN-1/AN-2 ni reabrir rendimiento, housekeeping, ciudades/cron operativos o «cuánto ahorraste». Prueba real Visual Crossing ahora sí entra, con clave leída exclusivamente en memoria y sin imprimirla.
 
 ## Worktrees y continuidad
 
@@ -12,7 +12,7 @@ Writer de vocabulario `packages/domain/src/analytics/metrics.ts`, `packages/db` 
 
 Tres eventos pedidos atómicos con origen, local nullable donde origen lo permite, nombres/moneda/dinero exactos e identidades capturadas. Visita corresponde a nueva acreditación `core.order`, sin bienvenida ni repetir en reintento; preservar atomicidad también en grant sin cupón (hoy CTE de un solo statement). Canje de core se identifica por cupón único, origen de `discountOrigin.sourceId`; evitar doble conteo independientemente del orden de deliveries mediante contrato genérico acordado con B. Traductores puros, sin DB/reloj. Core no importa ni nombra módulos concretos.
 
-Hallazgos notificados al owner y pendientes de respuesta ANTES de resolver: business_customer no tiene UUID id, usa comercio+consumerId; fin de campaña no publica evento y ends_at no cambia estado. Propuesta: UUID opaco tenant en única migración y snapshots de ciclo de campaña publicados en sus escrituras para evaluar12 desde resúmenes al día siguiente, sin leer tablas de origen ni cambiar ciclo existente. Trabajo independiente continúa.
+Hallazgos notificados y resueltos expresamente por el owner antes del código: business_customer no tiene UUID id. Se calcula UUID v5 determinístico de (businessId,consumerId), namespace fijo propio de Analíticas, en el productor visit.recorded; SIN nueva columna ni backfill. Se confirman snapshots de ciclo de campaña en alta, edición y transiciones con endsAt/endedAt, para evaluar12 al día siguiente de ends_at o ended desde resúmenes, sin leer campañas ni cambiar su ciclo actual. Si otra necesidad requiere migración, máximo una.
 
 DB exclusiva inicialmente A: `/private/tmp/checkpass-0237/migration.env`, solo `tools/neon-test.sh` con Node24, serial durante pruebas/teardown. No ci.env/perf/PROD. Un caso por evento nuevo y evento adicional si se confirma, con rollback/local/corte/idempotencia y deduplicación de canjes. No leer/exportar DATABASE_URL del checkout principal.
 
@@ -29,3 +29,12 @@ Métricas customer/campaign, local conservado en ventanas, dinero exacto y cohor
 ## QA — independiente
 
 Writer solo `docs/factory/0237-an3-qa.md`, artefactos externos si necesarios. Leer fuentes/spec/contrato, revisar entregas y combinación congelada, reutilizar evidencia compatible y reproducir señal decisiva. No implementar producto ni repetir global/benchmark. Verificar3eventos atómicos y cualquier snapshot adicional confirmado; deduplicación POS/canje ambas órdenes, cortes, tenant/local,10/11/12 bordes, acciones/H5, histórico, contexto real persistido invisible y secreto nunca impreso. Fallos/reintentos/skips no equivalen a PASS. Informe con SHAs/entorno/comandos/fallos/migración/cuota real del clima.
+
+## Acuerdos técnicos de ejecución
+
+- Continuación factory A/B/QA desde `bebf26c99b42754f7915b392487162b408a51833`, worktrees propios de AN-2 preservados. Dos implementadores y QA fresco `/root/an3_{events,product,qa}`.
+- A/B acuerdan grupos adicionales de traducción con sourceKey/revision para canjes: `coupon:<couponId>` revisión2 desde venta financiera, revisión1 desde canje; grupo base sale.closed intacto. Costo capturado se conserva aparte sin que el grupo ganador lo borre. Sin dependencia del orden de deliveries, DB o reloj en traductor.
+- Visitas desde daily_metric con count por cliente/local; intervalos incluyen ceros entre visitas del mismo día, sin inventar horas. Se requiere mediana positiva para prometer un ritmo. Monto conocido usa el neto capturado. No tabla adicional de visitas. Una0099 para snapshot campaña si necesaria.
+- H5 confirmado: no envío manual individual de cupón; acción11 «Ver cliente». El destino Customers existente usa permiso `counter`, que conserva el nuevo detalle específico, con tenant y reader restringido.
+- Clima: una petición real del proveedor por rango ayer/hoy (dos registros), ruta interna GET real autenticada. El harness puede inyectar el gate mínimo de hora0 en el runner real, sin bypass HTTP/flag y conservando now/fetchedAt reales; proveedor/DB reales. No se fabrica una captura futura.
+- CI remoto main `db3175d` sigue rojo por aserción histórica de conteo; no se corre verify global ni se afirma corregida la publicación. Se preserva mientras no se prepare push autorizado.

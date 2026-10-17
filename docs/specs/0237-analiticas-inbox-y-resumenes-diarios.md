@@ -365,10 +365,14 @@ AN-3 suma clientes y promos. «Cuánto ahorraste» no tiene medición en la v1 (
 - POS publica `pos.order.voided` (orden, local, `voidedAt`, líneas y monto cargado, usuario) en la tx de
   `voidPosOrder`; traduce a `voided_tickets`.
 - Core publica en la misma tx de su origen **`visit.recorded`** al crear un `core.order` que es visita (cliente
-  pseudónimo = `business_customer.id`, nombre, local, instante, monto si lo hay; `source_id` = orden) y
+  pseudónimo = UUID v5 determinístico de `(businessId, consumerId)` con namespace fijo propio de Analíticas,
+  calculado en el productor sin columna nueva ni backfill de `business_customer`; nombre, local, instante, monto si lo hay; `source_id` = orden) y
   **`coupon.redeemed`** al crear un `core.coupon_redemption` (campaña y su nombre, descuento, costo, orden, local).
   Promos: `promo_discount`/`promo_sales` desde `sale.closed` v2+ (`discountOrigin`) y `coupon.redeemed`, sin contar dos
   veces un canje que ya viajó en la venta POS (clave por canje).
+- Core publica además snapshots del ciclo de campaña en sus escrituras (alta, edición y transiciones), con
+  `endsAt`/`endedAt`. La tarjeta12 se evalúa al día siguiente del fin desde esos resúmenes, sin leer campañas
+  ni cambiar su ciclo existente (aclaración técnica del owner, 2026-10-17).
 - Tarjetas:
   - **10 Anulaciones:** tickets anulados en 7 días por local > max(3, media + 2 desvíos de las 8 semanas previas) →
     «Esta semana se anularon 9 tickets en Centro ($64 cargados), el triple de lo normal.» Requiere el mes mínimo.
