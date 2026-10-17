@@ -1958,4 +1958,3 @@ Ajuste L0 aprobado (2026-10-10): cierre final «PRUÉBALO EN TU NEGOCIO», títu
 Ajuste L0 aprobado (2026-10-10): CTA de registro «Pruébalo gratis 3 meses» y nota «Todo incluido durante la prueba» añadidos en las secciones de marketing y POS usando SignupLink y start-actions existentes, como en el cierre práctico. Accesos informativos futuros conservados. Sin tests; revisión del owner en localhost.
 
 Ajustes L0 aprobados tras revisión UX (2026-10-10): hero identifica fidelización, marketing y POS; programa explica QR → acumulación → canje; marketing distingue clientes propios y nuevos; planes resumen diferencias, simplifican POS y avisos al teléfono y explican campañas avanzadas; preparación del POS opcional en paso 1; anclas de configuración dicen Cómo empezar. Diseño, precios y mecanismo de cashback conservados. Selectores de copy actualizados; sin tests, conforme a instrucción del owner. Revisión en localhost pendiente.
-
