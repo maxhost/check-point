@@ -53,14 +53,18 @@ reconstruir ventas anteriores a los eventos). Del 2026-10-17 (plan, «AN — dec
 3. **Ventas = solo POS.** Un futuro módulo de citas será el equivalente para quien no vende productos: el vocabulario
    es genérico (`revenue` no sabe de qué módulo viene).
 4. **Tarjeta 10 = tickets abiertos anulados** (el POS no anula ventas cobradas).
+5. **Todo dato que alimenta Analíticas nace como evento**, guardado en la transacción de su origen, con el mismo patrón
+   que `sale.closed`; los traductores solo leen el evento y Analíticas no lee tablas de origen
+   ([ADR0153](../adr/0153-analiticas-solo-de-eventos.md)). Owner: «lo correcto es hacer que cada módulo guarde los
+   datos como venta cerrada del POS para seguir un patrón consistente».
 
 ## Etapas
 
 | Etapa | Entra | Tarjetas | Eventos nuevos |
 |---|---|---|---|
-| **AN-1** | resúmenes diarios, suscriptor core, inbox, histórico, contexto externo (ciudades, clima, calendario) | 1, 2, 3, 4, 7, 13 | ninguno: traduce `sale.closed` y `expense.*` |
-| **AN-2** | stock y costos | 5, 6, 8, 9 | `stock.purchase.recorded`, `stock.adjustment.recorded`; consumo por receta como métrica |
-| **AN-3** | anulaciones, clientes y promos | 10, 11, 12 | `pos.order.voided`; visitas y canjes de core |
+| **AN-1** | resúmenes diarios, suscriptor core, inbox, histórico, contexto externo (ciudades, clima, calendario) | 1, 2, 3, 4, 7, 13 | `sale.closed` v3 (nombre del producto por línea), `sale.commission.frozen` (core), `recipes.consumption.applied`; traduce también `expense.*` de G |
+| **AN-2** | stock y costos | 5, 6, 8, 9 | `stock.purchase.recorded`, `stock.adjustment.recorded`, `recipes.product_cost.changed` |
+| **AN-3** | anulaciones, clientes y promos | 10, 11, 12 | `pos.order.voided`, `visit.recorded` y `coupon.redeemed` (core) |
 
 **Ajuste de Claude, a confirmar por el owner (H1):** la tarjeta 7 (producto sin costo) pasa a AN-1 porque la meta
 del día (3) no se puede calcular sin saber qué parte de lo vendido tiene costo; sale de los mismos datos de venta.
@@ -75,25 +79,29 @@ exacto, `count`) y tipo de dimensión (`none`, `product`, `item`, `concept`, `cu
 
 | Métrica | Tipo | Unidad | Dimensión | Etapa | Qué es |
 |---|---|---|---|---|---|
-| `revenue` | sum | money | none | 1 | cobrado neto de la venta (`money.collected`); `count` = tickets |
-| `product_revenue` | sum | money | product | 1 | neto de la línea (`lines[].money.net`) |
-| `units_sold` | sum | quantity | product | 1 | cantidad vendida |
-| `payment_commission` | sum | money | none | 1 | comisión congelada de la venta (core) |
-| `cost_of_goods` | sum | money | product | 1 | costo del consumo de la receta de esa línea |
-| `units_without_cost` | sum | quantity | product | 1 | unidades vendidas sin costo conocido |
-| `expense_fixed` / `expense_variable` | sum | money | concept | 1 | gasto por concepto según `isFixed` |
-| `stock_purchase` | sum | money + quantity | item | 2 | compra registrada |
-| `stock_unit_cost` | gauge | money | item | 2 | costo promedio por unidad después de la compra |
-| `stock_on_hand` | gauge | quantity | item | 2 | existencia teórica al cierre del día |
-| `stock_consumption` | sum | quantity | item | 2 | consumo por recetas |
-| `stock_count_gap` | sum | money + quantity | item | 2 | diferencia del conteo contra el teórico, al costo promedio |
-| `product_unit_cost_change` | sum | money | product | 2 | cambio del costo unitario de un producto por una compra |
-| `voided_tickets` | sum | money + count | none | 3 | tickets abiertos anulados y lo que tenían cargado |
-| `visits` | sum | count | customer | 3 | acreditaciones del cliente (no la bienvenida) |
-| `promo_discount` / `promo_sales` | sum | money | campaign | 3 | descuento del cupón y total de los tickets que lo llevaron |
+| Métrica | Tipo | Unidad | Dimensión | Etapa | Evento de origen → qué es |
+|---|---|---|---|---|---|
+| `revenue` | sum | money | none | 1 | `sale.closed` → cobrado neto (`money.collected`); `count` = tickets |
+| `product_revenue` | sum | money | product | 1 | `sale.closed` → neto de la línea (`lines[].money.net`) |
+| `units_sold` | sum | quantity | product | 1 | `sale.closed` → cantidad vendida |
+| `payment_commission` | sum | money | none | 1 | `sale.commission.frozen` → comisión congelada de la venta |
+| `cost_of_goods` | sum | money | product | 1 | `recipes.consumption.applied` → costo del consumo de la línea |
+| `units_with_cost` | sum | quantity | product | 1 | `recipes.consumption.applied` → unidades con costo conocido; cobertura = `units_with_cost / units_sold` |
+| `expense_fixed` / `expense_variable` | sum | money | concept | 1 | `expense.*` → gasto por concepto según `isFixed` |
+| `stock_purchase` | sum | money + quantity | item | 2 | `stock.purchase.recorded` |
+| `stock_unit_cost` | gauge | money | item | 2 | `stock.purchase.recorded` → costo promedio por unidad después de la compra |
+| `stock_on_hand` | gauge | quantity | item | 2 | existencia después, de cualquier evento de stock o de consumo |
+| `stock_consumption` | sum | quantity | item | 2 | `recipes.consumption.applied` → insumos consumidos |
+| `stock_count_gap` | sum | money + quantity | item | 2 | `stock.adjustment.recorded` → diferencia contra el teórico, al costo promedio |
+| `product_unit_cost_change` | sum | money | product | 2 | `recipes.product_cost.changed` |
+| `voided_tickets` | sum | money + count | none | 3 | `pos.order.voided` → tickets abiertos anulados y lo que tenían cargado |
+| `visits` | sum | count | customer | 3 | `visit.recorded` → acreditaciones del cliente (no la bienvenida) |
+| `promo_discount` / `promo_sales` | sum | money | campaign | 3 | `sale.closed` v2+ (`discountOrigin`) y `coupon.redeemed` |
 
-Los nombres de la dimensión (producto, insumo, concepto, cliente, campaña) viajan como **etiqueta** en cada aporte y
-se guardan en `analytics.dimension_label`: el core no lee tablas de módulos para escribir «café con leche».
+Los nombres de la dimensión (producto, insumo, concepto, cliente, campaña) **viajan en el evento** y se guardan en
+`analytics.dimension_label`. Por eso `sale.closed` pasa a **v3** = v2 + `lines[].productLabel` (nombre al cerrar);
+decodificadores de POS, Recetas y core aceptan v1–v3. Las ventas v1/v2 ya guardadas no traen nombre: su producto toma
+la etiqueta del primer evento posterior que la traiga; mientras tanto se muestra «Producto sin nombre».
 
 ### 2. Resúmenes diarios
 
@@ -109,18 +117,35 @@ se guardan en `analytics.dimension_label`: el core no lee tablas de módulos par
 El «día» es el día calendario en `core.business.timezone` del instante del hecho (`closedAt` de la venta; `paidOn`
 del gasto ya es día local y se usa tal cual). Un cambio futuro de zona no mueve lo ya guardado.
 
-#### 2.2 Traducción: cada módulo declara, el core aplica
+#### 2.2 Todo nace como evento; el traductor solo lee el evento
+
+**Regla (ADR0153):** todo dato que alimenta Analíticas se guarda como `module_event` **en la misma transacción que
+su origen**, igual que `sale.closed` en el cierre del POS. Analíticas no lee tablas de módulos ni de core para armar
+resúmenes; si un dato falta en un evento, se agrega al evento (nueva versión), no se lee de una tabla.
 
 `ModuleServer` (`modules/route-table.ts`) suma `metricTranslators?: readonly MetricTranslator[]`:
-`{ eventType, translate(tx, event) → { sourceKey, sourceRevision, rows[] } | "not_ready" | "ignore" }`. El
-traductor puede leer tablas de **su** módulo, nunca de otro. Core declara los suyos en
-`server/analytics/core-translators.ts` (comisión de `sale.closed`; en AN-3 visitas y canjes).
+`{ eventType, translate(event) → { sourceKey, sourceRevision, rows[] } }`. **Función pura**: sin `tx`, sin lectura de
+base, sin reloj; la misma entrada da siempre la misma salida. Lo declara el dueño del tipo de evento. Core declara los
+suyos en `server/analytics/core-translators.ts` (`sale.commission.frozen`; en AN-3 `visit.recorded` y
+`coupon.redeemed`).
 
-AN-1 declara: POS (`sale.closed` → `revenue`, `product_revenue`, `units_sold`), Recetas (`sale.closed` →
-`cost_of_goods` y `units_without_cost`; responde `not_ready` hasta que la delivery de consumo de Recetas de ese
-evento esté `applied`, e `ignore`→ todo sin costo si esa delivery quedó `skipped`), Gastos (`expense.*`) y core
-(`payment_commission`). Cada traductor usa su propio `sourceKey` (`sale:<id>:pos`, `sale:<id>:recipes`,
-`sale:<id>:commission`): reemplazar uno no borra el de otro.
+Eventos nuevos de AN-1 (append genérico de G, `source_id` único por comercio y tipo):
+
+- **`sale.closed` v3** (POS): v2 + `lines[].productLabel`.
+- **`sale.commission.frozen`** (core): en la tx del cierre, justo después de `freezeSaleCommission`
+  (`pos/server/close.ts:270`): orden, local, `closedAt`, comisión total en unidades menores, moneda y unidad.
+  `source_id` = orden. Sin comisión configurada no se publica.
+- **`recipes.consumption.applied`** (Recetas): en la tx en que su handler de `sale.closed` aplica el consumo: orden,
+  local, `closedAt`, por línea `{ sourceLineId, productId, productLabel, quantity, cost | null }` (null = sin receta
+  o sin costo de algún insumo) y por insumo `{ itemId, itemLabel, quantity, onHandAfter }`. `source_id` = orden. Si la
+  delivery de Recetas queda `skipped` (módulos apagados), no hay evento y esas unidades cuentan como sin costo
+  (`units_sold` sin `units_with_cost`).
+
+Traductores de AN-1: POS (`sale.closed` → `revenue`, `product_revenue`, `units_sold`, promos desde `discountOrigin`
+en AN-3), Recetas (`recipes.consumption.applied` → `cost_of_goods`, `units_with_cost`; en AN-2 también
+`stock_consumption`, `stock_on_hand`), Gastos (`expense.*`) y core (`sale.commission.frozen`). Cada evento tiene su
+`sourceKey` (`sale.closed:<orden>`, `recipes.consumption.applied:<orden>`, `expense:<gasto>`…): reemplazar uno no
+borra el de otro.
 
 #### 2.3 Suscriptor core `core.analytics`
 
@@ -131,15 +156,15 @@ evento esté `applied`, e `ignore`→ todo sin costo si esa delivery quedó `ski
   nada (un `expense.updated` viejo que llega tarde no pisa uno nuevo); si no, resta de `daily_metric` los aportes
   previos de ese `source_key`, los borra, inserta los nuevos y los suma (`on conflict do update`, filas en orden de
   clave para no trabarse). Un `expense.deleted` deja cero aportes. Reaplicar la misma delivery no cambia nada.
-- `not_ready` vuelve a `pending` con el backoff actual (1, 5, 15, 30 min) sin contar como falla.
 - **Eventos ya guardados:** al encender AN-1 se crean deliveries `core.analytics` para los `module_event` existentes
   (ventas desde el encendido de los eventos, 2026-10-16, y gastos). Lectura de Claude de «Analíticas cuenta desde que
-  los eventos están encendidos» (H2); nada se reconstruye desde tablas del POS.
+  los eventos están encendidos» (H2); nada se reconstruye desde tablas. Esas ventas no tienen
+  `recipes.consumption.applied` ni `sale.commission.frozen`: cuentan sin costo ni comisión.
 
 #### 2.4 Corte del conteo de Stock
 
 `validateCountCut` bloquea con deliveries pendientes de los eventos del corte. Una delivery `core.analytics`
-pendiente (p. ej. Recetas en `not_ready`) no cambia el stock y **no debe** bloquear un conteo: el chequeo de
+pendiente (p. ej. una que falló y espera su reintento) no cambia el stock y **no debe** bloquear un conteo: el chequeo de
 pendientes se limita a suscriptores de módulos que requieren `stock`. Test de regresión obligatorio (§Pruebas).
 
 ### 3. Inbox (Dashboard)
@@ -191,7 +216,7 @@ usuario no tiene permiso, la tarjeta sale sin botón.
 | 2 | Ventas | ≥ 28 días desde la primera venta y ≥ 4 días iguales con venta | «Los martes se suelen vender unas 30 medialunas, 22 cafés con leche y 15 empanadas.» Mediana de los últimos 4–8 días iguales, top 3 por unidades. Antes del mínimo, como mucho una vez por semana: «Necesito 3 martes más para decirte qué se vende los martes.» | 0,1 · 1 | — |
 | 3 | Finanzas | hay ≥ 1 mes cerrado con gastos, cobertura de costo ≥ 80% de lo vendido en 28 días y la venta del mes va por debajo del ritmo | «Hoy necesitas vender $106 para cubrir el mes: te faltan $1.272 en 12 días de venta.» Marca «estimado» si algún concepto lo es. | brecha contra el ritmo · `1 − días restantes/días del mes`, ×1,5 en los últimos 10 días | «Ver el cálculo» → histórico, bloque del mes |
 | 4 | Finanzas | sin gastos fijos en 45 días, o sin mes cerrado con gastos | «Carga tus gastos fijos (alquiler, sueldos, luz) y te digo cuánto tienes que vender cada día para cubrir el mes.» Primer mes con gastos: «La meta se calcula al cerrar tu primer mes con gastos.» | 1 · 0,5 (0,8 en los últimos 10 días) | `record_expense` |
-| 7 | Costos | productos con `units_without_cost` en 28 días | «No sé cuánto ganas con café con leche y 4 productos más: vendiste $640 de ellos en 4 semanas.» Sujeto = el producto que más vendió. | monto = venta sin costo de 28 días / 4 · 0,6 (1 si la cobertura impide la meta) | `set_product_cost` |
+| 7 | Costos | productos con `units_sold` mayor que `units_with_cost` en 28 días | «No sé cuánto ganas con café con leche y 4 productos más: vendiste $640 de ellos en 4 semanas.» Sujeto = el producto que más vendió. | monto = venta sin costo de 28 días / 4 · 0,6 (1 si la cobertura impide la meta) | `set_product_cost` |
 | 13 | Ventas | mismo mínimo que la 2; la venta esperada de hoy (mediana de días iguales) < 75% del promedio diario de 28 días; hay ≥ 2 productos con costo y ≥ 10 ventas en 28 días | «Los martes suelen ser flojos (unos $140, contra $210 de un día promedio). Si te piden recomendación: la pizza muzza te deja $3,10 por unidad y el flan $2,40.» Top 2 por ganancia unitaria. | `p` = promedio − esperado · 0,7 (1 si la 3 está activa) | — |
 
 **Meta del día (3), cálculo** (owner, plan «Preguntas de G» 1): gastos fijos del mes por concepto = lo pagado este mes
@@ -274,10 +299,13 @@ AN-3 suma clientes y promos. «Cuánto ahorraste» no tiene medición en la v1 (
   promedio anterior y posterior, existencia después, `occurredAt`, etiqueta) y `stock.adjustment.recorded` (contado,
   teórico anterior, diferencia en cantidad y al costo promedio, existencia después). `source_id` = id del movimiento;
   ambos con local. Las entradas por lote (`stock/entries.ts`) publican uno por línea.
-- Recetas traduce `sale.closed` también a `stock_consumption` y `stock_on_hand` por insumo, y `stock.purchase.recorded`
-  a `product_unit_cost_change` para los productos cuya receta usa ese insumo (lee su propia composición).
+- Recetas traduce `recipes.consumption.applied` también a `stock_consumption` y `stock_on_hand` por insumo.
+- Recetas **se suscribe** a `stock.purchase.recorded` (como hoy a `sale.closed`; `EventSubscription.eventType` pasa a
+  aceptar los tipos registrados) y, si cambió el costo promedio, publica en esa tx **`recipes.product_cost.changed`**:
+  por producto cuya receta usa el insumo `{ productId, productLabel, unitCostBefore, unitCostAfter, itemId,
+  itemLabel }`. `source_id` = id de la compra. Su traductor da `product_unit_cost_change`.
 - Tarjetas (mismo formato que §3.4):
-  - **5 Suba de insumo**, evaluada en la delivery de la compra: costo unitario +5% o más contra el promedio anterior →
+  - **5 Suba de insumo**, evaluada en la delivery de `recipes.product_cost.changed`: costo unitario +5% o más contra el promedio anterior →
     «La harina subió 12%: tu muzza te cuesta $0,18 más por unidad (≈$9 por semana con lo que vendes).» `p` = impacto
     semanal; `u` = 1 el día de la compra, ×0,7 por día después. Acción: revisar precio (`set_product_price`, la declara
     quien tenga el catálogo de precios; verificar en la etapa).
@@ -295,8 +323,11 @@ AN-3 suma clientes y promos. «Cuánto ahorraste» no tiene medición en la v1 (
 
 - POS publica `pos.order.voided` (orden, local, `voidedAt`, líneas y monto cargado, usuario) en la tx de
   `voidPosOrder`; traduce a `voided_tickets`.
-- Core aporta `visits` por cliente (pseudónimo = `business_customer.id`) desde `core.order` en su tx, y
-  `promo_discount`/`promo_sales` por campaña desde `sale.closed` v2 (`discountOrigin`) y `core.coupon_redemption`.
+- Core publica en la misma tx de su origen **`visit.recorded`** al crear un `core.order` que es visita (cliente
+  pseudónimo = `business_customer.id`, nombre, local, instante, monto si lo hay; `source_id` = orden) y
+  **`coupon.redeemed`** al crear un `core.coupon_redemption` (campaña y su nombre, descuento, costo, orden, local).
+  Promos: `promo_discount`/`promo_sales` desde `sale.closed` v2+ (`discountOrigin`) y `coupon.redeemed`, sin contar dos
+  veces un canje que ya viajó en la venta POS (clave por canje).
 - Tarjetas:
   - **10 Anulaciones:** tickets anulados en 7 días por local > max(3, media + 2 desvíos de las 8 semanas previas) →
     «Esta semana se anularon 9 tickets en Centro ($64 cargados), el triple de lo normal.» Requiere el mes mínimo.
@@ -348,7 +379,9 @@ Recortadas a lo que detecta un defecto plausible; suites Neon con `tools/neon-te
    `units_sold`, `payment_commission` exactos; misma delivery dos veces = sin doble suma.
 2. Neon: `expense.recorded` → `updated` que cambia día, concepto y local → `deleted`; el `updated` aplicado después del
    `deleted` (revisión vieja) se ignora; «todo el negocio» queda con local null.
-3. Neon: traductor de Recetas `not_ready` hasta aplicar el consumo; producto sin receta → `units_without_cost`.
+3. Neon: `recipes.consumption.applied` y `sale.commission.frozen` se publican en la tx de su origen (si esa tx
+   revierte, no hay evento); producto sin receta → línea con costo null y cobertura menor; módulos apagados → sin
+   evento de consumo. Unit: cada traductor es puro (misma entrada, misma salida; sin acceso a base).
 4. Neon (regresión): conteo con delivery `core.analytics` pendiente no da 409; con consumo de Recetas pendiente sí.
 5. Unit: pesos y selección — tope 5 con el resumen adentro, umbral, novedad (`0,6^n`, descartada sin cambio = 0,
    cambio de escalón vuelve).

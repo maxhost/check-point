@@ -431,6 +431,8 @@ anulaciones, cupones, canjes y visitas no publican eventos.
 3. **Ventas = solo POS.** Owner: «hoy no tenemos forma, solo podemos saber lo que se vendió desde POS… tendrá que
    existir en el futuro un módulo de calendarios o citas que será el equivalente a POS para esos negocios».
 4. **Tarjeta 10 = tickets abiertos anulados** (el POS no anula ventas cobradas).
+5. **Todo dato de Analíticas nace como evento** en la tx de su origen (ADR 0153). Owner: «lo correcto es hacer que
+   cada módulo guarde los datos como venta cerrada del POS para seguir un patrón consistente».
 
 ## Prompt — Gastos (spec 0236 + ADR 0151; 2026-10-16; ajustado al ADR 0152 el mismo día; N ya está en `dev`)
 
