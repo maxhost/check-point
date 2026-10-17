@@ -1,6 +1,6 @@
 # 0237 — AN-3 producto (B)
 
-Task `analytics-an2-product`, worktree `/private/tmp/checkpass-an2/analytics-an2-product`, rama homónima continuada. Base AN-3 `bebf26c99b42754f7915b392487162b408a51833`; fundamento A integrado por ff-only y factory refresh `6cecd378ab7a2926fc98df2206d1ce08a58058de`. **Fuente B congelada `f30ed877`** (implementación inicial `24da3203`, corrección11 posterior), checkpoint revisable, sin atribuir QA PASS ni Neon todavía. Spec/contrato con aclaración owner `f7c81e5b`: hábito por cuatro fechas locales distintas.
+Task `analytics-an2-product`, worktree `/private/tmp/checkpass-an2/analytics-an2-product`, rama homónima continuada. Base AN-3 `bebf26c99b42754f7915b392487162b408a51833`; fundamento A integrado por ff-only y factory refresh `6cecd378ab7a2926fc98df2206d1ce08a58058de`. **Fuente B congelada `421ef60c`** (implementación inicial `24da3203`, corrección11 `f30ed877`, reconciliación12 posterior), checkpoint revisable, sin atribuir QA PASS. Spec/contrato con aclaración owner `f7c81e5b`: hábito por cuatro fechas locales distintas.
 
 ## Implementación y contratos
 
@@ -52,3 +52,13 @@ NEON_TEST_ENV_FILE=/private/tmp/checkpass-0237/migration.env tools/neon-test.sh 
 Revisión coordinador detectó el defecto de agrupación11 por local en24da3203: podía avisar ausencia aunque el cliente había visitado otro local. Corregido enf30ed877, con copia «Juan solía venir cada12 días. Su última visita fue hace25 días.»; historial mantiene filtros/locales. QA avisado de la nueva fuente.
 
 No se declara PASS de esos cuatro casos ni QA independiente. No procesos B activos al congelar. Siguiente paso: revisión QA por blobs y turno DB; corregir defectos propios si aparecen y congelar revisión final antes de entrega factory.
+
+## Reconciliación de resultados tardíos — fuente421ef60c
+
+QA encontró que un snapshot llegado tras la corrida `ready` podía perder la tarjeta12 del día siguiente; también una edición del fin podía dejar una candidata previa obsoleta. Corrección fuente **`421ef60c`**: export `reconcileCampaignCandidates(tx,businessId,now?)`, llamado en la misma tx de ingesta después de nuevos snapshots o aportes promo. Adquiere el lock de evaluación negocio/día, lee `inputStatement` mediante esa misma tx y recalcula exclusivamente12 para hoy. Upsert mantiene IDs de elegibles; borra solo12 de hoy que ya no califican. No reabre evaluation_run ni toca10/11, otros días o card_state. Conserva novedad/materialidad comunes.
+
+Cableado ingesta de A todavía pendiente al escribir esta revisión: una sola reconciliación al final de grupos aplicados en orden sourceKey, únicamente si hubo un snapshot nuevo o métrica promo_* nueva. A/coordinador integrarán el checkpoint limpio antes de escribir ese cableado; no se afirma probado el cableado antes de existir.
+
+DB aislada asignada a B por coordinador, wrapper único migration.env, esquema0099 de A. **4/4Neon PASS0skip EXIT0** sobref30,13,40s (`/private/tmp/an3-product-neon.log`). Después **5/5Neon PASS0skip EXIT0** con hook,16,80s (`an3-product-neon-reconcile.log`); se fortaleció el quinto caso para escribir snapshot/aporte dentro de la misma tx antes de llamar al hook y verificar visibilidad antes de commit: **5/5PASS0skip EXIT0,16,19s** (`/private/tmp/an3-product-neon-reconcile-tx.log`), fuente421ef60c. Prueba late snapshot tras runready, mismoID, descarte conserva peso0, nuevo escalón de monto recupera novedad sin borrar state, edición que retira12 y10 intacta. Typecheck y lint afectados PASS (`an3-product-types-reconcile.log`, `an3-product-lint-reconcile.log`).
+
+Todas las corridas terminaron con teardown, sin procesos B activos. No más DB hasta coordinación de recurso para cableado/combinación. Dominio/UI no cambian con este hook:34unit ybrowser evidencias f30 siguen compatibles. La evidencia de fuenteB no sustituye QA ni la prueba combinada del cableado A.
