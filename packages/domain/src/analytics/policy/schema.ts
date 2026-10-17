@@ -162,6 +162,16 @@ export function validatePolicy(
   } catch {
     throw new Error("Política inválida: zona del scheduler.");
   }
+  for (const key of [
+    "action_view_day",
+    "action_view_calculation",
+    "action_view_customer",
+    "action_view_campaign_results",
+    "action_edit_product_price",
+    "action_view_modules",
+  ])
+    if (!config.texts[key]?.trim())
+      throw new Error(`Política inválida: texto ${key}.`);
   const ids = new Set<string>();
   for (const rule of config.rules) {
     if (!/^[a-zA-Z0-9_-]+$/.test(rule.id) || ids.has(rule.id))
