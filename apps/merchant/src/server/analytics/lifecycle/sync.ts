@@ -213,6 +213,7 @@ export async function syncInboxCandidates(
     const context: AnalyticsContext = {
       ...oldContext,
       legacy: false,
+      compacted: false,
       observed: comparable,
       ...(isFact ? { sourceFact: observed } : {}),
       eligible: true,

@@ -14,7 +14,7 @@ import type {
   CardCandidate,
   CardState,
 } from "../types";
-import { addDays, daysBetween, formatMoney, localDay } from "../date";
+import { addDays, daysBetween, formatMoney, localDay, validDay } from "../date";
 import { cardWeight, materialFingerprint } from "../weights";
 import {
   decimal,
@@ -293,6 +293,7 @@ export function buildFactCandidates(
         if (age < 0) return [];
         const base = {
           originDay,
+          period: { from: originDay, to: originDay, label: "" },
           originObservedAt: `${new Date(fact.occurredAt).toISOString()}:${eventId}`,
           locationId: fact.locationId,
           urgency: p.urgency,
@@ -528,6 +529,15 @@ export function needsFactOriginSnapshot(
     basis.quantitySold
   );
 }
+export function factOriginDay(
+  context: Record<string, unknown>,
+  fact: AnalyticsFact,
+  timezone: string,
+) {
+  return typeof context.originDay === "string" && validDay(context.originDay)
+    ? context.originDay
+    : localDay(new Date(fact.occurredAt), timezone);
+}
 export type MissingFactSnapshot = {
   cardKey: string;
   subjectKey: string;
@@ -554,6 +564,7 @@ export function restoreFactCandidates(
         (r.handler === "cost-rise" || r.handler === "count-gap"),
     );
     if (!rule || !fact || typeof observed.eventId !== "string") continue;
+    const capturedDay = factOriginDay(context, fact, input.timezone ?? "UTC");
     let original = input,
       emission = contextRecord(observed.emission) as FactEmission | undefined;
     if (
@@ -578,10 +589,7 @@ export function restoreFactCandidates(
           ),
         };
       } else {
-        const originDay = localDay(
-            new Date(fact.occurredAt),
-            input.timezone ?? "UTC",
-          ),
+        const originDay = capturedDay,
           requiredDays = Math.max(
             rule.parameters.salesDays,
             rule.parameters.weeklyDays ?? 0,
@@ -620,7 +628,7 @@ export function restoreFactCandidates(
         original,
         [fact],
         observed.eventId,
-        (instant) => localDay(new Date(instant), input.timezone ?? "UTC"),
+        () => capturedDay,
         [],
         policy,
         map,

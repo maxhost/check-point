@@ -30,8 +30,11 @@ const bucket = (v: unknown) =>
       .split(":")
       .at(-1),
   );
-const time = (v: unknown) =>
-  typeof v === "string" ? Date.parse(v.slice(0, 24)) : NaN;
+const time = (v: unknown) => {
+  if (typeof v !== "string") return NaN;
+  const instant = Date.parse(v);
+  return Number.isFinite(instant) ? instant : Date.parse(v.slice(0, 24));
+};
 /** Only the declared pertinent evidence can reopen a closed episode. No clock/global-input hash. */
 export function canReopenContext(
   handler: AnalyticsRuleHandler,
@@ -66,7 +69,21 @@ export function canReopenContext(
     );
   }
   if (handler === "count-gap") return false; // One immutable report per count/event+item.
-  if (handler === "campaign") return !same(old.cycle, b.cycle); // Late money is not another campaign cycle.
+  if (handler === "campaign") {
+    const cursor = contextRecord(b.snapshot),
+      prior = contextRecord(old.snapshot);
+    // A changed local projection or late money is not a newly applied campaign source.
+    return (
+      !same(old.cycle, b.cycle) &&
+      time(cursor.capturedAt) > closed &&
+      typeof cursor.eventId === "string" &&
+      cursor.eventId !== prior.eventId &&
+      typeof b.sourceKey === "string" &&
+      Number.isSafeInteger(b.sourceRevision) &&
+      (b.sourceKey !== old.sourceKey ||
+        Number(b.sourceRevision) > Number(old.sourceRevision))
+    );
+  }
   if (handler === "stock") {
     const priorGauge = contextRecord(old.gauge),
       gauge = contextRecord(b.gauge),

@@ -14,7 +14,10 @@ import {
   buildStockCandidates,
   stockEvidenceBasis,
 } from "@mi-pasaporte/domain/analytics/cards/stock";
-import { canReopenContext } from "@mi-pasaporte/domain/analytics/cards/context";
+import {
+  canReopenContext,
+  planEpisode,
+} from "@mi-pasaporte/domain/analytics/cards/context";
 import { addDays } from "@mi-pasaporte/domain/analytics/date";
 import type {
   AnalyticsInput,
@@ -381,6 +384,12 @@ describe("pertinent closed-context comparators", () => {
         {
           ...previous.observed,
           cycle: { startsAt: "2026-10-01", finish: "2026-10-24" },
+          sourceKey: "campaign:new",
+          sourceRevision: 1,
+          snapshot: {
+            capturedAt: "2026-10-25T13:00:00Z",
+            eventId: "new-applied",
+          },
         },
         closed,
       ),
@@ -938,6 +947,11 @@ it("rebases a closed calculated subject when capture parameters change, while la
   withRealData.today = "2026-10-26";
   const text = structuredClone(policy);
   text.texts = { ...text.texts, action_view_day: "Abrir día" };
+  text.rules.find((r) => r.id === "7")!.parameters = {
+    ...text.rules.find((r) => r.id === "7")!.parameters,
+    normalUrgency: 0.4,
+    riskUrgency: 0.9,
+  };
   expect(
     simulateAnalytics(
       withRealData,
@@ -962,4 +976,95 @@ it("rebases a closed calculated subject when capture parameters change, while la
         now,
       ),
     ).toBe(false);
+});
+
+it("retains the captured local origin of facts across a business timezone change", () => {
+  const input = simulationFixture();
+  input.timezone = "Asia/Tokyo";
+  const fact = {
+    kind: "count_gap" as const,
+    occurredAt: "2026-10-24T23:30:00.000Z",
+    locationId: "local",
+    itemId: "item",
+    itemLabel: "Harina",
+    itemUnit: "kg",
+    quantity: "-5",
+    amountMinor: "-500",
+    currencyCode: "USD",
+    minorUnit: 2,
+    actionHref: "/count",
+  };
+  const state: CardState = {
+    cardKey: "9",
+    subjectKey: "event-tz:item",
+    status: "open",
+    fingerprint: "x",
+    shownDays: 0,
+    lastShownDay: null,
+    episodeStartedAt: fact.occurredAt,
+    expiresAt: "2027-01-22T23:30:00.000Z",
+    context: {
+      originDay: "2026-10-24",
+      sourceFact: { eventId: "event-tz", fact },
+    },
+  };
+  const original = {
+    ...input,
+    today: "2026-10-24",
+    readWindows: {
+      recentDays: 45,
+      closedMonths: 3,
+      sameWeekdays: 8,
+      anomalyDays: 63,
+    },
+  };
+  input.factSnapshots = [{ eventId: "event-tz", input: original }];
+  const result = simulateAnalytics(input, [state], now);
+  expect(result.unavailableFacts).toEqual([]);
+  expect(result.candidates.find((c) => c.cardKey === "9")).toMatchObject({
+    originDay: "2026-10-24",
+    period: { from: "2026-10-24", to: "2026-10-24" },
+  });
+});
+
+it("requires a newly applied campaign cursor after closure, and does not renew an open episode", () => {
+  const previous = {
+    observed: {
+      kind: "campaign",
+      cycle: { startsAt: "2026-10-01", finish: "2026-10-20" },
+      sourceKey: "campaign:stable",
+      sourceRevision: 1,
+      snapshot: { capturedAt: "2026-10-20T12:00:00Z", eventId: "old" },
+    },
+  };
+  const shifted = {
+    ...previous.observed,
+    cycle: { startsAt: "2026-09-30", finish: "2026-10-19" },
+  };
+  expect(canReopenContext("campaign", previous, shifted, now)).toBe(false);
+  const updated = {
+    ...shifted,
+    sourceRevision: 2,
+    snapshot: { capturedAt: "2026-10-26T12:00:00Z", eventId: "new" },
+  };
+  expect(canReopenContext("campaign", previous, updated, now)).toBe(true);
+  expect(
+    planEpisode(
+      "campaign",
+      {
+        status: "open",
+        context: previous,
+        episodeStartedAt: "2026-10-20T12:00:00.000Z",
+        expiresAt: "2027-01-18T12:00:00.000Z",
+      },
+      updated,
+      "2026-10-26T18:00:00Z",
+      90,
+      "2026-10-26T12:00:00Z",
+    ),
+  ).toMatchObject({
+    newEpisode: false,
+    startedAt: "2026-10-20T12:00:00.000Z",
+    expiresAt: "2027-01-18T12:00:00.000Z",
+  });
 });

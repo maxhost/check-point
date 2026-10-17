@@ -28,6 +28,7 @@ import { readAnalyticsCustomer } from "../../customers/analytics-detail";
 import { GET as customerGET } from "../../../app/api/customers/analytics/[id]/route";
 import { buildCustomerPromoCandidates } from "@mi-pasaporte/domain/analytics/cards/customer-promo";
 import { reconcileCampaignCandidates, evaluateBusiness } from "./index";
+import { readInbox, decideInboxCard } from "../lifecycle";
 import { readInput, readHistory } from "../queries";
 const businessA = randomUUID(),
   businessB = randomUUID(),
@@ -211,11 +212,7 @@ describe.skipIf(!permisosIntegrationEnabled)(
       ).toBe(4);
       const cards = buildCustomerPromoCandidates(input);
       expect(cards.find((c) => c.cardKey === "10")?.amountMinor).toBe(6400);
-      expect(cards.filter((c) => c.cardKey === "11")).toHaveLength(1);
-      expect(cards.find((c) => c.cardKey === "11")).toMatchObject({
-        locationId: null,
-        amountMinor: 606,
-      });
+      expect(cards.filter((c) => c.cardKey === "11")).toHaveLength(0); // Marketing parked; cohort history remains tested below.
       expect(
         buildCustomerPromoCandidates(await readInput(businessB, now)),
       ).toHaveLength(0);
@@ -375,24 +372,11 @@ describe.skipIf(!permisosIntegrationEnabled)(
           .select()
           .from(candidates)
           .where(
-            sql`${candidates.businessId}=${businessA} and ${candidates.day}='2026-10-20' and ${candidates.cardKey}='12'`,
+            sql`${candidates.businessId}=${businessA} and ${candidates.cardKey}='12'`,
           );
       const [first] = await read();
       expect(first).toBeDefined();
       expect(first!.amountMinor).toBe(3000n);
-      await getDb().insert(states).values({
-        businessId: businessA,
-        cardKey: "12",
-        subjectKey: first!.subjectKey,
-        fingerprint: first!.fingerprint,
-        status: "dismissed",
-        shownDays: 1,
-        lastShownDay: "2026-10-20",
-      });
-      await withDbTransaction((tx) =>
-        reconcileCampaignCandidates(tx, businessA, now),
-      );
-      expect((await read())[0]).toMatchObject({ id: first!.id, weight: "0" });
       await withDbTransaction(async (tx) => {
         await tx
           .update(metrics)
@@ -405,6 +389,31 @@ describe.skipIf(!permisosIntegrationEnabled)(
       const [updated] = await read();
       expect(updated).toMatchObject({ id: first!.id, amountMinor: 14000n });
       expect(Number(updated!.weight)).toBeGreaterThan(0);
+      const displayed = (
+        await readInbox(businessA, { role: "owner", permissions: [] }, now)
+      ).cards.find((c) => c.id === first.id)!;
+      expect(displayed).toBeDefined();
+      await decideInboxCard(
+        {
+          businessId: businessA,
+          actorId: ownerA,
+          cardId: first.id,
+          decision: "seen",
+          expectedVersion: displayed.version,
+          operationId: randomUUID(),
+        },
+        { role: "owner", permissions: [] },
+        now,
+      );
+      await withDbTransaction((tx) =>
+        reconcileCampaignCandidates(
+          tx,
+          businessA,
+          new Date("2026-10-21T16:00:00Z"),
+        ),
+      );
+      expect(await read()).toHaveLength(0);
+
       expect(
         (
           await getDb()
@@ -418,9 +427,11 @@ describe.skipIf(!permisosIntegrationEnabled)(
           await getDb()
             .select()
             .from(states)
-            .where(eq(states.businessId, businessA))
+            .where(
+              sql`${states.businessId}=${businessA} and ${states.candidateId}=${first.id}`,
+            )
         )[0]!.status,
-      ).toBe("dismissed");
+      ).toBe("seen");
       await getDb()
         .update(snapshots)
         .set({

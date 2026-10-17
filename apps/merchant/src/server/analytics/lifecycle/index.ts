@@ -18,6 +18,7 @@ import type {
 } from "@mi-pasaporte/domain/analytics/types";
 import {
   ANALYTICS_POLICY,
+  ANALYTICS_RULE_DEFINITIONS,
   policyText,
   type AnalyticsPolicy,
 } from "@mi-pasaporte/domain/analytics/policy/index";
@@ -613,7 +614,12 @@ export async function cleanupInbox(
     if (!progress) break;
   }
   // Controls for immutable facts/campaign cycles are not a notification history.
-  // Their source cursor prevents delivery replay; campaign creation also keeps its emission gate.
+  // Their source cursor prevents delivery replay. Campaign controls additionally survive
+  // until no VALID future policy can select their cycle's emission day; compact at expiry.
+  const maximumCampaignDelay = ANALYTICS_RULE_DEFINITIONS.find(
+    (r) => r.handler === "campaign",
+  )!.parameters.emissionDelayDays.maximum!;
+  const campaignDeletionProof = sql`(s.context->'observed'->>'kind'<>'campaign' or case when pg_input_is_valid(s.context->'observed'->'cycle'->>'finish','date') then (s.context->'observed'->'cycle'->>'finish')::date+${maximumCampaignDelay}::int < (select (${now.toISOString()}::timestamptz at time zone b.timezone)::date from core.business b where b.id=s.business_id) else false end)`;
   const controlProof = sql`((s.context->'observed'->>'kind' in ('count-gap','campaign') and exists(select 1 from analytics.source_revision r where r.business_id=s.business_id and r.source_key=s.context->'observed'->>'sourceKey' and r.source_revision>=case when s.context->'observed'->>'sourceRevision' ~ '^[0-9]+$' then (s.context->'observed'->>'sourceRevision')::numeric else null end)) or (s.context->'observed'->>'kind'='goal' and s.subject_key ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' and pg_input_is_valid(s.subject_key,'date') and s.subject_key<(select to_char((${now.toISOString()}::timestamptz at time zone b.timezone)::date,'YYYY-MM-01') from core.business b where b.id=s.business_id)))`;
   const attemptedControls = new Set<string>();
   while (performance.now() < deadline) {
@@ -631,7 +637,7 @@ export async function cleanupInbox(
           )})`
         : sql``;
       const discover = await tx.execute(
-        sql`select s.business_id,s.candidate_id from analytics.card_state s where s.expires_at<${now.toISOString()}::timestamptz and s.remind_at is null and ${controlProof} and not exists(select 1 from analytics.card_candidate c where c.business_id=s.business_id and c.id=s.candidate_id) ${excluded} ${busy} order by s.expires_at,s.candidate_id limit ${batch}`,
+        sql`select s.business_id,s.candidate_id from analytics.card_state s where s.expires_at<${now.toISOString()}::timestamptz and s.remind_at is null and ${controlProof} and (s.context->>'compacted' is distinct from 'true' or ${campaignDeletionProof}) and not exists(select 1 from analytics.card_candidate c where c.business_id=s.business_id and c.id=s.candidate_id) ${excluded} ${busy} order by s.expires_at,s.candidate_id limit ${batch}`,
       );
       if (!discover.rows.length) return false;
       result.eligible += discover.rows.length;
@@ -656,9 +662,13 @@ export async function cleanupInbox(
         }
         result.processed++;
         const deleted = await tx.execute(
-          sql`delete from analytics.card_state s where s.business_id=${businessId} and s.candidate_id=${id}::uuid and ${controlProof} and s.revision=${Number(locked.rows[0].revision)} and s.context_version=${String(locked.rows[0].context_version)} and s.expires_at<${now.toISOString()}::timestamptz and s.remind_at is null and not exists(select 1 from analytics.card_candidate c where c.business_id=s.business_id and c.id=s.candidate_id) returning s.candidate_id`,
+          sql`delete from analytics.card_state s where s.business_id=${businessId} and s.candidate_id=${id}::uuid and ${controlProof} and ${campaignDeletionProof} and s.revision=${Number(locked.rows[0].revision)} and s.context_version=${String(locked.rows[0].context_version)} and s.expires_at<${now.toISOString()}::timestamptz and s.remind_at is null and not exists(select 1 from analytics.card_candidate c where c.business_id=s.business_id and c.id=s.candidate_id) returning s.candidate_id`,
         );
         result.deleted += deleted.rows.length;
+        if (!deleted.rows.length)
+          await tx.execute(
+            sql`update analytics.card_state s set context=jsonb_build_object('compacted',true,'observed',jsonb_build_object('kind','campaign','cycle',s.context->'observed'->'cycle','snapshot',s.context->'observed'->'snapshot','sourceKey',s.context->'observed'->'sourceKey','sourceRevision',s.context->'observed'->'sourceRevision')),context_version=md5(s.context::text),updated_at=${now.toISOString()}::timestamptz where s.business_id=${businessId} and s.candidate_id=${id}::uuid and ${controlProof} and s.context->'observed'->>'kind'='campaign' and s.revision=${Number(locked.rows[0].revision)} and s.context_version=${String(locked.rows[0].context_version)} and s.expires_at<${now.toISOString()}::timestamptz and s.remind_at is null and not exists(select 1 from analytics.card_candidate c where c.business_id=s.business_id and c.id=s.candidate_id)`,
+          );
       }
       return true;
     });

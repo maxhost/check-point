@@ -1,6 +1,7 @@
 // Portable oracle: exact inputStatement from 5fac6608942dd2a71e4ceff0f902169311c51dec.
-// Deliberate legacy SQL snapshot: compare the complete decoded input and card outputs.
+// Deliberate immutable legacy SQL snapshot. Project only the explicitly changed window/metadata below; compare every shared field and order.
 import { expect } from "vitest";
+import { addDays } from "@mi-pasaporte/domain/analytics/date";
 import { sql } from "drizzle-orm";
 import { getDb } from "@mi-pasaporte/db";
 import { inputStatement, inputFromRow } from "../queries";
@@ -64,26 +65,103 @@ export async function assertSnapshotEquivalence(
   );
   const baseline = inputFromRow(baselineRows.rows[0]);
   const compact = inputFromRow(compactRows.rows[0]);
-  expect(compact).toEqual(baseline);
-  expect(buildCandidates(compact, compact.states)).toEqual(
+  // Lifecycle adds control/snapshot metadata; the default recent read window fixes the
+  // former 28-day truncation of the already specified 45-day missing-expense rule.
+  const metricKey = (r: (typeof compact.metrics)[number]) =>
+    JSON.stringify([
+      r.day,
+      r.metric,
+      r.locationId,
+      r.dimensionId,
+      r.currencyCode,
+      r.minorUnit,
+    ]);
+  const legacyMetricKeys = new Set(baseline.metrics.map(metricKey));
+  const extras = compact.metrics.filter(
+    (r) => !legacyMetricKeys.has(metricKey(r)),
+  );
+  for (const extra of extras) {
+    expect(
+      extra.day >= addDays(compact.today, -45) &&
+        extra.day < addDays(compact.today, -28),
+    ).toBe(true);
+    expect(
+      [
+        "revenue",
+        "expense_fixed",
+        "expense_variable",
+        "visits",
+        "promo_discount",
+        "promo_sales",
+        "promo_cost",
+        "voided_tickets",
+      ].includes(extra.metric),
+    ).toBe(false);
+  }
+  expect(compact.readWindows).toEqual({
+    recentDays: 45,
+    closedMonths: 3,
+    sameWeekdays: 8,
+    anomalyDays: 63,
+  });
+  const legacyStates = compact.states.map((s) => ({
+    cardKey: s.cardKey,
+    subjectKey: s.subjectKey,
+    fingerprint: s.fingerprint,
+    status: s.status,
+    shownDays: s.shownDays,
+    lastShownDay: s.lastShownDay,
+  }));
+  const legacyCampaigns = compact.campaigns?.map((c) => ({
+    campaignId: c.campaignId,
+    label: c.label,
+    status: c.status,
+    startsAt: c.startsAt,
+    endsAt: c.endsAt,
+    endedAt: c.endedAt,
+    capturedAt: c.capturedAt,
+    eventId: c.eventId,
+  }));
+  const legacyFactKeys = new Set(
+    baseline.factCards.map((c) => c.cardKey + ":" + c.subjectKey),
+  );
+  const projected = {
+    ...compact,
+    readWindows: undefined,
+    metrics: compact.metrics.filter((r) => legacyMetricKeys.has(metricKey(r))),
+    states: legacyStates,
+    campaigns: legacyCampaigns,
+    factCards: compact.factCards.filter((c) =>
+      legacyFactKeys.has(c.cardKey + ":" + c.subjectKey),
+    ),
+  };
+  for (const extra of compact.factCards.filter(
+    (c) => !legacyFactKeys.has(c.cardKey + ":" + c.subjectKey),
+  ))
+    expect(
+      (extra.originDay ?? "") < addDays(compact.today, -14) ||
+        !["5", "9"].includes(extra.cardKey),
+    ).toBe(true);
+  expect(projected).toEqual(baseline);
+  expect(buildCandidates(projected, projected.states)).toEqual(
     buildCandidates(baseline, baseline.states),
   );
   expect(
-    compact.factCards.map((c) =>
-      carryFactCandidate(compact, c, compact.states),
+    projected.factCards.map((c) =>
+      carryFactCandidate(projected, c, projected.states),
     ),
   ).toEqual(
     baseline.factCards.map((c) =>
       carryFactCandidate(baseline, c, baseline.states),
     ),
   );
-  expect(calculateGoal(compact)).toEqual(calculateGoal(baseline));
-  expect(summarizeHistory(compact, compact.metrics)).toEqual(
+  expect(calculateGoal(projected)).toEqual(calculateGoal(baseline));
+  expect(summarizeHistory(projected, projected.metrics)).toEqual(
     summarizeHistory(baseline, baseline.metrics),
   );
   expect(
     summarizeCustomerPromoHistory(
-      compact,
+      projected,
       "2025-10-01",
       compact.today,
       locationId,

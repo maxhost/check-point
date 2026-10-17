@@ -14,6 +14,10 @@ import {
   analyticsCampaignSnapshots,
 } from "@mi-pasaporte/db/schema";
 import { and, eq, sql } from "drizzle-orm";
+import {
+  ANALYTICS_POLICY,
+  type AnalyticsPolicy,
+} from "@mi-pasaporte/domain/analytics/policy/index";
 import { METRICS } from "@mi-pasaporte/domain/analytics/metrics";
 import { isSupportedCurrency } from "@mi-pasaporte/domain/lib/currencies";
 import { minorUnitForCurrency } from "@mi-pasaporte/domain/financial/rational";
@@ -36,6 +40,7 @@ export function localMetricDay(instant: string, timezone: string) {
 export async function applyAnalyticsEvent(
   tx: DbTransaction,
   event: MetricEvent,
+  policy: AnalyticsPolicy = ANALYTICS_POLICY,
 ) {
   await lockAnalyticsBusiness(tx, event.businessId);
   const translator = metricTranslators().find(
@@ -49,14 +54,16 @@ export async function applyAnalyticsEvent(
   let campaignChanged = false;
   for (const group of groups)
     campaignChanged =
-      (await applyTranslation(tx, event, group)) || campaignChanged;
+      (await applyTranslation(tx, event, group, policy)) || campaignChanged;
   // Acquire the daily evaluation lock only after all source locks/deltas for this event.
-  if (campaignChanged) await reconcileCampaignCandidates(tx, event.businessId);
+  if (campaignChanged)
+    await reconcileCampaignCandidates(tx, event.businessId, new Date(), policy);
 }
 async function applyTranslation(
   tx: DbTransaction,
   event: MetricEvent,
   result: MetricTranslation,
+  policy: AnalyticsPolicy,
 ) {
   if (
     !result.sourceKey ||
@@ -216,16 +223,20 @@ async function applyTranslation(
       .returning({ eventId: analyticsCampaignSnapshots.eventId });
     campaignChanged ||= changed.length > 0;
   }
-  await recordStockEvidence(tx, event, result);
+  await recordStockEvidence(tx, event, result, new Date(), policy);
   if (result.facts?.length)
-    await evaluateAnalyticsFacts(tx, {
-      businessId: event.businessId,
-      eventId: event.id,
-      capturedAt: event.capturedAt ?? new Date().toISOString(),
-      facts: result.facts,
-      sourceKey: result.sourceKey,
-      sourceRevision: result.sourceRevision,
-    });
+    await evaluateAnalyticsFacts(
+      tx,
+      {
+        businessId: event.businessId,
+        eventId: event.id,
+        capturedAt: event.capturedAt ?? new Date().toISOString(),
+        facts: result.facts,
+        sourceKey: result.sourceKey,
+        sourceRevision: result.sourceRevision,
+      },
+      policy,
+    );
   return campaignChanged;
 }
 function normalize(row: MetricRow, timezone: string) {

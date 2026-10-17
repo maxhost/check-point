@@ -19,7 +19,8 @@ import {
 } from "../../permissions-integration-support";
 import { addDays, localDay } from "@mi-pasaporte/domain/analytics/date";
 import type { AnalyticsFact } from "@mi-pasaporte/domain/analytics/metrics";
-import { evaluateAnalyticsFacts, evaluateBusiness, actOnCard } from "./index";
+import { evaluateAnalyticsFacts, evaluateBusiness } from "./index";
+import { readInbox, decideInboxCard } from "../lifecycle";
 import { readHistory, readInput } from "../queries";
 import { historyGET } from "../http";
 const business = randomUUID(),
@@ -74,7 +75,7 @@ const saved = (day: string, key: string) =>
     .where(
       and(
         eq(candidates.businessId, business),
-        eq(candidates.day, day),
+        ...(["5", "9"].includes(key) ? [] : [eq(candidates.day, day)]),
         eq(candidates.cardKey, key),
       ),
     );
@@ -329,7 +330,7 @@ describe.skipIf(!permisosIntegrationEnabled)(
           now: nextNow,
         }),
       );
-      expect(await saved(nextDay, "5")).toHaveLength(0);
+      expect((await saved(nextDay, "5"))[0].id).toBe(original.id);
       await evaluateBusiness(business, nextNow);
       const [carried] = await saved(nextDay, "5");
       expect(carried?.amountMinor).toBe(900n);
@@ -340,30 +341,33 @@ describe.skipIf(!permisosIntegrationEnabled)(
         today,
       );
     }, 30000);
-    it("accepts or dismisses only this tenant's current visible fact and preserves suppression tomorrow", async () => {
+    it("ignores only this tenant's current visible fact and preserves suppression tomorrow without content", async () => {
       const [count] = await saved(today, "9");
       expect(count).toBeDefined();
+      const closedAt = new Date(now.getTime() + 86400000);
+      const visible = (
+        await readInbox(business, { role: "owner", permissions: [] }, closedAt)
+      ).cards.find((c) => c.id === count.id)!;
+      expect(visible).toBeDefined();
+      const command = {
+        businessId: business,
+        actorId: owner,
+        cardId: visible.id,
+        decision: "ignore" as const,
+        expectedVersion: visible.version,
+        operationId: randomUUID(),
+      };
       await expect(
-        actOnCard(
-          otherBusiness,
-          otherOwner,
-          count!.id,
-          "dismissed",
+        decideInboxCard(
+          { ...command, businessId: otherBusiness, actorId: otherOwner },
           { role: "owner", permissions: [] },
           now,
         ),
       ).rejects.toMatchObject({ code: "card_not_found" });
-      await actOnCard(
-        business,
-        owner,
-        count!.id,
-        "dismissed",
-        { role: "owner", permissions: [] },
-        now,
-      );
+      await decideInboxCard(command, { role: "owner", permissions: [] }, now);
       const future = new Date(now.getTime() + 2 * 86400000);
       await evaluateBusiness(business, future);
-      expect(Number((await saved(addDays(today, 2), "9"))[0]?.weight)).toBe(0);
+      expect(await saved(addDays(today, 2), "9")).toHaveLength(0);
     }, 30000);
   },
 );
