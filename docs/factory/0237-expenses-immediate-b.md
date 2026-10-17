@@ -70,7 +70,7 @@ El recurso DB continúa reservado hasta la indicación del coordinador.
 El coordinador y QA revisaron el presupuesto técnico que inicialmente se había
 copiado de POS: spec/contrato `d4590f57` ahora fijan el máximo existente de retry,
 **20000 ms**, con respuesta todavía no bloqueante, lote 50 y mismo scope, sin
-force. A cambia producto/unit y maxDuration de la ruta; B no fija el presupuesto
+force. A cambia el presupuesto del helper y su unit; conserva maxDuration 60 ya existente sin modificar la ruta. B no fija el presupuesto
 desde el test ni modifica sus asserts de aplicado/dinero/tenant/corte.
 
 El test añade únicamente diagnóstico `EXPENSE_IMMEDIATE_CALLBACK` por fase:
