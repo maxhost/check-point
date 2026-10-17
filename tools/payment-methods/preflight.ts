@@ -14,7 +14,6 @@ export async function preflightPaymentMethods(tx: DbTransaction) {
   'catalog',jsonb_build_object('entries',(select count(*)::int from core.payment_method_catalog),'suggestions',(select count(*)::int from core.payment_method_catalog where initially_suggested),'unexpectedPeigo',(select count(*)::int from core.payment_method_catalog where lower(name) like '%peigo%')),
   'orders',jsonb_build_object('legacyClosed',(select count(*)::int from pos.pos_order where status='closed' and settlement is null),'financialClosed',(select count(*)::int from pos.pos_order where status='closed' and settlement is not null),'open',(select count(*)::int from pos.pos_order where status='open'),'payments',(select count(*)::int from pos.order_payment)),
   'commissions',jsonb_build_object('revisions',(select count(*)::int from profitability.commission_revision),'snapshots',(select count(*)::int from profitability.payment_commission),'pending',(select count(*)::int from core.module_event_delivery where subscriber_id='profitability' and state in ('pending','processing'))),
-  'publicationEnabled',${process.env.MODULE_EVENTS_ENABLED === "true"}::boolean,
   'preserved',jsonb_build_object(
    'stock',(select jsonb_build_object('count',count(*)::int,'fingerprint',md5(coalesce(string_agg(md5(to_jsonb(m)::text),'' order by id),''))) from stock.movement m),
    'r1Mappings',(select jsonb_build_object('count',count(*)::int,'fingerprint',md5(coalesce(string_agg(md5(to_jsonb(m)::text),'' order by business_id,product_id),''))) from recipes.migration_mapping m),

@@ -1,6 +1,6 @@
 # Rollout 0227
 
-No herramienta ejecuta PROD automáticamente. SQL expand `packages/db/drizzle/0082_late_sharon_carter.sql` instala esquema nullable y puentes antes de nuevo código; flag `MODULE_EVENTS_ENABLED` inicialmente ausente/OFF.
+No herramienta ejecuta PROD automáticamente. SQL expand `packages/db/drizzle/0082_late_sharon_carter.sql` instala esquema nullable y puentes antes de nuevo código; AN-1 (spec0237) retiró el switch inicial: la publicación de eventos ahora es obligatoria.
 
 `rollout.ts` exporta preflight (solo lectura), backfill (mapa commerce→location explícito cuando no hay exactamente un activo), contract (requiere SHA desplegado real y confirmación writers retirados). Se ejecutan con `DbTransaction` protegida por interlock del cliente. Pruebas únicamente `NEON_TEST_ENV_FILE=... tools/neon-test.sh ...stock-migration-0082... --no-file-parallelism`. No emitir consumos de órdenes históricas.
 

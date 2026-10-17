@@ -1,3 +1,4 @@
+import { metricTranslators } from "./metrics";
 import { paymentRoutes } from "./payment-routes";
 import { paymentResourceProviders } from "./payment-resources";
 import { NextResponse } from "next/server";
@@ -225,6 +226,7 @@ const routes: readonly ModuleRoute[] = [
 ];
 
 export const server: ModuleServer = {
+  metricTranslators,
   routes,
   beforeDisable: posBeforeDisable,
   resourceProviders: paymentResourceProviders,

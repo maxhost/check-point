@@ -1,3 +1,4 @@
+import { resolveCity, refreshActiveCities } from "../analytics/context/cities";
 import { randomUUID } from "node:crypto";
 import { and, eq, isNull } from "drizzle-orm";
 import { withDbTransaction, type DbTransaction } from "@mi-pasaporte/db";
@@ -57,9 +58,11 @@ export async function createLocation(
         status: "active",
         activeVerificationId: verification.id,
         addressSnapshot: address.snapshot,
+        cityId: await resolveCity(tx, address.snapshot, address.countryCode),
       })
       .returning(dtoColumns);
     await tx.insert(locationVerifications).values(verification);
+    await refreshActiveCities(tx);
     return toLocationDTO(row);
   });
 }
@@ -92,6 +95,7 @@ async function moveAddress(
     countryCode: address.countryCode,
     activeVerificationId: verification.id,
     addressSnapshot: address.snapshot,
+    cityId: await resolveCity(tx, address.snapshot, address.countryCode),
   };
 }
 
@@ -149,6 +153,7 @@ export async function updateLocation(
       .set({ ...(name === null ? {} : { name }), ...addressColumns })
       .where(eq(locations.id, locationId))
       .returning(dtoColumns);
+    await refreshActiveCities(tx);
     return toLocationDTO(row);
   });
 }

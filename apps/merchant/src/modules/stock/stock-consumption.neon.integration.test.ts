@@ -31,16 +31,19 @@ import { applyConsumption } from "./consumption";
 import { recordAdjustment } from "./movements";
 import {
   publishSaleClosed,
-  retryModuleEvents,
+  retryModuleEvents as retryAllEvents,
   type CapturedModuleEvent,
 } from "../../server/module-events";
 import * as eventService from "../../server/module-events";
 import { onHandSql, waitForLockWaiters } from "./stock-integration-support";
 const run = modulesIntegrationEnabled ? describe : describe.skip;
 const subscriber = "integration-consumer";
+// These assertions measure the stock consumer; core analytics has its own suite.
+const retryModuleEvents = (
+  options: Parameters<typeof retryAllEvents>[0] = {},
+) => retryAllEvents({ ...options, subscriberIds: [subscriber] });
 run("0227 durable consumption and count cut", { timeout: 60000 }, () => {
   let world: ModuleWorld, itemId: string;
-  const previous = process.env.MODULE_EVENTS_ENABLED;
   let handler: (
     tx: Parameters<typeof applyConsumption>[0],
     event: CapturedModuleEvent,
@@ -49,7 +52,6 @@ run("0227 durable consumption and count cut", { timeout: 60000 }, () => {
     world = await seedModuleWorld("consumption");
     await enableModules(world, ["stock", subscriber]);
     itemId = (await newItem(world, "Harina")).id;
-    process.env.MODULE_EVENTS_ENABLED = "true";
     (SERVER_MODULES as Record<string, ModuleServer>)[subscriber] = {
       routes: [],
       eventSubscriptions: [
@@ -66,8 +68,6 @@ run("0227 durable consumption and count cut", { timeout: 60000 }, () => {
   });
   afterAll(async () => {
     delete (SERVER_MODULES as Record<string, ModuleServer>)[subscriber];
-    if (previous === undefined) delete process.env.MODULE_EVENTS_ENABLED;
-    else process.env.MODULE_EVENTS_ENABLED = previous;
     await dropModuleWorld(world);
   });
   afterEach(() => {
@@ -202,7 +202,7 @@ run("0227 durable consumption and count cut", { timeout: 60000 }, () => {
       ).applied,
     ).toBe(1);
   });
-  it("disabled snapshot stays terminal across reactivation; OFF emits no retroactive event", async () => {
+  it("disabled stock snapshot stays terminal across reactivation; event publication stays mandatory", async () => {
     await getDb()
       .update(businessModules)
       .set({ enabled: false })
@@ -242,27 +242,17 @@ run("0227 durable consumption and count cut", { timeout: 60000 }, () => {
         .from(stockMovements)
         .where(eq(stockMovements.sourceOrderId, e.order)),
     ).toHaveLength(0);
-    process.env.MODULE_EVENTS_ENABLED = "false";
-    const order = randomUUID();
-    expect(
-      await withDbTransaction((tx) =>
-        publishSaleClosed(tx, {
-          businessId: world.businessId,
-          locationId: world.locationId,
-          sourceOrderId: order,
-          userId: world.ownerId,
-          closedAt: new Date(),
-          lines: [],
-        }),
-      ),
-    ).toBeNull();
-    process.env.MODULE_EVENTS_ENABLED = "true";
-    expect(
-      await getDb()
-        .select()
-        .from(moduleEvents)
-        .where(eq(moduleEvents.sourceId, order)),
-    ).toHaveLength(0);
+    const newEvent = await publish(1);
+    const [analytics] = await getDb()
+      .select()
+      .from(moduleEventDeliveries)
+      .where(
+        and(
+          eq(moduleEventDeliveries.eventId, newEvent.eventId),
+          eq(moduleEventDeliveries.subscriberId, "core.analytics"),
+        ),
+      );
+    expect(analytics.state).toBe("pending");
   });
   it("expired claim recovers; live claim blocks only count with consumption_pending", async () => {
     const e = await publish(1);

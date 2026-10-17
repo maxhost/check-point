@@ -1,3 +1,4 @@
+import { refreshActiveCities } from "../analytics/context/cities";
 import { and, asc, eq } from "drizzle-orm";
 import { getDb, withDbTransaction } from "@mi-pasaporte/db";
 import { locations } from "@mi-pasaporte/db/schema";
@@ -76,6 +77,7 @@ export async function setLocationStatus(
       .set({ status: rawStatus })
       .where(eq(locations.id, locationId))
       .returning(dtoColumns);
+    await refreshActiveCities(tx);
     return toLocationDTO(row);
   });
 }

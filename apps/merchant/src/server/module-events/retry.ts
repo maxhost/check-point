@@ -1,3 +1,4 @@
+import { applyAnalyticsEvent } from "../analytics/ingestion/apply";
 import { randomUUID } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { getDb, withDbTransaction, type DbTransaction } from "@mi-pasaporte/db";
@@ -9,6 +10,7 @@ export type RetryOptions = {
   locationId?: string;
   eventIds?: string[];
   eventTypes?: readonly string[];
+  subscriberIds?: readonly string[];
   budgetMs?: number;
   batchSize?: number;
   force?: boolean;
@@ -30,7 +32,11 @@ export async function retryModuleEvents(options: RetryOptions = {}) {
   const result = { claimed: 0, applied: 0, pending: 0, failed: 0 };
   const deadline = Date.now() + Math.min(options.budgetMs ?? 20000, 20000);
   const batch = Math.min(options.batchSize ?? 50, 50);
-  if (options.eventTypes?.length === 0 || options.eventIds?.length === 0)
+  if (
+    options.subscriberIds?.length === 0 ||
+    options.eventTypes?.length === 0 ||
+    options.eventIds?.length === 0
+  )
     return result;
   const attempted: string[] = [];
   for (let n = 0; n < batch && Date.now() < deadline; n++) {
@@ -44,6 +50,7 @@ export async function retryModuleEvents(options: RetryOptions = {}) {
    where ((d.state='pending' and (${options.force === true} or d.next_attempt_at<=now())) or (d.state='processing' and d.claim_until<=now()))
    ${options.businessId ? sql`and e.business_id=${options.businessId}::uuid` : sql``}
    ${options.locationId ? sql`and e.location_id=${options.locationId}::uuid` : sql``}
+   ${options.subscriberIds ? sql`and d.subscriber_id = any(${sql.param(options.subscriberIds)}::text[])` : sql``}
    ${options.eventTypes ? sql`and e.event_type = any(${sql.param(options.eventTypes)}::text[])` : sql``}
    ${
      options.eventIds
@@ -155,31 +162,38 @@ export async function applyClaimedDelivery(
   const subscription = SERVER_MODULES[
     delivery.subscriber_id
   ]?.eventSubscriptions?.find((s) => s.eventType === event.eventType);
-  if (!subscription) throw new Error("Subscriber unavailable");
-  if ("dispatch" in subscription) {
-    await subscription.dispatch(tx, {
-      id: event.id,
-      businessId: event.businessId,
-      eventVersion: event.eventVersion,
-      payload: event.payload,
+  if (delivery.subscriber_id === "core.analytics") {
+    await applyAnalyticsEvent(tx, {
+      ...event,
+      capturedAt: event.createdAt.toISOString(),
     });
   } else {
-    if (
-      event.eventType !== "sale.closed" ||
-      ![1, 2].includes(event.eventVersion)
-    )
-      throw new Error("Unsupported module event");
-    const payload = decodeSaleClosedEvent(event.payload);
-    if (
-      payload.eventVersion !== event.eventVersion ||
-      payload.locationId !== event.locationId
-    )
-      throw new Error("Inconsistent sale event envelope");
-    await subscription.handler(tx, {
-      id: event.id,
-      businessId: event.businessId,
-      payload,
-    });
+    if (!subscription) throw new Error("Subscriber unavailable");
+    if ("dispatch" in subscription) {
+      await subscription.dispatch(tx, {
+        id: event.id,
+        businessId: event.businessId,
+        eventVersion: event.eventVersion,
+        payload: event.payload,
+      });
+    } else {
+      if (
+        event.eventType !== "sale.closed" ||
+        ![1, 2, 3].includes(event.eventVersion)
+      )
+        throw new Error("Unsupported module event");
+      const payload = decodeSaleClosedEvent(event.payload);
+      if (
+        payload.eventVersion !== event.eventVersion ||
+        payload.locationId !== event.locationId
+      )
+        throw new Error("Inconsistent sale event envelope");
+      await subscription.handler(tx, {
+        id: event.id,
+        businessId: event.businessId,
+        payload,
+      });
+    }
   }
   await tx
     .update(moduleEventDeliveries)

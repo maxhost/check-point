@@ -34,17 +34,13 @@ import {
 } from "../../../server/counter/coupon-cycle-support";
 let usd: PosWorld, cop: PosWorld;
 let usdCash: string, copCash: string;
-const oldEventFlag = process.env.MODULE_EVENTS_ENABLED;
 beforeAll(async () => {
-  process.env.MODULE_EVENTS_ENABLED = "true";
   usd = await seedPosWorld("P1 snapshot USD");
   cop = await seedPosWorld("P1 snapshot COP", "CO", "COP");
   usdCash = (await listPaymentMethods(usd.seed.business.id)).defaultMethodId!;
   copCash = (await listPaymentMethods(cop.seed.business.id)).defaultMethodId!;
 }, 240_000);
 afterAll(async () => {
-  if (oldEventFlag === undefined) delete process.env.MODULE_EVENTS_ENABLED;
-  else process.env.MODULE_EVENTS_ENABLED = oldEventFlag;
   await dropPosWorld(usd);
   await dropPosWorld(cop);
 }, 240_000);
@@ -369,11 +365,9 @@ describe.skipIf(!posIntegrationEnabled)(
       );
       expect(invalid.status).toBe(422);
       expect((await invalid.json()).code).toBe("payments_not_expected");
-      process.env.MODULE_EVENTS_ENABLED = "false";
       const accepted = await close(cop, order, [], extra);
-      process.env.MODULE_EVENTS_ENABLED = "true";
       expect(accepted.status).toBe(200);
-      expect(await storedEvent(order.id)).toBeUndefined();
+      expect(await storedEvent(order.id)).toMatchObject({eventVersion:3});
       expect((await accepted.json()).settlement).toMatchObject({
         gross: "1",
         discount: "1",

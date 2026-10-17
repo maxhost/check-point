@@ -22,7 +22,6 @@ import {
   setResourceVersion,
 } from "../../../server/module-events/publish";
 export let world: PosWorld, subscriber: string, source: string;
-const flag = process.env.MODULE_EVENTS_ENABLED;
 export async function eventFor(amount = "2.00") {
   const method = (
     await listPaymentMethods(world.seed.business.id)
@@ -80,11 +79,8 @@ export function setupRetirementWorld() {
       .where(eq(historicalEventHandlers.handlerKey, "commission_snapshot"));
     subscriber = mapping.subscriberId;
     source = mapping.sourceProviderId;
-    process.env.MODULE_EVENTS_ENABLED = "true";
   }, 240000);
   afterAll(async () => {
-    if (flag === undefined) delete process.env.MODULE_EVENTS_ENABLED;
-    else process.env.MODULE_EVENTS_ENABLED = flag;
     await dropPosWorld(world);
   }, 240000);
 }

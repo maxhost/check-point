@@ -25,7 +25,6 @@ export let world: ModuleWorld,
   productId: string,
   cashId: string,
   foreignCashId: string;
-const flag = process.env.MODULE_EVENTS_ENABLED;
 export const state = { closedId: "" };
 export async function setupModuleEventWorld() {
   world = await seedModuleWorld("P1 real event");
@@ -75,11 +74,8 @@ export async function setupModuleEventWorld() {
     weightedAverageInitializedAt: new Date(),
   });
   productId = await seedProduct(world, "Actual combo", "9.00");
-  process.env.MODULE_EVENTS_ENABLED = "true";
 }
 export async function cleanupModuleEventWorld() {
-  if (flag === undefined) delete process.env.MODULE_EVENTS_ENABLED;
-  else process.env.MODULE_EVENTS_ENABLED = flag;
   await dropModuleWorld(world);
   await dropModuleWorld(other);
 }

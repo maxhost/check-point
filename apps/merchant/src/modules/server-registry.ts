@@ -1,3 +1,4 @@
+import { metricTranslators as recipeMetrics } from "./recipes/server/metrics";
 import type { ModuleServer } from "./route-table";
 import { routes as stock } from "./stock/server/routes";
 import {
@@ -19,7 +20,11 @@ import { server as expenses } from "./expenses/server/routes";
  */
 export const SERVER_MODULES: Readonly<Record<string, ModuleServer>> = {
   stock: { routes: stock },
-  recipes: { routes: recipes, eventSubscriptions: recipeEvents },
+  recipes: {
+    routes: recipes,
+    eventSubscriptions: recipeEvents,
+    metricTranslators: recipeMetrics,
+  },
   pos,
   tables,
   expenses,

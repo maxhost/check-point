@@ -57,7 +57,18 @@ export type SaleClosedEventV2 = Omit<
     PaymentMetadata & { resourceVersions: ResourceVersion[] })[];
   paymentOriginals: FinancialPaymentOriginal[];
 };
-export type SaleClosedEvent = SaleClosedEventV1 | SaleClosedEventV2;
+export type SaleClosedEventV3 = Omit<
+  SaleClosedEventV2,
+  "eventVersion" | "lines"
+> & {
+  eventVersion: 3;
+  lines: (SaleClosedEventV2["lines"][number] & {
+    productLabel: string;
+    commissionMinor: string | null;
+  })[];
+};
+export type SaleClosedEvent =
+  SaleClosedEventV1 | SaleClosedEventV2 | SaleClosedEventV3;
 export type CapturedModuleEvent = {
   id: string;
   businessId: string;

@@ -6,6 +6,7 @@ import {
   moduleEventDeliveries,
 } from "@mi-pasaporte/db/schema";
 import { isUuid } from "@mi-pasaporte/domain/server/counter/core";
+import { hasMetricTranslator } from "../analytics/ingestion/registry";
 import { SERVER_MODULES } from "../../modules/server-registry";
 
 /** Mandatory transactional log append. Producers validate their complete versioned payload. */
@@ -19,18 +20,42 @@ export async function appendModuleEvent<T extends { eventVersion: number }>(
     locationId: string | null;
     payload: T;
     enabledModuleIds?: readonly string[];
+    /** Derived facts inherit core eligibility from their same-business parent, not its processing state. */
+    causationEventId?: string;
   },
 ) {
   if (
     !isUuid(args.businessId) ||
     !isUuid(args.sourceId) ||
+    (args.causationEventId !== undefined && !isUuid(args.causationEventId)) ||
     (args.locationId !== null && !isUuid(args.locationId)) ||
-    !/^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$/.test(args.eventType) ||
+    !/^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+$/.test(args.eventType) ||
     !Number.isSafeInteger(args.eventVersion) ||
     args.eventVersion < 1 ||
     args.payload.eventVersion !== args.eventVersion
   )
     throw new Error("Invalid module event envelope");
+  let analyticsEligible = true;
+  if (args.causationEventId) {
+    const [parent] = await tx
+      .select({ deliveryId: moduleEventDeliveries.id })
+      .from(moduleEvents)
+      .leftJoin(
+        moduleEventDeliveries,
+        and(
+          eq(moduleEventDeliveries.eventId, moduleEvents.id),
+          eq(moduleEventDeliveries.subscriberId, "core.analytics"),
+        ),
+      )
+      .where(
+        and(
+          eq(moduleEvents.id, args.causationEventId),
+          eq(moduleEvents.businessId, args.businessId),
+        ),
+      );
+    if (!parent) throw new Error("Invalid event causation");
+    analyticsEligible = parent.deliveryId !== null;
+  }
   const [event] = await tx
     .insert(moduleEvents)
     .values({
@@ -48,6 +73,12 @@ export async function appendModuleEvent<T extends { eventVersion: number }>(
         .filter((s) => s.eventType === args.eventType)
         .map((subscription) => ({ subscriberId, subscription })),
   );
+  if (analyticsEligible && hasMetricTranslator(args.eventType))
+    await tx.insert(moduleEventDeliveries).values({
+      eventId: event.id,
+      subscriberId: "core.analytics",
+      state: "pending",
+    });
   if (!subscriptions.length) return { eventId: event.id };
   const enabled =
     args.enabledModuleIds ??

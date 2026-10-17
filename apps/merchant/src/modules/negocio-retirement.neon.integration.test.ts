@@ -83,7 +83,6 @@ describe.skipIf(!posIntegrationEnabled)(
       ).toEqual(marker);
     }, 120000);
     it("POS-only operator keeps selector metadata and closes with core results when event publication is OFF", async () => {
-      process.env.MODULE_EVENTS_ENABLED = "false";
       const staff = await posStaff(world, ["pos"]);
       const response = await callModuleRoute(
         "GET",
@@ -133,7 +132,6 @@ describe.skipIf(!posIntegrationEnabled)(
           source,
         ),
       ).toMatchObject({ state: "completo", total: "0.00" });
-      process.env.MODULE_EVENTS_ENABLED = "true";
     }, 120000);
     it("historical canonical zero is readable without a header while absent/foreign evidence never manufactures zero", async () => {
       const free = await seedProduct(world, "Historical free", "0.00");

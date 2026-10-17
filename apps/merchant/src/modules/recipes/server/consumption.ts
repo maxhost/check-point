@@ -1,3 +1,4 @@
+import { publishConsumptionApplied } from "./consumption-event";
 import type { SaleEventSubscription } from "../../../server/module-events/types";
 import { applyConsumption } from "../../stock/consumption";
 import { capturedConsumption } from "./model/captured";
@@ -25,6 +26,7 @@ export const eventSubscriptions: readonly SaleEventSubscription[] = [
         lines: captured.movements,
       });
       await persistProvenance(tx, event, captured.sources);
+      await publishConsumptionApplied(tx, event, captured.expectedLines);
     },
   },
 ];

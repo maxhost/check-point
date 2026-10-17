@@ -17,6 +17,7 @@
     "@photostructure/tz-lookup": "11.7.0",
     "@point-of-sale/receipt-printer-encoder": "4.0.1",
     "better-auth": "^1.7.6",
+    "date-holidays": "^3.37.0",
     "driver.js": "^1.8.0",
     "drizzle-orm": "^0.45.2",
     "fflate": "^0.8.3",

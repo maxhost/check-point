@@ -40,7 +40,6 @@ export let other: ModuleWorld;
 export let localId: string;
 export let productId: string;
 export let flourId: string;
-const originalFlag = process.env.MODULE_EVENTS_ENABLED;
 export const route = (
   method: "GET" | "POST" | "PUT" | "DELETE",
   path: string,
@@ -129,7 +128,6 @@ export const movements = (orderId: string) =>
     );
 
 export async function setupStockLocalWorld() {
-  process.env.MODULE_EVENTS_ENABLED = "true";
   world = await seedModuleWorld("0227 integration");
   other = await seedModuleWorld("0227 foreign");
   await enableModules(world, ["stock", "recipes", "pos", "tables"]);
@@ -149,8 +147,6 @@ export async function setupStockLocalWorld() {
   flourId = flour.id;
 }
 export async function cleanupStockLocalWorld() {
-  if (originalFlag === undefined) delete process.env.MODULE_EVENTS_ENABLED;
-  else process.env.MODULE_EVENTS_ENABLED = originalFlag;
   await dropModuleWorld(world);
   await dropModuleWorld(other);
 }

@@ -43,18 +43,19 @@ export async function publishSaleClosed(
     settlement?: FinancialSettlement;
     capture?: ResourceCapture;
     paymentsMetadata?: readonly PaymentMetadata[];
+    commissionByLine?: Readonly<Record<string, string | null>>;
     sourceOrderId: string;
     locationId: string;
     closedAt: Date;
     userId: string;
     lines: {
+      productLabel?: string;
       sourceLineId: string;
       productId: string | null;
       quantity: number;
     }[];
   },
 ) {
-  if (process.env.MODULE_EVENTS_ENABLED !== "true") return null;
   if (
     args.lines.some(
       (l) => !Number.isSafeInteger(l.quantity) || l.quantity <= 0,
@@ -154,6 +155,18 @@ export async function publishSaleClosed(
       paymentOriginals: financial.paymentOriginals,
     };
   }
+  if (payload.eventVersion === 2 && args.lines.every((l) => !!l.productLabel))
+    payload = {
+      ...payload,
+      eventVersion: 3,
+      lines: payload.lines.map((l) => ({
+        ...l,
+        commissionMinor: args.commissionByLine?.[l.sourceLineId] ?? null,
+        productLabel: args.lines.find(
+          (source) => source.sourceLineId === l.sourceLineId,
+        )!.productLabel!,
+      })),
+    };
   decodeSaleClosedEvent(payload);
   const { eventId } = await appendModuleEvent(tx, {
     businessId: args.businessId,

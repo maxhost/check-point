@@ -13,17 +13,13 @@ import {
 import type { ExpenseLine } from "../types";
 export function useExpenseWorld() {
   let world: ModuleWorld, other: ModuleWorld;
-  const oldFlag = process.env.MODULE_EVENTS_ENABLED;
   beforeAll(async () => {
     world = await seedModuleWorld("expenses");
     other = await seedModuleWorld("expenses-other");
     await enableModules(world, ["expenses"]);
     await enableModules(other, ["expenses"]);
-    process.env.MODULE_EVENTS_ENABLED = "false";
   });
   afterAll(async () => {
-    if (oldFlag === undefined) delete process.env.MODULE_EVENTS_ENABLED;
-    else process.env.MODULE_EVENTS_ENABLED = oldFlag;
     await dropModuleWorld(world);
     await dropModuleWorld(other);
   });

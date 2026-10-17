@@ -31,6 +31,7 @@
  * el ultimo valor.
  */
 export const PERMISSIONS = [
+  "analytics",
   "brand",
   "business",
   "catalog",

@@ -1,0 +1,222 @@
+import type { DbTransaction } from "@mi-pasaporte/db";
+import {
+  businesses,
+  analyticsSourceRevisions,
+  analyticsMetricContributions,
+  analyticsDimensionLabels,
+} from "@mi-pasaporte/db/schema";
+import { and, eq, sql } from "drizzle-orm";
+import { METRICS } from "@mi-pasaporte/domain/analytics/metrics";
+import { isSupportedCurrency } from "@mi-pasaporte/domain/lib/currencies";
+import { minorUnitForCurrency } from "@mi-pasaporte/domain/financial/rational";
+import type {
+  MetricEvent,
+  MetricRow,
+} from "@mi-pasaporte/domain/analytics/metrics";
+import { metricTranslators } from "./registry";
+export function localMetricDay(instant: string, timezone: string) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(instant));
+}
+/** Caller owns delivery and origin-independent transactional application. A revision cursor survives empty replacements. */
+export async function applyAnalyticsEvent(
+  tx: DbTransaction,
+  event: MetricEvent,
+) {
+  const translator = metricTranslators().find(
+    (t) => t.eventType === event.eventType,
+  );
+  if (!translator) throw new Error("Metric translator unavailable");
+  const result = translator.translate(event);
+  if (
+    !result.sourceKey ||
+    !Number.isSafeInteger(result.sourceRevision) ||
+    result.sourceRevision < 1
+  )
+    throw new Error("Invalid metric source");
+  await tx.execute(
+    sql`select pg_advisory_xact_lock(hashtextextended(${event.businessId + ":" + result.sourceKey},0))`,
+  );
+  const [cursor] = await tx
+    .select()
+    .from(analyticsSourceRevisions)
+    .where(
+      and(
+        eq(analyticsSourceRevisions.businessId, event.businessId),
+        eq(analyticsSourceRevisions.sourceKey, result.sourceKey),
+      ),
+    );
+  if (cursor && cursor.sourceRevision >= result.sourceRevision) return;
+  const [business] = await tx
+    .select({ timezone: businesses.timezone })
+    .from(businesses)
+    .where(eq(businesses.id, event.businessId));
+  if (!business) throw new Error("Metric business unavailable");
+  const rows = result.rows.map((row) => normalize(row, business.timezone));
+  const previous = await tx
+    .select()
+    .from(analyticsMetricContributions)
+    .where(
+      and(
+        eq(analyticsMetricContributions.businessId, event.businessId),
+        eq(analyticsMetricContributions.sourceKey, result.sourceKey),
+      ),
+    );
+  // Sort the complete inverse/new delta set, not the two sets separately, to prevent lock inversions.
+  const deltas = [
+    ...previous.map((row) => ({ ...row, sign: -1 })),
+    ...rows.map((row) => ({ ...row, sign: 1 })),
+  ].sort((a, b) => key(a).localeCompare(key(b)));
+  if (deltas.length) {
+    const deltaValues = deltas.map(
+      (row) =>
+        sql`(${event.businessId}::uuid,${row.locationId}::uuid,${row.day}::date,${row.metric}::text,${row.dimensionKind}::text,${row.dimensionId}::uuid,${String(BigInt(row.amountMinor) * BigInt(row.sign))}::bigint,${row.currencyCode}::text,${row.minorUnit}::int,${row.quantity}::numeric * ${row.sign},${row.count * row.sign}::int)`,
+    );
+    await tx.execute(sql`insert into analytics.daily_metric (business_id,location_id,day,metric,dimension_kind,dimension_id,amount_minor,currency_code,minor_unit,quantity,count)
+ select business_id,location_id,day,metric,dimension_kind,dimension_id,sum(amount_minor)::bigint,currency_code,minor_unit,sum(quantity),sum(count)::int from (values ${sql.join(deltaValues, sql`,`)}) as delta(business_id,location_id,day,metric,dimension_kind,dimension_id,amount_minor,currency_code,minor_unit,quantity,count)
+ group by business_id,location_id,day,metric,dimension_kind,dimension_id,currency_code,minor_unit order by business_id,location_id,day,metric,dimension_kind,dimension_id,currency_code,minor_unit
+ on conflict on constraint analytics_daily_metric_unique do update set amount_minor=analytics.daily_metric.amount_minor+excluded.amount_minor,quantity=analytics.daily_metric.quantity+excluded.quantity,count=analytics.daily_metric.count+excluded.count`);
+  }
+  await tx
+    .delete(analyticsMetricContributions)
+    .where(
+      and(
+        eq(analyticsMetricContributions.businessId, event.businessId),
+        eq(analyticsMetricContributions.sourceKey, result.sourceKey),
+      ),
+    );
+  if (rows.length)
+    await tx.insert(analyticsMetricContributions).values(
+      rows.map((row) => ({
+        ...row,
+        businessId: event.businessId,
+        sourceKey: result.sourceKey,
+        sourceRevision: result.sourceRevision,
+      })),
+    );
+  await tx
+    .insert(analyticsSourceRevisions)
+    .values({
+      businessId: event.businessId,
+      sourceKey: result.sourceKey,
+      sourceRevision: result.sourceRevision,
+    })
+    .onConflictDoUpdate({
+      target: [
+        analyticsSourceRevisions.businessId,
+        analyticsSourceRevisions.sourceKey,
+      ],
+      set: { sourceRevision: result.sourceRevision },
+    });
+  const labels = new Map<
+    string,
+    typeof analyticsDimensionLabels.$inferInsert
+  >();
+  for (const row of result.rows) {
+    if (row.dimensionId && row.dimensionLabel) {
+      const updatedAt = new Date(
+          row.occurredAt ?? event.capturedAt ?? `${row.day}T00:00:00Z`,
+        ),
+        key = row.dimensionKind + ":" + row.dimensionId;
+      const prior = labels.get(key);
+      if (!prior || prior.updatedAt.getTime() <= updatedAt.getTime())
+        labels.set(key, {
+          businessId: event.businessId,
+          kind: row.dimensionKind,
+          id: row.dimensionId,
+          label: row.dimensionLabel,
+          updatedAt,
+        });
+    }
+  }
+  if (labels.size)
+    await tx
+      .insert(analyticsDimensionLabels)
+      .values(
+        [...labels.values()].sort((a, b) =>
+          (a.kind + a.id).localeCompare(b.kind + b.id),
+        ),
+      )
+      .onConflictDoUpdate({
+        target: [
+          analyticsDimensionLabels.businessId,
+          analyticsDimensionLabels.kind,
+          analyticsDimensionLabels.id,
+        ],
+        set: {
+          label: sql`excluded.label`,
+          updatedAt: sql`excluded.updated_at`,
+        },
+        setWhere: sql`${analyticsDimensionLabels.updatedAt} <= excluded.updated_at`,
+      });
+}
+function normalize(row: MetricRow, timezone: string) {
+  if (Boolean(row.day) === Boolean(row.occurredAt))
+    throw new Error("Metric needs local day or instant");
+  const definition = METRICS[row.metric];
+  if (
+    !definition ||
+    definition.dimension !== row.dimensionKind ||
+    (row.dimensionKind === "none" && row.dimensionId !== null)
+  )
+    throw new Error("Invalid metric dimension");
+  if (
+    definition.unit === "money" &&
+    (!row.currencyCode ||
+      !isSupportedCurrency(row.currencyCode) ||
+      row.minorUnit !== minorUnitForCurrency(row.currencyCode) ||
+      row.amountMinor === undefined)
+  )
+    throw new Error("Invalid metric currency");
+  if (
+    definition.unit === "quantity" &&
+    (row.quantity === undefined ||
+      row.amountMinor !== undefined ||
+      row.currencyCode !== undefined)
+  )
+    throw new Error("Invalid quantity metric");
+  const day = row.day ?? localMetricDay(row.occurredAt!, timezone);
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(day) ||
+    new Date(`${day}T12:00:00Z`).toISOString().slice(0, 10) !== day ||
+    !/^[-]?\d+$/.test(row.amountMinor ?? "0") ||
+    !/^[-]?\d+(?:\.\d+)?$/.test(row.quantity ?? "0") ||
+    !Number.isSafeInteger(row.count ?? 0)
+  )
+    throw new Error("Invalid metric value");
+  return {
+    metric: row.metric,
+    locationId: row.locationId,
+    day,
+    dimensionKind: row.dimensionKind,
+    dimensionId: row.dimensionId,
+    amountMinor: BigInt(row.amountMinor ?? "0"),
+    currencyCode: row.currencyCode ?? "",
+    minorUnit: row.minorUnit ?? 0,
+    quantity: row.quantity ?? "0",
+    count: row.count ?? 0,
+  };
+}
+function key(row: {
+  locationId: string | null;
+  day: string;
+  metric: string;
+  dimensionKind: string;
+  dimensionId: string | null;
+  currencyCode: string;
+  minorUnit: number;
+}) {
+  return [
+    row.locationId ?? "",
+    row.day,
+    row.metric,
+    row.dimensionKind,
+    row.dimensionId ?? "",
+    row.currencyCode,
+    row.minorUnit,
+  ].join("/");
+}
