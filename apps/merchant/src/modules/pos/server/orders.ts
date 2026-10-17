@@ -1,3 +1,6 @@
+import { appendModuleEvent } from "../../../server/module-events/append";
+import { analyticsMoney } from "../../../server/counter/analytics-events";
+import { totalOf } from "./lines";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { type DbTransaction, withDbTransaction } from "@mi-pasaporte/db";
 import { posOrderItems, posOrders } from "@mi-pasaporte/db/schema";
@@ -114,7 +117,7 @@ async function whyNotUpdated(
   id: string,
 ): Promise<CounterError> {
   const [row] = await tx
-    .select({ status: posOrders.status })
+    .select({ status: posOrders.status, locationId: posOrders.locationId })
     .from(posOrders)
     .where(and(eq(posOrders.id, id), eq(posOrders.businessId, businessId)));
   if (!row) return unknownPosOrder();
@@ -247,20 +250,36 @@ export async function voidPosOrder(
 ): Promise<PosOrderDTO> {
   await withDbTransaction(async (tx) => {
     const [row] = await tx
-      .select({ status: posOrders.status })
+      .select({ status: posOrders.status, locationId: posOrders.locationId })
       .from(posOrders)
       .where(and(eq(posOrders.id, id), eq(posOrders.businessId, business.id)))
       .for("update");
     if (!row) throw unknownPosOrder();
     if (row.status === "voided") return;
     if (row.status !== "open") throw posOrderNotOpen();
+    const occurredAt = new Date();
+    const lines = await linesForClose(tx, id);
+    await appendModuleEvent(tx, {
+      businessId: business.id,
+      eventType: "pos.order.voided",
+      eventVersion: 1,
+      sourceId: id,
+      locationId: row.locationId,
+      payload: {
+        eventVersion: 1,
+        sourceOrderId: id,
+        locationId: row.locationId,
+        occurredAt: occurredAt.toISOString(),
+        ...analyticsMoney(totalOf(lines), business.currencyCode),
+      },
+    });
     await tx
       .update(posOrders)
       .set({
         status: "voided",
-        closedAt: new Date(),
+        closedAt: occurredAt,
         closedByUserId: userId,
-        updatedAt: new Date(),
+        updatedAt: occurredAt,
       })
       .where(eq(posOrders.id, id));
   });

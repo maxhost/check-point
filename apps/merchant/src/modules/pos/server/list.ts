@@ -49,6 +49,7 @@ const summaryColumns = {
 export async function listPosOrders(
   businessId: string,
   now: Date = new Date(),
+  status?: "voided",
 ): Promise<{ open: PosOrderSummary[]; closedToday: PosOrderSummary[] }> {
   const db = getDb();
   const [business] = await db
@@ -67,15 +68,22 @@ export async function listPosOrders(
 
   const open = await base()
     .where(
-      and(eq(posOrders.businessId, businessId), eq(posOrders.status, "open")),
+      and(
+        eq(posOrders.businessId, businessId),
+        status === "voided" ? sql`false` : eq(posOrders.status, "open"),
+      ),
     )
     .orderBy(asc(posOrders.createdAt));
   const closedToday = await base()
     .where(
       and(
         eq(posOrders.businessId, businessId),
-        inArray(posOrders.status, ["closed", "voided"]),
-        sql`(${posOrders.closedAt} AT TIME ZONE ${timezone})::date = (${now.toISOString()}::timestamptz AT TIME ZONE ${timezone})::date`,
+        status === "voided"
+          ? eq(posOrders.status, "voided")
+          : inArray(posOrders.status, ["closed", "voided"]),
+        status === "voided"
+          ? sql`${posOrders.closedAt} >= ${now.toISOString()}::timestamptz - interval '90 days' AND ${posOrders.closedAt} <= ${now.toISOString()}::timestamptz`
+          : sql`(${posOrders.closedAt} AT TIME ZONE ${timezone})::date = (${now.toISOString()}::timestamptz AT TIME ZONE ${timezone})::date`,
       ),
     )
     .orderBy(desc(posOrders.closedAt));

@@ -13,6 +13,7 @@ export const detailKey = (id: string) => `order:${id}`;
 
 /** Private to one mounted console. No timers, persistence or shared module state. */
 export class PosCache {
+  constructor(private readonly status?: "voided") {}
   context: string | null = null;
   epoch = 0;
   private entries = new Map<string, { value: unknown; valid: boolean }>();
@@ -85,7 +86,10 @@ export class PosCache {
   history(force = false) {
     return this.read(
       historyKey,
-      () => posRequest<PosHistory>("/api/modules/pos/orders"),
+      () =>
+        posRequest<PosHistory>(
+          "/api/modules/pos/orders" + (this.status ? "?status=voided" : ""),
+        ),
       force,
     );
   }

@@ -81,8 +81,14 @@ const routes: readonly ModuleRoute[] = [
     method: "GET",
     path: "orders",
     failure: "No pudimos leer las órdenes.",
-    handler: async ({ business }) =>
-      NextResponse.json(await listPosOrders(business.id)),
+    handler: async ({ business, request }) => {
+      const status = query(request, "status");
+      if (status !== null && status !== "voided")
+        throw new CounterError(422, "invalid_input", "El estado no es válido.");
+      return NextResponse.json(
+        await listPosOrders(business.id, new Date(), status ?? undefined),
+      );
+    },
   }),
   /** `{ tableLabel | tableId, locationId?, items, note? }` → `201 PosOrder`. */
   posRoute({

@@ -190,6 +190,8 @@ export async function grantWithCouponInTx(
     grant: extra,
     orderId: granted.id,
     discountAmount,
+    salesAmount: net,
+    currencyCode: order.currencyCode,
     now,
   });
   // (6) The choice is spent.

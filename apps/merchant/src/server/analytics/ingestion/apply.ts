@@ -6,6 +6,7 @@ import {
   analyticsMetricContributions,
   analyticsDimensionLabels,
   analyticsDailyGauges,
+  analyticsCampaignSnapshots,
 } from "@mi-pasaporte/db/schema";
 import { and, eq, sql } from "drizzle-orm";
 import { METRICS } from "@mi-pasaporte/domain/analytics/metrics";
@@ -15,6 +16,7 @@ import type {
   MetricEvent,
   MetricRow,
   MetricGauge,
+  MetricTranslation,
 } from "@mi-pasaporte/domain/analytics/metrics";
 import { metricTranslators } from "./registry";
 export function localMetricDay(instant: string, timezone: string) {
@@ -35,6 +37,16 @@ export async function applyAnalyticsEvent(
   );
   if (!translator) throw new Error("Metric translator unavailable");
   const result = translator.translate(event);
+  const groups = [result, ...(result.additionalSources ?? [])].sort((a, b) =>
+    a.sourceKey.localeCompare(b.sourceKey),
+  );
+  for (const group of groups) await applyTranslation(tx, event, group);
+}
+async function applyTranslation(
+  tx: DbTransaction,
+  event: MetricEvent,
+  result: MetricTranslation,
+) {
   if (
     !result.sourceKey ||
     !Number.isSafeInteger(result.sourceRevision) ||
@@ -159,6 +171,35 @@ export async function applyAnalyticsEvent(
         },
         setWhere: sql`${analyticsDimensionLabels.updatedAt} <= excluded.updated_at`,
       });
+  for (const snapshot of result.campaignSnapshots ?? []) {
+    await tx
+      .insert(analyticsCampaignSnapshots)
+      .values({
+        ...snapshot,
+        businessId: event.businessId,
+        eventId: event.id,
+        startsAt: new Date(snapshot.startsAt),
+        endsAt: snapshot.endsAt ? new Date(snapshot.endsAt) : null,
+        endedAt: snapshot.endedAt ? new Date(snapshot.endedAt) : null,
+        capturedAt: new Date(snapshot.capturedAt),
+      })
+      .onConflictDoUpdate({
+        target: [
+          analyticsCampaignSnapshots.businessId,
+          analyticsCampaignSnapshots.campaignId,
+        ],
+        set: {
+          label: sql`excluded.label`,
+          status: sql`excluded.status`,
+          startsAt: sql`excluded.starts_at`,
+          endsAt: sql`excluded.ends_at`,
+          endedAt: sql`excluded.ended_at`,
+          capturedAt: sql`excluded.captured_at`,
+          eventId: sql`excluded.event_id`,
+        },
+        setWhere: sql`(${analyticsCampaignSnapshots.capturedAt},${analyticsCampaignSnapshots.eventId}) < (excluded.captured_at,excluded.event_id)`,
+      });
+  }
   if (result.facts?.length)
     await evaluateAnalyticsFacts(tx, {
       businessId: event.businessId,
@@ -179,7 +220,9 @@ function normalize(row: MetricRow, timezone: string) {
   )
     throw new Error("Invalid metric dimension");
   if (
-    (definition.unit === "money" || definition.unit === "money_quantity") &&
+    (definition.unit === "money" ||
+      definition.unit === "money_quantity" ||
+      definition.unit === "money_count") &&
     (!row.currencyCode ||
       !isSupportedCurrency(row.currencyCode) ||
       row.minorUnit !== minorUnitForCurrency(row.currencyCode) ||

@@ -1,5 +1,10 @@
 /** Core vocabulary. Translators are deterministic functions of a captured event only. */
 export const METRICS = {
+  voided_tickets: { type: "sum", unit: "money_count", dimension: "none" },
+  visits: { type: "sum", unit: "money_count", dimension: "customer" },
+  promo_discount: { type: "sum", unit: "money", dimension: "campaign" },
+  promo_sales: { type: "sum", unit: "money", dimension: "campaign" },
+  promo_cost: { type: "sum", unit: "money", dimension: "campaign" },
   stock_purchase: { type: "sum", unit: "money_quantity", dimension: "item" },
   stock_count_gap: { type: "sum", unit: "money_quantity", dimension: "item" },
   stock_consumption: { type: "sum", unit: "quantity", dimension: "item" },
@@ -26,7 +31,8 @@ export const METRICS = {
   expense_variable: { type: "sum", unit: "money", dimension: "concept" },
 } as const;
 export type Metric = keyof typeof METRICS;
-export type DimensionKind = "none" | "product" | "concept" | "item";
+export type DimensionKind =
+  "none" | "product" | "concept" | "item" | "customer" | "campaign";
 export type MetricEvent = {
   id: string;
   businessId: string;
@@ -85,7 +91,23 @@ export type AnalyticsFact =
       minorUnit: number;
       actionHref: string;
     };
+export type CampaignSnapshot = {
+  campaignId: string;
+  label: string;
+  status: string;
+  startsAt: string;
+  endsAt: string | null;
+  endedAt: string | null;
+  capturedAt: string;
+};
+export type MetricSource = {
+  sourceKey: string;
+  sourceRevision: number;
+  rows: readonly MetricRow[];
+};
 export type MetricTranslation = {
+  additionalSources?: readonly MetricSource[];
+  campaignSnapshots?: readonly CampaignSnapshot[];
   sourceKey: string;
   sourceRevision: number;
   rows: readonly MetricRow[];

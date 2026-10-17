@@ -1,3 +1,4 @@
+import { publishCampaignSnapshot } from "./analytics-events";
 import { and, eq, isNotNull } from "drizzle-orm";
 import { withDbTransaction } from "@mi-pasaporte/db";
 import {
@@ -130,6 +131,7 @@ export async function transitionCampaign(
         updatedAt: now,
       })
       .where(and(eq(campaigns.id, id), eq(campaigns.businessId, businessId)));
+    await publishCampaignSnapshot(tx, businessId, id);
   });
 
   const campaign = await getCampaign(businessId, id);

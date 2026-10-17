@@ -694,6 +694,13 @@
       "when": 1792218149187,
       "tag": "0098_analytics_stock_gauge",
       "breakpoints": true
+    },
+    {
+      "idx": 99,
+      "version": "7",
+      "when": 1792219257677,
+      "tag": "0099_analytics_campaign_snapshots",
+      "breakpoints": true
     }
   ]
 }

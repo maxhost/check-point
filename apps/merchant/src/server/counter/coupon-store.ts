@@ -1,3 +1,5 @@
+import { analyticsMoney } from "./analytics-events";
+import { appendModuleEvent } from "../module-events/append";
 import { eq } from "drizzle-orm";
 import type { DbTransaction } from "@mi-pasaporte/db";
 import { campaignTurns, couponRedemptions } from "@mi-pasaporte/db/schema";
@@ -37,6 +39,8 @@ export async function insertCounterRedemption(
     orderId: string;
     discountAmount: string;
     now: Date;
+    salesAmount: string;
+    currencyCode: string;
   },
 ): Promise<void> {
   const { coupon, campaign } = input.locked;
@@ -61,6 +65,29 @@ export async function insertCounterRedemption(
       clientRequestId: input.clientRequestId,
     })
     .returning({ id: couponRedemptions.id });
+  const money = analyticsMoney(input.discountAmount, input.currencyCode);
+  await appendModuleEvent(tx, {
+    businessId: input.businessId,
+    eventType: "coupon.redeemed",
+    eventVersion: 1,
+    sourceId: coupon.id,
+    locationId: input.locationId,
+    payload: {
+      eventVersion: 1,
+      couponId: coupon.id,
+      campaignId: campaign.id,
+      campaignLabel: campaign.name,
+      locationId: input.locationId,
+      occurredAt: input.now.toISOString(),
+      discountMinor: money.amountMinor,
+      salesMinor: analyticsMoney(input.salesAmount, input.currencyCode)
+        .amountMinor,
+      costMinor: analyticsMoney(coupon.costSnapshot, input.currencyCode)
+        .amountMinor,
+      currencyCode: money.currencyCode,
+      minorUnit: money.minorUnit,
+    },
+  });
   if (coupon.turnId !== null)
     await tx
       .update(campaignTurns)
