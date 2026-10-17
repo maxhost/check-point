@@ -20,6 +20,8 @@ Base inicial de preparación: dev `d60711a3`; la base asignada a workers será e
 
 Responsable de esquema core, captura/commit y reader, compatibilidad de migración/pendientes, alta de medios al crear comercio, permisos/capacidades, DTO Brand restringido, Regional/Fiscal y revisión optimista, checklist/tour del servidor. **Asignación explícita de migración y contratos de framework limitada a0235**; no kit, guardias ni tooling general. No editar UI ni tests e2e de B. Los cambios de permisos no requieren inventar ALTER del CHECK genérico.
 
+Ampliación nominal aprobada y registrada en factory: `packages/domain/src/server/brand.ts` y `packages/domain/src/server/brand/validation.ts`, para retirar Regional/Fiscal del UPDATE autoritativo de Marca además del DTO/API. Reusar `vat.ts` sin cambiarlo.
+
 Debe preparar el orden de despliegue/binario puente verificable antes de mover las tablas, sin ejecutar PROD. Conservar triggers/funciones core e identidades opacas heredadas; nunca agregar ramas del core por nombre de módulo. No basta entregar el estado final que solo funciona después de migrar: la transición y recuperación histórica tienen aceptación propia.
 
 ### B — Negocio, Marca, navegación y POS UI
@@ -29,6 +31,10 @@ Debe preparar el orden de despliegue/binario puente verificable antes de mover l
 Implementar tres secciones y administración de medios/comisión con kit existente; mover Regional/Fiscal completos desde Marca y retirar sus anchors/pasos/payloads; conservar identidad y checklist branding, POS selector y guard/permisos de página. No cambiar Settings ni kit/guard para evitar rojo. Copy tuteo, estados loading/empty/error/guardado/conflicto, campos por forma y aviso de configuración parcial. Aplicar impeccable en modo Operate preservando contexto visual y límites del repo; no reescribir diseño global ni añadir assets/marketing.
 
 Puede avanzar con el HTTP cerrado y dobles de API. Coordinar integración con A antes de dar por aprobados tipos/build o smoke real. Paths disjuntos no sustituyen validación de combinación.
+
+Ampliaciones nominales B aprobadas en factory: `tests/e2e/brand-fiscal.spec.ts`, `brand-tours.spec.ts`, `brand-progress.spec.ts`, `brand-lifecycle.spec.ts`, `brand-authenticated.spec.ts` y soporte `brand-tour-fixture.ts`, `brand-harness.tsx`, `brand-ticket-probe.tsx`. Cambios mínimos de regresión directamente ligados al traslado y retiro de tareas/anchors, sin aflojar oráculos.
+
+Foundation común de A `00624614`: tipos puros de `lib/business-contract.ts`. B puede incorporar ese SHA por fast-forward antes de sus pruebas y hacer `factory refresh` para excluir del diff propio el archivo de A; no cherry-pick duplicado ni actualización por detrás de una prueba.
 
 ### Coordinador y QA
 
