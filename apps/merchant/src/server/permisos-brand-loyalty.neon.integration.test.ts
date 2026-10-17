@@ -1,3 +1,4 @@
+import { businessHttp } from "./business/http";
 import { randomUUID } from "node:crypto";
 import { eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -40,7 +41,6 @@ import { GET as QR } from "../app/api/loyalty-program/qr/route";
  */
 const brandBody = (revision: number, name: string) => ({
   name,
-  timezone: "America/Guayaquil",
   brandPrimaryColor: "#176548",
   brandComplementaryColor: "#2D8B68",
   brandAccentColor: "#E78132",
@@ -242,23 +242,39 @@ describe.skipIf(!enabled)(
 );
 
 describe.skipIf(!enabled)(
-  "private fiscal brand API 0229 with real sessions",
+  "private fiscal business API0235 with real sessions",
   () => {
-    let a: Seed;
-    let b: Seed;
+    let a: Seed, b: Seed;
     const extraUsers: string[] = [];
-    let team = "";
-    let noBrand = "";
-    let ownerA = "";
-    let ownerB = "";
+    let team = "",
+      brandOnly = "",
+      noBusiness = "",
+      ownerA = "",
+      ownerB = "",
+      brandUser = "";
+    const business = (
+      cookie: string,
+      method = "GET",
+      body?: unknown,
+      path = "fiscal",
+    ) =>
+      businessHttp(conCookie(`/api/business/${path}`, method, cookie, body), [
+        path,
+      ]);
     const read = async (cookie: string) => {
-      const response = await BRAND_GET(conCookie("/api/brand", "GET", cookie));
+      const response = await business(cookie);
       expect(response.status).toBe(200);
       return response.json();
     };
     const put = (cookie: string, body: unknown) =>
-      BRAND_PUT(conCookie("/api/brand", "PUT", cookie, body));
-
+      business(cookie, "PUT", body);
+    const readBrand = async () => {
+      const response = await BRAND_GET(
+        conCookie("/api/brand", "GET", brandOnly),
+      );
+      expect(response.status).toBe(200);
+      return response.json();
+    };
     beforeAll(async () => {
       const seed = (name: string) =>
         seedBusiness({
@@ -270,38 +286,40 @@ describe.skipIf(!enabled)(
         });
       a = await seed("Fiscal A");
       b = await seed("Fiscal B");
-      const withBrand = await seedMember({
+      brandUser = await seedMember({
         businessId: a.business.id,
         permissions: ["brand"],
+      });
+      const delegated = await seedMember({
+        businessId: a.business.id,
+        permissions: ["business"],
       });
       const without = await seedMember({
         businessId: a.business.id,
         permissions: ["loyalty"],
       });
-      extraUsers.push(withBrand, without);
-      team = await cookieDe(withBrand);
-      noBrand = await cookieDe(without);
+      extraUsers.push(brandUser, delegated, without);
+      brandOnly = await cookieDe(brandUser);
+      team = await cookieDe(delegated);
+      noBusiness = await cookieDe(without);
       ownerA = await cookieDe(a.userId);
       ownerB = await cookieDe(b.userId);
     }, 180_000);
-
     afterAll(async () => {
       for (const seed of [a, b]) if (seed) await dropBusiness(seed.business.id);
-      for (const id of [...extraUsers, a?.userId, b?.userId].filter(Boolean)) {
+      for (const id of [...extraUsers, a?.userId, b?.userId].filter(Boolean))
         await getDb().delete(users).where(eq(users.id, id));
-      }
     }, 180_000);
-
-    it("delegated brand writes exactly the guarded business, ignoring a forged body id", async () => {
-      const beforeB = await read(ownerB);
+    it("delegated business writes exactly the guarded business, ignoring a forged body id", async () => {
+      const beforeB = await read(ownerB),
+        beforeA = await read(team);
       expect(beforeB).toMatchObject({
         chargesVat: false,
         saleVatRate: null,
         recoversPurchaseVat: false,
       });
-      const beforeA = await read(team);
       const response = await put(team, {
-        ...brandBody(beforeA.brandRevision, "Fiscal A"),
+        ...beforeA,
         businessId: b.business.id,
         chargesVat: true,
         saleVatRate: "17.25",
@@ -310,7 +328,6 @@ describe.skipIf(!enabled)(
       expect(response.status).toBe(200);
       const saved = await response.json();
       expect(saved).toMatchObject({
-        id: a.business.id,
         chargesVat: true,
         saleVatRate: "17.25",
         recoversPurchaseVat: true,
@@ -318,33 +335,64 @@ describe.skipIf(!enabled)(
       expect(saved).not.toHaveProperty("logoObjectKey");
       expect(await read(ownerA)).toEqual(saved);
       expect(await read(ownerB)).toEqual(beforeB);
-    }, 60_000);
-
-    it("legacy API payload preserves fields and malformed JSON returns400 without writes", async () => {
-      const before = await read(team);
-      const response = await put(
-        team,
-        brandBody(before.brandRevision, "Fiscal Legacy"),
-      );
-      expect(response.status).toBe(200);
-      const saved = await response.json();
-      expect(saved).toMatchObject({
+      const [stored] = await getDb()
+        .select({
+          id: businesses.id,
+          chargesVat: businesses.chargesVat,
+          saleVatRate: businesses.saleVatRate,
+          recoversPurchaseVat: businesses.recoversPurchaseVat,
+        })
+        .from(businesses)
+        .where(eq(businesses.id, a.business.id));
+      expect(stored).toEqual({
+        id: a.business.id,
         chargesVat: true,
         saleVatRate: "17.25",
         recoversPurchaseVat: true,
       });
-      const malformed = await BRAND_PUT(
-        new Request("http://localhost:3001/api/brand", {
-          method: "PUT",
-          headers: { cookie: team, "content-type": "application/json" },
-          body: "{",
-        }),
-      );
-      expect(malformed.status).toBe(400);
-      expect(await read(team)).toEqual(saved);
     }, 60_000);
-
-    it("validates complete state and strict field types with422, preserving DB revision", async () => {
+    it("branding-only payload preserves Fiscal, hides Regional/Fiscal, and malformed JSON returns400 without writes", async () => {
+      const before = await read(team),
+        branding = await readBrand();
+      for (const key of [
+        "timezone",
+        "currencyCode",
+        "chargesVat",
+        "saleVatRate",
+        "recoversPurchaseVat",
+      ])
+        expect(branding).not.toHaveProperty(key);
+      const response = await BRAND_PUT(
+        conCookie(
+          "/api/brand",
+          "PUT",
+          brandOnly,
+          brandBody(branding.brandRevision, "Fiscal Legacy"),
+        ),
+      );
+      expect(response.status).toBe(200);
+      const savedBrand = await response.json();
+      expect(await read(team)).toEqual(before);
+      expect(before).toMatchObject({
+        chargesVat: true,
+        saleVatRate: "17.25",
+        recoversPurchaseVat: true,
+      });
+      const malformed = (cookie: string, path: string) =>
+        new Request(`http://localhost:3001/api/${path}`, {
+          method: "PUT",
+          headers: { cookie, "content-type": "application/json" },
+          body: "{",
+        });
+      expect(
+        (await businessHttp(malformed(team, "business/fiscal"), ["fiscal"]))
+          .status,
+      ).toBe(400);
+      expect((await BRAND_PUT(malformed(brandOnly, "brand"))).status).toBe(400);
+      expect(await read(team)).toEqual(before);
+      expect(await readBrand()).toEqual(savedBrand);
+    }, 60_000);
+    it("validates complete fiscal state and strict field types with422, preserving DB revision", async () => {
       const before = await read(team);
       for (const patch of [
         { chargesVat: true, saleVatRate: null },
@@ -353,44 +401,61 @@ describe.skipIf(!enabled)(
         { saleVatRate: 15 },
         { chargesVat: "false" },
         { recoversPurchaseVat: null },
-      ]) {
-        const response = await put(team, {
-          ...brandBody(before.brandRevision, "Invalid"),
-          ...patch,
-        });
-        expect(response.status).toBe(422);
-      }
+      ])
+        expect((await put(team, { ...before, ...patch })).status).toBe(422);
       expect(await read(team)).toEqual(before);
     }, 120_000);
-
-    it("a team member without brand cannot read or write fiscal data", async () => {
-      const before = await read(team);
-      const deniedRead = await BRAND_GET(
-        conCookie("/api/brand", "GET", noBrand),
+    it("brand alone receives no business permission or Regional/Fiscal access", async () => {
+      const before = await read(team),
+        branding = await readBrand();
+      const [member] = await getDb()
+        .select({ permissions: memberships.permissions })
+        .from(memberships)
+        .where(eq(memberships.userId, brandUser));
+      expect(member.permissions).toEqual(["brand"]);
+      for (const cookie of [brandOnly, noBusiness])
+        for (const path of ["fiscal", "regional"]) {
+          const deniedRead = await business(cookie, "GET", undefined, path);
+          const deniedWrite = await business(
+            cookie,
+            "PUT",
+            path === "fiscal"
+              ? { ...before, chargesVat: false, saleVatRate: null }
+              : {
+                  revision: before.revision,
+                  timezone: "America/Guayaquil",
+                  currencyCode: "USD",
+                },
+            path,
+          );
+          for (const response of [deniedRead, deniedWrite]) {
+            expect(response.status).toBe(403);
+            expect((await response.json()).code).toBe("missing_permission");
+          }
+        }
+      const forbidden = await BRAND_PUT(
+        conCookie("/api/brand", "PUT", brandOnly, {
+          ...brandBody(branding.brandRevision, "Denied"),
+          chargesVat: false,
+          saleVatRate: null,
+        }),
       );
-      const deniedWrite = await put(noBrand, {
-        ...brandBody(before.brandRevision, "Denied"),
-        chargesVat: false,
-        saleVatRate: null,
-      });
-      for (const response of [deniedRead, deniedWrite]) {
-        expect(response.status).toBe(403);
-        expect((await response.json()).code).toBe("missing_permission");
-      }
+      expect(forbidden.status).toBe(422);
       expect(await read(team)).toEqual(before);
+      expect(await readBrand()).toEqual(branding);
     }, 60_000);
-
-    it("same-revision concurrent sessions yield one complete save and one409 without merging values", async () => {
-      const before = await read(team);
+    it("same-revision fiscal sessions yield one complete save and one409 without merging values or branding", async () => {
+      const before = await read(team),
+        branding = await readBrand();
       const candidates = [
         {
-          ...brandBody(before.brandRevision, "Fiscal Race A"),
+          ...before,
           chargesVat: true,
           saleVatRate: "0",
           recoversPurchaseVat: false,
         },
         {
-          ...brandBody(before.brandRevision, "Fiscal Race B"),
+          ...before,
           chargesVat: false,
           saleVatRate: null,
           recoversPurchaseVat: true,
@@ -401,18 +466,19 @@ describe.skipIf(!enabled)(
         put(ownerA, candidates[1]),
       ]);
       expect(responses.map((r) => r.status).sort()).toEqual([200, 409]);
-      const winner = responses.findIndex((r) => r.status === 200);
-      const saved = await responses[winner].json();
+      const winner = responses.findIndex((r) => r.status === 200),
+        saved = await responses[winner].json();
       expect(saved).toMatchObject({
-        name: candidates[winner].name,
         chargesVat: candidates[winner].chargesVat,
         recoversPurchaseVat: candidates[winner].recoversPurchaseVat,
         saleVatRate: winner === 0 ? "0.00" : null,
-        brandRevision: before.brandRevision + 1,
+        revision: before.revision + 1,
       });
       expect(await read(team)).toEqual(saved);
-      const loser = await responses[1 - winner].json();
-      expect(loser.error).toContain("otra sesión");
+      expect(await readBrand()).toEqual(branding);
+      expect(await responses[1 - winner].json()).toMatchObject({
+        code: "business_revision_conflict",
+      });
     }, 60_000);
   },
 );
