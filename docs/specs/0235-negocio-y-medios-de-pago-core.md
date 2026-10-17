@@ -1,15 +1,15 @@
 ---
 spec: 0235
 fecha: 2026-10-16
-estado: cerrada
+estado: implementada
 resumen: Negocio reúne medios y comisiones, configuración regional y datos fiscales en core; el POS conserva su selector y congela la comisión al cerrar.
 disjunta: no; comparte cierre POS, eventos, permisos, onboarding y esquema con las piezas financieras; Gastos va después
-archivos: core de pagos y Negocio; POS; comisiones de profitability; Marca y onboarding; esquema y migración futura; ADR0150
+archivos: core de pagos y Negocio; POS; comisiones de profitability; Marca y onboarding; esquema y migración preparada; ADR0150
 ---
 
 # 0235 — Negocio y medios de pago en core
 
-Spec CHICA; ADR0144, nivel L2 por dinero, aislamiento y futura migración PROD. Diseño cerrado con respuestas previas del owner; **no implementada**. Este encargo entrega solamente esta spec y el [ADR0150](../adr/0150-negocio-y-comisiones-core.md), sin código, migración generada, suites, push ni operación PROD. Conserva el congelado del [ADR0149](../adr/0149-pagos-y-comisiones-congelados-al-cierre.md) y los contratos financieros de [0233](0233-medios-de-pago-y-comisiones.md), sustituyendo su propiedad modular y aplicación posterior para los cierres nuevos.
+Spec CHICA; ADR0144, nivel L2 por dinero, aislamiento y futura migración PROD. Diseño cerrado con respuestas previas del owner; **implementación local verificada**, autorizada después del encargo documental original. [QA y candidatos combinados](../factory/0235-qa.md), [entrega core y rollout](../factory/0235-core.md), [entrega UI](../factory/0235-ui.md). Sin push, deploy ni migración PROD; el retiro físico de los adaptadores de transición y recuperación sigue condicionado al corte/drenaje operativo. Conserva el congelado del [ADR0149](../adr/0149-pagos-y-comisiones-congelados-al-cierre.md) y los contratos financieros de [0233](0233-medios-de-pago-y-comisiones.md), sustituyendo su propiedad modular y aplicación posterior para los cierres nuevos.
 
 ## Problema
 
@@ -92,23 +92,23 @@ Checklist conserva su ítem y destino `brand` para branding; copy y navegación 
 
 ## Archivos y paralelismo
 
-Ámbitos futuros: `packages/db/src/schema/payment-methods.ts`, esquema core de comisiones, exports y migración/journal; `permissions-catalog.ts` y guardias/sesión/Equipo; `apps/merchant/src/server/` para medios/comisiones y alta; `app/api/business/`, `app/backoffice/business/`, navegación; contratos de captura/publicación; módulos POS/profitability; Marca y onboarding; helper financiero core. No importar módulos desde core ni modificar el kit/guardias para evadir límites UI.
+Ámbitos de implementación: `packages/db/src/schema/payment-methods.ts`, esquema core de comisiones, exports y migración/journal; `permissions-catalog.ts` y guardias/sesión/Equipo; `apps/merchant/src/server/` para medios/comisiones y alta; `app/api/business/`, `app/backoffice/business/`, navegación; contratos de captura/publicación; módulos POS/profitability; Marca y onboarding; helper financiero core. No importar módulos desde core ni modificar el kit/guardias para evadir límites UI.
 
-Implementación posterior con writer único de esquema/captura/aritmética y contrato HTTP común; POS/UI puede avanzar sobre el contrato cerrado, coordinando corte y permisos. DB CI y teardown exclusivos; migraciones aisladas. Gastos se inicia después de integrar esta pieza; Analíticas tiene ADR propio. La ficha de implementación asignará worktrees, paths y recursos sin reservas implícitas de PROD.
+Se implementó con writer único de esquema/captura/aritmética y contrato HTTP común; UI y backend en worktrees propios, con QA independiente y combinación posterior. DB CI y teardown exclusivos; migraciones aisladas. Gastos va después de integrar esta pieza; Analíticas tiene ADR propio. El [contrato de implementación](../factory/0235-implementation-contract.md) registra paths y recursos, sin reservas implícitas de PROD.
 
 ## Definition of Done
 
-- [ ] Negocio core con tres secciones, acceso owner y delegación business, sin backfill ni acceso fiscal/regional por brand.
-- [ ] Medios core inicializados al alta; selector POS conservado y funcional, catálogo/archivo/Efectivo invariantes.
-- [ ] Revisión y resultado congelados en cierre; condiciones de negocio de comisión permiten commit marcado; fallo técnico DB revierte atómicamente.
-- [ ] Migración conserva los22 medios y2 pagos del baseline **y todas las filas posteriores**, IDs/snapshots/referencias; transición y pendientes verificados sin POS sin medios.
-- [ ] Provisional/incompleto/sin dato diferenciados y transportables hasta futuros consumidores; nunca margen definitivo con aviso.
-- [ ] Código/rutas/tablas antiguas retirados según ADR; Marca/tour/checklist coherentes y sin destinos rotos; Settings intacto.
-- [ ] QA focal de entrega y combinación sobre SHA/entorno identificados; operaciones PROD solo con autorización posterior propia.
+- [x] Negocio core con tres secciones, acceso owner y delegación business, sin backfill ni acceso fiscal/regional por brand.
+- [x] Medios core inicializados al alta; selector POS conservado y funcional, catálogo/archivo/Efectivo invariantes.
+- [x] Revisión y resultado congelados en cierre; condiciones de negocio de comisión permiten commit marcado; fallo técnico DB revierte atómicamente.
+- [x] Migración verificada en CI con los22 medios y2 pagos del baseline **y crecimiento posterior**, IDs/snapshots/referencias; transición y pendientes probados sin POS sin medios. Conservación también comprobada al migrar la base local; ejecución PROD pendiente.
+- [x] Provisional/incompleto/sin dato diferenciados y transportables hasta futuros consumidores; nunca margen definitivo con aviso.
+- [ ] Retiro físico completo de adaptadores de ubicación/onEnable y aplicador histórico: requiere certificar corte/drenaje PROD. El candidato final ya retira las seis rutas administrativas y su helper temporal; Marca/tour/checklist coherentes, sin destinos rotos y Settings intacto.
+- [x] QA focal de entrega y combinación sobre SHA/entorno identificados; operaciones PROD solo con autorización posterior propia.
 
 ## Pruebas pertinentes
 
-**Pruebas futuras especificadas, no ejecutadas en este encargo.** Reusar casos0233 y añadir los siguientes riesgos cambiados; sin suites enteras ni mutaciones por ceremonia. Node24, estáticos de ámbitos afectados y selección focal; DB únicamente `tools/neon-test.sh`, CI protegida reservada, DDL sin concurrencia y `--no-file-parallelism`.
+**Pruebas de implementación ejecutadas y detalladas en los handoffs/QA enlazados arriba.** Se reutilizaron casos0233 y se cubrieron los riesgos siguientes; sin suites enteras ni mutaciones por ceremonia. Node24, estáticos de ámbitos afectados y selección focal; DB únicamente `tools/neon-test.sh`, CI protegida reservada, DDL sin concurrencia y `--no-file-parallelism`.
 
 1. Migración CI con4 comercios,22 medios,4 marcadores y al menos2 pagos enlazados, más un pago nuevo durante transición: IDs/valores y FK sin huérfanos idénticos, `pos` histórico conservado, nuevos `core`; capturas/pagos legados recuperan el mismo snapshot. Añadir revisiones, resultados y delivery pendiente aunque PROD baseline tenga0; revisión vieja sigue aplicando después de corte y no duplica. UPDATE/DELETE posteriores siguen rechazados por triggers core; identidad del medio no se puede alterar y sus funciones no dependen de esquemas de módulo.
 2. Binario puente antes/después del cambio de esquema y binario final: selector siempre obtiene medios; vieja sesión UI de cobro conserva GET/cierre; creación de comercio con POS apagado siembra una vez. Retry de alta/migración/encendido no duplica ni repone archivados. Retiro final sin rutas/redirects colgantes.

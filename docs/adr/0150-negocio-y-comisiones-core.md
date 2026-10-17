@@ -7,6 +7,8 @@ resumen: Medios y comisiones pertenecen a core en Negocio; captura y resultado s
 
 # 0150 — Negocio y comisiones en core
 
+Implementación local posterior autorizada por el owner: [QA y SHAs combinados](../factory/0235-qa.md), [core y runbook](../factory/0235-core.md), [UI](../factory/0235-ui.md). El diseño original de este ADR se conserva. Migraciones0093/0094/0095 preparadas y verificadas en CI/local; sin ejecución PROD ni push. La retirada física de compatibilidad de almacenamiento y recuperación histórica espera la señal de corte/drenaje prevista en la sección5.
+
 ## Contexto y acuerdo
 
 [Spec0235](../specs/0235-negocio-y-medios-de-pago-core.md), L2. Solo diseño documental; este ADR no autoriza implementación, migración, push ni operaciones PROD. Base examinada `971772c2e78b3a5e0625270d74cd74717aa42968`. ADR0138/0139 mantiene dependencias módulo→core; core no importa módulos ni conserva FKs hacia sus tablas. Gastos irá después, en serie, y allí se renombra `profitability` a `expenses`.
