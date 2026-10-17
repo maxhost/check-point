@@ -40,10 +40,12 @@ describe.skipIf(!permisosIntegrationEnabled || (!prepare && !verify))(
           ["customer", "11", "customer:old", "2026-10-16"],
           ["margin-new", "6", "product", "2026-10-16"],
           ["cost-unknown", "5", "cost-subject", "2026-10-16"],
+          ["cost-origin-only", "5", "origin-only", "2026-10-16"],
+          ["cost-invalid-origin", "5", "invalid-origin", "2026-10-16"],
         ];
         for (const [id, key, subject, day] of entries)
           await db.execute(
-            sql`insert into analytics.card_candidate(id,business_id,card_key,subject_key,day,weight,amount_minor,currency_code,minor_unit,parameters,fingerprint) values(${row(id)},${business},${key},${subject},${day}::date,1,100,'USD',2,${JSON.stringify({ cardKey: key, subjectKey: subject, title: "LEGACY-CONTENT", body: "NEVER-COPY-TO-CONTROL" })}::jsonb,${key === "6" ? "new-fingerprint" : "legacy-fingerprint"})`,
+            sql`insert into analytics.card_candidate(id,business_id,card_key,subject_key,day,weight,amount_minor,currency_code,minor_unit,parameters,fingerprint) values(${row(id)},${business},${key},${subject},${day}::date,1,100,'USD',2,${JSON.stringify({ cardKey: key, subjectKey: subject, title: "LEGACY-CONTENT", body: "NEVER-COPY-TO-CONTROL", originDay: id === "cost-origin-only" ? "2026-01-01" : id === "cost-invalid-origin" ? "2026-02-31" : undefined })}::jsonb,${key === "6" ? "new-fingerprint" : "legacy-fingerprint"})`,
           );
         for (const [key, subject, status] of [
           ["8", "stock-subject", "accepted"],
@@ -62,7 +64,7 @@ describe.skipIf(!permisosIntegrationEnabled || (!prepare && !verify))(
           "LIFECYCLE_LEGACY_PREPARED",
           JSON.stringify({
             business,
-            candidates: 8,
+            candidates: 10,
             states: 5,
             metricAmountMinor: 1234,
           }),
@@ -75,9 +77,9 @@ describe.skipIf(!permisosIntegrationEnabled || (!prepare && !verify))(
       async () => {
         const db = getDb();
         const contents = await db.execute(
-          sql`select id,card_key,subject_key,day::text,episode_started_at,policy_version,period from analytics.card_candidate where business_id=${business} order by card_key`,
+          sql`select id,card_key,subject_key,day::text,episode_started_at,expires_at,policy_version,period from analytics.card_candidate where business_id=${business} order by card_key`,
         );
-        expect(contents.rows).toHaveLength(4);
+        expect(contents.rows).toHaveLength(6);
         expect(contents.rows.find((c) => c.card_key === "8")).toMatchObject({
           id: row("stock-new"),
           card_key: "8",
@@ -91,6 +93,21 @@ describe.skipIf(!permisosIntegrationEnabled || (!prepare && !verify))(
             ),
           ).toISOString(),
         ).toBe("2026-10-13T05:00:00.000Z");
+        const oldOrigin = contents.rows.find(
+          (c) => c.id === row("cost-origin-only"),
+        )!;
+        expect(
+          new Date(String(oldOrigin.episode_started_at)).toISOString(),
+        ).toBe("2026-01-01T05:00:00.000Z");
+        expect(new Date(String(oldOrigin.expires_at)).toISOString()).toBe(
+          "2026-04-01T05:00:00.000Z",
+        );
+        const invalidOrigin = contents.rows.find(
+          (c) => c.id === row("cost-invalid-origin"),
+        )!;
+        expect(
+          new Date(String(invalidOrigin.episode_started_at)).toISOString(),
+        ).toBe("2026-10-16T05:00:00.000Z");
         const controls = await db.execute(
           sql`select card_key,subject_key,candidate_id,status,context from analytics.card_state where business_id=${business} order by card_key`,
         );
@@ -124,7 +141,7 @@ describe.skipIf(!permisosIntegrationEnabled || (!prepare && !verify))(
           "LIFECYCLE_LEGACY_VERIFIED",
           JSON.stringify({
             business,
-            remainingContent: 4,
+            remainingContent: 6,
             controls: controls.rows.length,
             metricAmountMinor: 1234,
           }),

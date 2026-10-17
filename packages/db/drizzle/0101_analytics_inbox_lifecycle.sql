@@ -22,14 +22,15 @@ ALTER TABLE "analytics"."evaluation_run" ADD COLUMN "policy_version" text DEFAUL
 -- never the runtime cleanup predicate. Runtime reductions use the effective expires_at.
 WITH normalized AS (
  SELECT c.id,
-   CASE WHEN c.card_key='1' AND c.subject_key ~ '^\d{4}-\d{2}-\d{2}$' THEN c.subject_key::date
-        WHEN c.card_key IN ('5','9') AND c.parameters->>'originDay' ~ '^\d{4}-\d{2}-\d{2}$' THEN (c.parameters->>'originDay')::date
+   CASE WHEN c.card_key='1' AND c.subject_key ~ '^\d{4}-\d{2}-\d{2}$' AND pg_input_is_valid(c.subject_key,'date') THEN c.subject_key::date
+        WHEN c.card_key IN ('5','9') AND c.parameters->>'originDay' ~ '^\d{4}-\d{2}-\d{2}$' AND pg_input_is_valid(c.parameters->>'originDay','date') THEN (c.parameters->>'originDay')::date
         ELSE c.day END AS target_day,
    CASE WHEN c.card_key='1' THEN 'summary'
         WHEN c.card_key='2' THEN CASE WHEN c.subject_key LIKE 'learning:%' THEN 'learning' ELSE 'forecast' END
         WHEN c.card_key='13' THEN 'slow-day' ELSE c.subject_key END AS subject,
    CASE WHEN c.parameters->>'originObservedAt' ~ '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z:'
-        THEN left(c.parameters->>'originObservedAt',24)::timestamptz
+        AND pg_input_is_valid(left(c.parameters->>'originObservedAt',24),'timestamptz') THEN left(c.parameters->>'originObservedAt',24)::timestamptz
+        WHEN c.card_key IN ('5','9') AND c.parameters->>'originDay' ~ '^\d{4}-\d{2}-\d{2}$' AND pg_input_is_valid(c.parameters->>'originDay','date') THEN (c.parameters->>'originDay')::date::timestamp AT TIME ZONE b.timezone
         ELSE c.day::timestamp AT TIME ZONE b.timezone END AS proven_start
  FROM analytics.card_candidate c JOIN core.business b ON b.id=c.business_id
 ), anchored AS (
