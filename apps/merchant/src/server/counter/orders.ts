@@ -1,3 +1,4 @@
+import { visitEventCtes } from "./analytics-events";
 import type { DiscountOrigin } from "@mi-pasaporte/domain/financial";
 import { type SQL, sql } from "drizzle-orm";
 import { getDb } from "@mi-pasaporte/db";
@@ -174,7 +175,7 @@ export async function persistGrant(
       FROM bumped
       RETURNING id, units_granted, balance_after, accrual_kind, total,
                 business_id, consumer_id, created_at
-    )${itemsCte},
+    )${itemsCte}${visitEventCtes(input)},
     visit AS (${upsertVisitSql(sql`(
       SELECT ins.business_id, ins.consumer_id, ins.created_at AS visited_at FROM ins
     )`)}),

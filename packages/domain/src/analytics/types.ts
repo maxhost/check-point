@@ -26,6 +26,8 @@ export type AnalyticsGauge = {
 export type AnalyticsInput = {
   today: string;
   firstSaleDay?: string | null;
+  firstSaleDays?: readonly { locationId: string | null; day: string }[];
+  campaigns?: readonly AnalyticsCampaign[];
   hasData?: boolean;
   hasClosedExpenseMonth?: boolean;
   metrics: readonly AnalyticsMetric[];
@@ -41,7 +43,19 @@ export type AnalyticsInput = {
   minorUnit: number;
 };
 export type CardKey =
-  "1" | "2" | "3" | "4" | "5" | "8" | "9" | "6" | "7" | "13";
+  | "1"
+  | "2"
+  | "3"
+  | "4"
+  | "5"
+  | "8"
+  | "9"
+  | "10"
+  | "11"
+  | "12"
+  | "6"
+  | "7"
+  | "13";
 export type CardCandidate = {
   cardKey: CardKey;
   subjectKey: string;
@@ -84,4 +98,16 @@ export type InboxCard = {
   } | null;
   quality: "observed" | "estimated";
   action: { label: string; href: string } | null;
+};
+
+/** Campaign instants are converted by the reader to business-local YYYY-MM-DD dates. */
+export type AnalyticsCampaign = {
+  campaignId: string;
+  label: string;
+  status: string;
+  startsAt: string;
+  endsAt: string | null;
+  endedAt: string | null;
+  capturedAt: string;
+  eventId: string;
 };

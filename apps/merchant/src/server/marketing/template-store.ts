@@ -1,3 +1,4 @@
+import { publishCampaignSnapshot } from "./analytics-events";
 import { and, eq, inArray, isNotNull } from "drizzle-orm";
 import { type DbTransaction, getDb, withDbTransaction } from "@mi-pasaporte/db";
 import {
@@ -222,6 +223,7 @@ export async function enableTemplate(
           .values(
             doors.map((locationId) => ({ campaignId: created.id, locationId })),
           );
+      await publishCampaignSnapshot(tx, businessId, created.id);
       return created.id;
     });
   } catch (error) {

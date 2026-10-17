@@ -15,6 +15,7 @@ export type WeatherCity = {
 };
 export type WeatherResult = {
   days: WeatherDay[];
+  queryCost?: number;
   latitude?: string;
   longitude?: string;
   timezone?: string;
@@ -56,6 +57,7 @@ export function visualCrossingProvider(
       if (!response.ok) throw new Error("Weather provider unavailable");
       const body = (await response.json()) as {
         days?: Record<string, unknown>[];
+        queryCost?: number;
         latitude?: number;
         longitude?: number;
         timezone?: string;
@@ -63,6 +65,8 @@ export function visualCrossingProvider(
       if (!Array.isArray(body.days))
         throw new Error("Invalid weather response");
       return {
+        queryCost:
+          typeof body.queryCost === "number" ? body.queryCost : undefined,
         latitude: decimal(body.latitude) ?? undefined,
         longitude: decimal(body.longitude) ?? undefined,
         timezone: body.timezone,

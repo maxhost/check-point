@@ -1,3 +1,4 @@
+import { publishCampaignSnapshot } from "./analytics-events";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { type DbTransaction, getDb, withDbTransaction } from "@mi-pasaporte/db";
 import {
@@ -227,6 +228,7 @@ export async function createCampaign(
       })
       .returning({ id: campaigns.id });
     await writeDoors(tx, created.id, doors);
+    await publishCampaignSnapshot(tx, businessId, created.id);
     return created.id;
   });
   return await getCampaign(businessId, id);
@@ -282,6 +284,7 @@ export async function updateCampaign(
       .set({ ...campaignFields(input), updatedAt: new Date() })
       .where(and(eq(campaigns.id, id), eq(campaigns.businessId, businessId)));
     await writeDoors(tx, id, doors);
+    await publishCampaignSnapshot(tx, businessId, id);
   });
   return await getCampaign(businessId, id);
 }

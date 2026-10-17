@@ -192,3 +192,20 @@ export const analyticsDailyGauges = analytics.table(
     index("analytics_daily_gauge_day_idx").on(t.businessId, t.day),
   ],
 );
+
+/** Latest captured campaign lifecycle; no FK/read dependency on marketing source tables. */
+export const analyticsCampaignSnapshots = analytics.table(
+  "campaign_snapshot",
+  {
+    businessId: business(),
+    campaignId: uuid("campaign_id").notNull(),
+    label: text("label").notNull(),
+    status: text("status").notNull(),
+    startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+    endsAt: timestamp("ends_at", { withTimezone: true }),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+    capturedAt: timestamp("captured_at", { withTimezone: true }).notNull(),
+    eventId: uuid("event_id").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.businessId, t.campaignId] })],
+);

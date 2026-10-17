@@ -1,3 +1,4 @@
+import { publishCampaignSnapshot } from "./analytics-events";
 import { and, count, eq, inArray, sql } from "drizzle-orm";
 import type { DbTransaction } from "@mi-pasaporte/db";
 import { campaigns } from "@mi-pasaporte/db/schema";
@@ -78,6 +79,8 @@ export async function pauseCampaignsForBilling(
       and(eq(campaigns.businessId, businessId), eq(campaigns.status, ACTIVE)),
     )
     .returning({ id: campaigns.id });
+  for (const campaign of paused)
+    await publishCampaignSnapshot(tx, businessId, campaign.id);
   return paused.length;
 }
 
@@ -134,6 +137,8 @@ export async function resumeCampaignsAfterBilling(
       .set({ status: "paused", pauseReason: "plan_downgraded", updatedAt: now })
       .where(inArray(campaigns.id, kept));
   }
+  for (const id of [...back, ...kept])
+    await publishCampaignSnapshot(tx, businessId, id);
   return back.length;
 }
 

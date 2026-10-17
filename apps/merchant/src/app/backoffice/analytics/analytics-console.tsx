@@ -81,7 +81,7 @@ export default function AnalyticsConsole({
     <main className="merchant-shell grid gap-6">
       <PageHeader
         title="Analíticas"
-        description="Tus ventas, costos y gastos en números."
+        description="Tus ventas, costos, gastos, clientes y promos en números."
         actions={<Link href="/backoffice">Volver al inicio</Link>}
       />
       <div className="grid gap-4 sm:grid-cols-2">
@@ -228,6 +228,55 @@ export default function AnalyticsConsole({
               </Text>
             )}
           </Card>
+          {history.customers && (
+            <Card className="grid gap-4">
+              <Heading level={2}>Clientes del período</Heading>
+              <Text>
+                {history.customers.count}{" "}
+                {history.customers.count === 1
+                  ? "cliente registró"
+                  : "clientes registraron"}{" "}
+                {history.customers.visits} visitas. De ellos,{" "}
+                {history.customers.returning} ya habían venido antes del
+                período.
+              </Text>
+              {history.customers.visits === 0 && (
+                <Text variant="muted">
+                  No hay visitas registradas en este período y local.
+                </Text>
+              )}
+            </Card>
+          )}
+          {history.promos && (
+            <Card className="grid gap-4">
+              <Heading level={2}>Promos del período</Heading>
+              <Text variant="muted">
+                Descuentos y ventas en los mismos tickets. Estas ventas no
+                indican que la promo las haya causado.
+              </Text>
+              {history.promos.length ? (
+                <ul className="grid gap-3">
+                  {history.promos.map((p) => (
+                    <li key={p.id}>
+                      <Text>
+                        {p.label}: {money(p.discountMinor)} en descuentos y{" "}
+                        {money(p.salesMinor)} en ventas asociadas.
+                      </Text>
+                      {p.costMinor !== null && p.costMinor > 0 && (
+                        <Text variant="small">
+                          Costo de premios registrado: {money(p.costMinor)}.
+                        </Text>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <Text variant="muted">
+                  No hay promos registradas en este período y local.
+                </Text>
+              )}
+            </Card>
+          )}
           <section id="calculo">
             <Card className="grid gap-4">
               <Heading level={2}>El cálculo de este mes</Heading>

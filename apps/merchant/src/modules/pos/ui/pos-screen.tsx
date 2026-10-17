@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { and, asc, eq } from "drizzle-orm";
 import { getDb } from "@mi-pasaporte/db";
 import { locations } from "@mi-pasaporte/db/schema";
@@ -15,5 +16,9 @@ export async function PosScreen() {
       ),
     )
     .orderBy(asc(locations.name));
-  return <PosConsole locations={locationList} />;
+  return (
+    <Suspense>
+      <PosConsole locations={locationList} />
+    </Suspense>
+  );
 }

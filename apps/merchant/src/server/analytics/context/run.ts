@@ -6,7 +6,11 @@ import { loadCalendar } from "./calendar";
 import { localMetricDay } from "../ingestion/apply";
 import { visualCrossingProvider, type WeatherProvider } from "./weather";
 export async function ingestExternalContext(
-  options: { now?: Date; provider?: WeatherProvider } = {},
+  options: {
+    now?: Date;
+    provider?: WeatherProvider;
+    minimumLocalHour?: number;
+  } = {},
 ) {
   const now = options.now ?? new Date(),
     provider =
@@ -38,7 +42,7 @@ export async function ingestExternalContext(
           hourCycle: "h23",
         }).format(now),
       );
-    if (hour < 6 || !provider) {
+    if (hour < (options.minimumLocalHour ?? 6) || !provider) {
       skipped++;
       continue;
     }
