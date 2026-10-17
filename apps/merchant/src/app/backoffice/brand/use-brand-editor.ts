@@ -1,10 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import {
-  canonicalVatRate,
-  resultingBrandVat,
-} from "@mi-pasaporte/domain/server/brand/vat";
-import {
   brandColors,
   BrandRequestError,
   requestBrand,
@@ -92,14 +88,6 @@ export function useBrandEditor() {
       setError("Revisa el nombre y los colores de marca.");
       return;
     }
-    let saleVatRate: string | null;
-    try {
-      saleVatRate = canonicalVatRate(draft.saleVatRate);
-      resultingBrandVat({ ...draft, saleVatRate }, {});
-    } catch (reason) {
-      failure(reason);
-      return;
-    }
     const notify = tour.ticket();
     const snapshot = draft;
     inFlight.current = true;
@@ -113,11 +101,6 @@ export function useBrandEditor() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           name: snapshot.name,
-          timezone: snapshot.timezone,
-          currencyCode: snapshot.currencyCode,
-          chargesVat: snapshot.chargesVat,
-          saleVatRate,
-          recoversPurchaseVat: snapshot.recoversPurchaseVat,
           brandPrimaryColor: snapshot.brandPrimaryColor,
           brandComplementaryColor: snapshot.brandComplementaryColor,
           brandAccentColor: snapshot.brandAccentColor,

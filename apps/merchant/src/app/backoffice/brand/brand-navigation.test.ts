@@ -18,3 +18,12 @@ it("publica Clientes para el personal con permiso de mostrador", () => {
     "/backoffice/customers",
   );
 });
+
+it("Negocio se delega solo con business, sin heredar brand", () => {
+  expect(delegatedLinks(["business"]).map((link) => link.href)).toEqual([
+    "/backoffice/business",
+  ]);
+  expect(delegatedLinks(["brand"]).map((link) => link.href)).not.toContain(
+    "/backoffice/business",
+  );
+});

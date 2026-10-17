@@ -40,16 +40,6 @@ export function BrandRecovery({
           <dl>
             <dt>Nombre</dt>
             <dd>{currentBrand.name}</dd>
-            <dt>Zona horaria</dt>
-            <dd>{currentBrand.timezone}</dd>
-            <dt>Moneda</dt>
-            <dd>{currentBrand.currencyCode}</dd>
-            <dt>¿Cobras IVA?</dt>
-            <dd>{currentBrand.chargesVat ? "Sí" : "No"}</dd>
-            <dt>Tasa de IVA de venta (%)</dt>
-            <dd>{currentBrand.saleVatRate ?? "Sin cargar"}</dd>
-            <dt>¿Recuperas el IVA de tus compras?</dt>
-            <dd>{currentBrand.recoversPurchaseVat ? "Sí" : "No"}</dd>
             <dt>Colores</dt>
             <dd>
               {currentBrand.brandPrimaryColor} ·{" "}

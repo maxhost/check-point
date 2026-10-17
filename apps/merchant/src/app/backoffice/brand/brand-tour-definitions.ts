@@ -33,16 +33,6 @@ export const BRAND_HELP: { id: BrandTask; title: string; body: string }[] = [
     title: "Ajustar los colores",
     body: "Define tu paleta y revisa la vista previa.",
   },
-  {
-    id: "change-timezone",
-    title: "Cambiar la zona horaria",
-    body: "Revisa cómo se interpretan fechas y horarios.",
-  },
-  {
-    id: "change-currency",
-    title: "Cambiar la moneda",
-    body: "Elige la moneda en la que se muestran los precios.",
-  },
 ];
 export function brandOnboardingStart() {
   const steps = [
@@ -57,14 +47,9 @@ export function brandOnboardingStart() {
       "Ajusta primario, complementario y acento. La vista previa muestra el borrador antes de guardarlo.",
     ],
     [
-      "regional",
-      "Revisa horarios y moneda",
-      "La zona horaria define fechas y horarios; la moneda se usa para mostrar los precios del catálogo.",
-    ],
-    [
       "save",
       "Aplica tus cambios cuando estén listos",
-      "Guardar marca aplica todo el borrador. Elegir o quitar un logo todavía no guarda esos cambios.",
+      "Guardar marca aplica el nombre, logo y colores del borrador. Elegir o quitar un logo todavía no guarda esos cambios.",
     ],
     [
       "help",
@@ -111,21 +96,13 @@ const COPY: Record<BrandPhase, [string, string]> = {
     "Elige el color de acento",
     "Completa tu paleta con un tercer tono. Puedes conservar el actual.",
   ],
-  timezone: [
-    "Elige la zona horaria",
-    "Define las fechas y horarios de programas y campañas. Puedes conservar la actual.",
-  ],
-  currency: [
-    "Elige la moneda",
-    "Cambia la moneda mostrada en los precios. No convierte los importes existentes. Puedes conservar la actual.",
-  ],
   preview: [
     "Revisa la vista previa",
     "Estos son tus cambios en el borrador. Todavía no se guardaron.",
   ],
   save: [
     "Guarda la marca",
-    "Se guardarán todos los cambios pendientes de la marca, incluidos los de otras secciones. Pulsa Guardar marca y espera la confirmación.",
+    "Se guardarán el nombre, logo y colores pendientes de tu marca. Pulsa Guardar marca y espera la confirmación.",
   ],
   success: [
     "Marca guardada",

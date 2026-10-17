@@ -10,10 +10,16 @@ import { PERMISSIONS, errorCopy } from "./staff-contract";
  * orden de la pantalla es de producto y no tiene por que ser el del catalogo.
  */
 describe("los permisos de la pantalla salen del catalogo cerrado", () => {
-  it("ofrece exactamente los siete permisos del catalogo", () => {
+  it("ofrece exactamente los permisos del catalogo", () => {
     expect([...PERMISSIONS.map((permission) => permission.id)].sort()).toEqual(
       [...CATALOGO].sort(),
     );
+  });
+
+  it("permite delegar Negocio con un permiso propio", () => {
+    expect(
+      PERMISSIONS.find((permission) => permission.id === "business"),
+    ).toMatchObject({ label: "Negocio" });
   });
 
   it("abre con el recomendado y cierra con el peligroso", () => {

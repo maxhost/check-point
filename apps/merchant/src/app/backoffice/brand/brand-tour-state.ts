@@ -1,10 +1,5 @@
 export type BrandTask =
-  | "change-name"
-  | "change-logo"
-  | "remove-logo"
-  | "change-colors"
-  | "change-timezone"
-  | "change-currency";
+  "change-name" | "change-logo" | "remove-logo" | "change-colors";
 export type BrandPhase =
   | "name"
   | "logo"
@@ -13,8 +8,6 @@ export type BrandPhase =
   | "primary"
   | "complementary"
   | "accent"
-  | "timezone"
-  | "currency"
   | "preview"
   | "save"
   | "success";
@@ -38,8 +31,6 @@ export const brandTaskPhases: Record<BrandTask, BrandPhase[]> = {
     "save",
     "success",
   ],
-  "change-timezone": ["timezone", "save", "success"],
-  "change-currency": ["currency", "save", "success"],
 };
 export function transitionBrandTour(
   session: BrandTourSession,

@@ -44,38 +44,17 @@ it("GET no JSON permite presentar error de lectura", async () => {
   });
 });
 
-it("requires the private fiscal DTO, canonical rates and a consistent complete state", () => {
+it("accepts identity without exposing regional or fiscal data", () => {
   const brand = {
     id: "brand-1",
     name: "Marca",
-    timezone: "America/Guayaquil",
-    currencyCode: "USD",
     brandPrimaryColor: "#123ABC",
     brandComplementaryColor: "#BADA55",
     brandAccentColor: "#F0F0F0",
     brandRevision: 1,
     logoVersion: 0,
     logoPath: null,
-    chargesVat: false,
-    saleVatRate: null,
-    recoversPurchaseVat: false,
   };
   expect(isBrand(brand)).toBe(true);
-  expect(isBrand({ ...brand, chargesVat: true, saleVatRate: "0.00" })).toBe(
-    true,
-  );
-  expect(isBrand({ ...brand, chargesVat: true, saleVatRate: "100.00" })).toBe(
-    true,
-  );
-  for (const patch of [
-    { chargesVat: true },
-    { chargesVat: "false" },
-    { recoversPurchaseVat: 1 },
-    { saleVatRate: undefined },
-    { saleVatRate: 15 },
-    { saleVatRate: "15" },
-    { saleVatRate: "0015.00" },
-    { saleVatRate: "100.01" },
-  ])
-    expect(isBrand({ ...brand, ...patch })).toBe(false);
+  expect(isBrand({ ...brand, name: undefined })).toBe(false);
 });

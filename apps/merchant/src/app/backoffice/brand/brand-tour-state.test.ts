@@ -9,9 +9,12 @@ import {
   brandOnboardingStart,
   wantsBrandOnboardingTour,
 } from "./brand-tour-definitions";
-it("publica cinco pasos y seis tareas con entradas coherentes", () => {
-  expect(brandOnboardingStart().steps).toHaveLength(5);
-  expect(BRAND_HELP).toHaveLength(6);
+it("publica cuatro pasos y cuatro tareas con entradas coherentes", () => {
+  expect(brandOnboardingStart().steps).toHaveLength(4);
+  expect(BRAND_HELP).toHaveLength(4);
+  expect(
+    brandOnboardingStart().steps.map((step) => step.element),
+  ).not.toContain('[data-tour="brand-regional"]');
   for (const item of BRAND_HELP)
     expect(brandTaskPhases[item.id]).toContain("save");
   expect(wantsBrandOnboardingTour("?tour=onboarding&keep=1")).toBe(true);
