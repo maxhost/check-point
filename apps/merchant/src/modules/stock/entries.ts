@@ -3,6 +3,8 @@ import { and, desc, eq } from "drizzle-orm";
 import { getDb, withDbTransaction } from "@mi-pasaporte/db";
 import { stockItems, stockMovements } from "@mi-pasaporte/db/schema";
 import { pgErrorCode } from "@mi-pasaporte/domain/server/counter/core";
+import { isUuid } from "@mi-pasaporte/domain/server/counter/core";
+import { formatDecimal, fromDb } from "../decimal";
 import { ModuleError, invalidBody } from "../errors";
 import {
   type ItemDTO,
@@ -267,4 +269,50 @@ export async function listLog(
     itemName: row.itemName,
     unit: row.unit as StockUnit,
   }));
+}
+
+/** Detail is tenant/local bounded and remains available outside the latest 200 movements. */
+export async function countDetail(
+  businessId: string,
+  movementId: string,
+  rawLocationId: unknown,
+) {
+  const location = await resolveLocation(businessId, rawLocationId);
+  if (!isUuid(movementId))
+    throw new ModuleError(404, "count_not_found", "Ese conteo no existe.");
+  const [row] = await getDb()
+    .select({
+      ...movementColumns,
+      itemId: stockItems.id,
+      itemName: stockItems.name,
+      unit: stockItems.unit,
+    })
+    .from(stockMovements)
+    .innerJoin(
+      stockItems,
+      and(
+        eq(stockItems.id, stockMovements.itemId),
+        eq(stockItems.businessId, businessId),
+      ),
+    )
+    .where(
+      and(
+        eq(stockMovements.id, movementId),
+        eq(stockMovements.businessId, businessId),
+        eq(stockMovements.locationId, location.id),
+        eq(stockMovements.kind, "adjustment"),
+      ),
+    );
+  if (!row || row.countedQuantity === null)
+    throw new ModuleError(404, "count_not_found", "Ese conteo no existe.");
+  return {
+    ...toMovementDTO(row),
+    itemId: row.itemId,
+    itemName: row.itemName,
+    unit: row.unit,
+    theoreticalQuantity: formatDecimal(
+      fromDb(row.countedQuantity, 3) - fromDb(row.quantity, 3),
+      3,
+    ),
+  };
 }

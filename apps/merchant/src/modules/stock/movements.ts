@@ -1,3 +1,9 @@
+import { gapMoneyMinor } from "./server/analytics-facts";
+import {
+  publishPurchase,
+  publishAdjustment,
+  stockCurrency,
+} from "./server/analytics-events";
 import { stockSubscribers } from "./count";
 import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
 import { type DbTransaction, getDb, withDbTransaction } from "@mi-pasaporte/db";
@@ -236,6 +242,25 @@ export async function applyPurchase(
         eq(stockItemLocations.itemId, item.id),
       ),
     );
+  await publishPurchase(tx, args.businessId, {
+    eventVersion: 1,
+    movementId: movement.id,
+    itemId: item.id,
+    itemLabel: item.name,
+    itemUnit: item.unit,
+    locationId: args.locationId,
+    occurredAt: movement.occurredAt.toISOString(),
+    observedAt: new Date().toISOString(),
+    quantity: movement.quantity,
+    totalCost: movement.totalCost,
+    unitCostBefore: pair.weightedAverageUnitCost,
+    unitCostAfter: weightedAverageUnitCost,
+    onHandAfter: formatDecimal(
+      previousQuantity + args.quantity,
+      QUANTITY.scale,
+    ),
+    ...(await stockCurrency(tx, args.businessId)),
+  });
   return {
     movement: toMovementDTO(movement),
     item: { ...item, lastUnitCost, weightedAverageUnitCost },
@@ -350,6 +375,31 @@ export async function recordAdjustment(
           createdByUserId: userId,
         })
         .returning(movementColumns);
+      const currency = await stockCurrency(tx, businessId);
+      await publishAdjustment(tx, businessId, {
+        eventVersion: 1,
+        movementId: movement.id,
+        itemId: item.id,
+        itemLabel: item.name,
+        itemUnit: item.unit,
+        locationId: location.id,
+        occurredAt: movement.occurredAt.toISOString(),
+        observedAt: new Date().toISOString(),
+        quantity: movement.quantity,
+        countedQuantity: movement.countedQuantity!,
+        theoreticalQuantity: formatDecimal(onHand, QUANTITY.scale),
+        onHandAfter: formatDecimal(counted, QUANTITY.scale),
+        unitCost: pair.weightedAverageUnitCost,
+        gapAmountMinor:
+          pair.weightedAverageUnitCost === null
+            ? null
+            : gapMoneyMinor(
+                movement.quantity,
+                pair.weightedAverageUnitCost,
+                currency.minorUnit,
+              ),
+        ...currency,
+      });
       return {
         movement: toMovementDTO(movement),
         item: toItemDTO(

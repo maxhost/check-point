@@ -54,7 +54,7 @@ export async function startCatalogHarness(
             namespace: "fixture",
           }));
           builder.onLoad({ filter: /.*/, namespace: "fixture" }, () => ({
-            contents: `import React from 'react'; export default function Link({href,children,...props}) { return React.createElement('a',{href,...props},children); } export function useSelectedLayoutSegment(){return ${JSON.stringify(selectedSegment)}} export function usePathname(){return new URLSearchParams(window.location.search).get("fixturePath") || "/backoffice/loyalty"} export function useRouter(){return {push(href){window.location.href=href},refresh(){window.dispatchEvent(new Event('fixture:router-refresh'))}}}`,
+            contents: `import React from 'react'; export default function Link({href,children,...props}) { return React.createElement('a',{href,...props},children); } export function useSearchParams(){return new URLSearchParams(window.location.search)} export function useSelectedLayoutSegment(){return ${JSON.stringify(selectedSegment)}} export function usePathname(){return new URLSearchParams(window.location.search).get("fixturePath") || "/backoffice/loyalty"} export function useRouter(){return {push(href){window.location.href=href},refresh(){window.dispatchEvent(new Event('fixture:router-refresh'))}}}`,
             loader: "js",
             resolveDir: path.resolve("apps/merchant"),
           }));

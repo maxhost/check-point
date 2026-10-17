@@ -1,11 +1,12 @@
+import { purchaseSubscription } from "./purchase-cost-event";
 import { publishConsumptionApplied } from "./consumption-event";
-import type { SaleEventSubscription } from "../../../server/module-events/types";
+import type { EventSubscription } from "../../../server/module-events/types";
 import { applyConsumption } from "../../stock/consumption";
 import { capturedConsumption } from "./model/captured";
 import { persistProvenance } from "./model/provenance";
 
 /** Both captured formats are immutable; the transaction also owns delivery acknowledgment. */
-export const eventSubscriptions: readonly SaleEventSubscription[] = [
+export const eventSubscriptions = [
   {
     eventType: "sale.closed",
     resourceType: "product",
@@ -29,4 +30,5 @@ export const eventSubscriptions: readonly SaleEventSubscription[] = [
       await publishConsumptionApplied(tx, event, captured.expectedLines);
     },
   },
-];
+  purchaseSubscription,
+] as const satisfies readonly EventSubscription[];
