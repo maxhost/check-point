@@ -200,7 +200,7 @@ Reemplaza el enfoque de la 0231 («Rentabilidad»: costos fijos + sueldo en la f
    es un gasto del mes en curso. El dinero sale hoy».
 4. **Sueldos en Gastos**, no en la ficha de Equipo. «Luis» es un nombre dentro de Gastos, sin alta en Equipo. Horas
    extra = otro gasto («Luis horas extras 40»).
-5. **Medios de pago pasan al core, en Comercio (Marca)** (owner 2026-10-16; antes había dicho Configuración → Medios),
+5. **Medios de pago pasan al core, en el espacio core «Negocio»** (owner 2026-10-16; antes había dicho Configuración → Medios y después Marca; Negocio también recibe Regional y Fiscal desde Marca),
    con la comisión dentro de cada medio. Se configura una vez. **El POS los consume.** La comisión de cada venta =
    medio elegido en la venta × su porcentaje; **tiene que quedar congelada** (owner: que un cambio de comisión no
    recalcule el histórico). Hoy ya es así (ADR 0149): cada cambio de comisión crea una revisión inmutable, la venta
@@ -326,10 +326,14 @@ registrando siempre: de ahí salen stock, costos y, más adelante, Analíticas.
 de prueba (ids, sin datos personales), estado final del flag. Commit en `dev`, sin push extra.
 ```
 
-## Prompt — Medios de pago al core (spec 0235 + ADR 0150; 2026-10-16)
+## Prompt — Negocio + medios de pago al core (spec 0235 + ADR 0150; 2026-10-16)
+
+Owner 2026-10-16: «vamos con Negocio… Marca para el branding, Negocio para las configuraciones del negocio que incluso
+en el futuro pueden ser un montón de cosas». Sobre quién tiene `brand` hoy: «no me importa, mientras el owner del
+negocio conserve el acceso a la nueva sección Negocio es suficiente».
 
 ```
-# Encargo: SPEC chica + ADR — medios de pago pasan al core (Comercio/Marca)
+# Encargo: SPEC chica + ADR — espacio core «Negocio» y medios de pago al core
 # Solo documentos. Nada de código ni migración generada en este encargo.
 
 ## Reglas
@@ -340,6 +344,7 @@ de prueba (ids, sin datos personales), estado final del flag. Commit en `dev`, s
 - Nivel L2 (dinero + migración a PROD con datos reales): spec CHICA (`docs/specs/TEMPLATE-CHICA.md`) + ADR.
   Números: **spec 0235, ADR 0150** (quedaron libres: P3 cerró sin spec).
 - **Conservar el selector de medio que hoy tiene el POS al cobrar.** Cambia de dónde lee, no se borra.
+- **Conservar Marca** con su identidad (logo, colores, nombre): solo se le sacan Regional y Fiscal.
 
 ## Orden obligatorio
 1. Hacele al owner las preguntas de abajo (con tu recomendación) y esperá sus respuestas.
@@ -348,8 +353,10 @@ de prueba (ids, sin datos personales), estado final del flag. Commit en `dev`, s
 
 ## Para qué sirve
 Los medios de pago y su comisión son del comercio, no del POS. Una barbería que no usa el POS también cobra con
-tarjeta o DeUna. El owner decidió: **los medios pasan al core, se editan en Comercio (Marca) → Medios de pago, con
-la comisión dentro de cada medio; el POS (y en el futuro otros módulos) los consume.** Además el módulo
+tarjeta o DeUna. El owner decidió: **los medios pasan al core y se editan en un espacio core nuevo, «Negocio», con
+la comisión dentro de cada medio; el POS (y en el futuro otros módulos) los consume.** «Negocio» junta las
+configuraciones del negocio (hoy: Medios de pago, Configuración regional, Datos fiscales; en el futuro, más cosas).
+Marca queda solo para el branding. Además el módulo
 `profitability` va a pasar a ser **Gastos** (`expenses`), que solo guarda gastos: las comisiones tienen que salir de
 ese módulo en este encargo (Gastos va después, en serie).
 
@@ -369,12 +376,22 @@ ese módulo en este encargo (Gastos va después, en serie).
 - **Congelado (ADR 0149), se conserva tal cual:** cada cambio de comisión crea una revisión inmutable; la venta
   captura al cerrar el id de la revisión vigente; el resultado se guarda con su porcentaje. Un cambio de comisión
   nunca recalcula ventas pasadas (el owner lo pidió explícitamente).
-- Marca: `app/backoffice/brand/` (guardia: permiso `brand`).
+- Marca: `app/backoffice/brand/` (guardia: permiso `brand`). Hoy incluye Configuración regional
+  (`regional-fields.tsx`) y Datos fiscales (`fiscal-fields.tsx`), que también los ve quien tiene `brand`. El tour de
+  Marca (`brand-tour-definitions.ts`) y el checklist de arranque (`server/onboarding/`) los referencian: verificalo.
+- Permisos core: `packages/db/src/permissions-catalog.ts` + check `business_membership_permissions_check` en la base.
+- «Configuración» (`app/backoffice/settings/`) es otra cosa: solo owner, toggles de módulos y sus paneles. No se toca.
 - **PROD (leído 2026-10-16):** 4 comercios; `pos.payment_method` **22 filas**, `pos.payment_method_initialization` 4,
   `pos.order_payment` **2**, `commission_revision` 0, `payment_commission` 0, `core.module_event` 0.
 
 ## Decisiones del owner (no se reabren)
-1. Medios de pago y comisión → **core**, pantalla en **Comercio (Marca) → Medios de pago**. El POS consume.
+1. Medios de pago y comisión → **core**, en el espacio nuevo **«Negocio»** → Medios de pago. El POS consume.
+1b. **«Negocio» es core, no un módulo** (no se apaga). Secciones: **Medios de pago, Configuración regional, Datos
+    fiscales**. Regional y Fiscal se **mudan** desde Marca tal como están (se borran de Marca). Marca = branding.
+1c. **El owner siempre tiene acceso a Negocio**; hay un **permiso propio** para delegarlo a alguien del staff. A quién
+    tiene `brand` hoy no se le da el permiso nuevo automáticamente (owner: «no me importa, mientras el owner conserve
+    el acceso»).
+1d. Menú: «Negocio» entra como un ítem más, sin agrupar (owner: agrupar cuando haya 2–3 rubros).
 2. La comisión se configura dentro de cada medio, una vez (no mes a mes).
 3. Comisión de una venta = medio elegido en la venta × su configuración, **congelada al cerrar**.
 4. Lo de P1 sigue: lista que el comercio amplía o recorta, catálogo por país con forma de cobro y sin tasas, medios
@@ -385,7 +402,7 @@ ese módulo en este encargo (Gastos va después, en serie).
 ## Preguntas para el owner (con tu recomendación)
 - Cuándo se cargan los medios: antes era «al prender el POS». Recomendación: al crear el comercio; los 4 actuales,
   en la migración (ya los tienen).
-- Quién ve y edita Medios de pago: recomendación, el permiso `brand`, como el resto de Marca.
+- Id del permiso nuevo y ruta de la pantalla: proponé (p. ej. permiso `business`, ruta `/backoffice/business`).
 - Dónde se calcula la comisión: al cerrar la venta (el core ya tiene la configuración a mano, sin suscriptor) o
   después como hoy. Proponé en el ADR con costo y beneficio.
 - Medio sin comisión cargada: el plan P1 dice «0 con aviso» y el ADR 0149 trata la falta de configuración como
@@ -396,11 +413,14 @@ ese módulo en este encargo (Gastos va después, en serie).
   `method_provider_id = "pos"` en los pagos existentes, y el orden de despliegue sin dejar al POS sin medios.
 - Que el congelado por revisión de la 0149 se mantiene igual, con un test que lo pruebe (cambiar la comisión no mueve
   una venta ya cerrada).
-- Qué se borra del POS y de `profitability` (rutas, tablas, código), sin dejar redirects a rutas borradas.
-- La pantalla de Marca → Medios de pago: lista, agregar desde el catálogo del país o libre, archivar, comisión por
+- Qué se borra del POS, de `profitability` y de Marca (rutas, tablas, código, pasos del tour), sin dejar redirects a
+  rutas borradas; cómo quedan el tour y el checklist.
+- Migración del permiso: alta en el catálogo y en el check de la base, sin backfill a nadie.
+- La pantalla Negocio con sus tres secciones; Medios de pago: lista, agregar desde el catálogo del país o libre, archivar, comisión por
   medio mostrando solo los campos de su forma de cobro.
 - Pruebas mínimas y enfocadas: migración con datos como los de PROD, cierre POS con el medio desde core, congelado,
-  aislamiento entre comercios. No suites enteras.
+  aislamiento entre comercios, acceso a Negocio (owner sí; staff solo con el permiso; `brand` solo ya no ve
+  fiscal/regional). No suites enteras.
 
 ## Fuera de alcance
 Gastos y el renombre del módulo, Analíticas, generalizar `module_event`, propinas, anulaciones, diferidos,
