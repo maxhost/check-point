@@ -257,9 +257,15 @@ export function buildFactCandidates(
         )
         .map((r) => r.amountMinor),
     );
+    const localRevenue = rows.filter(
+      (r) => r.metric === "revenue" && r.locationId === fact.locationId,
+    );
+    const totalSales = sumIntegers(localRevenue.map((r) => r.amountMinor));
+    const tickets = sumIntegers(localRevenue.map((r) => r.count));
     if (
       quantity <= 0 ||
-      loss < 3 * 10 ** input.minorUnit ||
+      loss < 0 ||
+      (tickets > 0 && BigInt(loss) * BigInt(tickets) < BigInt(totalSales)) ||
       BigInt(loss) * 100n < BigInt(weeklySales)
     )
       return [];

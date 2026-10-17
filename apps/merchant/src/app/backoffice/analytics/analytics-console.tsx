@@ -184,6 +184,50 @@ export default function AnalyticsConsole({
               </Text>
             )}
           </Card>
+          <Card className="grid gap-4">
+            <Heading level={2}>Stock e insumos</Heading>
+            {history.stock.valueMinor !== null ? (
+              <Text>
+                Valor del stock al {history.to}:{" "}
+                {money(history.stock.valueMinor)}.
+              </Text>
+            ) : history.stock.valuedItems > 0 ? (
+              <Text>
+                Valor conocido del stock: {money(history.stock.knownValueMinor)}
+                . Falta conocer el costo de {history.stock.unvaluedItems}{" "}
+                {history.stock.unvaluedItems === 1 ? "insumo" : "insumos"} para
+                completar el total.
+              </Text>
+            ) : (
+              <Text variant="muted">
+                Todavía no hay existencias con costo registrado para valorar tu
+                stock.
+              </Text>
+            )}
+            {history.stock.averageIncrease === null ? (
+              <Text variant="muted">
+                Necesitas al menos dos costos registrados de un mismo insumo y
+                local para comparar sus subas.
+              </Text>
+            ) : history.stock.increaseDays === 0 ? (
+              <Text>
+                No se registraron subas de los insumos comparables en este
+                período.
+              </Text>
+            ) : (
+              <Text>
+                En este período el costo de tus insumos varió en promedio{" "}
+                {new Intl.NumberFormat("es-EC", {
+                  style: "percent",
+                  maximumFractionDigits: 1,
+                }).format(history.stock.averageIncrease)}
+                , comparando el primer y el último costo conocidos.
+                {history.stock.averageDaysBetweenIncreases !== null
+                  ? ` Pasaron unos ${Math.round(history.stock.averageDaysBetweenIncreases)} días entre subas de un mismo insumo.`
+                  : " Todavía no hay subas repetidas de un mismo insumo para comparar su frecuencia."}
+              </Text>
+            )}
+          </Card>
           <section id="calculo">
             <Card className="grid gap-4">
               <Heading level={2}>El cálculo de este mes</Heading>
