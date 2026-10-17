@@ -121,6 +121,7 @@ export async function publishConsumptionApplied(
   await appendModuleEvent(tx, {
     businessId: event.businessId,
     eventType: "recipes.consumption.applied",
+    causationEventId: event.id,
     eventVersion: 1,
     sourceId: p.sourceOrderId,
     locationId: p.locationId,

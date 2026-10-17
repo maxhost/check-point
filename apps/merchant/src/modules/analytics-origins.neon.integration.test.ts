@@ -1,3 +1,4 @@
+import { appendModuleEvent } from "../server/module-events/append";
 import { freezeSaleCommission } from "../server/business/commission-close";
 import { eventSubscriptions as recipeSubscriptions } from "./recipes/server/consumption";
 import { metricTranslators as recipeMetrics } from "./recipes/server/metrics";
@@ -20,6 +21,7 @@ import {
 } from "@mi-pasaporte/db/schema";
 import { and, eq } from "drizzle-orm";
 import {
+  enableModules,
   seedModuleWorld,
   dropModuleWorld,
   seedProduct,
@@ -32,10 +34,22 @@ describe.runIf(enabled)("AN1 atomic real producers", { timeout: 30000 }, () => {
   let world: ModuleWorld;
   beforeAll(async () => {
     world = await seedModuleWorld("AN1 origins");
+    await enableModules(world, ["stock", "recipes"]);
   }, 30000);
   afterAll(async () => {
     await dropModuleWorld(world);
   }, 30000);
+  const parentEvent = (payload: SaleClosedEventV1) =>
+    withDbTransaction((tx) =>
+      appendModuleEvent(tx, {
+        businessId: world.businessId,
+        eventType: "sale.closed",
+        eventVersion: payload.eventVersion,
+        sourceId: payload.sourceOrderId,
+        locationId: payload.locationId,
+        payload,
+      }),
+    );
   it("real commission producer omits unconfigured totals and rolls its event back with frozen origin", async () => {
     const methodId = randomUUID(),
       paymentId = randomUUID(),
@@ -194,10 +208,11 @@ describe.runIf(enabled)("AN1 atomic real producers", { timeout: 30000 }, () => {
         },
       ],
     };
+    const parent = await parentEvent(payload);
     await expect(
       withDbTransaction(async (tx) => {
         await recipeSubscriptions[0].handler(tx, {
-          id: randomUUID(),
+          id: parent.eventId,
           businessId: world.businessId,
           payload,
         });
@@ -221,7 +236,12 @@ describe.runIf(enabled)("AN1 atomic real producers", { timeout: 30000 }, () => {
       await getDb()
         .select()
         .from(moduleEvents)
-        .where(eq(moduleEvents.sourceId, payload.sourceOrderId)),
+        .where(
+          and(
+            eq(moduleEvents.sourceId, payload.sourceOrderId),
+            eq(moduleEvents.eventType, "recipes.consumption.applied"),
+          ),
+        ),
     ).toEqual([]);
     expect(
       await getDb()
@@ -234,9 +254,10 @@ describe.runIf(enabled)("AN1 atomic real producers", { timeout: 30000 }, () => {
       sourceOrderId: randomUUID(),
       lines: payload.lines.map((l) => ({ ...l, resourceVersions: [] })),
     };
+    const missingParent = await parentEvent(missing);
     await withDbTransaction((tx) =>
       recipeSubscriptions[0].handler(tx, {
-        id: randomUUID(),
+        id: missingParent.eventId,
         businessId: world.businessId,
         payload: missing,
       }),
