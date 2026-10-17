@@ -157,17 +157,34 @@ Analíticas no calcula sobre el detalle.
 Owner: «el contexto externo tiene que empezar como dato dentro de la DB asociado a actividades pero sin que permita
 accionar nada al owner… podemos empezar a cargar ya ventas con clima… esto empieza a dar histórico».
 
-- **Una fila por local y día local:** clima observado (máxima, mínima, lluvia, condición), feriado (nacional, local o
-  trasladado, con nombre) y marcas de calendario curado. Se une a las ventas por (local, día); no se copia a cada venta.
-- **Clima:** por coordenadas del local (`location.latitude/longitude`, que pueden ser nulas: sin coordenadas, sin clima
-  y sin inventar). Fuente candidata: WeatherAPI.com (plan gratis declarado con uso comercial; **verificar sus términos
-  antes de implementar**). Open-Meteo gratis queda descartado: sus términos (leídos el 2026-10-16) dicen «You may only
-  use the free API services for non-commercial purposes».
-- **Feriados:** reglas nacionales con traslado (librería `holidays`) + **tabla propia curada** con feriados locales y
-  decretos (Nager.Date, consultado el 2026-10-16, no trae fundación de Quito ni de Guayaquil y no traslada el 24 de
-  mayo).
-- **Calendario curado de Ecuador:** décimo tercero y cuarto (por región), quincenas, inicio de clases (Sierra y Costa),
-  fechas comerciales. Fechas a confirmar con fuentes oficiales al cargarlas.
+Diseño del owner (2026-10-16): tablas de eventos de contexto **por ciudad y país, no por local** — «esa tabla empieza a
+guardar eventos de cada país y ciudad donde operemos (donde exista un comercio que nos use)». Hoy: Ecuador, Cuenca. Se
+une a las ventas por (ciudad del local, día local); no se copia a cada venta.
+
+- **Catálogo de ciudades:** país, provincia/estado, ciudad, coordenadas del centro, zona horaria. Cada local apunta a
+  su ciudad. Hoy el local no tiene columna de ciudad (tiene `country_code`, coordenadas y `address_snapshot` de
+  Geoapify): la ciudad y la provincia salen de esa dirección normalizada y se guardan en el local. Una ciudad empieza a
+  juntar datos **con su primer comercio activo** y deja de juntarlos sin ninguno; su histórico se conserva. Sin
+  reconstrucción hacia atrás.
+- **Zonas curadas, genéricas para LatAm:** además de la provincia (automática), una ciudad puede pertenecer a zonas
+  definidas a mano por país (Ecuador: Sierra, Costa, Amazonía, Galápagos; Argentina: NOA, Patagonia…). Owner: tiene
+  que servir para Argentina, Chile, Colombia; no hay una fuente común de regiones, así que se curan al entrar a cada
+  país.
+- **`eventos_clima`:** ciudad | fecha | tipo (**pronóstico** tomado a la mañana, **observado** tomado al día
+  siguiente) | máxima | mínima | lluvia | condición | fuente | cuándo se tomó. Owner: los dos, «nos sirve para
+  optimizarlo porque uno puede ser que diga lluvia en la mañana y medimos al día siguiente si realmente llovió». El
+  pronóstico no se puede recuperar después: se guarda en el momento.
+- **Fuente de clima:** candidata WeatherAPI.com (plan gratis declarado con uso comercial; **verificar sus términos y
+  que dé observado del día anterior antes de implementar**). Open-Meteo gratis queda descartado: sus términos (leídos el
+  2026-10-16) dicen «You may only use the free API services for non-commercial purposes».
+- **`eventos_calendario`:** fecha | alcance (país, provincia, zona o ciudad) | tipo (feriado, feriado trasladado,
+  pago — décimos, quincena —, clases, fecha comercial, **deportivo**) | nombre | fuente (regla o curado).
+  - Feriados: reglas nacionales con traslado (librería `holidays`) + **curado** con feriados locales y decretos
+    (Nager.Date, consultado el 2026-10-16, no trae fundación de Quito ni de Guayaquil y no traslada el 24 de mayo).
+  - Ecuador curado: décimo tercero y cuarto (por zona), quincenas, inicio de clases (Sierra y Costa), fechas
+    comerciales; confirmar con fuentes oficiales al cargarlas.
+  - **Deportivo** (partidos de la selección, liga local): el tipo queda preparado aunque todavía no haya forma de
+    cargarlo (owner: «dejemos preparado para que puedan entrar incluso si todavía no hacemos el input»).
 - **Nada de esto genera tarjetas ni entra en un pronóstico en la primera versión.**
 
 ### 6. Fuera de la primera versión
