@@ -41,6 +41,7 @@ describe("AN1 pure captured translators", () => {
       eventType: "recipes.consumption.applied",
       payload: {
         sourceOrderId: "order",
+        items: [],
         locationId: "local",
         closedAt: "2026-10-17T04:30:00Z",
         lines: [
@@ -54,10 +55,20 @@ describe("AN1 pure captured translators", () => {
         ],
       },
     };
-    expect(recipes[0].translate(event)).toEqual(
-      recipes[0].translate(structuredClone(event)),
+    expect(
+      recipes
+        .find((t) => t.eventType === "recipes.consumption.applied")!
+        .translate(event),
+    ).toEqual(
+      recipes
+        .find((t) => t.eventType === "recipes.consumption.applied")!
+        .translate(structuredClone(event)),
     );
-    expect(recipes[0].translate(event).rows).toHaveLength(2);
+    expect(
+      recipes
+        .find((t) => t.eventType === "recipes.consumption.applied")!
+        .translate(event).rows,
+    ).toHaveLength(2);
     expect(
       coreMetricTranslators[0].translate({
         ...envelope,
@@ -150,7 +161,9 @@ describe("AN1 exact covered money", () => {
         items: [],
       },
     };
-    const rows = recipes[0].translate(event).rows;
+    const rows = recipes
+      .find((t) => t.eventType === "recipes.consumption.applied")!
+      .translate(event).rows;
     expect(rows.find((r) => r.metric === "revenue_with_cost")).toMatchObject({
       amountMinor: "100",
       count: 1,
@@ -173,6 +186,7 @@ describe("AN1 exact covered money", () => {
       eventType: "recipes.consumption.applied",
       payload: {
         sourceOrderId: "unknown",
+        items: [],
         locationId: "local",
         closedAt: "2026-10-17T15:00:00Z",
         currencyCode: "USD",
@@ -189,14 +203,16 @@ describe("AN1 exact covered money", () => {
       },
     };
     expect(
-      recipes[0]
+      recipes
+        .find((t) => t.eventType === "recipes.consumption.applied")!
         .translate(event)
         .rows.some((r) => r.metric === "payment_commission_with_cost"),
     ).toBe(false);
     const zero = structuredClone(event);
     zero.payload.lines[0].allocatedCommissionMinor = "0" as never;
     expect(
-      recipes[0]
+      recipes
+        .find((t) => t.eventType === "recipes.consumption.applied")!
         .translate(zero)
         .rows.find((r) => r.metric === "payment_commission_with_cost"),
     ).toMatchObject({ amountMinor: "0", count: 1 });
@@ -209,7 +225,9 @@ describe("AN1 exact covered money", () => {
         lines: event.payload.lines.map((l) => ({ ...l, revenueMinor: null })),
       },
     };
-    const rows = recipes[0].translate(legacy).rows;
+    const rows = recipes
+      .find((t) => t.eventType === "recipes.consumption.applied")!
+      .translate(legacy).rows;
     expect(rows.find((r) => r.metric === "cost_of_goods")?.count).toBe(1);
     expect(rows.some((r) => r.metric === "revenue_with_cost")).toBe(false);
   });

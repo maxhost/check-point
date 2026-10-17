@@ -1,0 +1,51 @@
+import { createReadStream } from "node:fs";
+import { createInterface } from "node:readline";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { and, eq, isNotNull, isNull } from "drizzle-orm";
+import { getDb, withDbTransaction } from "@mi-pasaporte/db";
+import { analyticsCities, analyticsWeather, locations } from "@mi-pasaporte/db/schema";
+import { seedModuleWorld, dropModuleWorld, type ModuleWorld } from "../../../modules/modules-integration-support";
+import { resolveCity, refreshActiveCities } from "./cities";
+import { visualCrossingProvider, type WeatherProvider, type WeatherResult } from "./weather";
+const state=vi.hoisted(()=>({provider:undefined as WeatherProvider|undefined}));
+vi.mock("./run",async(importOriginal)=>{
+ const actual=await importOriginal<typeof import("./run")>();
+ return {...actual,ingestExternalContext:()=>actual.ingestExternalContext({provider:state.provider})};
+});
+import { GET } from "../../../app/api/internal/analytics/context/route";
+describe("AN3 single real Visual Crossing proof",{timeout:60_000},()=>{
+ let world:ModuleWorld;
+ const previousSecret=process.env.CRON_SECRET;
+ beforeAll(async()=>{world=await seedModuleWorld("AN3 real climate");},60_000);
+ afterAll(async()=>{if(world) await dropModuleWorld(world);await withDbTransaction(refreshActiveCities);if(previousSecret===undefined) delete process.env.CRON_SECRET;else process.env.CRON_SECRET=previousSecret;},60_000);
+ it("authenticates GET, stores real Cuenca forecast and observed with actual fetchedAt and reports only quota",async()=>{
+  process.env.CRON_SECRET="an3-real-proof-internal-auth";
+  expect((await GET(new Request("http://localhost/api/internal/analytics/context"))).status).toBe(401);
+  await withDbTransaction(refreshActiveCities);
+  const active=()=>getDb().select().from(analyticsCities).where(and(isNotNull(analyticsCities.activeSince),isNull(analyticsCities.activeUntil)));
+  // Stop before credentials/network if any other city could consume quota.
+  expect(await active()).toHaveLength(0);
+  const cityId=await withDbTransaction(tx=>resolveCity(tx,{properties:{city:"Cuenca",state:"Azuay",country_code:"ec",lat:-2.9,lon:-79}},"EC"));
+  expect(cityId).toBeTruthy();
+  await getDb().update(locations).set({cityId}).where(eq(locations.id,world.locationId));
+  await withDbTransaction(refreshActiveCities);
+  expect((await active()).map(city=>({id:city.id,name:city.name,region:city.region,countryCode:city.countryCode}))).toEqual([{id:cityId,name:"Cuenca",region:"Azuay",countryCode:"EC"}]);
+  let key="";
+  const lines=createInterface({input:createReadStream("/Users/maxi/Documents/claude-workspace/check-point/apps/merchant/.env.local"),crlfDelay:Infinity});
+  for await(const line of lines){if(line.startsWith("VISUAL_CROSSING_API_KEY=")){key=line.slice("VISUAL_CROSSING_API_KEY=".length).trim().replace(/^(["'])(.*)\1$/,"$2");lines.close();break;}}
+  if(!key) throw new Error("Weather proof credential unavailable");
+  const real=visualCrossingProvider(key);key="";
+  let calls=0,result:WeatherResult|undefined;
+  state.provider={source:real.source,fetch:async(city,day)=>{if(city.name!=="Cuenca"||city.region!=="Azuay"||city.countryCode!=="EC")throw new Error("Unexpected weather city");calls++;if(calls!==1)throw new Error("Weather proof forbids another call");result=await real.fetch(city,day);return result;}};
+  const before=new Date();
+  const response=await GET(new Request("http://localhost/api/internal/analytics/context",{headers:{authorization:`Bearer ${process.env.CRON_SECRET}`}}));
+  const after=new Date();
+  expect(response.status).toBe(200);expect(await response.json()).toEqual({processed:1,skipped:0});
+  expect(calls).toBe(1);expect(result?.days).toHaveLength(2);expect(result?.queryCost).toBe(2);
+  const rows=await getDb().select().from(analyticsWeather).where(and(eq(analyticsWeather.cityId,cityId!),eq(analyticsWeather.source,"visual_crossing")));
+  expect(rows).toHaveLength(2);expect(rows.map(row=>row.type).sort()).toEqual(["forecast","observed"]);
+  for(const row of rows){expect(row.fetchedAt.getTime()).toBeGreaterThanOrEqual(before.getTime());expect(row.fetchedAt.getTime()).toBeLessThanOrEqual(after.getTime());expect(row.maximum).not.toBeNull();expect(row.minimum).not.toBeNull();}
+  const [stored]=await getDb().select().from(analyticsCities).where(eq(analyticsCities.id,cityId!));expect(stored.timezone).toBe("America/Guayaquil");expect(Number(stored.latitude)).toBeGreaterThan(-3.2);expect(Number(stored.latitude)).toBeLessThan(-2.6);
+  console.info("AN3_REAL_WEATHER",JSON.stringify({cityId,calls,queryCost:result?.queryCost,minimumLocalHour:6,requestStartedAt:before.toISOString(),requestEndedAt:after.toISOString(),rows:rows.map(({day,type,maximum,minimum,rainMm,fetchedAt})=>({day,type,maximum,minimum,rainMm,fetchedAt:fetchedAt.toISOString()}))}));
+ });
+});
