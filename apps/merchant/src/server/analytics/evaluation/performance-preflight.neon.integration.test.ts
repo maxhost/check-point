@@ -37,3 +37,33 @@ describe.skipIf(
     );
   }, 120000);
 });
+
+describe.skipIf(
+  !permisosIntegrationEnabled ||
+    process.env.ANALYTICS_PERF_FINAL_PREPARE !== "1",
+)("AN-1 final exact-contract fixture, target only", () => {
+  it("adds only28days of auxiliary summaries, coherent counts and one closed fixed expense", async () => {
+    const db = getDb();
+    const inserted =
+      await db.execute(sql`insert into analytics.daily_metric(business_id,day,metric,dimension_kind,dimension_id,amount_minor,currency_code,minor_unit,count)
+      select md5('analytics-perf-business:1')::uuid,('2026-10-19'::date-d),m.metric,'product',md5('analytics-perf-product:'||p)::uuid,m.amount,'USD',2,10
+      from generate_series(0,27)d cross join generate_series(1,40)p cross join(values('revenue_with_cost',1000::bigint),('payment_commission_with_cost',50::bigint))m(metric,amount) on conflict do nothing returning metric`);
+    const updated = await db.execute(
+      sql`update analytics.daily_metric set count=10 where business_id=md5('analytics-perf-business:1')::uuid and metric='cost_of_goods' and day between '2026-09-22'::date and '2026-10-19'::date returning day`,
+    );
+    const fixed =
+      await db.execute(sql`insert into analytics.daily_metric(business_id,day,metric,dimension_kind,dimension_id,amount_minor,currency_code,minor_unit)
+      values(md5('analytics-perf-business:1')::uuid,'2026-09-01','expense_fixed','concept',md5('analytics-perf-fixed:1')::uuid,1000000,'USD',2) on conflict do nothing returning metric`);
+    console.log(
+      "PERF_FINAL_TARGET_ADDITIONS",
+      JSON.stringify({
+        auxiliaryRows: inserted.rows.length,
+        updatedCogsCounts: updated.rows.length,
+        closedFixedRows: fixed.rows.length,
+      }),
+    );
+    expect(inserted.rows).toHaveLength(2240);
+    expect(updated.rows).toHaveLength(1120);
+    expect(fixed.rows).toHaveLength(1);
+  }, 30000);
+});

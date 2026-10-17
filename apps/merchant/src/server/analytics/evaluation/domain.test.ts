@@ -51,7 +51,9 @@ function fixture(): AnalyticsInput {
         row(day, "product_revenue", revenue / 2, id, 0, 5),
         row(day, "units_sold", 0, id, 5),
         row(day, "units_with_cost", 0, id, 5),
-        row(day, "cost_of_goods", revenue / 4, id),
+        row(day, "cost_of_goods", revenue / 4, id, 0, 5),
+        row(day, "revenue_with_cost", revenue / 2, id, 0, 5),
+        row(day, "payment_commission_with_cost", 0, id, 0, 5),
       );
   }
   metrics.push(
@@ -160,7 +162,14 @@ describe("AN-1 cards and daily goal", () => {
     ).toContain("primer mes");
     const low = {
       ...input,
-      metrics: input.metrics.filter((r) => r.metric !== "units_with_cost"),
+      metrics: input.metrics.filter(
+        (r) =>
+          ![
+            "units_with_cost",
+            "revenue_with_cost",
+            "payment_commission_with_cost",
+          ].includes(r.metric),
+      ),
     };
     expect(calculateGoal(low).targetMinor).toBeNull();
     expect(buildCandidates(low).some((c) => c.cardKey === "7")).toBe(true);
@@ -215,7 +224,14 @@ describe("AN-1 cards and daily goal", () => {
     const input = fixture();
     const unknown = {
       ...input,
-      metrics: input.metrics.filter((r) => r.metric !== "units_with_cost"),
+      metrics: input.metrics.filter(
+        (r) =>
+          ![
+            "units_with_cost",
+            "revenue_with_cost",
+            "payment_commission_with_cost",
+          ].includes(r.metric),
+      ),
     };
     const c = buildCandidates(unknown).find((c) => c.cardKey === "7")!;
     expect(c.amountMinor).toBe(61000);
@@ -327,7 +343,9 @@ it("low-margin median includes known products with fewer than ten sales", () => 
       row("2026-10-19", "product_revenue", profit * units, id, 0, units),
       row("2026-10-19", "units_sold", 0, id, units),
       row("2026-10-19", "units_with_cost", 0, id, units),
-      row("2026-10-19", "cost_of_goods", 0, id),
+      row("2026-10-19", "cost_of_goods", 0, id, 0, units),
+      row("2026-10-19", "revenue_with_cost", profit * units, id, 0, units),
+      row("2026-10-19", "payment_commission_with_cost", 0, id, 0, units),
     );
   expect(
     buildCandidates(input).find((c) => c.cardKey === "6")?.subjectKey,
@@ -364,4 +382,104 @@ it("without sales uses twenty major units in the business currency, without FX",
     } as CardCandidate;
     expect(cardWeight(card, 0)).toBe(2);
   }
+});
+
+it("uses captured intraday revenue and commission and rejects incomplete legacy pairs", () => {
+  const input = fixture();
+  input.metrics = [
+    row("2026-09-01", "expense_fixed", 58, "rent"),
+    row("2026-10-19", "revenue", 1000, null, 0, 2),
+    row("2026-10-19", "product_revenue", 1000, "coffee", 0, 2),
+    row("2026-10-19", "units_sold", 0, "coffee", 2),
+    row("2026-10-19", "units_with_cost", 0, "coffee", 1),
+    row("2026-10-19", "cost_of_goods", 40, "coffee", 0, 1),
+    row("2026-10-19", "revenue_with_cost", 100, "coffee", 0, 1),
+    row("2026-10-19", "payment_commission_with_cost", 2, "coffee", 0, 1),
+    row("2026-10-19", "payment_commission", 20),
+  ];
+  expect(calculateGoal(input).margin).toBe(0.58);
+  expect(
+    buildCandidates(input).find((c) => c.cardKey === "7")?.amountMinor,
+  ).toBe(225);
+  expect(buildDay(input, "2026-10-19").grossProfitMinor).toBe(940);
+  const covered = {
+    ...input,
+    metrics: input.metrics.map((r) =>
+      r.metric === "units_sold" ? { ...r, quantity: 1 } : r,
+    ),
+  };
+  expect(calculateGoal(covered).breakEvenMinor).toBe(100); // exact ceil58/.58
+  for (const missing of ["revenue_with_cost", "payment_commission_with_cost"]) {
+    const legacy = {
+      ...covered,
+      metrics: covered.metrics.filter((r) => r.metric !== missing),
+    };
+    expect(calculateGoal(legacy).margin).toBeNull();
+    expect(calculateGoal(legacy).breakEvenMinor).toBeNull();
+    expect(
+      buildCandidates(legacy).some(
+        (c) => c.cardKey === "6" || c.cardKey === "13",
+      ),
+    ).toBe(false);
+  }
+  const zero = {
+    ...covered,
+    metrics: covered.metrics.map((r) =>
+      r.metric === "payment_commission_with_cost"
+        ? { ...r, amountMinor: 0 }
+        : r,
+    ),
+  };
+  expect(calculateGoal(zero).margin).toBe(0.6);
+});
+it("rejects overflow from aggregate money and exact goal ratios", () => {
+  const input = {
+    ...fixture(),
+    metrics: [
+      row("2026-10-19", "revenue", Number.MAX_SAFE_INTEGER),
+      row("2026-10-19", "revenue", 1),
+    ],
+  };
+  expect(() => buildHistory(input, "month")).toThrow("rango");
+});
+it("rejects an overflowing break-even amount before losing integer precision", () => {
+  const input = fixture();
+  input.metrics = [
+    row("2026-09-01", "expense_fixed", 2, "rent"),
+    row(
+      "2026-10-19",
+      "revenue_with_cost",
+      Number.MAX_SAFE_INTEGER,
+      "coffee",
+      0,
+      1,
+    ),
+    row(
+      "2026-10-19",
+      "cost_of_goods",
+      Number.MAX_SAFE_INTEGER - 1,
+      "coffee",
+      0,
+      1,
+    ),
+    row("2026-10-19", "payment_commission_with_cost", 0, "coffee", 0, 1),
+    row("2026-10-19", "units_sold", 0, "coffee", 1),
+    row("2026-10-19", "units_with_cost", 0, "coffee", 1),
+  ];
+  expect(() => calculateGoal(input)).toThrow("rango");
+});
+
+it("recognizes free sales and old summary existence without inventing a new business", () => {
+  const input = {
+    ...fixture(),
+    hasData: true,
+    hasClosedExpenseMonth: true,
+    firstSaleDay: "2024-01-01",
+    metrics: [row("2026-10-19", "revenue", 0, null, 0, 1)],
+  };
+  expect(buildCandidates(input).some((c) => c.cardKey === "1")).toBe(true);
+  expect(calculateGoal(input).closedMonth).toBe(true);
+  expect(
+    buildCandidates(input).find((c) => c.cardKey === "4")?.body,
+  ).not.toContain("desde hoy");
 });

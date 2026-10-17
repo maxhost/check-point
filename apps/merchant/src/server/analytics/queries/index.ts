@@ -1,3 +1,4 @@
+import { minorUnitForCurrency } from "@mi-pasaporte/domain/financial/rational";
 import { sql } from "drizzle-orm";
 import { getDb, type DbTransaction } from "@mi-pasaporte/db";
 import {
@@ -46,7 +47,7 @@ function metricRow(row: Record<string, unknown>): AnalyticsMetric {
     currencyCode: String(row.currencyCode),
     minorUnit: Number(row.minorUnit),
     quantity: Number(row.quantity),
-    count: Number(row.count),
+    count: safeMoney(String(row.count)),
   };
 }
 /** One database round-trip; metadata keys stay inside Postgres and windows use bounded index ranges. */
@@ -58,17 +59,17 @@ export function inputStatement(
   const location = locationId ? sql`and m.location_id=${locationId}` : sql``;
   return sql`with b as (select id,currency_code,timezone,(${now.toISOString()}::timestamptz at time zone timezone)::date today from core.business where id=${businessId}),
     metric_keys as materialized (select m.location_id,m.day,m.metric,m.dimension_kind,m.dimension_id,m.currency_code,m.minor_unit from analytics.daily_metric m where m.business_id=${businessId} ${location}),
-    key_money as materialized (select k.*,v.amount_minor from metric_keys k,b cross join lateral (
-      select d.amount_minor from analytics.daily_metric d where d.business_id=${businessId} and d.day=k.day and d.metric=k.metric and d.dimension_kind=k.dimension_kind and d.currency_code=k.currency_code and d.minor_unit=k.minor_unit and d.location_id is not distinct from k.location_id and d.dimension_id is not distinct from k.dimension_id limit 1
-    ) v where k.day<=b.today and k.metric in ('revenue','expense_fixed')),
-    same_days as (select distinct m.day from key_money m,b where m.metric='revenue' and m.amount_minor>0 and m.day<b.today and extract(dow from m.day)=extract(dow from b.today) order by m.day desc limit 8),
+    key_money as materialized (select k.*,v.amount_minor,v.count from metric_keys k,b cross join lateral (
+      select d.amount_minor,d.count from analytics.daily_metric d where d.business_id=${businessId} and d.day=k.day and d.metric=k.metric and d.dimension_kind=k.dimension_kind and d.currency_code=k.currency_code and d.minor_unit=k.minor_unit and d.location_id is not distinct from k.location_id and d.dimension_id is not distinct from k.dimension_id limit 1
+    ) v where k.day<=b.today and k.metric in ('revenue','expense_fixed','expense_variable')),
+    same_days as (select distinct m.day from key_money m,b where m.metric='revenue' and (m.count>0 or m.amount_minor>0) and m.day<b.today and extract(dow from m.day)=extract(dow from b.today) order by m.day desc limit 8),
     fixed_months as (select (max(m.day) filter(where m.amount_minor>0))::date as day,m.dimension_id,sum(m.amount_minor)::text amount,m.currency_code,m.minor_unit,
       row_number() over(partition by m.dimension_id,m.currency_code,m.minor_unit order by date_trunc('month',m.day) desc) as rank
       from key_money m,b where m.metric='expense_fixed' and m.day<date_trunc('month',b.today)
       group by date_trunc('month',m.day),m.dimension_id,m.currency_code,m.minor_unit having sum(m.amount_minor)>0),
     metric_rows as (
       select m.* from b join analytics.daily_metric m on m.business_id=b.id and m.day between b.today-28 and b.today where (m.metric<>'expense_fixed' or m.day>=date_trunc('month',b.today)) ${location}
-      union all select m.* from b join analytics.daily_metric m on m.business_id=b.id and m.day>=date_trunc('month',b.today) and m.day<b.today-28 where m.metric='expense_fixed' ${location}
+      union all select m.* from b join analytics.daily_metric m on m.business_id=b.id and m.day>=date_trunc('month',b.today) and m.day<b.today-28 where m.metric in ('expense_fixed','revenue') ${location}
       union all select m.* from b join analytics.daily_metric m on m.business_id=b.id and m.day>=date_trunc('month',b.today)-interval '3 months' and m.day<b.today-28 where m.metric='expense_variable' ${location}
       union all select m.* from b join analytics.daily_metric m on m.business_id=b.id and m.day>=b.today-56 and m.day<b.today-28 where m.metric='revenue' ${location}
       union all select m.* from b join same_days sd on true join analytics.daily_metric m on m.business_id=b.id and m.day=sd.day where m.day<b.today-28 and m.metric='units_sold' ${location}
@@ -77,7 +78,9 @@ export function inputStatement(
       from metric_rows m,b group by m.day,m.metric,case when m.day=b.today-1 then m.location_id else null end,m.dimension_id,m.currency_code,m.minor_unit
       union all select day::text,'expense_fixed',null,dimension_id,amount,currency_code,minor_unit,'0',0 from fixed_months where rank<=3)
     select b.currency_code as "currencyCode",b.timezone,b.today::text,
-      (select min(day)::text from key_money where metric='revenue' and amount_minor>0) as "firstSaleDay",
+      (select min(day)::text from key_money where metric='revenue' and (count>0 or amount_minor>0)) as "firstSaleDay",
+      exists(select 1 from metric_keys) as "hasData",
+      exists(select 1 from key_money where metric in ('expense_fixed','expense_variable') and day<date_trunc('month',b.today) and amount_minor>0) as "hasClosedExpenseMonth",
       coalesce((select jsonb_agg(jsonb_build_array(day,metric,"locationId","dimensionId","amountMinor","currencyCode","minorUnit",quantity,count)) from metrics),'[]'::jsonb) as metrics,
       coalesce((select jsonb_agg(jsonb_build_object('cardKey',card_key,'subjectKey',subject_key,'fingerprint',fingerprint,'status',status,'shownDays',shown_days,'lastShownDay',last_shown_day)) from analytics.card_state where business_id=b.id),'[]'::jsonb) as states,
       coalesce((select jsonb_agg(jsonb_build_object('kind',kind,'id',id,'label',label)) from analytics.dimension_label where business_id=b.id),'[]'::jsonb) as labels,
@@ -98,11 +101,9 @@ export function inputFromRow(
     today: String(row.today),
     firstSaleDay: row.firstSaleDay ? String(row.firstSaleDay) : null,
     currencyCode,
-    minorUnit:
-      new Intl.NumberFormat("en", {
-        style: "currency",
-        currency: currencyCode,
-      }).resolvedOptions().maximumFractionDigits ?? 2,
+    minorUnit: minorUnitForCurrency(currencyCode),
+    hasData: Boolean(row.hasData),
+    hasClosedExpenseMonth: Boolean(row.hasClosedExpenseMonth),
     locations: row.locations as AnalyticsInput["locations"],
     labels: row.labels as AnalyticsInput["labels"],
     metrics: (row.metrics as unknown[][]).map(

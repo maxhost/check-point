@@ -15,11 +15,17 @@ import type {
   CardState,
 } from "../types";
 import { cardWeight, materialFingerprint } from "../weights";
+import { moneyRatio, roundedMoney, sumIntegers } from "../money";
 const sum = (
   rows: readonly AnalyticsMetric[],
   metric: string,
   field: "amountMinor" | "quantity" | "count" = "amountMinor",
-) => rows.filter((r) => r.metric === metric).reduce((n, r) => n + r[field], 0);
+) =>
+  field === "quantity"
+    ? rows
+        .filter((r) => r.metric === metric)
+        .reduce((n, r) => n + r.quantity, 0)
+    : sumIntegers(rows.filter((r) => r.metric === metric).map((r) => r[field]));
 const period = (rows: readonly AnalyticsMetric[], from: string, to: string) =>
   rows.filter((r) => r.day >= from && r.day <= to);
 export type ProductSummary = {
@@ -30,6 +36,8 @@ export type ProductSummary = {
   knownUnits: number;
   salesCount: number;
   cost: number;
+  knownRevenue: number;
+  exact: boolean;
   profitPerUnit: number | null;
 };
 export function products(
@@ -56,6 +64,14 @@ export function products(
     const units = sum(product, "units_sold", "quantity");
     const knownUnits = sum(product, "units_with_cost", "quantity");
     const cost = sum(product, "cost_of_goods");
+    const knownRevenue = sum(product, "revenue_with_cost");
+    const knownCommission = sum(product, "payment_commission_with_cost");
+    const lines = sum(product, "cost_of_goods", "count");
+    const exact =
+      lines > 0 &&
+      lines === sum(product, "revenue_with_cost", "count") &&
+      lines === sum(product, "payment_commission_with_cost", "count");
+    const profit = sumIntegers([knownRevenue, -cost, -knownCommission]);
     return {
       id,
       label:
@@ -66,10 +82,9 @@ export function products(
       knownUnits,
       salesCount: sum(product, "product_revenue", "count"),
       cost,
-      profitPerUnit:
-        knownUnits > 0 && units > 0
-          ? (revenue * Math.min(1, knownUnits / units) - cost) / knownUnits
-          : null,
+      knownRevenue,
+      exact,
+      profitPerUnit: exact && knownUnits > 0 ? profit / knownUnits : null,
     };
   });
 }
@@ -84,26 +99,25 @@ export function contribution(
     0,
   );
   const revenue = sum(rows, "revenue");
-  const knownRevenue = product.reduce(
-    (n, p) =>
-      n + (p.units > 0 ? p.revenue * Math.min(1, p.knownUnits / p.units) : 0),
-    0,
-  );
+  const knownRevenue = sum(rows, "revenue_with_cost");
   const goods = sum(rows, "cost_of_goods");
   const commission = sum(rows, "payment_commission");
-  const knownCommission =
-    revenue > 0 ? (commission * knownRevenue) / revenue : 0;
+  const knownCommission = sum(rows, "payment_commission_with_cost");
+  const lines = sum(rows, "cost_of_goods", "count");
+  const exact =
+    lines > 0 &&
+    lines === sum(rows, "revenue_with_cost", "count") &&
+    lines === sum(rows, "payment_commission_with_cost", "count");
+  const grossProfit = sumIntegers([knownRevenue, -goods, -knownCommission]);
   return {
     coverage: units > 0 ? knownUnits / units : 0,
     revenue,
     knownRevenue,
     goods,
     commission,
-    grossProfit: knownRevenue - goods - knownCommission,
-    margin:
-      knownRevenue > 0
-        ? (knownRevenue - goods - knownCommission) / knownRevenue
-        : 0,
+    grossProfit,
+    exact,
+    margin: exact && knownRevenue > 0 ? grossProfit / knownRevenue : null,
   };
 }
 export type GoalCalculation = {
@@ -117,7 +131,7 @@ export type GoalCalculation = {
   }[];
   closedMonth: boolean;
   coverage: number;
-  margin: number;
+  margin: number | null;
   breakEvenMinor: number | null;
   monthRevenueMinor: number;
   remainingDays: number;
@@ -153,7 +167,7 @@ export function calculateGoal(input: AnalyticsInput): GoalCalculation {
     ))
       previous.set(
         row.day.slice(0, 7),
-        (previous.get(row.day.slice(0, 7)) ?? 0) + row.amountMinor,
+        sumIntegers([previous.get(row.day.slice(0, 7)) ?? 0, row.amountMinor]),
       );
     const paidMonths = [...previous.entries()]
       .filter(([, amount]) => amount > 0)
@@ -168,36 +182,76 @@ export function calculateGoal(input: AnalyticsInput): GoalCalculation {
       amountMinor: thisMonth.length
         ? sum(thisMonth, "expense_fixed")
         : paidMonths.length
-          ? paidMonths.reduce((n, v) => n + v, 0) / paidMonths.length
+          ? sumIntegers(paidMonths) / paidMonths.length
           : 0,
       estimated: !thisMonth.length,
     };
   });
   const variable = sum(closed, "expense_variable") / 3;
-  const expensesMinor = Math.round(
-    concepts.reduce((n, c) => n + c.amountMinor, 0) + variable,
+  const expenseSixths = concepts.reduce(
+    (total, concept) => {
+      if (!concept.estimated) return total + BigInt(concept.amountMinor) * 6n;
+      const paid = metrics.filter(
+        (r) =>
+          r.metric === "expense_fixed" &&
+          (r.dimensionId ?? "unknown") === concept.id &&
+          r.day < start,
+      );
+      const months = new Map<string, number>();
+      for (const r of paid)
+        months.set(
+          r.day.slice(0, 7),
+          sumIntegers([months.get(r.day.slice(0, 7)) ?? 0, r.amountMinor]),
+        );
+      const amounts = [...months]
+        .filter(([, v]) => v > 0)
+        .sort(([a], [b]) => b.localeCompare(a))
+        .slice(0, 3)
+        .map(([, v]) => v);
+      return (
+        total +
+        (amounts.length
+          ? BigInt(sumIntegers(amounts)) * (6n / BigInt(amounts.length))
+          : 0n)
+      );
+    },
+    BigInt(sum(closed, "expense_variable")) * 2n,
   );
+  const expensesMinor = moneyRatio(expenseSixths, 6n);
   const monthRevenueMinor = sum(current, "revenue");
-  const closedMonth = metrics
-    .filter((r) => r.day < start)
-    .some((r) => r.metric.startsWith("expense_") && r.amountMinor > 0);
+  const closedMonth =
+    input.hasClosedExpenseMonth ??
+    metrics
+      .filter((r) => r.day < start)
+      .some((r) => r.metric.startsWith("expense_") && r.amountMinor > 0);
   const weekdays = new Set(
     recent
-      .filter((r) => r.metric === "revenue" && r.amountMinor > 0)
+      .filter(
+        (r) => r.metric === "revenue" && (r.count > 0 || r.amountMinor > 0),
+      )
       .map((r) => weekday(r.day)),
   );
   let remainingDays = 0;
   for (let day = today; day <= monthEnd(today); day = addDays(day, 1))
     if (weekdays.has(weekday(day))) remainingDays++;
   const breakEvenMinor =
-    closedMonth && c.coverage >= 0.8 && c.margin > 0
-      ? Math.ceil(expensesMinor / c.margin)
+    closedMonth &&
+    c.coverage >= 0.8 &&
+    c.exact &&
+    c.margin !== null &&
+    c.margin > 0
+      ? moneyRatio(
+          BigInt(expensesMinor) * BigInt(c.knownRevenue),
+          BigInt(c.grossProfit),
+          "ceil",
+        )
       : null;
   const elapsed = Number(today.slice(8)) - 1;
   const days = Number(monthEnd(today).slice(8));
   const atRisk =
     breakEvenMinor !== null &&
-    monthRevenueMinor < (breakEvenMinor * Math.max(1, elapsed)) / days;
+    BigInt(monthRevenueMinor) * BigInt(days) <
+      BigInt(breakEvenMinor) * BigInt(Math.max(1, elapsed));
   return {
     expensesMinor,
     estimated: concepts.some((c) => c.estimated) || variable > 0,
@@ -213,7 +267,11 @@ export function calculateGoal(input: AnalyticsInput): GoalCalculation {
       breakEvenMinor > monthRevenueMinor &&
       remainingDays > 0 &&
       atRisk
-        ? Math.ceil((breakEvenMinor - monthRevenueMinor) / remainingDays)
+        ? moneyRatio(
+            BigInt(sumIntegers([breakEvenMinor, -monthRevenueMinor])),
+            BigInt(remainingDays),
+            "ceil",
+          )
         : null,
     atRisk,
   };
@@ -228,7 +286,7 @@ export function buildCandidates(
   const goal = calculateGoal(input);
   const average = sum(recent, "revenue") / 28;
   const money = (n: number) =>
-    formatMoney(Math.round(n), input.currencyCode, input.minorUnit);
+    formatMoney(roundedMoney(n), input.currencyCode, input.minorUnit);
   const candidates: CardCandidate[] = [];
   const add = (
     card: Omit<
@@ -255,7 +313,7 @@ export function buildCandidates(
   };
   const yesterdayRows = period(metrics, yesterday, yesterday);
   const yesterdayRevenue = sum(yesterdayRows, "revenue");
-  if (yesterdayRevenue > 0) {
+  if (sum(yesterdayRows, "revenue", "count") > 0 || yesterdayRevenue > 0) {
     const previous = sum(
       period(metrics, addDays(yesterday, -7), addDays(yesterday, -7)),
       "revenue",
@@ -272,7 +330,8 @@ export function buildCandidates(
         ? input.locations
             .map((l) => {
               const rows = yesterdayRows.filter((r) => r.locationId === l.id);
-              return sum(rows, "revenue") > 0
+              return sum(rows, "revenue", "count") > 0 ||
+                sum(rows, "revenue") > 0
                 ? `${l.name}: ${money(sum(rows, "revenue"))} en ${sum(rows, "revenue", "count")} tickets.`
                 : "";
             })
@@ -295,7 +354,9 @@ export function buildCandidates(
   const first =
     input.firstSaleDay ??
     metrics
-      .filter((r) => r.metric === "revenue" && r.amountMinor > 0)
+      .filter(
+        (r) => r.metric === "revenue" && (r.count > 0 || r.amountMinor > 0),
+      )
       .map((r) => r.day)
       .sort()[0];
   const sameDays = [
@@ -304,7 +365,7 @@ export function buildCandidates(
         .filter(
           (r) =>
             r.metric === "revenue" &&
-            r.amountMinor > 0 &&
+            (r.count > 0 || r.amountMinor > 0) &&
             r.day < today &&
             weekday(r.day) === weekday(today),
         )
@@ -381,9 +442,12 @@ export function buildCandidates(
   if (goal.targetMinor !== null) {
     const gap = Math.max(
       0,
-      (goal.breakEvenMinor ?? 0) *
-        (Number(today.slice(8)) / Number(monthEnd(today).slice(8))) -
-        goal.monthRevenueMinor,
+      moneyRatio(
+        BigInt(goal.breakEvenMinor ?? 0) * BigInt(Number(today.slice(8))) -
+          BigInt(goal.monthRevenueMinor) *
+            BigInt(Number(monthEnd(today).slice(8))),
+        BigInt(Number(monthEnd(today).slice(8))),
+      ),
     );
     add({
       cardKey: "3",
@@ -391,7 +455,7 @@ export function buildCandidates(
       sender: "Finanzas",
       title: "Tu meta de hoy",
       body: `Hoy necesitas vender ${money(goal.targetMinor)} para cubrir el mes: te faltan ${money((goal.breakEvenMinor ?? 0) - goal.monthRevenueMinor)} en ${goal.remainingDays} días de venta.`,
-      amountMinor: Math.round(gap),
+      amountMinor: roundedMoney(gap),
       urgency: 1 - daysLeft / Number(monthEnd(today).slice(8)),
       weightMultiplier: lastTen ? 1.5 : 1,
       quality: goal.estimated ? "estimated" : "observed",
@@ -426,7 +490,7 @@ export function buildCandidates(
         (firstMonth
           ? "La meta se calcula al cerrar tu primer mes con gastos."
           : "Carga tus gastos fijos (alquiler, sueldos, luz) y te digo cuánto tienes que vender cada día para cubrir el mes.") +
-        (metrics.length === 0
+        ((input.hasData ?? metrics.length > 0) === false
           ? " Analíticas empieza a contar con tus ventas y gastos desde hoy."
           : ""),
       amountMinor: null,
@@ -463,8 +527,9 @@ export function buildCandidates(
       body: negative
         ? `Cada ${p.label} te hace perder ${money(-p.profitPerUnit!)}. Vendiste ${p.units} en 4 semanas.`
         : `${p.label} te deja ${money(p.profitPerUnit!)} por unidad, contra ${money(profitMedian)} de tus otros productos: vendiste ${p.units} en 4 semanas.`,
-      amountMinor: Math.round(amount),
-      urgency: goal.atRisk || goal.margin <= 0 ? 1 : 0.3,
+      amountMinor: roundedMoney(amount),
+      urgency:
+        goal.atRisk || goal.margin === null || goal.margin <= 0 ? 1 : 0.3,
       quality: "observed",
       actionKey: "edit_product_price",
     });
@@ -473,9 +538,8 @@ export function buildCandidates(
     .filter((p) => p.units > p.knownUnits)
     .sort((a, b) => b.revenue - a.revenue);
   if (unknown.length) {
-    const revenue = unknown.reduce(
-      (n, p) => n + p.revenue * (1 - Math.min(1, p.knownUnits / p.units)),
-      0,
+    const revenue = sumIntegers(
+      unknown.map((p) => sumIntegers([p.revenue, -p.knownRevenue])),
     );
     add({
       cardKey: "7",
@@ -483,7 +547,7 @@ export function buildCandidates(
       sender: "Costos",
       title: "Falta conocer tus costos",
       body: `No sé cuánto ganas con ${unknown[0]!.label}${unknown.length > 1 ? ` y ${unknown.length - 1} productos más` : ""}: vendiste ${money(revenue)} de ellos en 4 semanas.`,
-      amountMinor: Math.round(revenue / 4),
+      amountMinor: moneyRatio(BigInt(revenue), 4n),
       urgency: goal.coverage < 0.8 ? 1 : 0.6,
       quality: "observed",
       actionKey: "set_product_cost",
@@ -513,7 +577,7 @@ export function buildCandidates(
         sender: "Ventas",
         title: "Aprovecha las recomendaciones",
         body: `Los ${dayName} suelen ser flojos (unos ${money(expected)}, contra ${money(average)} de un día promedio). Si te piden recomendación: ${best.map((p) => `${p.label} te deja ${money(p.profitPerUnit!)} por unidad`).join(" y ")}.`,
-        amountMinor: Math.round(average - expected),
+        amountMinor: roundedMoney(average - expected),
         urgency: goal.targetMinor !== null ? 1 : 0.7,
         quality: "observed",
         actionKey: null,

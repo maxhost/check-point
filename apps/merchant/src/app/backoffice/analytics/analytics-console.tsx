@@ -159,7 +159,7 @@ export default function AnalyticsConsole({
               </ul>
             ) : (
               <Text variant="muted">
-                Analíticas empieza a contar con tus ventas y gastos desde hoy.
+                No hay ventas de productos en este período.
               </Text>
             )}
           </Card>
@@ -204,8 +204,8 @@ export default function AnalyticsConsole({
                   </Text>
                   <Text>
                     Margen de contribución:{" "}
-                    {Math.round(history.goal.margin * 100)}%. Gastos del mes:{" "}
-                    {money(history.goal.expensesMinor)}
+                    {Math.round((history.goal.margin ?? 0) * 100)}%. Gastos del
+                    mes: {money(history.goal.expensesMinor)}
                     {history.goal.estimated ? " (estimado)" : ""}.
                   </Text>
                   {history.goal.targetMinor !== null && (

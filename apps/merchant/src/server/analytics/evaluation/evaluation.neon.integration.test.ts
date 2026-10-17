@@ -17,6 +17,7 @@ import {
   analyticsDimensionLabels as labels,
   locations,
   memberships,
+  businesses,
   users,
 } from "@mi-pasaporte/db/schema";
 const callbacks = vi.hoisted(() => ({ all: [] as (() => Promise<void>)[] }));
@@ -27,7 +28,7 @@ vi.mock("next/server", async (original) => ({
   },
 }));
 import { evaluateBusiness, readInbox, actOnCard } from "./index";
-import { readInput, readHistory } from "../queries";
+import { readInput, readHistory, readDay } from "../queries";
 import { inboxGET, historyGET, dayGET, cardPOST, evaluateGET } from "../http";
 import { localDay, addDays } from "@mi-pasaporte/domain/analytics/date";
 const businessA = randomUUID(),
@@ -417,6 +418,47 @@ describe.skipIf(!permisosIntegrationEnabled)(
           (r) => r.metric === "units_sold" && r.day === "2026-07-04",
         )?.quantity,
       ).toBe(10);
+    }, 30000);
+    it("uses canonical COP units across real summary, candidate, history and day", async () => {
+      await getDb()
+        .update(businesses)
+        .set({ currencyCode: "COP" })
+        .where(eq(businesses.id, businessB));
+      const copDay = "2027-03-10";
+      await getDb()
+        .insert(metrics)
+        .values({
+          businessId: businessB,
+          day: "2027-03-09",
+          metric: "revenue",
+          dimensionKind: "none",
+          amountMinor: 40n,
+          currencyCode: "COP",
+          minorUnit: 0,
+          count: 1,
+        });
+      const now = new Date(`${copDay}T08:00:00Z`);
+      const input = await readInput(businessB, now);
+      expect(input.minorUnit).toBe(0);
+      expect(input.firstSaleDay).toBe("2027-03-09");
+      expect(await evaluateBusiness(businessB, now)).toBe(true);
+      const rows = await getDb()
+        .select()
+        .from(candidates)
+        .where(
+          and(eq(candidates.businessId, businessB), eq(candidates.day, copDay)),
+        );
+      expect(rows.find((r) => r.cardKey === "1")).toMatchObject({
+        amountMinor: 40n,
+        minorUnit: 0,
+        currencyCode: "COP",
+      });
+      expect(
+        await readHistory(businessB, "month", undefined, now),
+      ).toMatchObject({ minorUnit: 0, revenueMinor: 40 });
+      expect(
+        await readDay(businessB, "2027-03-09", undefined, now),
+      ).toMatchObject({ minorUnit: 0, revenueMinor: 40 });
     }, 30000);
   },
 );

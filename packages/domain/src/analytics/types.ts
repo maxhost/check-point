@@ -13,6 +13,8 @@ export type AnalyticsLabel = { kind: string; id: string; label: string };
 export type AnalyticsInput = {
   today: string;
   firstSaleDay?: string | null;
+  hasData?: boolean;
+  hasClosedExpenseMonth?: boolean;
   metrics: readonly AnalyticsMetric[];
   labels: readonly AnalyticsLabel[];
   locations: readonly { id: string; name: string }[];

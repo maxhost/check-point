@@ -83,9 +83,6 @@ export function AnalyticsInbox() {
       {inbox?.cards.length === 0 && inbox.state === "ready" && (
         <Card>
           <Text>Hoy no tengo nada para avisarte.</Text>
-          <Text variant="muted">
-            Analíticas empieza a contar con tus ventas y gastos desde hoy.
-          </Text>
         </Card>
       )}
       {inbox?.cards.map((card) => (

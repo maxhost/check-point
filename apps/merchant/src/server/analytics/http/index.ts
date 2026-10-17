@@ -1,3 +1,4 @@
+import { AnalyticsAmountError } from "@mi-pasaporte/domain/analytics/money";
 import { after, NextResponse } from "next/server";
 import { apiOwnerFailureResponse } from "../../api-owner";
 import { requireApiPermissionSinGateDeEmail } from "../../api-permission";
@@ -42,6 +43,11 @@ export async function inboxWithFallback(
   return readInbox(businessId, viewer, new Date(), true);
 }
 export function analyticsFailure(error: unknown) {
+  if (error instanceof AnalyticsAmountError)
+    return NextResponse.json(
+      { error: error.message, code: error.code },
+      { status: 422 },
+    );
   if (error instanceof AnalyticsError)
     return NextResponse.json(
       { error: error.message, code: error.code },
