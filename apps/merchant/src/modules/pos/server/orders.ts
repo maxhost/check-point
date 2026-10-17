@@ -269,7 +269,15 @@ export async function voidPosOrder(
         eventVersion: 1,
         sourceOrderId: id,
         locationId: row.locationId,
-        occurredAt: occurredAt.toISOString(),
+        voidedAt: occurredAt.toISOString(),
+        userId,
+        lines: lines.map((line) => ({
+          sourceLineId: line.sourceLineId,
+          productId: line.productId,
+          productLabel: line.nameSnapshot,
+          quantity: line.quantity,
+          unitPrice: line.unitPrice,
+        })),
         ...analyticsMoney(totalOf(lines), business.currencyCode),
       },
     });

@@ -75,6 +75,7 @@ export async function insertCounterRedemption(
     payload: {
       eventVersion: 1,
       couponId: coupon.id,
+      orderId: input.orderId,
       campaignId: campaign.id,
       campaignLabel: campaign.name,
       locationId: input.locationId,
