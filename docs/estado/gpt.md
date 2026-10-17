@@ -3,7 +3,25 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — SPEC0235 EN IMPLEMENTACIÓN; EVENTOS PROD ON VERIFICADO (2026-10-16)
+## ESTADO — NEGOCIO0235 IMPLEMENTADO LOCAL; QA PASS; SIN PUBLICAR (2026-10-16)
+
+Owner pidió lanzar la implementación tras aprobar0235/0150. Dev y main local incluyen el cierre `2ce13f3258f1fb9582bcaeae2dbce2a36619f999`; producto combinado `b6dcb1bc412d113b1417366bbee12ab62666a8cc`, informe QA `be7cafe4`. [QA y candidatos](../factory/0235-qa.md), [core y rollout](../factory/0235-core.md), [UI](../factory/0235-ui.md), [spec](../specs/0235-negocio-y-medios-de-pago-core.md). No push, deploy ni migración PROD autorizados/ejecutados para0235.
+
+Entregas aceptadas: A4ae464bb (runtime a97995f1, idéntico a598a0264) y B d0517a18. QA independiente PASS de entrega/combinación y documental. Negocio core con Medios/Regional/Fiscal, permiso business sin backfill y owner por rol; Marca conserva branding; selector POS intacto. Captura común y comisión/cabecera inmutables en el mismo cierre, también flagOFF/neto0; provisional/incompatible/ausente conservan calidad, condiciones comerciales no bloquean y fallo DB revierte. Correcciones verificadas: archivo ante respuesta tardía, moneda del fijo409 sin reinterpretación y GET medios de una sola instantánea.
+
+Evidencia combinada: tipos DB/dominio/Merchant3/3 PASS y Merchant tras GETfix PASS; build único Merchant Turbopack41805587 EXIT0. Diff de apps/packages contra candidato final EXIT0, reutilización por identidad. Smoke compilado sin sesión: tres APIs401, página Negocio307; servidor43122 detenido. UI:10/10 confirmación,25 regresiones compatibles,5/5 correcciones y2/2 vistas390/1280; selecciones unit con solapamientos, no sumar. A:13/13 DB dinero/acceso,2/2 DDL,26 compat emitidos PASS aunque tanda EXIT1 por path temporal movido; puente definitivo5/5 más signup1/1 seleccionado EXIT0, otros5 onboarding fuera de filtro;68 unit finales PASS. DB solo wrapperCI con reserva serial. Salidas DB conservadas en sesiones de herramientas74202/55803/27479/30654, sin logs físicos inventados. No smoke autenticado completo ni verify global de publicación.
+
+Base LOCAL migrada0093/0094/0095,93→96 journal, host local guardado por huella URL16d3a8712ad6, sin revelar valor. Diez medios y dos marcadores previos conservaron fingerprints exactos; tercer comercio sin medios recibió cinco y un marcador (comparador global inicialfalse explicado y preservado). Pagos/revisiones/resultados anteriores idénticos. Sin reset/seed general. Ruta local para owner: /backoffice/business.
+
+Publicación futura exige **puente combinado e5eaa741e5f1b3f1f0787b134b3d00d1c5d5c45c** (incluye B; backendfac323aa aislado no es publicable), gates del SHA, READY y retiro de writers anteriores; después autorización propia para0093+0094+0095 juntas en una transacción y comparación de datos/drenaje; solo después publicar retiro administrativo final. El migrador instalado envuelve todas las pendientes en session.transaction y conserva advisory2350150 hasta COMMIT después0095. No afirmar que main final se publica directamente antes de ese corte. Adaptadores de ubicación/onEnable y recuperación histórica aún conservados necesitan señal operativa de retiro: DoD lo deja abierto, no se certifica PROD por QA local.
+
+Baseline CI inicial main5b834ca0 sigue rojo run38971334745, consumo Stock637 y teardown permisos86; no se certificó causa ni resolución y no se relajaron tests. Resolver o acordar antes de publicar, junto con pre-push vigente sin bypass. Ninguna autorización de publicación anterior se transfiere a0235.
+
+Factory integrate/cleanup completados para spec-negocio-0235, negocio-ui-0235 y negocio-integration-0235: aceptados, limpios, ancestros de main, sin procesos; tres tareas retiradas y worktrees/ramas operativos propios eliminados sin force. Solo checkout principal dev. Evidencias externas conservadas bajo /private/tmp/checkpass-negocio-integration-0235 y /private/tmp/checkpass-negocio-0235; handoffs/commits persisten. Skills/assets/configs ajenos sin seguimiento intactos; no INDEX/TASKS ni estados Claude editados.
+
+Operación anterior de eventos PROD sigue terminada y separada: informe release-module-events-2026-10-16.md en d60711a3, flagON y cron horario del owner, deploy5b834ca0READY y venta F5/retry verificados. No hubo otra operación PROD durante Negocio. Siguiente: prueba owner local y preparar rollout solo cuando lo solicite, con autorización paso a paso. Gastos va después de esta integración, conservando los contratos/compatibilidad necesarios.
+
+## HISTÓRICO — SPEC0235 EN IMPLEMENTACIÓN; EVENTOS PROD ON VERIFICADO (2026-10-16)
 
 Owner pidió lanzar implementación de Negocio después de aprobar las cuatro decisiones de [0235](../specs/0235-negocio-y-medios-de-pago-core.md)/[0150](../adr/0150-negocio-y-comisiones-core.md). Diseño documental `209f5937` con QA PASS; preparación/contrato `48d024c0`, ampliaciones `defe8f6f`. [Contrato de implementación](../factory/0235-implementation-contract.md). Sin implementación integrada todavía: dev tiene documentos; main local/remoto registrado en5b834ca0. No push, migración PROD ni deploy autorizados para0235.
 
