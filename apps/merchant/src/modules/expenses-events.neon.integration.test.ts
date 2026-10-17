@@ -8,17 +8,17 @@ import {
   moduleEvents,
   moduleEventDeliveries,
 } from "@mi-pasaporte/db/schema";
-import { modulesIntegrationEnabled } from "../../modules-integration-support";
-import { createExpenses } from "./writers";
+import { modulesIntegrationEnabled } from "./modules-integration-support";
+import { createExpenses } from "./expenses/server/writers";
 
-import { captureCountCut, validateCountCut } from "../../stock/count";
+import { captureCountCut, validateCountCut } from "./stock/count";
 import {
   appendModuleEvent,
   pendingSummary,
   retryModuleEvents,
-} from "../../../server/module-events";
+} from "../server/module-events";
 
-import { useExpenseWorld } from "./integration-support";
+import { useExpenseWorld } from "./expenses/server/integration-support";
 const run = modulesIntegrationEnabled ? describe : describe.skip;
 run("0236 expenses-events.neon.integration.test.ts", { timeout: 60000 }, () => {
   const f = useExpenseWorld();
@@ -71,6 +71,10 @@ run("0236 expenses-events.neon.integration.test.ts", { timeout: 60000 }, () => {
   });
   it("local and global expense events do not affect sale cuts or pending consumption filters", async () => {
     const cut = await captureCountCut(f.world.businessId, f.world.locationId);
+    const pendingAtCut = await pendingSummary(
+      f.world.businessId,
+      f.world.locationId,
+    );
     const rows = (
       await createExpenses(
         f.world.businessId,
@@ -99,7 +103,9 @@ run("0236 expenses-events.neon.integration.test.ts", { timeout: 60000 }, () => {
     ).toEqual({ count: 0, failed: 0 });
     expect(
       (await pendingSummary(f.world.businessId, f.world.locationId)).count,
-    ).toBe(1);
+      // AN-1 adds one core delivery for the local expense; the global expense has no local.
+      // Together with the transport fixture this increases the preexisting local backlog by two.
+    ).toBe(pendingAtCut.count + 2);
     expect(
       await retryModuleEvents({
         businessId: f.world.businessId,
