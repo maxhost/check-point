@@ -512,6 +512,52 @@ AN-3 (tarjetas 10, 11, 12 y sus eventos), mostrar clima o calendario, cambiar la
 Candidato local en dev con QA PASS y handoff en docs/factory/ (SHAs, pruebas reales, fallos, migración si hubo).
 ```
 
+## Prompt — AN-3 (spec 0237 §7; 2026-10-17; lanzar recién con AN-2 aceptada por QA e integrada en dev)
+
+```
+# Encargo: implementar la etapa AN-3 de Analíticas (spec 0237 §7: anulaciones, clientes y promos)
+
+Mandan docs/specs/0237-analiticas-inbox-y-resumenes-diarios.md (§7 y lo común de §1–§4), ADR 0152 y ADR 0153.
+AN-1 y AN-2 ya están integradas en dev: AN-3 se apoya en su suscriptor core, sus resúmenes y su inbox; no los
+rediseña. Las decisiones de producto están cerradas: no se reabren.
+
+## Primero
+Leé los handoffs de AN-1 y AN-2 en docs/factory/ y confirmá el §7 contra el código real (voidPosOrder, alta de
+core.order que es visita, alta de core.coupon_redemption, fin de campaña). Si algo de la spec no encaja, avisá al
+owner antes de resolverlo por tu cuenta.
+
+## Qué entra
+- POS publica pos.order.voided en la tx de voidPosOrder; core publica visit.recorded y coupon.redeemed en la tx de
+  su origen, con lo que pide el §7; traductores puros (ADR 0153), los de core en su registro.
+- Métricas de AN-3 del §1: voided_tickets, visits, promo_discount/promo_sales (desde sale.closed v2+ con
+  discountOrigin y desde coupon.redeemed, sin contar dos veces un canje que ya viajó en la venta POS).
+- Tarjetas 10 (anulaciones), 11 (habitual que se va) y 12 (resultado de promo), con los textos, umbrales, pesos y
+  acciones del §7. Tarjeta 11: verificá si Marketing permite mandar un cupón a un cliente; si no, la acción es «ver
+  cliente» (H5). Informá cuál quedó.
+- Histórico: clientes y promos (§4).
+- Prueba real de Visual Crossing con la clave de apps/merchant/.env.local (diferida de AN-1 por el owner): una
+  llamada real de pronóstico y observado para Cuenca, guardada por la ruta interna. Nunca imprimas la clave.
+
+## Reglas
+- Flujo de ADR 0144 y docs/AGENT-WORKFLOW.md: coordinador, hasta dos implementadores en worktrees propios desde
+  dev, QA independiente. Migración nueva solo si hace falta, una, sin tocar las anteriores.
+- Analíticas es core: sin switch ni variable de entorno. Core nunca importa ni nombra un módulo (ADR 0138/0139).
+- El corte del conteo de Stock no se altera (§2.4).
+- Node 24; DB solo con tools/neon-test.sh y la DB de replay válida, nunca DATABASE_URL.
+- Pruebas focales: un caso Neon por evento nuevo (atómico con su origen, local correcto, sin alterar el corte) y
+  unit por tarjeta con sus bordes (mínimo de un mes y max(3, media + 2 desvíos) en la 10; ≥ 4 visitas y la regla
+  de mediana en la 11; sin doble conteo de canjes en la 12). Sin verify global ni mutaciones.
+- No push, no deploy, no migración ni lectura de PROD. No editar INDEX, TASKS ni el estado de Claude.
+
+## Fuera de alcance
+Rendimiento de la evaluación (parqueado por el owner), «cuánto ahorraste» (PARQUEADO), mostrar clima o calendario,
+cambiar las tarjetas de AN-1 y AN-2.
+
+## Entrega
+Candidato local en dev con QA PASS y handoff en docs/factory/ (SHAs, pruebas reales, fallos, migración si hubo,
+resultado de la llamada real al clima).
+```
+
 ## Prompt — Gastos (spec 0236 + ADR 0151; 2026-10-16; ajustado al ADR 0152 el mismo día; N ya está en `dev`)
 
 ```
