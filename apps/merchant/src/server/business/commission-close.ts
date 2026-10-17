@@ -151,6 +151,7 @@ export async function freezeSaleCommission(
   });
   if (
     total !== null &&
+    results.every((result) => result.configured) &&
     args.paymentsMetadata.some((p) => p.chargeShape !== "none")
   )
     await appendModuleEvent(tx, {
