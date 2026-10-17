@@ -471,6 +471,47 @@ Candidato local en dev con QA PASS y handoff en docs/factory/ (SHAs, pruebas rea
 preparada). Avisá cualquier hallazgo que contradiga la spec antes de resolverlo por tu cuenta.
 ```
 
+## Prompt — AN-2 (spec 0237 §6; 2026-10-17; lanzar recién con AN-1 aceptada por QA e integrada en dev)
+
+```
+# Encargo: implementar la etapa AN-2 de Analíticas (spec 0237 §6: stock y costos)
+
+Mandan docs/specs/0237-analiticas-inbox-y-resumenes-diarios.md (§6 y lo común de §1–§3), ADR 0152 y ADR 0153.
+AN-1 ya está integrada en dev: AN-2 se apoya en su suscriptor core, sus resúmenes y su inbox; no los rediseña.
+Las decisiones de producto están cerradas: no se reabren.
+
+## Primero
+Leé el handoff de AN-1 en docs/factory/ y confirmá el §6 contra el código real. Si algo de la spec no encaja con
+lo que AN-1 construyó, avisá al owner antes de resolverlo por tu cuenta.
+
+## Qué entra
+- Stock publica stock.purchase.recorded y stock.adjustment.recorded en la misma tx del movimiento (entradas por
+  lote: un evento por línea), con lo que pide el §6; traductores puros (ADR 0153).
+- Recetas: su traductor de recipes.consumption.applied suma stock_consumption y stock_on_hand; se suscribe a
+  stock.purchase.recorded y publica recipes.product_cost.changed cuando cambia el costo promedio.
+- Métricas de AN-2 del §1 (incluido el tipo gauge en analytics.daily_gauge).
+- Tarjetas 5 (suba de insumo, evaluada en la delivery de recipes.product_cost.changed), 8 (insumo que se acaba,
+  con rango) y 9 (merma por conteo), con los textos, pesos y acciones del §6.
+- Histórico: valor del stock y subas de insumos (§4).
+
+## Reglas
+- Flujo de ADR 0144 y docs/AGENT-WORKFLOW.md: coordinador, hasta dos implementadores en worktrees propios desde
+  dev, QA independiente. Migración nueva solo si hace falta, una.
+- Analíticas es core: sin switch ni variable de entorno. Core nunca importa ni nombra un módulo (ADR 0138/0139).
+- El corte del conteo de Stock no se altera con los eventos nuevos ni con deliveries de Analíticas (§2.4).
+- Node 24; DB solo con tools/neon-test.sh, nunca DATABASE_URL.
+- Pruebas focales: un caso Neon por evento nuevo (atómico con su movimiento, local correcto, sin alterar el
+  corte) y unit por tarjeta con sus bordes (mínimo de un mes en la 8, umbral de monto en la 9, decaimiento).
+  Sin verify global ni mutaciones.
+- No push, no deploy, no migración ni lectura de PROD. No editar INDEX, TASKS ni el estado de Claude.
+
+## Fuera de alcance
+AN-3 (tarjetas 10, 11, 12 y sus eventos), mostrar clima o calendario, cambiar las tarjetas de AN-1.
+
+## Entrega
+Candidato local en dev con QA PASS y handoff en docs/factory/ (SHAs, pruebas reales, fallos, migración si hubo).
+```
+
 ## Prompt — Gastos (spec 0236 + ADR 0151; 2026-10-16; ajustado al ADR 0152 el mismo día; N ya está en `dev`)
 
 ```
