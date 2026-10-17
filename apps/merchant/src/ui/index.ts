@@ -22,6 +22,7 @@ export * from "./progress-bar";
 export * from "./link";
 export * from "./time-field";
 export * from "./date-time-field";
+export * from "./date-field";
 export * from "./search-field";
 export * from "./color-field";
 export * from "./slider";

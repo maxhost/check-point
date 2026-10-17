@@ -1,6 +1,6 @@
 "use client";
 
-import { parseDateTime } from "@internationalized/date";
+import { parseDate, parseDateTime } from "@internationalized/date";
 import {
   Calendar as CalendarIcon,
   NavArrowLeft,
@@ -39,6 +39,8 @@ export type DateTimeFieldProps = {
   onChange: (value: string) => void;
   /** Minimo, en el mismo formato. */
   min?: string;
+  /** DateField selecciona solo día; el modo habitual conserva fecha y hora. */
+  granularity?: "day" | "minute";
   description?: string;
   errorMessage?: string;
   isDisabled?: boolean;
@@ -50,9 +52,13 @@ export type DateTimeFieldProps = {
   className?: string;
 };
 
-function toDateTime(value: string | undefined) {
+function toDateValue(value: string | undefined, granularity: "day" | "minute") {
   try {
-    return value ? parseDateTime(value) : null;
+    return value
+      ? granularity === "day"
+        ? parseDate(value)
+        : parseDateTime(value)
+      : null;
   } catch {
     return null;
   }
@@ -70,6 +76,7 @@ export function DateTimeField({
   value,
   onChange,
   min,
+  granularity = "minute",
   description,
   errorMessage,
   tourAnchor,
@@ -80,11 +87,17 @@ export function DateTimeField({
     <I18nProvider locale="es-419">
       <DatePicker
         {...props}
-        value={toDateTime(value)}
-        minValue={toDateTime(min)}
-        onChange={(date) => onChange(date ? date.toString().slice(0, 16) : "")}
-        granularity="minute"
-        hourCycle={24}
+        value={toDateValue(value, granularity)}
+        minValue={toDateValue(min, granularity)}
+        onChange={(date) =>
+          onChange(
+            date
+              ? date.toString().slice(0, granularity === "day" ? 10 : 16)
+              : "",
+          )
+        }
+        granularity={granularity}
+        hourCycle={granularity === "minute" ? 24 : undefined}
         validationBehavior="aria"
         isInvalid={errorMessage ? true : undefined}
         data-tour={tourAnchor}
