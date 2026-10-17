@@ -72,3 +72,145 @@ describe("AN1 pure captured translators", () => {
     ).toBe("sale.commission.frozen:order");
   });
 });
+
+describe("AN1 exact covered money", () => {
+  it("allocates a frozen cent over all three equal lines by position deterministically", async () => {
+    const { allocateLineCommissions } =
+      await import("../server/business/commission-close");
+    const { buildFinancialSettlement } =
+      await import("@mi-pasaporte/domain/financial");
+    const settlement = buildFinancialSettlement({
+      currencyCode: "USD",
+      discount: null,
+      lines: [0, 1, 2].map((position) => ({
+        sourceLineId: `line-${position}`,
+        position,
+        unitPrice: "1.00",
+        quantity: 1,
+      })),
+      payments: [{ methodId: "method", paymentId: "payment", amount: "3.00" }],
+    });
+    const expected = { "line-0": "0", "line-1": "1", "line-2": "0" };
+    expect(allocateLineCommissions(1n, settlement.lines)).toEqual(expected);
+    expect(
+      allocateLineCommissions(1n, [...settlement.lines].reverse()),
+    ).toEqual(expected);
+    expect(
+      Object.values(expected).reduce((sum, fee) => sum + BigInt(fee), 0n),
+    ).toBe(1n);
+    expect(allocateLineCommissions(null, settlement.lines)).toEqual({
+      "line-0": null,
+      "line-1": null,
+      "line-2": null,
+    });
+    expect(allocateLineCommissions(0n, settlement.lines)).toEqual({
+      "line-0": "0",
+      "line-1": "0",
+      "line-2": "0",
+    });
+    expect(() =>
+      allocateLineCommissions(
+        1n,
+        settlement.lines.map((l) => ({
+          ...l,
+          money: { ...l.money, net: "0.00" },
+        })),
+      ),
+    ).toThrow();
+  });
+  it("keeps exact known revenue and fee for one of two differently priced same-product lines", () => {
+    const event = {
+      ...envelope,
+      eventType: "recipes.consumption.applied",
+      payload: {
+        eventVersion: 1,
+        sourceOrderId: "order",
+        locationId: "local",
+        closedAt: "2026-10-17T15:00:00Z",
+        currencyCode: "USD",
+        minorUnit: 2,
+        lines: [
+          {
+            productId: "product",
+            productLabel: "Café",
+            quantity: "1",
+            revenueMinor: "100",
+            allocatedCommissionMinor: "2",
+            cost: { amountMinor: "40", currencyCode: "USD", minorUnit: 2 },
+          },
+          {
+            productId: "product",
+            productLabel: "Café",
+            quantity: "1",
+            revenueMinor: "900",
+            allocatedCommissionMinor: "18",
+            cost: null,
+          },
+        ],
+        items: [],
+      },
+    };
+    const rows = recipes[0].translate(event).rows;
+    expect(rows.find((r) => r.metric === "revenue_with_cost")).toMatchObject({
+      amountMinor: "100",
+      count: 1,
+    });
+    expect(
+      rows.find((r) => r.metric === "payment_commission_with_cost"),
+    ).toMatchObject({ amountMinor: "2", count: 1 });
+    expect(rows.find((r) => r.metric === "cost_of_goods")).toMatchObject({
+      amountMinor: "40",
+      count: 1,
+    });
+    expect((100 - 40 - 2) / 100).toBe(0.58);
+    expect(rows.filter((r) => r.metric === "revenue_with_cost")).toHaveLength(
+      1,
+    );
+  });
+  it("does not convert unknown commission or legacy missing revenue into zero", () => {
+    const event = {
+      ...envelope,
+      eventType: "recipes.consumption.applied",
+      payload: {
+        sourceOrderId: "unknown",
+        locationId: "local",
+        closedAt: "2026-10-17T15:00:00Z",
+        currencyCode: "USD",
+        minorUnit: 2,
+        lines: [
+          {
+            productId: "product",
+            quantity: "1",
+            revenueMinor: "100",
+            allocatedCommissionMinor: null,
+            cost: { amountMinor: "40", currencyCode: "USD", minorUnit: 2 },
+          },
+        ],
+      },
+    };
+    expect(
+      recipes[0]
+        .translate(event)
+        .rows.some((r) => r.metric === "payment_commission_with_cost"),
+    ).toBe(false);
+    const zero = structuredClone(event);
+    zero.payload.lines[0].allocatedCommissionMinor = "0" as never;
+    expect(
+      recipes[0]
+        .translate(zero)
+        .rows.find((r) => r.metric === "payment_commission_with_cost"),
+    ).toMatchObject({ amountMinor: "0", count: 1 });
+    const legacy = {
+      ...event,
+      payload: {
+        ...event.payload,
+        currencyCode: null,
+        minorUnit: null,
+        lines: event.payload.lines.map((l) => ({ ...l, revenueMinor: null })),
+      },
+    };
+    const rows = recipes[0].translate(legacy).rows;
+    expect(rows.find((r) => r.metric === "cost_of_goods")?.count).toBe(1);
+    expect(rows.some((r) => r.metric === "revenue_with_cost")).toBe(false);
+  });
+});

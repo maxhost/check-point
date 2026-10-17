@@ -62,7 +62,10 @@ export type SaleClosedEventV3 = Omit<
   "eventVersion" | "lines"
 > & {
   eventVersion: 3;
-  lines: (SaleClosedEventV2["lines"][number] & { productLabel: string })[];
+  lines: (SaleClosedEventV2["lines"][number] & {
+    productLabel: string;
+    commissionMinor: string | null;
+  })[];
 };
 export type SaleClosedEvent =
   SaleClosedEventV1 | SaleClosedEventV2 | SaleClosedEventV3;

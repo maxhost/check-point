@@ -5,6 +5,12 @@ export const METRICS = {
   units_sold: { type: "sum", unit: "quantity", dimension: "product" },
   payment_commission: { type: "sum", unit: "money", dimension: "none" },
   cost_of_goods: { type: "sum", unit: "money", dimension: "product" },
+  revenue_with_cost: { type: "sum", unit: "money", dimension: "product" },
+  payment_commission_with_cost: {
+    type: "sum",
+    unit: "money",
+    dimension: "product",
+  },
   units_with_cost: { type: "sum", unit: "quantity", dimension: "product" },
   expense_fixed: { type: "sum", unit: "money", dimension: "concept" },
   expense_variable: { type: "sum", unit: "money", dimension: "concept" },

@@ -43,6 +43,7 @@ export async function publishSaleClosed(
     settlement?: FinancialSettlement;
     capture?: ResourceCapture;
     paymentsMetadata?: readonly PaymentMetadata[];
+    commissionByLine?: Readonly<Record<string, string | null>>;
     sourceOrderId: string;
     locationId: string;
     closedAt: Date;
@@ -160,6 +161,7 @@ export async function publishSaleClosed(
       eventVersion: 3,
       lines: payload.lines.map((l) => ({
         ...l,
+        commissionMinor: args.commissionByLine?.[l.sourceLineId] ?? null,
         productLabel: args.lines.find(
           (source) => source.sourceLineId === l.sourceLineId,
         )!.productLabel!,

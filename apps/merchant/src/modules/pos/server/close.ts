@@ -1,4 +1,7 @@
-import { freezeSaleCommission } from "../../../server/business/commission-close";
+import {
+  freezeSaleCommission,
+  prepareSaleCommission,
+} from "../../../server/business/commission-close";
 import { captureSaleResources } from "../../../server/module-events/publish";
 import {
   minorUnitForCurrency,
@@ -252,7 +255,21 @@ export async function closePosOrder(
         settlement,
         lines,
       });
+      const commissionInput = {
+        businessId: business.id,
+        sourceProviderId: "pos",
+        sourceOrderId: id,
+        locationId: row.locationId,
+        settlement,
+        paymentsMetadata,
+        capture,
+      };
+      const preparedCommission = await prepareSaleCommission(
+        tx,
+        commissionInput,
+      );
       const event = await publishSaleClosed(tx, {
+        commissionByLine: preparedCommission.lineCommissions,
         capture,
         businessId: business.id,
         sourceOrderId: id,
@@ -270,16 +287,11 @@ export async function closePosOrder(
           }),
         ),
       });
-      await freezeSaleCommission(tx, {
-        businessId: business.id,
-        sourceProviderId: "pos",
-        sourceOrderId: id,
-        locationId: row.locationId,
-        settlement,
-        paymentsMetadata,
-        capture,
-        eventId: event?.eventId ?? null,
-      });
+      await freezeSaleCommission(
+        tx,
+        { ...commissionInput, eventId: event.eventId },
+        preparedCommission,
+      );
       const closedAt = event?.closedAt ?? now;
       const [closed] = await tx
         .update(posOrders)

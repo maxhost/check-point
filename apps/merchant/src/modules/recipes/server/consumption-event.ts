@@ -21,11 +21,15 @@ export type ConsumptionApplied = {
   sourceOrderId: string;
   locationId: string;
   closedAt: string;
+  currencyCode: string | null;
+  minorUnit: number | null;
   lines: {
     sourceLineId: string;
     productId: string | null;
     productLabel: string | null;
     quantity: string;
+    revenueMinor: string | null;
+    allocatedCommissionMinor: string | null;
     cost: {
       amountMinor: string;
       currencyCode: string;
@@ -86,13 +90,30 @@ export async function publishConsumptionApplied(
     sourceOrderId: p.sourceOrderId,
     locationId: p.locationId,
     closedAt: p.closedAt,
+    currencyCode: p.eventVersion === 1 ? null : p.money.currencyCode,
+    minorUnit: p.eventVersion === 1 ? null : p.money.minorUnit,
     lines: p.lines.map((line) => {
+      const financialLine = "money" in line ? line : null;
+      const money = p.eventVersion === 1 ? null : p.money;
       const c = cost.lines.find((c) => c.sourceLineId === line.sourceLineId);
       return {
         sourceLineId: line.sourceLineId,
         productId: line.productId,
         productLabel: "productLabel" in line ? String(line.productLabel) : null,
         quantity: String(line.quantity),
+        revenueMinor:
+          financialLine && money
+            ? String(
+                toMinor(
+                  originalMoney(financialLine.money.net),
+                  money.minorUnit,
+                ),
+              )
+            : null,
+        allocatedCommissionMinor:
+          p.eventVersion === 3 && "commissionMinor" in line
+            ? line.commissionMinor
+            : null,
         cost:
           c?.state === "completo" &&
           c.knownCost !== null &&

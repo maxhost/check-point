@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { appendModuleEvent } from "../module-events/append";
 import type { DbTransaction } from "@mi-pasaporte/db";
 import {
@@ -19,6 +20,8 @@ import {
   rational,
   subtract,
   toMinor,
+  originalMoney,
+  allocateCumulative,
 } from "@mi-pasaporte/domain/financial/rational";
 import {
   CommissionConfigurationError,
@@ -28,20 +31,71 @@ import {
 import type { PaymentMetadata } from "../module-events/types";
 import type { ResourceCapture } from "../module-events/publish";
 
-/** Domain outcomes are data. Database errors are deliberately never caught here. */
-export async function freezeSaleCommission(
+export type SaleCommissionInput = {
+  businessId: string;
+  sourceProviderId: string;
+  sourceOrderId: string;
+  locationId: string;
+  settlement: FinancialSettlement;
+  paymentsMetadata: readonly PaymentMetadata[];
+  capture: ResourceCapture;
+};
+export type PreparedSaleCommission = Readonly<{
+  lineCommissions: Readonly<Record<string, string | null>>;
+}>;
+type PreparedData = {
+  binding: string;
+  payments: (typeof paymentCommissions.$inferInsert)[];
+  sale: typeof saleCommissions.$inferInsert;
+  total: bigint | null;
+  configured: boolean;
+};
+const preparedSnapshots = new WeakMap<PreparedSaleCommission, PreparedData>();
+const binding = (a: SaleCommissionInput) =>
+  createHash("sha256")
+    .update(
+      JSON.stringify({
+        businessId: a.businessId,
+        sourceProviderId: a.sourceProviderId,
+        sourceOrderId: a.sourceOrderId,
+        locationId: a.locationId,
+        settlement: a.settlement,
+        paymentsMetadata: a.paymentsMetadata,
+        capture: a.capture,
+      }),
+    )
+    .digest("hex");
+/** Allocate every frozen cent across all lines, before applying any cost-coverage filter. */
+export function allocateLineCommissions(
+  total: bigint | null,
+  lines: FinancialSettlement["lines"],
+): Readonly<Record<string, string | null>> {
+  const ordered = [...lines].sort(
+    (a, b) =>
+      a.position - b.position || a.sourceLineId.localeCompare(b.sourceLineId),
+  );
+  const amounts =
+    total === null
+      ? null
+      : allocateCumulative(
+          total,
+          ordered.map((line) => exact(originalMoney(line.money.net))),
+        );
+  return Object.freeze(
+    Object.fromEntries(
+      ordered.map((line, index) => [
+        line.sourceLineId,
+        amounts === null ? null : String(amounts[index]),
+      ]),
+    ),
+  );
+}
+/** Read only immutable captured configuration; prepare once before publishing the sale. */
+export async function prepareSaleCommission(
   tx: DbTransaction,
-  args: {
-    businessId: string;
-    sourceProviderId: string;
-    sourceOrderId: string;
-    locationId: string;
-    settlement: FinancialSettlement;
-    paymentsMetadata: readonly PaymentMetadata[];
-    capture: ResourceCapture;
-    eventId: string | null;
-  },
-) {
+  args: SaleCommissionInput,
+): Promise<PreparedSaleCommission> {
+  const payments: (typeof paymentCommissions.$inferInsert)[] = [];
   const { settlement } = args;
   const results = [];
   for (const payment of settlement.payments) {
@@ -97,9 +151,9 @@ export async function freezeSaleCommission(
         result = unavailable();
       }
     }
-    await tx.insert(paymentCommissions).values({
+    payments.push({
       businessId: args.businessId,
-      eventId: args.eventId,
+      eventId: null,
       sourceProviderId: args.sourceProviderId,
       sourceOrderId: args.sourceOrderId,
       locationId: args.locationId,
@@ -132,7 +186,7 @@ export async function freezeSaleCommission(
         rational(0n),
       )
     : null;
-  await tx.insert(saleCommissions).values({
+  const sale: typeof saleCommissions.$inferInsert = {
     businessId: args.businessId,
     sourceProviderId: args.sourceProviderId,
     sourceOrderId: args.sourceOrderId,
@@ -148,15 +202,49 @@ export async function freezeSaleCommission(
       total === null || !original
         ? null
         : exact(subtract(minorRational(total, settlement.minorUnit), original)),
+  };
+  const configured = results.every((result) => result.configured);
+  const prepared = Object.freeze({
+    lineCommissions: allocateLineCommissions(
+      known && configured ? total : null,
+      settlement.lines,
+    ),
   });
+  preparedSnapshots.set(prepared, {
+    binding: binding(args),
+    payments,
+    sale,
+    total,
+    configured,
+  });
+  return prepared;
+}
+/** Persist exactly the prepared snapshot and its event in the origin transaction. */
+export async function freezeSaleCommission(
+  tx: DbTransaction,
+  args: SaleCommissionInput & { eventId: string | null },
+  prepared?: PreparedSaleCommission,
+) {
+  const snapshot = prepared ?? (await prepareSaleCommission(tx, args));
+  const data = preparedSnapshots.get(snapshot);
+  if (!data || data.binding !== binding(args))
+    throw new Error("Prepared commission does not match origin");
+  if (data.payments.length)
+    await tx
+      .insert(paymentCommissions)
+      .values(data.payments.map((row) => ({ ...row, eventId: args.eventId })));
+  await tx.insert(saleCommissions).values(data.sale);
+  const { settlement } = args;
+  const { total, configured } = data;
   if (
     total !== null &&
-    results.every((result) => result.configured) &&
+    configured &&
     args.paymentsMetadata.some((p) => p.chargeShape !== "none")
   )
     await appendModuleEvent(tx, {
       businessId: args.businessId,
       eventType: "sale.commission.frozen",
+      causationEventId: args.eventId ?? undefined,
       eventVersion: 1,
       sourceId: args.sourceOrderId,
       locationId: args.locationId,

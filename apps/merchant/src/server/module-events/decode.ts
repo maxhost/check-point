@@ -67,7 +67,14 @@ export function decodeSaleClosedEvent(value: unknown): SaleClosedEvent {
   }
   if (
     v.eventVersion === 3 &&
-    v.lines.some((l) => typeof l.productLabel !== "string" || !l.productLabel)
+    v.lines.some(
+      (l) =>
+        typeof l.productLabel !== "string" ||
+        !l.productLabel ||
+        (l.commissionMinor !== null &&
+          (typeof l.commissionMinor !== "string" ||
+            !/^\d+$/.test(l.commissionMinor))),
+    )
   )
     throw new Error("Missing product label");
   return v;
