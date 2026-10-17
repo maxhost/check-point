@@ -652,6 +652,27 @@
       "when": 1792047417496,
       "tag": "0092_payment_catalog_and_history",
       "breakpoints": true
+    },
+    {
+      "idx": 93,
+      "version": "7",
+      "when": 1792198444551,
+      "tag": "0093_negocio_core",
+      "breakpoints": true
+    },
+    {
+      "idx": 94,
+      "version": "7",
+      "when": 1792198651724,
+      "tag": "0094_historical_commission_source",
+      "breakpoints": true
+    },
+    {
+      "idx": 95,
+      "version": "7",
+      "when": 1792199447355,
+      "tag": "0095_commission_total_precision",
+      "breakpoints": true
     }
   ]
 }

@@ -17,6 +17,8 @@ if (enabled) process.env.DATABASE_URL = url;
 import { getDb } from "@mi-pasaporte/db";
 import {
   businesses,
+  paymentMethods,
+  businessModules,
   locationVerifications,
   locations,
   loyaltyPrograms,
@@ -122,6 +124,18 @@ describe.skipIf(!enabled)("POST /api/onboarding/signup (spec 0155)", () => {
       timezone: CUENCA_PLACE.timezone,
       currencyCode: "USD",
     });
+    expect(
+      await db
+        .select()
+        .from(paymentMethods)
+        .where(eq(paymentMethods.businessId, business.id)),
+    ).toHaveLength(6);
+    expect(
+      await db
+        .select()
+        .from(businessModules)
+        .where(eq(businessModules.businessId, business.id)),
+    ).toEqual([]);
     const [membership] = await db
       .select()
       .from(memberships)

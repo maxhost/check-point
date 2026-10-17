@@ -1,7 +1,7 @@
 import { isIanaTimezone } from "../timezone";
 import { isSupportedCurrency } from "../../lib/currencies";
-import { BrandError, colorPattern, type LogoAction } from "./core";
 import { validateVatPatch } from "./vat";
+import { BrandError, colorPattern, type LogoAction } from "./core";
 
 function nonEmpty(value: unknown, field: string) {
   if (typeof value !== "string" || !value.trim()) {
@@ -21,7 +21,10 @@ function color(value: unknown, field: string) {
   return value.toUpperCase();
 }
 
-export function validateBrandInput(value: unknown) {
+export function validateBrandInput(
+  value: unknown,
+  legacyBusinessFields = false,
+) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new BrandError(422, "Los datos de marca no son válidos.");
   }
@@ -57,23 +60,39 @@ export function validateBrandInput(value: unknown) {
       "La marca de recorte no corresponde a esta acción.",
     );
   }
-  const timezone = nonEmpty(input.timezone, "La zona horaria");
-  if (!isIanaTimezone(timezone))
-    throw new BrandError(422, "La zona horaria no es válida.");
-  // Currency is optional in the payload (legacy callers keep the current value);
-  // when present it must be a supported ISO 4217 code.
-  let currencyCode: string | undefined;
-  if (input.currencyCode !== undefined) {
-    if (!isSupportedCurrency(input.currencyCode)) {
-      throw new BrandError(422, "La moneda no es válida.");
+  if (
+    !legacyBusinessFields &&
+    [
+      "timezone",
+      "currencyCode",
+      "chargesVat",
+      "saleVatRate",
+      "recoversPurchaseVat",
+    ].some((key) => Object.hasOwn(input, key))
+  )
+    throw new BrandError(
+      422,
+      "La configuración regional y fiscal se gestiona en Negocio.",
+    );
+  const regional: { timezone?: string; currencyCode?: string } = {};
+  let vat = {} as ReturnType<typeof validateVatPatch>;
+  if (legacyBusinessFields) {
+    if (input.timezone !== undefined) {
+      if (typeof input.timezone !== "string" || !isIanaTimezone(input.timezone))
+        throw new BrandError(422, "La zona horaria no es válida.");
+      regional.timezone = input.timezone;
     }
-    currencyCode = input.currencyCode;
+    if (input.currencyCode !== undefined) {
+      if (!isSupportedCurrency(input.currencyCode))
+        throw new BrandError(422, "La moneda no es válida.");
+      regional.currencyCode = input.currencyCode;
+    }
+    vat = validateVatPatch(input);
   }
   return {
+    regional,
+    vat,
     name: nonEmpty(input.name, "El nombre"),
-    timezone,
-    currencyCode,
-    vat: validateVatPatch(input),
     brandPrimaryColor: color(input.brandPrimaryColor, "El color primario"),
     brandComplementaryColor: color(
       input.brandComplementaryColor,

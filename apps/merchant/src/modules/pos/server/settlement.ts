@@ -69,6 +69,7 @@ export async function persistPaymentSnapshot(
   orderId: string,
   settlement: FinancialSettlement,
   methods: Map<string, PaymentMethod>,
+  methodProviderId: string = "core",
 ) {
   if (settlement.lines.length) {
     await tx.execute(
@@ -90,7 +91,7 @@ export async function persistPaymentSnapshot(
           businessId,
           posOrderId: orderId,
           methodId: payment.methodId,
-          methodProviderId: "pos",
+          methodProviderId,
           position: payment.position,
           methodName: method.name,
           chargeShape: method.chargeShape,
@@ -105,12 +106,13 @@ export async function persistPaymentSnapshot(
 export function paymentMetadata(
   settlement: FinancialSettlement,
   methods: Map<string, PaymentMethod>,
+  methodProviderId: string = "core",
 ) {
   return settlement.payments.map((payment) => {
     const method = methods.get(payment.methodId)!;
     return {
       paymentId: payment.paymentId,
-      methodProviderId: "pos",
+      methodProviderId,
       methodId: method.id,
       methodName: method.name,
       chargeShape: method.chargeShape,

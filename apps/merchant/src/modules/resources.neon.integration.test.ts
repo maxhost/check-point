@@ -8,8 +8,9 @@ import {
   moduleEvents,
   moduleResourceVersions,
   paymentMethodCatalog,
-  profitabilityPaymentCommissions as snapshots,
-  profitabilityCommissionRevisions as revisions,
+  paymentMethods,
+  paymentCommissions as snapshots,
+  commissionRevisions as revisions,
 } from "@mi-pasaporte/db/schema";
 import { buildFinancialSettlement } from "@mi-pasaporte/domain/financial";
 import {
@@ -17,7 +18,6 @@ import {
   dropModuleWorld,
   enableModules,
   moduleStaff,
-  callModuleRoute,
   modulesIntegrationEnabled,
   type ModuleWorld,
 } from "./modules-integration-support";
@@ -33,11 +33,17 @@ import {
 import {
   saveCommission,
   listCommissions,
-} from "./profitability/server/commissions/config";
-import { readSaleCommissions } from "./profitability/server/commissions/read";
+} from "../server/business/commission-config";
+import { readSaleCommissions as readCoreSaleCommissions } from "../server/business/commission-read";
+const readSaleCommissions = (
+  businessId: string,
+  id: unknown,
+  location: unknown,
+) => readCoreSaleCommissions(businessId, id, location, "pos");
+import { businessHttp } from "../server/business/http";
 import { commissionSubscriptions } from "./profitability/server/commissions/apply";
 let world: ModuleWorld, other: ModuleWorld;
-const providerId = "payment-fixture",
+const providerId = "core",
   registry = SERVER_MODULES as Record<string, ModuleServer>,
   flag = process.env.MODULE_EVENTS_ENABLED;
 const methodIds = {
@@ -70,6 +76,17 @@ beforeAll(async () => {
       metadata: { name: "Foreign", status: "active", chargeShape: "percent" },
     },
   ]);
+  for (const owner of [world, other])
+    await getDb()
+      .insert(paymentMethods)
+      .values(
+        methods.get(owner.businessId)!.map((m) => ({
+          id: m.resourceId,
+          businessId: owner.businessId,
+          name: String(m.metadata.name),
+          chargeShape: String(m.metadata.chargeShape),
+        })),
+      );
   registry[providerId] = {
     routes: [],
     resourceProviders: [
@@ -166,13 +183,14 @@ describe.skipIf(!modulesIntegrationEnabled)(
       ).toHaveLength(5);
     });
     it("configures with its own permission while the payment producer is disabled, validates inputs and tenants", async () => {
-      const staff = await moduleStaff(world, ["profitability"]);
+      const staff = await moduleStaff(world, ["business"]);
       expect(
         (
-          await callModuleRoute(
-            "GET",
-            "/api/modules/profitability/commissions",
-            staff,
+          await businessHttp(
+            new Request("http://localhost:3001/api/business/payment-methods", {
+              headers: { cookie: staff },
+            }),
+            ["payment-methods"],
           )
         ).status,
       ).toBe(200);
@@ -287,6 +305,12 @@ describe.skipIf(!modulesIntegrationEnabled)(
           status: "active",
           chargeShape: "percent",
         },
+      });
+      await getDb().insert(paymentMethods).values({
+        id: absentId,
+        businessId: world.businessId,
+        name: "Unconfigured",
+        chargeShape: "percent",
       });
       const absent = await sale([{ methodId: absentId, amount: "9.00" }]);
       await saveCommission(world.businessId, absentId, {

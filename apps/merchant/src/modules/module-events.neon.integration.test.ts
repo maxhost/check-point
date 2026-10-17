@@ -1,3 +1,4 @@
+import { createPaymentMethod } from "../server/business/payment-methods";
 import { randomUUID } from "node:crypto";
 import {
   afterAll,
@@ -15,7 +16,7 @@ import {
   posOrderItems,
   posOrderPayments,
   posOrders,
-  posPaymentMethods,
+  paymentMethods,
   recipeConsumptionSources,
   recipeRevisions,
   stockItemLocations,
@@ -31,8 +32,14 @@ import {
 import { createRecipe, updateRecipe } from "./recipes/server/library";
 import { saveComposition } from "./recipes/server/compositions";
 import { readSaleConsumptionCost } from "./recipes/server/consumption-cost";
-import { saveCommission } from "./profitability/server/commissions/config";
-import { readSaleCommissions } from "./profitability/server/commissions/read";
+import { saveCommission } from "../server/business/commission-config";
+import { readSaleCommissions as readCoreSaleCommissions } from "../server/business/commission-read";
+const readSaleCommissions = (
+  businessId: string,
+  id: unknown,
+  location: unknown,
+) => readCoreSaleCommissions(businessId, id, location, "pos");
+import { businessHttp } from "../server/business/http";
 import {
   publishSaleClosed,
   setResourceVersion,
@@ -88,12 +95,10 @@ describe.skipIf(!modulesIntegrationEnabled)(
         ],
         expectedRevisionId: null,
       });
-      const methodResponse = await post("payment-methods", {
+      const method = await createPaymentMethod(world.businessId, {
         name: "Actual card",
         chargeShape: "percent_and_fixed",
       });
-      expect(methodResponse.status).toBe(201);
-      const { method } = await methodResponse.json();
       const configured = await saveCommission(
         world.businessId,
         method.id.toUpperCase(),
@@ -119,7 +124,7 @@ describe.skipIf(!modulesIntegrationEnabled)(
         versionId: composition.resolutionId,
       });
       expect(payload.payments[0].resourceVersions).toContainEqual({
-        providerId: "profitability",
+        providerId: "core",
         slot: "commission",
         versionId: configured.revisionId,
       });
@@ -140,8 +145,8 @@ describe.skipIf(!modulesIntegrationEnabled)(
           order.id.toUpperCase(),
           world.locationId.toUpperCase(),
         ),
-      ).toMatchObject({ state: "pendiente", total: null });
-      expect(await drain(event.id)).toMatchObject({ applied: 2, failed: 0 });
+      ).toMatchObject({ state: "completo", total: "0.55" });
+      expect(await drain(event.id)).toMatchObject({ applied: 1, failed: 0 });
       expect(await movements(order.id)).toMatchObject([
         { quantity: "-4.000", consumptionUnitCost: "3.000000" },
       ]);
@@ -278,11 +283,13 @@ describe.skipIf(!modulesIntegrationEnabled)(
         expect(await eventOf(zero.id)).toBeUndefined();
         expect(await eventOf(positive.id)).toBeUndefined();
         await setModuleEnabled(world.businessId, "pos", { enabled: false });
-        const staff = await moduleStaff(world, ["profitability"]);
-        const response = await callModuleRoute(
-          "GET",
-          `/api/modules/profitability/sale-commissions/${zero.id.toUpperCase()}?locationId=${world.locationId.toUpperCase()}`,
-          staff,
+        const staff = await moduleStaff(world, ["business"]);
+        const response = await businessHttp(
+          new Request(
+            `http://localhost:3001/api/business/sale-commissions/pos/${zero.id.toUpperCase()}?locationId=${world.locationId.toUpperCase()}`,
+            { headers: { cookie: staff } },
+          ),
+          ["sale-commissions", "pos", zero.id.toUpperCase()],
         );
         expect(response.status).toBe(200);
         expect(await response.json()).toMatchObject({
@@ -296,16 +303,18 @@ describe.skipIf(!modulesIntegrationEnabled)(
             world.locationId,
           ),
         ).toMatchObject({
-          state: "incompleto",
-          total: null,
-          reasons: ["commission_no_data"],
+          state: "completo",
+          total: "0.00",
+          reasons: [],
         });
         expect(
           (
-            await callModuleRoute(
-              "GET",
-              "/api/modules/profitability/commissions",
-              staff,
+            await businessHttp(
+              new Request(
+                "http://localhost:3001/api/business/payment-methods",
+                { headers: { cookie: staff } },
+              ),
+              ["payment-methods"],
             )
           ).status,
         ).toBe(200);
@@ -364,9 +373,9 @@ describe.skipIf(!modulesIntegrationEnabled)(
       );
       await sqlState(
         getDb()
-          .update(posPaymentMethods)
+          .update(paymentMethods)
           .set({ status: "archived" })
-          .where(eq(posPaymentMethods.id, cashId)),
+          .where(eq(paymentMethods.id, cashId)),
         "23514",
       );
       await sqlState(

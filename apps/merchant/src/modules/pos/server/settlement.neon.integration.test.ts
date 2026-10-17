@@ -1,3 +1,7 @@
+import {
+  createPaymentMethod,
+  archivePaymentMethod,
+} from "../../../server/business/payment-methods";
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { getDb, withDbTransaction } from "@mi-pasaporte/db";
@@ -12,11 +16,7 @@ import {
 } from "@mi-pasaporte/db/schema";
 import { and, eq } from "drizzle-orm";
 import { readModuleResources } from "../../resources";
-import {
-  listPaymentMethods,
-  createPaymentMethod,
-  archivePaymentMethod,
-} from "./payment-methods";
+import { listPaymentMethods } from "./payment-methods";
 import {
   dropPosWorld,
   openOrder,
@@ -413,12 +413,7 @@ describe.skipIf(!posIntegrationEnabled)(
           copCash,
         ]),
       );
-      expect(methods[0].metadata).toEqual({
-        name: "Efectivo",
-        chargeShape: "none",
-        status: "active",
-        isCash: true,
-      });
+      expect(methods).toEqual([]); // Payment methods no longer belong to the module directory.
       expect(
         await getDb()
           .select()

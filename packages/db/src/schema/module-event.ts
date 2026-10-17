@@ -100,3 +100,15 @@ export const moduleEventDeliveries = core.table(
       .where(sql`${t.state} = 'processing'`),
   ],
 );
+
+/** Generic compatibility dispatch metadata. No executable module dependency. */
+export const historicalEventHandlers = core.table(
+  "historical_event_handler",
+  {
+    subscriberId: text("subscriber_id").notNull(),
+    eventType: text("event_type").notNull(),
+    handlerKey: text("handler_key").notNull(),
+    sourceProviderId: text("source_provider_id").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.subscriberId, t.eventType] })],
+);

@@ -1,17 +1,23 @@
-import { withDbTransaction, type DbTransaction } from "@mi-pasaporte/db";
+import { formatResultMoney } from "./commission-read-support";
+import {
+  absent,
+  zero,
+  settlementMetadata,
+  type SaleCommissionDTO,
+} from "./commission-read-support";
+import { businessStorageReady } from "./storage";
+import { withDbTransaction } from "@mi-pasaporte/db";
 import {
   locations,
+  paymentCommissions as snapshots,
+  saleCommissions,
+  historicalEventHandlers,
   moduleEvents,
   moduleEventDeliveries,
-  profitabilityPaymentCommissions as snapshots,
 } from "@mi-pasaporte/db/schema";
 import { and, eq, sql } from "drizzle-orm";
 import { isUuid } from "@mi-pasaporte/domain/server/counter/core";
-import {
-  minorUnitForCurrency,
-  normalizeMoney,
-  type ExactAmount,
-} from "@mi-pasaporte/domain/financial";
+import { normalizeMoney } from "@mi-pasaporte/domain/financial";
 import {
   add,
   exact,
@@ -23,93 +29,18 @@ import {
   subtract,
   toMinor,
 } from "@mi-pasaporte/domain/financial/rational";
-import { ModuleError } from "../../../errors";
-import { readModuleResources } from "../../../resources";
-import { decodeSaleClosedEvent } from "../../../../server/module-events/decode";
-export type SaleCommissionDTO = {
-  state: "completo" | "incompleto" | "pendiente";
-  currencyCode: string | null;
-  minorUnit: 0 | 2 | null;
-  total: string | null;
-  originalTotal: ExactAmount | null;
-  totalNormalizationAdjustment: ExactAmount | null;
-  payments: {
-    paymentId: string;
-    commission: string | null;
-    originalCommission: ExactAmount | null;
-    normalizationAdjustment: ExactAmount | null;
-    configured: boolean;
-    reasons: string[];
-  }[];
-  reasons: string[];
-};
-const absent = (reason: string): SaleCommissionDTO => ({
-  state: "incompleto",
-  currencyCode: null,
-  minorUnit: null,
-  total: null,
-  originalTotal: null,
-  totalNormalizationAdjustment: null,
-  payments: [],
-  reasons: [reason],
-});
-async function settlementMetadata(
-  tx: DbTransaction,
-  businessId: string,
-  sourceOrderId: string,
-  locationId: string,
-) {
-  try {
-    const resources = await readModuleResources(
-      tx,
-      businessId,
-      "sale_settlement",
-      [sourceOrderId],
-    );
-    if (resources.length !== 1) return null;
-    const m = resources[0].metadata;
-    if (
-      m.sourceOrderId !== sourceOrderId ||
-      m.locationId !== locationId ||
-      m.snapshotPresent !== true ||
-      typeof m.collectedTotal !== "string" ||
-      typeof m.currencyCode !== "string" ||
-      minorUnitForCurrency(m.currencyCode) !== m.minorUnit
-    )
-      return null;
-    if (
-      normalizeMoney(m.collectedTotal, m.minorUnit as 0 | 2) !==
-      m.collectedTotal
-    )
-      return null;
-    return {
-      collected: m.collectedTotal,
-      currencyCode: m.currencyCode,
-      minorUnit: m.minorUnit as 0 | 2,
-    };
-  } catch {
-    return null;
-  }
-}
-const zero = (currencyCode: string, minorUnit: 0 | 2): SaleCommissionDTO => ({
-  state: "completo",
-  currencyCode,
-  minorUnit,
-  total: formatMinor(0n, minorUnit),
-  originalTotal: exact(rational(0n)),
-  totalNormalizationAdjustment: exact(rational(0n)),
-  payments: [],
-  reasons: [],
-});
+import { BusinessError } from "./error";
+import { decodeSaleClosedEvent } from "../module-events/decode";
 export async function readSaleCommissions(
   businessId: string,
   rawOrderId: unknown,
   rawLocationId: unknown,
+  sourceProviderId: string,
 ): Promise<SaleCommissionDTO> {
   if (!rawLocationId)
-    throw new ModuleError(422, "location_required", "Elige un local.");
+    throw new BusinessError(422, "location_required", "Elige un local.");
   if (!isUuid(rawLocationId) || !isUuid(rawOrderId))
-    throw new ModuleError(
+    throw new BusinessError(
       404,
       "location_not_found",
       "Ese local o venta no existe.",
@@ -125,7 +56,85 @@ export async function readSaleCommissions(
         and(eq(locations.businessId, businessId), eq(locations.id, locationId)),
       );
     if (!local)
-      throw new ModuleError(404, "location_not_found", "Ese local no existe.");
+      throw new BusinessError(
+        404,
+        "location_not_found",
+        "Ese local no existe.",
+      );
+    const [header] = await tx
+      .select()
+      .from(saleCommissions)
+      .where(
+        and(
+          eq(saleCommissions.businessId, businessId),
+          eq(saleCommissions.sourceProviderId, sourceProviderId),
+          eq(saleCommissions.sourceOrderId, sourceOrderId),
+        ),
+      );
+    if (header) {
+      if (header.locationId !== locationId)
+        throw new BusinessError(
+          404,
+          "location_not_found",
+          "Ese local o venta no existe.",
+        );
+      const rows = await tx
+        .select()
+        .from(snapshots)
+        .where(
+          and(
+            eq(snapshots.businessId, businessId),
+            eq(snapshots.sourceProviderId, sourceProviderId),
+            eq(snapshots.sourceOrderId, sourceOrderId),
+            eq(snapshots.locationId, locationId),
+          ),
+        );
+      return {
+        state: header.state as "completo" | "incompleto",
+        currencyCode: header.currencyCode,
+        minorUnit: header.minorUnit as 0 | 2,
+        total:
+          header.total === null
+            ? null
+            : formatResultMoney(header.total, header.minorUnit as 0 | 2),
+        originalTotal: header.originalTotal,
+        totalNormalizationAdjustment: header.totalNormalizationAdjustment,
+        payments: rows.map((r) => ({ paymentId: r.paymentId, ...r.result })),
+        reasons: header.reasons,
+      };
+    }
+    // Legacy events do not carry a producer field. Match only the frozen producer
+    // from existing payment snapshots; otherwise do not guess a foreign source.
+    if (!(await businessStorageReady(tx)))
+      throw new BusinessError(
+        503,
+        "business_unavailable",
+        "La actualización de Negocio está en curso.",
+      );
+    const origins = await tx
+      .select()
+      .from(historicalEventHandlers)
+      .where(
+        and(
+          eq(historicalEventHandlers.handlerKey, "commission_snapshot"),
+          eq(historicalEventHandlers.sourceProviderId, sourceProviderId),
+        ),
+      );
+    if (!origins.length) return absent("commission_no_data");
+    const sourceRows = await tx
+      .select({ source: snapshots.sourceProviderId })
+      .from(snapshots)
+      .where(
+        and(
+          eq(snapshots.businessId, businessId),
+          eq(snapshots.sourceOrderId, sourceOrderId),
+        ),
+      );
+    if (
+      sourceRows.length &&
+      sourceRows.some((r) => r.source !== sourceProviderId)
+    )
+      return absent("commission_no_data");
     const [event] = await tx
       .select()
       .from(moduleEvents)
@@ -173,15 +182,17 @@ export async function readSaleCommissions(
         return absent("commission_snapshot_conflict");
       return zero(currencyCode, minorUnit);
     }
-    const [delivery] = await tx
+    const handlers = await tx
+      .select()
+      .from(historicalEventHandlers)
+      .where(eq(historicalEventHandlers.handlerKey, "commission_snapshot"));
+    const deliveries = await tx
       .select()
       .from(moduleEventDeliveries)
-      .where(
-        and(
-          eq(moduleEventDeliveries.eventId, event.id),
-          eq(moduleEventDeliveries.subscriberId, "profitability"),
-        ),
-      );
+      .where(and(eq(moduleEventDeliveries.eventId, event.id)));
+    const delivery = deliveries.find((d) =>
+      handlers.some((h) => h.subscriberId === d.subscriberId),
+    );
     if (!delivery || delivery.state === "skipped")
       return {
         ...absent(
@@ -225,9 +236,8 @@ export async function readSaleCommissions(
     const payments = payload.payments.map((p) => {
       const row = frozen.find((r) => r.paymentId === p.paymentId);
       const revisionId =
-        p.resourceVersions.find(
-          (r) => r.providerId === "profitability" && r.slot === "commission",
-        )?.versionId ?? null;
+        p.resourceVersions.find((r) => r.slot === "commission")?.versionId ??
+        null;
       if (
         !row ||
         row.commissionRevisionId !== revisionId ||
@@ -257,7 +267,8 @@ export async function readSaleCommissions(
       );
     const totalMinor = allKnown
       ? payments.reduce(
-          (sum, p) => sum + toMinor(originalMoney(p.commission!), minorUnit),
+          (sum, p) =>
+            sum + toMinor(fromExact(p.originalCommission!), minorUnit),
           0n,
         )
       : null;

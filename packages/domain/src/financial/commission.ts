@@ -11,6 +11,7 @@ import {
   subtract,
   toMinor,
 } from "@mi-pasaporte/domain/financial/rational";
+export class CommissionConfigurationError extends Error {}
 export type ChargeShape = "none" | "percent" | "fixed" | "percent_and_fixed";
 export const usesPercent = (shape: ChargeShape) =>
   shape === "percent" || shape === "percent_and_fixed";
@@ -19,10 +20,11 @@ export const usesFixed = (shape: ChargeShape) =>
 export function parsePercent(value: unknown): string | null {
   if (value === null) return null;
   if (typeof value !== "string" || !/^\d{1,3}(?:\.\d{1,6})?$/.test(value))
-    throw new Error("invalid percent");
+    throw new CommissionConfigurationError("invalid percent");
   const [whole, part = ""] = value.split("."),
     scaled = BigInt(whole) * 1000000n + BigInt(part.padEnd(6, "0"));
-  if (scaled > 100000000n) throw new Error("invalid percent");
+  if (scaled > 100000000n)
+    throw new CommissionConfigurationError("invalid percent");
   return `${scaled / 1000000n}.${String(scaled % 1000000n).padStart(6, "0")}`;
 }
 export function calculatePaymentCommission(args: {

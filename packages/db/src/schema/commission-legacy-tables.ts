@@ -11,8 +11,8 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
-import { businesses } from "../business";
-import type { ExactAmount } from "../../../../domain/src/financial/types";
+import { businesses } from "./business";
+import type { ExactAmount } from "../../../domain/src/financial/types";
 export type FrozenCommissionResult = {
   commission: string | null;
   originalCommission: ExactAmount | null;

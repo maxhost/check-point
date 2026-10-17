@@ -2,7 +2,8 @@ import { withDbTransaction, type DbTransaction } from "@mi-pasaporte/db";
 import {
   businesses,
   moduleResourceVersions,
-  profitabilityCommissionRevisions as revisions,
+  paymentMethods,
+  commissionRevisions as revisions,
 } from "@mi-pasaporte/db/schema";
 import { and, eq, sql } from "drizzle-orm";
 import { isUuid } from "@mi-pasaporte/domain/server/counter/core";
@@ -15,26 +16,25 @@ import {
   subtract,
   toMinor,
 } from "@mi-pasaporte/domain/financial/rational";
-import { ModuleError } from "../../../errors";
-import {
-  listModuleResources,
-  readModuleResources,
-  type DirectoryResource,
-} from "../../../resources";
-import { setResourceVersion } from "../../../../server/module-events/publish";
+import { BusinessError } from "./error";
+import { setResourceVersion } from "../module-events/publish";
 import {
   parsePercent,
   usesFixed,
   usesPercent,
   type ChargeShape,
-} from "../../commission-arithmetic";
+} from "@mi-pasaporte/domain/financial/commission";
 export const methodNotFound = () =>
-  new ModuleError(
+  new BusinessError(
     404,
     "payment_method_not_found",
     "Ese medio de pago no existe.",
   );
-export function paymentMetadata(resource: DirectoryResource) {
+export function paymentMetadata(resource: {
+  providerId: string;
+  resourceId: string;
+  metadata: Record<string, unknown>;
+}) {
   const { name, chargeShape, status } = resource.metadata;
   if (
     typeof name !== "string" ||
@@ -66,7 +66,7 @@ export async function currentCommission(
         eq(moduleResourceVersions.businessId, businessId),
         eq(moduleResourceVersions.resourceType, "payment_method"),
         eq(moduleResourceVersions.resourceId, methodId),
-        eq(moduleResourceVersions.providerId, "profitability"),
+        eq(moduleResourceVersions.providerId, "core"),
         eq(moduleResourceVersions.slot, "commission"),
       ),
     );
@@ -89,11 +89,7 @@ export function commissionDTO(
   method: Method,
   revision: typeof revisions.$inferSelect | null,
 ) {
-  if (
-    revision &&
-    (revision.methodProviderId !== method.providerId ||
-      revision.chargeShape !== method.chargeShape)
-  )
+  if (revision && revision.chargeShape !== method.chargeShape)
     throw new Error("Commission metadata mismatch");
   return {
     ...method,
@@ -120,8 +116,13 @@ export async function listCommissions(businessId: string) {
   return withDbTransaction(async (tx) => {
     await tx.execute(sql`set transaction isolation level repeatable read`);
     const methods = (
-      await listModuleResources(tx, businessId, "payment_method")
-    ).map(paymentMetadata);
+      await tx
+        .select()
+        .from(paymentMethods)
+        .where(eq(paymentMethods.businessId, businessId))
+    )
+      .map((row) => ({ providerId: "core", resourceId: row.id, metadata: row }))
+      .map(paymentMetadata);
     const result = [];
     for (const method of methods)
       result.push(
@@ -141,21 +142,29 @@ export async function saveCommission(
   if (!isUuid(rawId)) throw methodNotFound();
   const methodId = (rawId as string).trim().toLowerCase();
   if (body.expectedRevisionId !== null && !isUuid(body.expectedRevisionId))
-    throw new ModuleError(
+    throw new BusinessError(
       422,
       "invalid_commission",
       "La revisión no es válida.",
     );
   return withDbTransaction(async (tx) => {
     await tx.execute(
+      sql`select pg_advisory_xact_lock(hashtextextended(${"business-config/" + businessId},0))`,
+    );
+    await tx.execute(
       sql`select pg_advisory_xact_lock(hashtextextended(${"commissions/" + businessId},0))`,
     );
-    const resources = await readModuleResources(
-      tx,
-      businessId,
-      "payment_method",
-      [methodId],
-    );
+    const resources = (
+      await tx
+        .select()
+        .from(paymentMethods)
+        .where(
+          and(
+            eq(paymentMethods.businessId, businessId),
+            eq(paymentMethods.id, methodId),
+          ),
+        )
+    ).map((row) => ({ providerId: "core", resourceId: row.id, metadata: row }));
     if (resources.length !== 1) throw methodNotFound();
     const method = paymentMetadata(resources[0]);
     const current = await currentCommission(tx, businessId, methodId);
@@ -164,7 +173,7 @@ export async function saveCommission(
         ? null
         : (body.expectedRevisionId as string).trim().toLowerCase();
     if ((current?.id ?? null) !== expectedRevisionId)
-      throw new ModuleError(
+      throw new BusinessError(
         409,
         "commission_revision_conflict",
         "La comisión cambió. Actualiza e intenta de nuevo.",
@@ -175,6 +184,22 @@ export async function saveCommission(
       fixedNormalizationAdjustment = null,
       currencyCode: string | null = null,
       minorUnit: 0 | 2 | null = null;
+    const [business] = await tx
+      .select({ currencyCode: businesses.currencyCode })
+      .from(businesses)
+      .where(eq(businesses.id, businessId));
+    if (!business) throw methodNotFound();
+    if (
+      usesFixed(method.chargeShape) &&
+      body.fixed !== null &&
+      body.expectedCurrencyCode !== undefined &&
+      body.expectedCurrencyCode !== business.currencyCode
+    )
+      throw new BusinessError(
+        409,
+        "commission_currency_conflict",
+        "La moneda cambió. Actualiza y confirma el fijo en la moneda actual.",
+      );
     try {
       if (usesPercent(method.chargeShape)) {
         if (!Object.hasOwn(body, "percent")) throw new Error();
@@ -184,11 +209,6 @@ export async function saveCommission(
         if (!Object.hasOwn(body, "fixed")) throw new Error();
         if (body.fixed !== null) {
           const input = originalMoney(body.fixed as string);
-          const [business] = await tx
-            .select({ currencyCode: businesses.currencyCode })
-            .from(businesses)
-            .where(eq(businesses.id, businessId));
-          if (!business) throw new Error();
           currencyCode = business.currencyCode;
           minorUnit = minorUnitForCurrency(currencyCode);
           const normalized = toMinor(input, minorUnit);
@@ -200,7 +220,7 @@ export async function saveCommission(
         }
       } else if (Object.hasOwn(body, "fixed")) throw new Error();
     } catch {
-      throw new ModuleError(
+      throw new BusinessError(
         422,
         "invalid_commission",
         "La comisión no es válida. Revisa el porcentaje y el importe fijo.",
@@ -225,7 +245,7 @@ export async function saveCommission(
       businessId,
       resourceType: "payment_method",
       resourceId: methodId,
-      providerId: "profitability",
+      providerId: "core",
       slot: "commission",
       versionId: revision.id,
     });

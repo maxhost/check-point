@@ -1,9 +1,10 @@
+import { initializePaymentMethods } from "../server/business/payment-catalog";
 import { vi } from "vitest";
-import { getDb } from "@mi-pasaporte/db";
+import { getDb, withDbTransaction } from "@mi-pasaporte/db";
 import { and, eq } from "drizzle-orm";
 import {
   moduleEvents,
-  posPaymentMethods,
+  paymentMethods,
   stockItems,
   stockItemLocations,
   stockMovements,
@@ -29,27 +30,31 @@ export const state = { closedId: "" };
 export async function setupModuleEventWorld() {
   world = await seedModuleWorld("P1 real event");
   other = await seedModuleWorld("P1 schema foreign");
-  for (const owner of [world, other])
+  for (const owner of [world, other]) {
+    await withDbTransaction((tx) =>
+      initializePaymentMethods(tx, { businessId: owner.businessId }),
+    );
     await setModuleEnabled(owner.businessId, "pos", { enabled: true });
+  }
   for (const id of ["stock", "recipes", "profitability"])
     await setModuleEnabled(world.businessId, id, { enabled: true });
   const [cash] = await getDb()
     .select()
-    .from(posPaymentMethods)
+    .from(paymentMethods)
     .where(
       and(
-        eq(posPaymentMethods.businessId, world.businessId),
-        eq(posPaymentMethods.isCash, true),
+        eq(paymentMethods.businessId, world.businessId),
+        eq(paymentMethods.isCash, true),
       ),
     );
   cashId = cash.id;
   const [foreign] = await getDb()
     .select()
-    .from(posPaymentMethods)
+    .from(paymentMethods)
     .where(
       and(
-        eq(posPaymentMethods.businessId, other.businessId),
-        eq(posPaymentMethods.isCash, true),
+        eq(paymentMethods.businessId, other.businessId),
+        eq(paymentMethods.isCash, true),
       ),
     );
   foreignCashId = foreign.id;

@@ -41,3 +41,8 @@ export const paymentMethodCatalog = core.table(
     ),
   ],
 );
+
+import { createPaymentMethodTables } from "./payment-method-tables";
+const businessMethods = createPaymentMethodTables(core);
+export const paymentMethods = businessMethods.methods;
+export const paymentMethodInitializations = businessMethods.initializations;
