@@ -1,4 +1,11 @@
-import { formatDecimal, fromDb } from "../../decimal";
+import {
+  MeasureError,
+  trustedUnitQuantityNumber,
+  trustedUnitLegacyPrice,
+  trustedUnitLineCents,
+  assertMoneyRange,
+} from "@mi-pasaporte/domain/measures";
+import { formatMinor, rational } from "@mi-pasaporte/domain/financial/rational";
 import { CounterError, isUuid } from "@mi-pasaporte/domain/server/counter/core";
 import type { GrantItem } from "../../../server/counter/orders";
 import { buildDetailed } from "../../../server/counter/grant-input";
@@ -27,21 +34,52 @@ export function normalizeTableLabel(raw: unknown): string {
 
 /** El total de una linea: el MISMO calculo que `buildDetailed` (`grant-input.ts`), para que la
  * orden del POS y la `core.order` del cierre digan lo mismo. */
-export function lineTotalOf(unitPrice: string, quantity: number): string {
-  return formatDecimal(fromDb(unitPrice, 2) * BigInt(quantity), 2);
+/** Keep DB precision errors serializable through the existing Counter/POS routes. */
+function unitRead<T>(read: () => T): T {
+  try {
+    return read();
+  } catch (error) {
+    if (!(error instanceof MeasureError)) throw error;
+    if (error.code === "amount_out_of_range")
+      throw new CounterError(
+        422,
+        "invalid_amount",
+        "El total es demasiado grande.",
+      );
+    throw new CounterError(
+      409,
+      "pos_client_upgrade_required",
+      "Actualiza la aplicación para leer esta venta.",
+    );
+  }
 }
 
-/** Σ de las lineas, sumado EN CENTAVOS (sumar decimales arrastra error de punto flotante). */
-export function totalOf(
-  lines: readonly { unitPrice: string; quantity: number }[],
+export const unitQuantityOf = (value: unknown): number =>
+  unitRead(() => trustedUnitQuantityNumber(value));
+export const unitPriceOf = (value: unknown): string =>
+  unitRead(() => trustedUnitLegacyPrice(value));
+
+export function lineTotalOf(
+  unitPrice: string,
+  quantity: number | string,
 ): string {
-  return formatDecimal(
-    lines.reduce(
-      (sum, line) => sum + fromDb(line.unitPrice, 2) * BigInt(line.quantity),
-      0n,
-    ),
-    2,
+  return unitRead(() =>
+    formatMinor(trustedUnitLineCents(quantity, unitPrice), 2),
   );
+}
+
+/** Exact legacy centavos; validate both each line and the aggregate before persistence. */
+export function totalOf(
+  lines: readonly { unitPrice: string; quantity: number | string }[],
+): string {
+  return unitRead(() => {
+    const cents = lines.reduce(
+      (sum, line) => sum + trustedUnitLineCents(line.quantity, line.unitPrice),
+      0n,
+    );
+    assertMoneyRange(rational(cents));
+    return formatMinor(cents, 2);
+  });
 }
 
 /** Una linea del cuerpo de crear/editar: `lineId` presente = linea existente; ausente = nueva. */
@@ -91,7 +129,11 @@ export function parseIncomingLines(raw: unknown): IncomingLine[] {
 }
 
 function parseQuantity(value: unknown): number {
-  if (!Number.isInteger(value) || (value as number) <= 0) {
+  if (
+    !Number.isInteger(value) ||
+    (value as number) <= 0 ||
+    (value as number) > 2147483647
+  ) {
     throw new CounterError(422, "invalid_input", "La cantidad no es válida.");
   }
   return value as number;

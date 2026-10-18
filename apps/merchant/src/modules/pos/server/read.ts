@@ -16,7 +16,7 @@ import {
 } from "@mi-pasaporte/db/schema";
 import { readOrderByRequest } from "../../../server/counter/orders";
 import { toResult } from "../../../server/counter/grant";
-import { lineTotalOf, totalOf } from "./lines";
+import { lineTotalOf, totalOf, unitQuantityOf, unitPriceOf } from "./lines";
 import { unknownPosOrder } from "./errors";
 
 /**
@@ -168,8 +168,8 @@ export async function readPosOrder(
     lineId: line.id,
     productId: line.productId,
     name: line.name,
-    unitPrice: Number(line.unitPrice).toFixed(2),
-    quantity: line.quantity,
+    unitPrice: unitPriceOf(line.unitPrice),
+    quantity: unitQuantityOf(line.quantity),
     lineTotal:
       line.financialSnapshot?.money.gross ??
       lineTotalOf(line.unitPrice, line.quantity),

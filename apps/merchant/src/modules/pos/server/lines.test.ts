@@ -42,7 +42,7 @@ describe("el total de la orden, en centavos", () => {
   it("una orden vacia suma 0.00, y la linea usa el mismo calculo que `buildDetailed`", () => {
     expect(totalOf([])).toBe("0.00");
     expect(lineTotalOf("3.50", 2)).toBe("7.00");
-    expect(lineTotalOf("12.99", 7)).toBe((12.99 * 7).toFixed(2));
+    expect(lineTotalOf("12.99", 7)).toBe("90.93");
   });
 });
 
@@ -117,3 +117,12 @@ describe("el merge de lineas del PUT", () => {
     );
   });
 });
+
+it.each(["2", "2.000000000", "1e2", 1.5, 2147483648])(
+  "HTTP merge rejects DB-only quantity %j",
+  (quantity) => {
+    expect(() => mergeLines([L1], [line(L1, quantity)])).toThrowError(
+      expect.objectContaining({ status: 422, code: "invalid_input" }),
+    );
+  },
+);
