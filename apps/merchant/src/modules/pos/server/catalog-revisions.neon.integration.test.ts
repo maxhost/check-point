@@ -333,9 +333,8 @@ describe.skipIf(!importIntegrationEnabled)(
         });
       const pending = updateProduct(owner, p.id, {
         name: "Stale",
-        imageAction: "stock",
-        provider: "fixture",
-        photoId: "fixture",
+        imageAction: "replace",
+        uploadId: "fixture",
       });
       // Attach rejection assertion before releasing the prepared operation.
       const rejected = expect(pending).rejects.toMatchObject({ status: 409 });
@@ -355,9 +354,8 @@ describe.skipIf(!importIntegrationEnabled)(
         });
         await updateProduct(owner, p.id, {
           name: "Image race",
-          imageAction: "stock",
-          provider: "fixture",
-          photoId: "other",
+          imageAction: "replace",
+          uploadId: "other",
         });
       } finally {
         resume();

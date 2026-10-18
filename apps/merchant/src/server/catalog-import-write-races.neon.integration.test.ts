@@ -167,7 +167,7 @@ describe.skipIf(!enabled)("las carreras del writer (spec 0091 §6)", () => {
     );
     expect(cappus).toHaveLength(1);
     // Y el que quedó es el del merchant, con SU precio: la importación no actualiza nada.
-    expect(cappus[0].unitPrice).toBe("9.99");
+    expect(cappus[0].unitPrice).toBe("9.990000000");
   });
 
   /**
