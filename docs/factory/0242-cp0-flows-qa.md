@@ -48,3 +48,16 @@ Snapshot durable final SHA256 `ad9b95880e40c6dab2244184e26d32f07ad9c6094b41fca91
 **PASS acotado para `8dca14ee90b1b9dd53c70c59c860481b4d263a41`.** Fuente medida29b y smoke5c permanecen inmutables; delta final solo añade analizador, resumen saneado y handoff. QA reprodujo exactamente el resumen versionado desde archivos privados mediante ejecución del analizador con escrituras sustituidas por comparación en memoria: SHA256 `e32cbff242cd2627dd57b8a3414b9ee2be98b548ac74ea447d73e8b607ca6bcb`. Los trece hashes de artefactos coinciden. Logs protegidos de setup, reinspecciónsmoke02b e inspeccióncampaña01 contienen un testPASS/0skip cada uno; el primer inspectorFAIL sigue archivado. Se reutilizan tipos/lint focales compatibles del autor, sin verifyglobal, rebuild o DB/navegación extra de QA.
 
 Esta aceptación certifica la receta/evidencia descriptiva M0 de los dieciocho flujos con los límites anteriores. No certifica productoV2, scope/cookies nuevos, peso, replay/carreras/errores de cierre, recetas/stock activos, todos los subscribers, push/cross externos, hostingPROD o mejora/no regresiónM1. No autoriza push/PROD, mainlocal, teardown ni retirarWT. El cierreCP0 y la integración corresponden al coordinador después de QA de combinación sobre candidato congelado.
+
+## QA de combinación y salida CP0
+
+**PASS de combinación sobre candidato congelado `a5cbd20c6da01346bbfa2fb4fc39596bf116d28c`.** Coordinador preparó y actualizó el WT QA; HEAD exacto y limpio antes de comprobar. Se verificó ancestry de contratosA `329c7917`, LISTA `c379c9a8` y flujos `8dca14ee`. Suite/helpers/freeze/runner/resumen/preload coinciden exactamente con entrega8dca; los helpers siguen importados solo desde suiteVitest y login(typeManifest), sin adopción por producto. La combinación incluye además contratos puros de medidas, sin writerV2 activo; no se atribuye el build6f a este SHA combinado ni se usa su diff ampliado para simular una medición nueva.
+
+Node24.20.0, sin DB, navegador, servidores ni nuevas ventas:
+
+- `pnpm --filter @mi-pasaporte/merchant typecheck`: EXIT0.
+- Desde `apps/merchant`, `pnpm exec vitest run --config vitest.config.ts src/modules/pos/measure-contract.test.ts src/server/financial.test.ts`: EXIT0,53/53PASS (43medidas+10financial),2archivos,0skip/retry.
+- `node --test tools/pos-measurement/instrumentation.test.mjs`: EXIT0,2/2PASS,0skip/cancel/fail. Comprueba fase inerte/conservación de resultado/error y rechazo CI inválida bajo NODE_ENVproduction antes de aplicación, sin secreto centinela. Warning MODULE_TYPELESS_PACKAGE_JSON existente, sin cambios para ocultarlo.
+- Diffcheck limpio; informe propio pasa Prettier. No ampliación de tests tras esos resultados ni verifyglobal.
+
+**PASS de salida CP0 acotada:** contratosA329c7917/QA7fc88bad, LISTAc379c9a8/QA80b32497, flujos8dca14ee y combinacióna5cbd20c cubren contratos puros y M0 descriptivo acordados. Puede prepararse CP1 dentro de su nueva reserva. Este cierre no certifica V2 operativo, M1/mejora/no regresión, dinero/auth nuevos, peso, stock activo ni PROD; conserva todas las lagunas y fallos declarados. QA termina este bloque aquí; el siguiente checkpoint recibe QA con contexto nuevo. Coordinador conserva integración/estado/recursos y autor informa procesos detenidos/fixtures intactas, sin cleanup por QA.
