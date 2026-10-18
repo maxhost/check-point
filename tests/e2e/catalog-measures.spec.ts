@@ -25,8 +25,11 @@ test("V2 exact payload, enabled units and paired mobile/desktop editor capture (
     page.getByRole("checkbox", { name: "Este producto se vende por peso" }),
   ).not.toBeChecked();
   await page
-    .getByRole("checkbox", { name: "Este producto se vende por peso" })
-    .check();
+    .getByText("Este producto se vende por peso", { exact: true })
+    .click();
+  await expect(
+    page.getByRole("checkbox", { name: "Este producto se vende por peso" }),
+  ).toBeChecked();
   const price = page.getByRole("textbox", {
     name: "Precio de venta por libra (opcional)",
   });
@@ -311,6 +314,63 @@ test("crossed price and measure changes require review of the whole commercial b
     unitPrice: "5",
     soldByWeight: false,
     pricingUnit: "unit",
+    expectedSalesRevision: "2",
+  });
+});
+test("conflict retains category, selected locations and image removal through explicit review", async ({
+  page,
+  catalogHarness,
+}) => {
+  const api = await catalogApiFixture(page);
+  api.locations.push({ id: "location-two", name: "Norte" });
+  api.products[0].imagePath =
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aD1sAAAAASUVORK5CYII=";
+  await page.goto(catalogHarness);
+  await edit(page);
+  await page.getByRole("button", { name: /Categoría/ }).click();
+  await page.getByRole("option", { name: "Postres" }).click();
+  await page.getByRole("button", { name: "Quitar", exact: true }).click();
+  await page.getByRole("radio", { name: /Locales específicos/ }).check();
+  await page.getByRole("checkbox", { name: "Norte", exact: true }).check();
+  const remote = {
+    ...api.products[0],
+    name: "Remoto",
+    categoryId: null,
+    availableAllLocations: false,
+    locationIds: ["location-one"],
+    catalogRevision: "2",
+    imagePath: "/remote-image.png",
+  };
+  api.writeError = {
+    status: 409,
+    code: "catalog_changed",
+    error: "El producto cambió.",
+    product: remote,
+  };
+  await save(page).click();
+  await expect(
+    page.getByText(
+      /Ambos cambiaron: Categoría, Disponibilidad \/ Locales, Imagen/,
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Locales: Centro", { exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Ya revisé: conservar mis cambios" })
+    .click();
+  await expect(name(page)).toHaveValue("Remoto");
+  await expect(
+    page.getByRole("checkbox", { name: "Norte", exact: true }),
+  ).toBeChecked();
+  api.writeError = null;
+  await save(page).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  expect(api.writes.at(-1)?.body).toMatchObject({
+    categoryId: "category-second",
+    availableAllLocations: false,
+    locationIds: ["location-two"],
+    imageAction: "remove",
     expectedSalesRevision: "2",
   });
 });
