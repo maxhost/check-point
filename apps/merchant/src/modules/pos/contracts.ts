@@ -299,15 +299,22 @@ export function selectProductCouponLine(
       ? []
       : items.filter((line) => line.productId === productId);
   const explicit = targetSourceLineId !== undefined;
+  const unitLines = explicit
+    ? []
+    : matching.filter((item) => parseMeasure(item.measure).kind === "unit");
   const line = explicit
     ? matching.find((item) => item.lineId === targetSourceLineId)
-    : matching.find((item) => item.measure.kind === "unit");
-  if (!line)
+    : unitLines.find(
+        (item) =>
+          kind === "free_product" ||
+          BigInt(captureQuantity(item.quantity, "unit").quantity) >= 2n,
+      );
+  if (!line) {
+    if (explicit || !matching.length) return no("coupon_product_missing");
     return no(
-      !explicit && matching.length
-        ? "coupon_measure_not_supported"
-        : "coupon_product_missing",
+      unitLines.length ? "coupon_quantity" : "coupon_measure_not_supported",
     );
+  }
   const measure = parseMeasure(line.measure);
   if (measure.kind === "mass") return no("coupon_measure_not_supported");
   const capture = captureQuantity(line.quantity, "unit");

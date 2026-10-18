@@ -258,6 +258,40 @@ describe("0242 unit-only product coupon target", () => {
       ).toMatchObject({ ok: false, code: "coupon_measure_not_supported" });
     },
   );
+  it.each([false, true])(
+    "chooses the first quantity-eligible 2x1 snapshot with preceding mass=%s",
+    (precedingMass) => {
+      const snapshots: ProductCouponLine[] = [
+        ...(precedingMass ? [couponLines[0]] : []),
+        { ...couponLines[1], lineId: "old-unit", quantity: "1" },
+        { ...couponLines[1], lineId: "new-unit", quantity: "2" },
+        { ...couponLines[1], lineId: "later-unit", quantity: "3" },
+      ];
+      expect(selectProductCouponLine("two_for_one", snapshots, "p")).toEqual({
+        ok: true,
+        targetSourceLineId: "new-unit",
+      });
+      expect(
+        selectProductCouponLine("two_for_one", snapshots, "p", "old-unit"),
+      ).toEqual({ ok: false, status: 409, code: "coupon_quantity" });
+      expect(selectProductCouponLine("free_product", snapshots, "p")).toEqual({
+        ok: true,
+        targetSourceLineId: "old-unit",
+      });
+    },
+  );
+  it("reports quantity when unit snapshots exist but none can receive 2x1", () => {
+    const snapshots = [
+      couponLines[0],
+      { ...couponLines[1], quantity: "1" },
+      { ...couponLines[2], quantity: "1" },
+    ];
+    expect(selectProductCouponLine("two_for_one", snapshots, "p")).toEqual({
+      ok: false,
+      status: 409,
+      code: "coupon_quantity",
+    });
+  });
   it("chooses the first unit in a mixed order and validates explicit product/line and quantity", () => {
     expect(selectProductCouponLine("two_for_one", couponLines, "p")).toEqual({
       ok: true,
