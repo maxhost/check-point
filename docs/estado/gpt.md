@@ -13,6 +13,10 @@ B `/root/backoffice_0238_client`, WT `/private/tmp/checkpass-0238/backoffice-023
 
 A2b ampliado con soporte y15 tests consumidores inventariados por A, solo adaptaciones explícitas del nuevo reader sin relajar aserciones.
 
+Recurso db:ci-integration ahora exclusivo A. Preflight readonly fresco /private/tmp/checkpass-0238/artifacts/ci-preflight-a2b.json:102ledger/0DDL/111columnas iguales y drift histórico intacto. GO wrapper solo nuevo testNeon A2b una vez unit pase, authnativa/cookies/multimembresías/ausente/EXPLAINsinANALYZE; no suiteglobal. Teardown conserva recurso hasta aviso A.
+
+B reanudado como B2a-owner aislado: factory continue avanzó a514b33bd, reservó backoffice-request-owner.ts y su test. API local reconcile/acquire-release/dispose para GETs4recursos, tickets capturados/copia antesawait,1inflight+1pending, StrictMode yfinallyporidentidad. Sinprovider/layout/consumidores/HTTP; QA anteswiring. Plan actualizado. QA hoy espera entregas congeladas; su inventario real final distingue mocks existentes de huecos (cookieforjada/vencida/revocada yscopeA-cookieB). B1b preparado por mensajes: frontera ocultaprivadoscore:null enambasramaslayout ystreamseparado; esperaA2c/privateplan.
+
 Siguiente: A2b unit antes DB protegida; después A2c constructores, B1b shell y siguientes checkpoints del [plan](../factory/0238-plan-carga-backoffice.md). Falta integración real/RSC/streaming, scope HTTP servidor, auth/tenant real y M1 control contemporáneo. No declarar Dashboard listo ni rápido por tests unitarios. Main local sin avanzar. No push/PROD; QA manual, CI remoto rojo, FAIL histórico y todos los diferidos intactos.102migracionesPROD es dato histórico sin nueva verificación. Apps/medición detenidas; artefactos y basebuild preservados en /private/tmp/checkpass-0238/artifacts. Rama vieja medición/instrumentación c9 y generado next-env preservados en e5f9cb05, nunca incorporar hooks al producto. No cuartoWT ni cleanupforzado.
 
 ## HISTÓRICO — 0238 M0 COMPLETA; QA PREPARACIÓN PASS CON LÍMITES, A1 SIGUIENTE (2026-10-17/18 UTC)

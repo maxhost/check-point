@@ -6,6 +6,8 @@ Estado vigente: implementación autorizada por checkpoints; spec cerrada y ADR a
 
 M0, A1, B1a y A2a aceptados con evidencia en el informe QA. A2b comienza sobre dev4e3b0a56. Mientras B1b espera los constructores A2c, B adelanta **S1-client**, únicamente helpers de transporte opt-in con pruebas y sin consumidores activos; entrega9de98a2b pendiente de QA. La adopción efectiva de cabecera permanece supeditada al guard servidor y a la integración correspondiente. Esta subdivisión no cambia el contrato ni los gates del conjunto.
 
+B2a se subdivide además en **B2a-owner**, propietario puro aislado de solicitudes de los cuatro recursos ya contratados, sin wiring ni consumidores. Puede avanzar en paralelo a A2b sobre dev514b33bd: dos archivos propios, deduplicación pendiente, tickets/generaciones explícitos, un pendiente, retiro por identidad y suscriptores StrictMode. QA de esta pieza no prueba montaje ni HTTP. La integración atómica con provider y consumidores permanece en B2 posterior a B1b; no habilita marca/caché parcial en producto.
+
 ## Secuencia y entregas
 
 | Fase | Entrega verificable | Dependencia |
