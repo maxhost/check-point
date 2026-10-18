@@ -6,6 +6,7 @@ import type {
   FinancialPaymentOriginal,
   ExactAmount,
 } from "@mi-pasaporte/domain/financial";
+import type { Decimal, LineMeasure } from "@mi-pasaporte/domain/measures";
 export type ResourceVersion = {
   providerId: string;
   slot: string;
@@ -69,6 +70,34 @@ export type SaleClosedEventV3 = Omit<
 };
 export type SaleClosedEvent =
   SaleClosedEventV1 | SaleClosedEventV2 | SaleClosedEventV3;
+/** Dormant measured contract; legacy subscribers keep SaleClosedEvent. */
+export type SaleClosedEventV4 = Omit<
+  SaleClosedEventV3,
+  "eventVersion" | "lines"
+> & {
+  eventVersion: 4;
+  lines: (Omit<SaleClosedEventV3["lines"][number], "quantity"> & {
+    quantity: Decimal;
+    measure: LineMeasure;
+  })[];
+};
+/** Wire union: historical versions retain their original numeric quantities. */
+export type MeasuredSaleClosedEvent = SaleClosedEvent | SaleClosedEventV4;
+type MeasuredEventView<T extends MeasuredSaleClosedEvent> =
+  T extends MeasuredSaleClosedEvent
+    ? {
+        payload: T;
+        lines: (Omit<T["lines"][number], "quantity"> & {
+          quantity: Decimal;
+          measure: T extends SaleClosedEventV4
+            ? LineMeasure
+            : Extract<LineMeasure, { kind: "unit" }>;
+        })[];
+      }
+    : never;
+/** In-memory interpretation API, distinct from the durable wire contract. */
+export type MeasuredSaleClosedEventView =
+  MeasuredEventView<MeasuredSaleClosedEvent>;
 export type CapturedModuleEvent = {
   id: string;
   businessId: string;
