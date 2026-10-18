@@ -1,3 +1,4 @@
+import { assertMoneyRange } from "../measures/mass";
 import {
   FinancialError,
   type ExactAmount,
@@ -43,6 +44,7 @@ function operational(v: unknown, minor: 0 | 2, signed = false) {
     return invalid();
   const n = BigInt(v.replace(".", ""));
   if ((!signed && n < 0n) || formatMinor(n, minor) !== v) return invalid();
+  assertMoneyRange(minorRational(n < 0n ? -n : n, minor));
   return n;
 }
 function moneyBlock(v: unknown, minor: 0 | 2, netKey: "net" | "collected") {
@@ -59,6 +61,7 @@ function moneyBlock(v: unknown, minor: 0 | 2, netKey: "net" | "collected") {
     on = canonicalExact(originals.net);
   if (og.n < 0n || od.n < 0n || on.n < 0n || !equal(subtract(og, od), on))
     invalid();
+  for (const original of [og, od, on]) assertMoneyRange(original);
   for (const [key, amount, original] of [
     ["gross", g, og],
     ["discount", d, od],
@@ -173,12 +176,14 @@ export function assertFinancialSettlement(
         )
       )
         invalid();
+      assertMoneyRange(original);
       methods.add(p.methodId as string);
       paymentIds.add(p.paymentId as string);
       paid += amount;
       originalPaid = add(originalPaid, original);
       if (amount > 0n) effective.set(p.paymentId as string, p);
     }
+    assertMoneyRange(originalPaid);
     if (
       paid !== total.n ||
       toMinor(originalPaid, minor) !== total.n ||

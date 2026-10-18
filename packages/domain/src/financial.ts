@@ -7,4 +7,6 @@ export {
 export {
   buildFinancialAmounts,
   buildFinancialSettlement,
+  buildFinancialAmountsFromSnapshots,
+  buildFinancialSettlementFromSnapshots,
 } from "./financial/settlement";
