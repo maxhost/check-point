@@ -7,6 +7,8 @@ import type {
   HistoryPeriod,
   RecentMovement,
 } from "@mi-pasaporte/domain/analytics/history";
+import type { StockCostHistory } from "@mi-pasaporte/domain/analytics/stock-cost-contract";
+import { StockCostCard } from "./stock-cost-card";
 import { sumIntegers } from "@mi-pasaporte/domain/analytics/money";
 import { formatMoney } from "@mi-pasaporte/domain/analytics/date";
 import {
@@ -24,6 +26,7 @@ import {
 import { panelRequest } from "../panel-request";
 type History = ReturnType<typeof buildHistory> & {
   recentMovements?: RecentMovement[];
+  stockCosts?: StockCostHistory;
 };
 type Day = ReturnType<typeof buildDay>;
 const periods = [
@@ -84,6 +87,7 @@ export default function AnalyticsConsole({
   initialDate?: string;
   initialPeriod?: HistoryPeriod;
 }) {
+  const [stockSeriesId, setStockSeriesId] = useState<string | null>(null);
   const [period, setPeriod] = useState<HistoryPeriod>(initialPeriod);
   const [locationId, setLocationId] = useState("");
   const [date, setDate] = useState(initialDate);
@@ -112,6 +116,11 @@ export default function AnalyticsConsole({
         ]);
         if (active) {
           setHistory(h);
+          setStockSeriesId((current) =>
+            h.stockCosts?.series.some((series) => series.id === current)
+              ? current
+              : (h.stockCosts?.defaultSeriesId ?? null),
+          );
           setDay(d);
         }
       } catch {
@@ -648,6 +657,12 @@ export default function AnalyticsConsole({
                     tu stock.
                   </Text>
                 )}
+                <StockCostCard
+                  history={history.stockCosts}
+                  selectedId={stockSeriesId}
+                  onSelect={setStockSeriesId}
+                />
+                <Heading level={3}>Resumen del conjunto de insumos</Heading>
                 {history.stock.averageIncrease === null ? (
                   <Text variant="muted">
                     Necesitas al menos dos costos registrados de un mismo insumo

@@ -28,3 +28,4 @@ export * from "./color-field";
 export * from "./slider";
 export * from "./file-button";
 export * from "./segmented-bar";
+export * from "./line-chart";
