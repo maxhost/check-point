@@ -3,7 +3,17 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — 0238 M0 COMPLETA; QA PREPARACIÓN PASS CON LÍMITES, A1 SIGUIENTE (2026-10-17/18 UTC)
+## ESTADO — 0238 A1/B1a/A2a ACEPTADOS; A2b EN CURSO Y S1 EN QA (2026-10-18 UTC)
+
+Owner autorizó implementación por checkpoints y aceptó scopeKey. M0 completa con límites preservados en [informe](../factory/0238-m0.md). Contrato A1 y provider aislado B1a aceptados. A2a contexto por petición aceptado tras QA independiente: 199/199 tests reproducidos sin skips/retries; dos warnings staff TypeError reproducidos también en baseline, sin afirmar éxito de dominio. Entrega A f2e9e65a y QA c7ff4f81 integradas localmente en dev4e3b0a562ee0a0591bfeead759b2cc19a3bab644. Conflicto documental de informe resuelto conservando todas las secciones. No JOIN ni mejora de velocidad demostrada todavía.
+
+A `/root/backoffice_0238_server`, WT `/private/tmp/checkpass-0238/backoffice-0238-server`, task del mismo nombre: factory continue ya avanzó a dev4e3b; GO A2b JOIN/fallback, helpers y test Neon focal reservados. Sin DB autorizada todavía: avisar al coordinador antes de reservar recurso/preflight; env CI-only existente. No HMAC ni A2c en ese checkpoint.
+
+B `/root/backoffice_0238_client`, WT `/private/tmp/checkpass-0238/backoffice-0238-client`, entregó S1-client9de98a2b sobre70a02f79: transporte opt-in scopeKey,36/36 tests y tipos/lint/UIguard según autor. SIN consumidores activos, espera QA/A2c antes B1b. Esta preparación pequeña adelanta solo helpers de S mientras B1b espera servidor; no se habilita protocolo parcial en app. QA `/root/backoffice_0238_qa` activo sobre candidato congelado a3c38bd2c6e8915ab437b0287656a93dc88a3ef3 en tercer WT `/private/tmp/checkpass-inbox-measurement/inbox-measurement-20261018`, branchbackoffice-0238-qa-b1a/taskinbox-measurement-20261018, factoryrefresh hecho. Contiene A2a+B1a+S1 y reportes, sin hooks c9; solo escribe informe. S1 aún NO aceptado en dev.
+
+Siguiente: QA S1, A2b unit antes DB protegida; después A2c constructores, B1b shell y siguientes checkpoints del [plan](../factory/0238-plan-carga-backoffice.md). Falta integración real/RSC/streaming, scope HTTP servidor, auth/tenant real y M1 control contemporáneo. No declarar Dashboard listo ni rápido por tests unitarios. Main local sin avanzar. No push/PROD; QA manual, CI remoto rojo, FAIL histórico y todos los diferidos intactos.102migracionesPROD es dato histórico sin nueva verificación. Apps/medición detenidas; artefactos y basebuild preservados en /private/tmp/checkpass-0238/artifacts. Rama vieja medición/instrumentación c9 y generado next-env preservados en e5f9cb05, nunca incorporar hooks al producto. No cuartoWT ni cleanupforzado.
+
+## HISTÓRICO — 0238 M0 COMPLETA; QA PREPARACIÓN PASS CON LÍMITES, A1 SIGUIENTE (2026-10-17/18 UTC)
 
 Owner aceptó scopeKey y autorizó implementación por checkpoints. D0 cerrado6e45066c. [M0](../factory/0238-m0.md): buildWebpackprod/Chromium real contraNeonCI protegido, fixtures propias0/5 yloginOTP real.62/62intentos válidos (primeraentrada+30recargasporcaso),0timeouts. Mediana/p95 ready recarga vacío2045,8/2276,6ms ycinco2037,85/2289,5ms. Documento9SELECT; Inbox11operaciones(9SELECTincllock+BEGIN/COMMIT), guardauth4. Navegador2módulos/2sesión/1Inbox/1checklist. No mejora niSLOPROD demostrados aún. Artefactos ybuildbasearchivado privados en /private/tmp/checkpass-0238/artifacts; app43152detenida.
 

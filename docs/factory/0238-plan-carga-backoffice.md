@@ -2,6 +2,10 @@
 
 Estado vigente: implementación autorizada por checkpoints; spec cerrada y ADR aceptado tras aceptación explícita de scopeKey por owner (2026-10-18 UTC). M0 todavía precede al código. El texto de planificación/revisiones más abajo conserva contexto histórico; las tareas condicionales de §4.3 quedan habilitadas por esta decisión. Base de diseño `005b8235d3178295037efbf5deca29596f69c80a`; confirmar dev y cambios ajenos al asignar implementación. [Spec](../specs/0238-carga-inicial-del-backoffice.md), [ADR](../adr/0154-contexto-del-backoffice-por-peticion.md), [medición inicial](0237-inbox-measurement.md). El owner eligió implementar 1 + 2 + 3 y medir el conjunto; este turno prepara los documentos, no ejecuta ese código.
 
+## Avance operativo
+
+M0, A1, B1a y A2a aceptados con evidencia en el informe QA. A2b comienza sobre dev4e3b0a56. Mientras B1b espera los constructores A2c, B adelanta **S1-client**, únicamente helpers de transporte opt-in con pruebas y sin consumidores activos; entrega9de98a2b pendiente de QA. La adopción efectiva de cabecera permanece supeditada al guard servidor y a la integración correspondiente. Esta subdivisión no cambia el contrato ni los gates del conjunto.
+
 ## Secuencia y entregas
 
 | Fase | Entrega verificable | Dependencia |
