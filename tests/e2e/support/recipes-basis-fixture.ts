@@ -153,10 +153,15 @@ export async function setupRecipes(
       return route.fulfill({ json: { composition } });
     if (url.pathname.endsWith(`library/${storedLibrary.id}`))
       return route.fulfill({ json: { recipe: storedLibrary } });
+    if (url.pathname.endsWith(`library/${libraryRecipe.id}`))
+      return route.fulfill({ json: { recipe: libraryRecipe } });
     if (url.pathname.endsWith("library"))
       return route.fulfill({
         json: {
           recipes: [
+            ...(storedLibrary.id !== libraryRecipe.id
+              ? [{ ...libraryRecipe, lineCount: libraryRecipe.lines.length }]
+              : []),
             { ...storedLibrary, lineCount: storedLibrary.lines.length },
           ],
           nextCursor: null,

@@ -420,7 +420,7 @@ test("respuesta tardía de biblioteca tras desmontar y cambiar local no publica 
   await page.evaluate(() =>
     window.dispatchEvent(new Event("recipes-harness:enter")),
   );
-  await page.getByRole("button", { name: /^Local/ }).click();
+  await page.getByRole("button", { name: /Local/ }).click();
   await page.getByRole("option", { name: "Norte", exact: true }).click();
   api.remote({
     basisQuantity: "2",
