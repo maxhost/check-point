@@ -9,7 +9,15 @@ Owner autorizó poner en marcha a los implementadores con piezas pequeñas. Inic
 
 Solo están reservados sus informes y nombres de helpers nuevos previstos en el plan. No autorizar que editen todo el scope futuro por haber creado un worktree. Antes de cada checkpoint, extender reserva a archivos concretos y enviar la pieza habilitada con base/checks.
 
-## Condiciones pendientes
+## Actualización: contrato aceptado y preparación M0
+
+El owner aceptó explícitamente `scopeKey` después de revisar el ejemplo entre pestañas. Spec cerrada/ADR aceptado mediante6e45066c; el contrato adicional ya no está pendiente. El siguiente gate es M0 antes de optimizar. A prepara fixture protegida real y login existente; B prepara harness de navegador, ambos como tareas de medición explícitas previas a producto. Informes preparatorios locales A2376e128 y B3ed850ad.
+
+PreflightCI de solo lectura:102entradas, último timestamp igual0101 y0DDLpendiente. Hay drift histórico de hashes59/60/64/97; no reparado.111columnas del esquema relevante coinciden con local; esto no certifica toda la DB. ConfigCI seleccionada para worktrees, sin copiar entornoPROD. Build base Webpack de entrega sobrec9fe9356 (producto005b8235 más instrumentaciónopt-in anterior) EXIT0. Diff de apps/packages entre005b8235 y cierreD0 vacío: cambios posteriores eran documentales.
+
+Primera fixture tuvo vida7d pese a writer de episodio nuevo conpolicy.days; validó visibilidad porreadInbox pero no era fixtureM0 válida. Se conserva manifiesto/log, se limpia solo su ámbito y se prepara reemplazo con vida exacta. No medir ni declararPASS M0 con ese primer resultado.
+
+## Condiciones del inicio (histórico)
 
 - La pregunta al owner sobre aceptar o rechazar `scopeKey` de spec§4.3 sigue pendiente al registrar este inicio. Autorizar lanzar implementadores no se interpreta como resolver ese contrato. Spec borrador/ADR propuesto conservados; no comenzar A1/producto ni M0 antes de D0.
 - M0 aún no ejecutado. Congelar receta, recursos/harness y fixtures reales protegidas antes de optimizar. Los fixtures e2e que interceptan HTTP no sirven como base de app real.

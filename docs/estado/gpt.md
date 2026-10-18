@@ -3,7 +3,13 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — DOS IMPLEMENTADORES 0238 INICIADOS EN PREPARACIÓN; D0/M0 PENDIENTES (2026-10-17/18 UTC)
+## ESTADO — 0238 SCOPEKEY ACEPTADO; D0 CERRADO, M0 EN PREPARACIÓN (2026-10-17/18 UTC)
+
+Owner aceptó explícitamente protección scopeKey tras ejemplo UIA/cookieB. Spec cerrada, ADR aceptado, INDEX actualizado en6e45066c; autorización de implementación por checkpoints vigente, sin push/PROD. A/B iniciados y preparaciones documentadas en susWT; encargos actuales SOLO harness/fixtureM0 previos a optimización. A fixture/loginauthreal opt-in en testsneon focales reservados; B harnessPlaywright externo con observadorDOM/fetch/red previo navegación. NoA1/A2/B1a antes deM0. [Registro actualizado](../factory/0238-launch.md).
+
+PreflightCI readonly:102ledger,latesttimestamp0101igual,0DDLpendiente; drift histórico hashes59/60/64/97 preservado SINreparar.111columnas relevantescoincidenlocal. A tiene resource db:ci-integration y envCI-only seleccionado. Baseline viejoWTmedición preservado encommitc9fe9356 de instrumentaciónpropia; producto005b8235 igual apps/packages deD0. BuildWebpackprod EXIT0, servidor propio43152 iniciado solo para próximoM0 sobreCI. Rootrunner/preload/config privados en /private/tmp/checkpass-0238/artifacts. Primerfixturevisible0/5 noM0válida porvida7d vswriterpolicy, A corrige/restaura concleanupIDspropios conservandolog/manifiestov1. Loginreal desdeproceso test/console parafixtures, cookielegítimavalidadaenbuildprod, no habilitarconsoleenPRODniinventartoken. No mediciónnueva todavía. QAmanual/FAILhistórico/CIremotorojo/diferidos intactos.
+
+## HISTÓRICO — DOS IMPLEMENTADORES 0238 INICIADOS EN PREPARACIÓN; D0/M0 PENDIENTES (2026-10-17/18 UTC)
 
 Owner autorizó poner en marcha agentes por piezas pequeñas. [Registro](../factory/0238-launch.md): A `/root/backoffice_0238_server` en `/private/tmp/checkpass-0238/backoffice-0238-server`; B `/root/backoffice_0238_client` en `/private/tmp/checkpass-0238/backoffice-0238-client`; basee93d0487, dependencias propias y reservasfactory con susIDs. Encargo actual SOLO inventario/handoff, sin producto/tests/DB/server. Pregunta async pendiente: aceptar/rechazar scopeKey§4.3 antes del cierre D0; no inferir respuesta de autorización de lanzamiento. M0 aún no ejecutado; no habilitar A1/B1a antes de sus dependencias. Tras cierre/M0 despachar solo checkpoint habilitado, extender paths y coordinar contrato común.
 
