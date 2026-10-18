@@ -108,7 +108,7 @@ for (const width of [390, 768, 1440]) {
     );
     await page.goto(`${harness.url}/backoffice/analytics`);
     const sales = section(page, "Ventas del período");
-    const profit = section(page, "Ganancia y gastos");
+    const profit = section(page, "Gastos");
     const goal = section(page, "El cálculo de este mes");
     await expect(sales).toContainText("30% menos");
     await expect(
@@ -152,7 +152,7 @@ test("unknown costs and empty data remain explicit; filters and day still work",
 }) => {
   const fixture = await setupAnalytics(page);
   await page.goto(`${harness.url}/backoffice/analytics`);
-  await expect(section(page, "Ganancia y gastos")).toContainText("Pendiente");
+  await expect(section(page, "Gastos")).toContainText("Pendiente");
   await expect(section(page, "El cálculo de este mes")).toContainText(
     "No hay movimientos recientes disponibles de este mes.",
   );

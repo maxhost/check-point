@@ -236,11 +236,15 @@ export default function AnalyticsConsole({
           <div className="grid min-w-0 items-start gap-6 lg:col-span-12 lg:grid-cols-2">
             <div className="grid min-w-0 content-start gap-6">
               <Card className="grid min-w-0 content-start gap-4 self-start">
-                <Heading level={2}>Ganancia y gastos</Heading>
+                <Heading level={2}>Gastos</Heading>
                 <dl>
-                  <dt>
+                  <dt className="flex flex-wrap items-baseline justify-between gap-2">
                     <Text as="span" variant="small">
                       Gastos del período
+                    </Text>
+                    <Text as="span" variant="small">
+                      {stockCostDate(history.from)} –{" "}
+                      {stockCostDate(history.to)}
                     </Text>
                   </dt>
                   <dd className="m-0 mt-2 break-words">
@@ -344,14 +348,12 @@ export default function AnalyticsConsole({
                   <Text>No hay unidades vendidas en este período.</Text>
                 ) : history.coverage === 0 ? (
                   <>
-                    <Text>Ventas: {money(history.revenueMinor)}.</Text>
                     <Text variant="muted">
                       Los costos de estas ventas todavía no están incluidos.
                     </Text>
                   </>
                 ) : history.coverage < 1 ? (
                   <>
-                    <Text>Ventas: {money(history.revenueMinor)}.</Text>
                     <Text variant="muted">
                       Falta conocer el costo de {history.unitsWithoutCost} de
                       las {history.soldUnits} unidades vendidas.
@@ -367,12 +369,6 @@ export default function AnalyticsConsole({
                     </Text>
                   </>
                 )}
-                {history.resultMinor === null ? (
-                  <Text variant="muted">
-                    Con el costo de al menos el 80% de lo vendido podrás ver el
-                    resultado después de gastos.
-                  </Text>
-                ) : null}
               </Card>
               <Card className="grid min-w-0 gap-4">
                 <Heading level={2}>Los productos que más vendieron</Heading>
