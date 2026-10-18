@@ -159,6 +159,19 @@ export async function applyClaimedDelivery(
     .select()
     .from(moduleEvents)
     .where(eq(moduleEvents.id, delivery.event_id));
+  if (event.eventType === "sale.closed") {
+    const payload = event.payload;
+    if (
+      !payload ||
+      typeof payload !== "object" ||
+      Array.isArray(payload) ||
+      !("eventVersion" in payload) ||
+      !("locationId" in payload) ||
+      payload.eventVersion !== event.eventVersion ||
+      payload.locationId !== event.locationId
+    )
+      throw new Error("Inconsistent sale event envelope");
+  }
   const subscription = SERVER_MODULES[
     delivery.subscriber_id
   ]?.eventSubscriptions?.find((s) => s.eventType === event.eventType);

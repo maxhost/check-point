@@ -266,8 +266,9 @@ describe.skipIf(!modulesIntegrationEnabled)(
         ),
       ).rejects.toThrow("snapshot conflict");
       await withDbTransaction((tx) =>
-        eventSubscriptions[0].handler(tx, {
+        eventSubscriptions[0].dispatch(tx, {
           id: event.id,
+          eventVersion: event.eventVersion,
           businessId: world.businessId,
           payload: event.payload as SaleClosedEvent,
         }),
