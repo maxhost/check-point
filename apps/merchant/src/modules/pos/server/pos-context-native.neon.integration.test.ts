@@ -8,6 +8,7 @@ import {
   businessOnboardingTours,
   businesses,
   posOrders,
+  users,
 } from "@mi-pasaporte/db/schema";
 import {
   neonEndpointId,
@@ -86,6 +87,7 @@ describe.skipIf(process.env.POS_SCOPE_CLIENT_NATIVE !== "true")(
               .where(eq(businesses.id, world.seed.business.id));
             expect(owned?.name).toContain("scope-client-0242");
             await dropPosWorld(world);
+            await getDb().delete(users).where(eq(users.id, world.seed.userId));
           }
           for (const world of fixture.worlds)
             expect(

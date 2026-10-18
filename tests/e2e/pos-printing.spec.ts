@@ -586,6 +586,12 @@ test("0185 ajuste tardío no revive POS después de revocar la sesión", async (
 }) => {
   await setup(page);
   await fakePrinter(page, "unsupported");
+  await page.route("**/backoffice", (route) =>
+    route.fulfill({
+      contentType: "text/html",
+      body: "<!doctype html><main>Panel restablecido</main>",
+    }),
+  );
   let release!: () => void;
   await page.route("**/api/modules/pos/ticket", async (route) => {
     await new Promise<void>((resolve) => {
@@ -608,12 +614,52 @@ test("0185 ajuste tardío no revive POS después de revocar la sesión", async (
     .getByRole("button", { name: "Escanear QR", exact: true })
     .click();
   await page.evaluate(() => {
-    (window as unknown as { posCameraToken: string | null }).posCameraToken =
-      "expired-session";
+    type Retirement = {
+      destination: string | null;
+      count: number;
+      release: () => void;
+    };
+    const observed = window as unknown as {
+      navigation: EventTarget;
+      posRetirement: Retirement;
+      posCameraToken: string | null;
+    };
+    const intercept = (event: Event) => {
+      const target = (event as Event & { destination: { url: string } })
+        .destination.url;
+      if (new URL(target).pathname !== "/backoffice") return;
+      event.preventDefault();
+      observed.posRetirement.destination = target;
+      observed.posRetirement.count++;
+    };
+    observed.posRetirement = {
+      destination: null,
+      count: 0,
+      release: () => {
+        observed.navigation.removeEventListener("navigate", intercept);
+        location.assign(observed.posRetirement.destination!);
+      },
+    };
+    observed.navigation.addEventListener("navigate", intercept);
+    observed.posCameraToken = "expired-session";
   });
+  const retirement = () =>
+    page.evaluate(
+      () =>
+        (
+          window as unknown as {
+            posRetirement: { destination: string | null; count: number };
+          }
+        ).posRetirement,
+    );
+  await expect.poll(async () => (await retirement()).count).toBe(1);
+  expect((await retirement()).destination).toBe(harness.url + "/backoffice");
+  // Retain the original document until its late ticket has settled. The native
+  // smoke separately verifies the real cross-document navigation without a double.
   await expect(
-    page.getByRole("heading", { name: "POS no disponible", exact: true }),
-  ).toBeVisible();
+    page.getByRole("heading", { name: "POS", exact: true }),
+  ).toHaveCount(0);
+  expect(await page.evaluate(() => location.href)).toBe(harness.url + "/");
   const response = page.waitForResponse("**/api/modules/pos/ticket");
   release();
   await response;
@@ -627,6 +673,16 @@ test("0185 ajuste tardío no revive POS después de revocar la sesión", async (
     }),
   ).toHaveCount(0);
   expect((await readQA(page)).printCount).toBe(0);
+  expect((await retirement()).count).toBe(1);
+  await page.evaluate(() =>
+    (
+      window as unknown as { posRetirement: { release: () => void } }
+    ).posRetirement.release(),
+  );
+  await page.waitForURL("**/backoffice");
+  await expect(
+    page.getByText("Panel restablecido", { exact: true }),
+  ).toBeVisible();
 });
 
 for (const printingEnabled of [false, true]) {

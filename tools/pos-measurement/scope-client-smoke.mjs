@@ -179,6 +179,36 @@ else if (mode === "browser") {
     await page
       .getByRole("button", { name: "Revisar pedido", exact: true })
       .click();
+    // Read the real server response before document retirement clears Chromium's
+    // body cache. This observer pauses delivery only; it never replaces payloads.
+    const observer = await context.newCDPSession(page);
+    let observedPayload;
+    await observer.send("Fetch.enable", {
+      patterns: [
+        { urlPattern: "*/api/modules/pos/orders", requestStage: "Response" },
+      ],
+    });
+    observer.on("Fetch.requestPaused", async (event) => {
+      try {
+        if (
+          event.request.method === "POST" &&
+          event.responseStatusCode === 409
+        ) {
+          const body = await observer.send("Fetch.getResponseBody", {
+            requestId: event.requestId,
+          });
+          observedPayload = JSON.parse(
+            body.base64Encoded
+              ? Buffer.from(body.body, "base64").toString("utf8")
+              : body.body,
+          );
+        }
+      } finally {
+        await observer.send("Fetch.continueResponse", {
+          requestId: event.requestId,
+        });
+      }
+    });
     await context.addCookies([cookie(b)]);
     const negative = page.waitForResponse(
       (r) =>
@@ -189,9 +219,9 @@ else if (mode === "browser") {
       .getByRole("button", { name: /^Guardar (pedido|orden)$/ })
       .click();
     const response = await negative;
-    const payload = await response.json();
+    const payload = observedPayload;
     expect(response.status()).toBe(409);
-    expect(payload.code).toBe("backoffice_context_changed");
+    expect(payload?.code).toBe("backoffice_context_changed");
     await page.waitForURL("http://localhost:43242/backoffice");
     await expect(
       page.getByText("scope-client-negative-A", { exact: true }),
