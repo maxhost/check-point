@@ -7,6 +7,7 @@ import {
 import type {
   BusinessFiscal,
   BusinessRegional,
+  BusinessSalesUnits,
 } from "../../../lib/business-contract";
 import {
   Alert,
@@ -19,26 +20,40 @@ import {
 } from "../../../ui";
 import { businessRequest, BusinessRequestError } from "./business-api";
 import { FiscalFields } from "./fiscal-fields";
+import { SalesUnitsFields } from "./sales-units-fields";
+import { coherentRevisions, reconcileDraft } from "./settings-drafts";
 import { RegionalFields } from "./regional-fields";
 
 export function BusinessSettings({
   initialRegional,
   initialFiscal,
+  initialUnits,
   onCurrencyChange,
   onAccessDenied,
 }: {
   onAccessDenied: () => void;
   initialRegional: BusinessRegional;
   initialFiscal: BusinessFiscal;
+  initialUnits: BusinessSalesUnits;
   onCurrencyChange: (value: string) => void;
 }) {
   const [regional, setRegional] = useState(initialRegional);
   const [fiscal, setFiscal] = useState(initialFiscal);
+  const [units, setUnits] = useState(initialUnits);
+  const baseline = useRef({
+    regional: initialRegional,
+    fiscal: initialFiscal,
+    units: initialUnits,
+  });
+  const [differences, setDifferences] = useState<
+    { area: string; text: string }[]
+  >([]);
+  const [unitsError, setUnitsError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [saving, setSaving] = useState<string | null>(null);
   const [review, setReview] = useState(
-    initialRegional.revision !== initialFiscal.revision,
+    !coherentRevisions(initialRegional, initialFiscal, initialUnits),
   );
   const [denied, setDenied] = useState(false);
   const locked = useRef(false);
@@ -49,6 +64,11 @@ export function BusinessSettings({
         : "No pudimos guardar los datos.",
     );
     if (reason instanceof BusinessRequestError) {
+      setUnitsError(reason.fields?.salesMassUnits ?? null);
+      if (reason.code === "unit_in_use" && reason.products?.length)
+        setError(
+          `${reason.message} Productos: ${reason.products.map((product) => product.name).join(", ")}.`,
+        );
       if ([401, 403].includes(reason.status)) {
         setDenied(true);
         onAccessDenied();
@@ -57,9 +77,14 @@ export function BusinessSettings({
         setReview(true);
     }
   }
-  async function save(area: "regional" | "fiscal") {
+  async function save(area: "regional" | "fiscal" | "sales-units") {
     if (locked.current || review || denied) return;
-    let body: BusinessFiscal | BusinessRegional = regional;
+    if (area === "sales-units" && units.salesMassUnits.length === 0) {
+      setUnitsError("Elige al menos una unidad de venta.");
+      return;
+    }
+    let body: BusinessFiscal | BusinessRegional | BusinessSalesUnits =
+      area === "sales-units" ? units : regional;
     if (area === "fiscal") {
       try {
         const saleVatRate = canonicalVatRate(fiscal.saleVatRate);
@@ -74,21 +99,36 @@ export function BusinessSettings({
     setSaving(area);
     setError(null);
     setNotice(null);
+    setUnitsError(null);
     try {
       if (area === "regional") {
         const saved = await businessRequest<BusinessRegional>(area, body);
         setRegional(saved);
+        baseline.current.regional = saved;
+        setUnits((draft) => ({ ...draft, revision: saved.revision }));
         setFiscal((draft) => ({ ...draft, revision: saved.revision }));
         onCurrencyChange(saved.currencyCode);
-      } else {
+      } else if (area === "fiscal") {
         const saved = await businessRequest<BusinessFiscal>(area, body);
         setFiscal(saved);
+        baseline.current.fiscal = saved;
+        setUnits((draft) => ({ ...draft, revision: saved.revision }));
         setRegional((draft) => ({ ...draft, revision: saved.revision }));
       }
+      if (area === "sales-units") {
+        const saved = await businessRequest<BusinessSalesUnits>(area, body);
+        setUnits(saved);
+        baseline.current.units = saved;
+        setRegional((draft) => ({ ...draft, revision: saved.revision }));
+        setFiscal((draft) => ({ ...draft, revision: saved.revision }));
+      }
+      setDifferences((items) => items.filter((item) => item.area !== area));
       setNotice(
         area === "regional"
           ? "Configuración regional guardada."
-          : "Datos fiscales guardados.",
+          : area === "fiscal"
+            ? "Datos fiscales guardados."
+            : "Unidades de venta guardadas.",
       );
     } catch (reason) {
       fail(reason);
@@ -97,25 +137,80 @@ export function BusinessSettings({
       setSaving(null);
     }
   }
-  async function reload() {
+  async function reload(discard = false) {
     if (locked.current || denied) return;
     locked.current = true;
     setSaving("reload");
     try {
-      const [savedRegional, savedFiscal] = await Promise.all([
+      const [savedRegional, savedFiscal, savedUnits] = await Promise.all([
         businessRequest<BusinessRegional>("regional"),
         businessRequest<BusinessFiscal>("fiscal"),
+        businessRequest<BusinessSalesUnits>("sales-units"),
       ]);
-      if (savedRegional.revision !== savedFiscal.revision)
+      if (!coherentRevisions(savedRegional, savedFiscal, savedUnits))
         throw new Error(
           "La configuración cambió mientras la consultabas. Intenta actualizar nuevamente.",
         );
-      setRegional(savedRegional);
-      setFiscal(savedFiscal);
+      const r = reconcileDraft(
+        baseline.current.regional,
+        regional,
+        savedRegional,
+      );
+      const f = reconcileDraft(baseline.current.fiscal, fiscal, savedFiscal);
+      const u = reconcileDraft(baseline.current.units, units, savedUnits);
+      const labels: Record<string, string> = {
+        timezone: "Zona horaria",
+        currencyCode: "Moneda",
+        chargesVat: "Cobro de IVA",
+        saleVatRate: "Tasa de IVA",
+        recoversPurchaseVat: "Recuperación de IVA",
+        salesMassUnits: "Unidades de venta",
+      };
+      const display = (value: unknown): string =>
+        value === null
+          ? "Sin definir"
+          : typeof value === "boolean"
+            ? value
+              ? "Sí"
+              : "No"
+            : Array.isArray(value)
+              ? value.join(", ")
+              : String(value);
+      const describe = (
+        area: string,
+        keys: PropertyKey[],
+        local: object,
+        remote: object,
+      ) =>
+        keys.map((key) => ({
+          area,
+          text: `${labels[String(key)]}: tu borrador ${display(Reflect.get(local, key))}; guardado ${display(Reflect.get(remote, key))}.`,
+        }));
+      setDifferences(
+        discard
+          ? []
+          : [
+              ...describe("regional", r.overlaps, regional, savedRegional),
+              ...describe("fiscal", f.overlaps, fiscal, savedFiscal),
+              ...describe("sales-units", u.overlaps, units, savedUnits),
+            ],
+      );
+      setRegional(discard ? savedRegional : r.draft);
+      setFiscal(discard ? savedFiscal : f.draft);
+      setUnits(discard ? savedUnits : u.draft);
+      baseline.current = {
+        regional: savedRegional,
+        fiscal: savedFiscal,
+        units: savedUnits,
+      };
       onCurrencyChange(savedRegional.currencyCode);
       setReview(false);
       setError(null);
-      setNotice("Usando la configuración guardada.");
+      setNotice(
+        discard
+          ? "Usando la configuración guardada."
+          : "Configuración consultada. Conservamos tus cambios; revísalos antes de guardar.",
+      );
     } catch (reason) {
       fail(reason);
     } finally {
@@ -136,16 +231,32 @@ export function BusinessSettings({
         <Alert kind="warning" title="Tu borrador se conserva">
           <div className="grid gap-3">
             <Text>
-              La configuración pudo cambiar. Actualiza ambas secciones antes de
-              volver a guardar. Esta acción descarta los borradores regional y
-              fiscal.
+              La configuración pudo cambiar. Consulta los datos guardados para
+              revisar tus cambios antes de volver a guardar. Tus borradores se
+              conservan.
             </Text>
             <Button
               variant="secondary"
               isLoading={saving === "reload"}
               onPress={() => void reload()}
             >
-              Descartar borradores y actualizar configuración
+              Consultar configuración y conservar mis cambios
+            </Button>
+          </div>
+        </Alert>
+      )}
+      {differences.length > 0 && (
+        <Alert kind="warning" title="Revisa los cambios que coinciden">
+          <div className="grid gap-3">
+            {differences.map((difference) => (
+              <Text key={difference.text}>{difference.text}</Text>
+            ))}
+            <Button
+              variant="secondary"
+              isDisabled={Boolean(saving)}
+              onPress={() => void reload(true)}
+            >
+              Descartar mis cambios y usar los datos guardados
             </Button>
           </div>
         </Alert>
@@ -208,6 +319,35 @@ export function BusinessSettings({
               isLoading={saving === "fiscal"}
             >
               Guardar datos fiscales
+            </Button>
+          </FormActions>
+        </Form>
+      </Card>
+      <Card>
+        <Form
+          onSubmit={(event) => {
+            event.preventDefault();
+            void save("sales-units");
+          }}
+        >
+          <FormSection
+            title="Unidades de venta"
+            description="Elige al menos una unidad para los productos que se venden por peso."
+          >
+            <SalesUnitsFields
+              draft={units}
+              onChange={setUnits}
+              disabled={disabled}
+              error={unitsError}
+            />
+          </FormSection>
+          <FormActions>
+            <Button
+              type="submit"
+              isDisabled={disabled}
+              isLoading={saving === "sales-units"}
+            >
+              Guardar unidades de venta
             </Button>
           </FormActions>
         </Form>

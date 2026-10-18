@@ -13,7 +13,7 @@ test.afterAll(async () => {
 });
 test.use({ reducedMotion: "reduce" });
 for (const width of [390, 1280])
-  test(`Negocio ${width}: tres secciones, formas, payload parcial y vista`, async ({
+  test(`Negocio ${width}: cuatro secciones, formas, payload parcial y vista`, async ({
     page,
   }, info) => {
     await page.setViewportSize({ width, height: 900 });
@@ -23,6 +23,7 @@ for (const width of [390, 1280])
       "Medios de pago",
       "Configuración regional",
       "Datos fiscales",
+      "Unidades de venta",
     ])
       await expect(
         page.getByRole("heading", { name, exact: true }),
