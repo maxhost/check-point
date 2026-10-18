@@ -33,6 +33,8 @@ Después de resolver identidad, seleccionar membresía/negocio según el modo ac
 
 El dato puede obtenerse antes de aplicar todas las decisiones, pero no se serializa ni cambia la precedencia de errores. Los guards de escritura mantienen controles adicionales en sus transacciones; el nuevo contexto no sustituye entitlements, locks ni comprobaciones de dominio.
 
+Si falla el JOIN, una única recuperación excepcional de membresía/negocio con la misma identidad y selección permite aplicar denegaciones anteriores a billing. Si el wrapper necesita billing y no pudo obtenerse, propaga el error operativo; error no significa suscripción ausente. No reintenta el JOIN ni mezcla filas parciales. En APIs el PIN sigue después de billing; los wrappers que omiten ese gate conservan su comportamiento y separan los consumidores que requieren facturación para presentar la página. Es equivalencia de contrato ante fallos parciales, no un mecanismo para conceder acceso con datos incompletos. Operaciones excepcionales se cuentan y miden aparte del objetivo normal.
+
 ### 3. Entregar al navegador el contexto ya disponible
 
 El layout autorizado entrega una proyección mínima para navegación y aviso de prueba: identidad opaca del ámbito, nombre, permisos efectivos, acceso/días de prueba y módulos visibles. Sin tokens, cookies, headers, campos Stripe, claves R 2, datos de otros negocios ni motivo de suspensión de owner al staff. Es un dato de presentación, no una credencial aceptada por APIs.
@@ -41,7 +43,11 @@ El seed de módulos respeta las mismas decisiones de acceso que su endpoint: que
 
 Un propietario único en el árbol cliente comparte ese dato y las peticiones en curso. Evitar GET sesión/GET módulos al montar consumidores que ya recibieron su estado. La carga de módulos, posterior a identificar y validar el ámbito, puede solaparse con otras lecturas independientes; no ejecutar comandos paralelos sobre una misma conexión transaccional esperando reducir viajes.
 
+La composición elegida entrega core primero y módulos desde un componente servidor asíncrono con Suspense propio que no suspende el provider ni Inbox. El cliente tiene estado loading mientras llega ese seed. El componente espera y observa su consulta y traduce rechazo a unavailable; no se usa una carrera de timeout que abandone promesas. La latencia y recursos de ese trabajo se registran aunque termine después de que el Inbox sea utilizable.
+
 Cada nueva petición protegida autentica y autoriza. El cliente invalida su contexto tras logout, cambio de identidad/comercio, cambios propios de módulos/permisos/acceso y eventos de sesión. Revalidación coordinada al recuperar foco y tras reconexión; no reutilizar contexto entre usuarios. Resultados tardíos de la identidad anterior se descartan. Mientras se refresca, lo visible puede conservarse, pero no constituye autorización para ninguna acción.
+
+El provider inicializa core una vez por documento y acepta el seed de módulos solo con ticket inicial vigente. Versión de contrato y `bootId` no son una revisión temporal ni credencial. Nuevos seeds RSC no sustituyen datos por el orden en que llegan: invalidan/coordinan una revalidación del reporter y recursos pertinentes. Mutaciones avanzan generaciones locales; resultados previos no pisan el DTO confirmado. Reporter con usuario autenticado pero negocio/membresía nulos también limpia el ámbito, no solo authenticated:false. Cambios estructurales de rol/permisos/estado/acceso retiran el contexto y provocan una sola navegación completa para reevaluar el árbol y gates vigentes; cambios ordinarios de módulos no recargan el documento. Restricted se reevalúa tras señales relevantes sin retry periódico. La tabla de transición y los casos negativos están en spec§4.1.
 
 ### 4. Conservar el recorrido de efectos del Inbox
 
@@ -49,9 +55,13 @@ El contexto servidor no incluye contenido del Inbox. Su GET se mantiene como una
 
 No mover `readInbox` a layout, SSR, `generateMetadata`, prefetch ni un caché persistente: eso registraría exposición de avisos que el usuario puede no haber visto. Esta decisión deja parte del recorrido página→montaje→GET y no promete eliminarlo en este encargo. Backend conserva try-lock, ciclo, fallback de 3 s, versiones y las respuestas de 0237.
 
+Promesas compartidas pertenecen al provider y a recurso/época/generación. Se retiran al terminar y no se reutilizan después de una decisión, invalidación o rechazo. Un consumidor que se desmonta no cancela a otro suscrito; un ticket viejo nunca elimina o actualiza el nuevo en su finally. Conservar una sola lectura vigente y una pendiente, con descarte/cancelación o drenaje de las anteriores. No añadir una caché persistente ni librería para conseguirlo.
+
 ### 5. Medir el conjunto con referencia comparable
 
 Comparar base y candidato bajo build de entrega, misma configuración no PROD, DB protegida, dataset, navegaciones y observador. Conservar primera entrada y casos de preparación/contención separados de recargas. Las capturas dev 4,185/4,624 s son diagnóstico, no referencia cuantitativa para afirmar mejora en build de entrega. La spec fija criterios estructurales y el protocolo relativo; no se promete un SLA inventado.
+
+Conservar M0 y ejecutar en M1 un control de la base congelada junto al candidato, por bloques de orden predeterminado. Fijar antes de medir estimador de p95, definición de contenido utilizable, resolución e incertidumbre. El manifiesto también cubre día/zona, runs, política, vigencias, exposición, recordatorios y sesión; no basta el hash de filas estáticas. Muestras con cambio de caso o condiciones no se borran ni se usan para afirmar un ready equivalente.
 
 ## Compatibilidad con decisiones previas
 

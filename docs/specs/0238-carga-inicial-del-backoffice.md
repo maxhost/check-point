@@ -51,6 +51,10 @@ En particular: layout admite bloqueado para renderizar cobro; página aplica su 
 
 La consulta puede traer facturación con membresía, pero un caller sin permiso no debe recibir información de facturación/estado ni cambiar de error por esa lectura anticipada. Preservar también errores operativos: una falla de obtención no se convierte en acceso concedido ni un estado de éxito inventado.
 
+**Fallo del JOIN y precedencia (B1).** Si falla la obtención combinada después de validar la sesión, permitir una única recuperación excepcional de membresía/negocio sin suscripción. Usar la misma sesión, modo, filtros, orden y límite; compartir el resultado excepcional en ese Request y no volver a intentar el JOIN automáticamente. Aplicar con esa fila íntegra solo las decisiones que ese wrapper evalúa antes de necesitar billing. Si corresponde una denegación anterior, conservar su código o redirect; si alcanza un gate que necesita billing, propagar el error operativo original, sin conceder acceso ni convertir el error en suscripción ausente. Un segundo fallo de obtención permanece operativo. No mezclar datos parciales del JOIN fallido con la fila recuperada ni cambiar de negocio/modo buscando uno permitido.
+
+En APIs de permisos, el PIN se evalúa **después** de billing: no adelantarlo para ocultar un billing desconocido. En páginas, `allowBlocked` y owner suspendido pueden omitir billing dentro del guard, pero los consumidores que necesitan facturación para presentar el shell/plan todavía deben tratar su fallo explícitamente. No prometer un snapshot histórico que la base no tenía entre lecturas separadas. Mantener controles transaccionales de writers. La recuperación excepcional cuenta y se mide aparte; no se excluye de los tiempos ni del informe total.
+
 ### 3.3. Objetivos de consultas, condiciones normales
 
 No contar renovación excepcional de Better Auth ni datos adicionales de un caso de error como duplicación normal; reportarlos separados.
@@ -68,6 +72,10 @@ El layout entrega una proyección de presentación `BackofficeInitialContext`, i
 
 Estado de módulos: `{state:'ready', modules:[...]}`, `{state:'unavailable'}` o `{state:'restricted'}`. El seed evalúa las mismas condiciones de acceso y ámbito de GET módulos antes de serializarlo: que el layout admita acceso bloqueado/suspendido para mostrar su estado no concede acceso a información que la API deniega. Restricted no dispara recuperación automática; vuelve a evaluarse tras un cambio de contexto. Error de lectura no concede links ni invalida una sesión válida: navegación core y el resto de página permanecen utilizables; recuperar por revalidación coordinada. No convertir un error en ready vacío ni esperar un servicio remoto opcional sin límite en el camino crítico. La lectura usa DB core/local de módulos existente, no tablas ni llamadas externas de cada módulo. La consulta combinada del contexto incluye categoría y metadatos core necesarios para construir el DTO de módulos, evitando otra consulta al negocio.
 
+Aplicar las decisiones del guard de módulos sobre el contexto ya elegido y validado de la página, sin invocar otra vez un guard HTTP que reabra sesión/selección. Una primera membresía de cualquier estado que resulta activa y pasa el guard de página satisface, para ese ámbito, la condición de primera membresía activa; no es una autorización para reutilizar el modo owner o cambiar de negocio. Si la página selecciona una membresía no activa, aplica antes su revocación/redirect y no produce seed de módulos. Compartir evaluadores puros de los gates, no copiar una segunda escalera divergente. Probar equivalencia en usuarios con múltiples membresías y mantener el orden existente, sin añadir desempates nuevos.
+
+**Composición elegida para módulos (R3).** Separar el seed core del seed opcional de módulos. El provider recibe el core autorizado y puede montar Inbox/core sin esperar módulos. Un componente servidor asíncrono dentro de una frontera Suspense propia obtiene módulos y entrega al mismo provider el resultado final; mientras tanto hay un estado cliente `loading` que solo oculta enlaces de módulos. No suspender todo el provider, layout o Inbox por esa lectura. No añadir un `Promise.race` que deje trabajo/rechazos sin observar: el componente servidor espera la consulta bajo los límites ordinarios del driver/hosting, captura el fallo y entrega `unavailable`; denegación entrega `restricted` sin leer módulos. Un smoke de módulos lento debe demostrar contenido e Inbox utilizables antes de que termine esa lectura. El rechazo tardío y una navegación interrumpida no deben iniciar recuperaciones huérfanas ni actualizar otro ámbito. Medir tanto el contenido utilizable como el fin del stream y sus recursos; el trabajo de módulos no desaparece del conteo total por usar streaming.
+
 Un provider compartido en el árbol cliente consume el seed. Durante montaje sin invalidaciones, para owner con acceso:
 
 | Recurso | Peticiones desde navegador en build de entrega |
@@ -82,6 +90,31 @@ Sin doble consulta inicial de módulos por efectos distintos. Compartir promesas
 Las siguientes causas invalidan o actualizan el estado: operación exitosa que cambie módulos/permisos/acceso, evento existente de módulos, logout/cambio de identidad/negocio, foco después de la carga inicial y reconexión. Datos de mutaciones aplicados antes de refetch; un resultado viejo nunca pisa una revisión más nueva. Un refresco simultáneo tiene 1 solicitud en curso por recurso/ámbito, con como máximo 1 refresco pendiente si hubo cambio durante ella. Nueva identidad descarta promesas/respuestas anteriores; error no conserva permisos como credencial para APIs ni recupera datos de otro negocio.
 
 No persistir este contexto en localStorage/IndexedDB ni usarlo para dar permiso en servidor. Todas las APIs siguen validando. Una revalidación fallida presenta estado de recuperación; una respuesta sin sesión o de identidad distinta limpia el contexto anterior y sigue la navegación de acceso vigente. Conservar estados de error/accesibilidad de los consumidores con componentes del kit existente.
+
+### 4.1. Seed, layout persistente y transiciones (B2)
+
+La versión1 del contrato describe su forma, no su frescura. Cada arranque servidor del árbol tiene un `bootId` opaco, sin valor de autorización. El provider conserva una época local de identidad/acceso y una generación por recurso. El seed core inicializa el provider una sola vez por documento; el seed de módulos en streaming se acepta solo para ese `bootId` y si su generación inicial no fue invalidada. Una mutación o revalidación cierra esa aceptación inicial. Llegar después no convierte un seed en más reciente.
+
+Nuevas props RSC del mismo ámbito, incluidas las de `router.refresh`, no reemplazan directamente datos vivos del provider: provocan como máximo una revalidación coordinada por cada `bootId` nuevo, sin reutilizar la instantánea llegada como prueba de frescura. Si cambia el ámbito de esas props, ocultar primero los datos privados anteriores y confirmar la identidad actual con el reporter; no instalar un ámbito nuevo desde un seed posiblemente prefetcheado. No crear una revisión persistida ni comparar relojes de servidores para decidir causalidad.
+
+| Resultado o evento | Transición obligatoria |
+| --- | --- |
+| Core inicial válido y módulos en streaming | Montar core/Inbox; aplicar módulos solo si su ticket inicial sigue vigente |
+| Mutación local confirmada | Avanzar generación antes de aplicar el DTO confirmado; resultados GET/RSC anteriores no lo sobrescriben; una lectura posterior intencional tiene ticket nuevo |
+| Reporter `authenticated:false` | Invalidar épocas/promesas y retirar datos de negocio/Inbox; navegación completa a la entrada vigente |
+| Reporter `authenticated:true` con `business:null`, `membership:null` o membresía no activa | Retirar negocio, menús y tarjetas aunque userId no cambie; una única navegación completa a `/backoffice` para que el guard aplique su revocación/redirect vigente; el reporter no revoca |
+| Cambia identidad/negocio, rol, permisos efectivos, estado de negocio o `billing.access` | Retirar contexto anterior e invalidar recursos; una única navegación completa al backoffice por transición para reevaluar gates y decisiones estructurales de layout/checklist/TrialNotice |
+| Misma identidad y estructura, cambia presentación | Actualizar coherentemente nombre, datos públicos de prueba y módulos en consumidores del provider; no conservar props de navegación paralelas como otra fuente de permisos |
+| Módulos `restricted` | Sin timer/bucle de retry; un foco posterior, reconexión o evento relevante de sesión/email/acceso permite una única reevaluación coordinada del contexto y, si corresponde, una solicitud al endpoint para decidir el gate completo |
+| Error operativo de revalidación | Marcar recuperación; no convertirlo en logout, contexto vacío confirmado ni acceso concedido; un reintento intencional inicia transporte nuevo |
+
+Las navegaciones completas son excepcionales ante cambios estructurales, no por cada actualización de módulos o foco. Cada transición solo puede iniciarlas una vez por época; el guard del documento nuevo decide la ruta final. La actualización ordinaria de módulos mantiene el layout. El reporter actual no expresa por sí solo todos los gates de GET módulos, incluido PIN: el cliente no infiere acceso completo a partir de sus campos; el endpoint y la construcción autorizada del seed siguen siendo la autoridad.
+
+### 4.2. Propiedad de promesas, mutaciones y abortos (R4)
+
+El provider del documento posee las peticiones compartidas, con clave de recurso+época+generación. Las entradas se eliminan al resolver o rechazar, con comparación del ticket para que el `finally` de una petición vieja no borre una nueva. Compartir una petición no conserva su respuesta como caché de transporte. Cada consumidor registra su suscripción: desmontarse o limpiar un efecto no aborta la petición que todavía usa otro. En el desmontaje real del último consumidor puede cancelarse tras comprobar que no hubo una suscripción de reemplazo del remount de Strict Mode; observar siempre el rechazo. Cancelar fetch no se presenta como prueba de cancelar la operación SQL del servidor.
+
+Una decisión Inbox invalida el ticket anterior antes de aplicar su respuesta, conserva `operationId`/versiones y garantiza que el refresco posterior no se adhiera al GET previo a esa decisión. Mantener como máximo un transporte vigente y un refresco pendiente por recurso; una petición vieja invalidada se cancela o se drena con resultado descartado antes del transporte pendiente, sin iniciar fan-out. No esperar a una promesa de otra identidad para limpiar datos privados. Los temporizadores de vencimiento/recordatorio/preparing y la cola durante mutación se conservan. Checklist usa el mismo régimen de suscripciones: el AbortController de un efecto no cancela una lectura usada por otro.
 
 ## 5. Contratos HTTP y ciclo del Inbox
 
@@ -106,6 +139,9 @@ El GET Inbox permanece iniciado por componente visible. SSR/prefetch del shell n
 - Dos peticiones separadas observan una revocación, cambio de permisos/módulos o vencimiento de acceso ocurrido entre ambas. Una página prefetcheada no habilita una acción posterior revocada.
 - Seed sin GET auxiliares, un Inbox/un checklist por montaje; focos/eventos simultáneos, errores y reintento, logout y respuesta tardía; compatibilidad con las carreras de `inbox-state` ya cubiertas.
 - Inbox real protegido con 0 y con hasta 5 tarjetas: mismo contenido/acciones, exposición una vez por reglas existentes, recordatorio, expiración, contención/preparing y acciones conservadas. Sin skips/retries para declarar PASS.
+- Falla exclusiva de la lectura que referencia suscripción: permiso/email/estado denegados conservan precedencia; caller autorizado que necesita billing sigue fallando; PIN no se adelanta; fallback usa misma selección y no mezcla filas. Distinguirla de una caída total de DB.
+- Navegación interna con layout persistente, reporter con membresía/negocio nulos, cambio de rol/permisos, restricted→ready con misma identidad, seed/RSC tardío tras mutación y cambios estructurales con una sola navegación completa.
+- GET Inbox lento→decisión confirmada→remount/foco→respuesta vieja; reintento después de rechazo produce petición real nueva. Desmontaje de un consumidor checklist no aborta al que permanece. Módulos lentos/rechazados no bloquean el Inbox ni dejan rechazo sin observar.
 
 ### Rendimiento del conjunto
 
@@ -117,9 +153,13 @@ Aceptar rendimiento solo si: (a) se cumplen conteos/semántica anteriores; (b) m
 
 El FAIL anterior `evaluateBusiness`1817,621042 ms>1000 ms mide otro contrato. Esta spec no lo sustituye, reabre ni acepta. No comparar base en desarrollo con candidato con build de entrega ni el mínimo de una tanda contra el promedio de otra.
 
+**Control del experimento (R1/R2).** M0 congela receta, estimadores y estado temporal; M1 incluye también la base sin optimizar ejecutada en la misma ventana que el candidato, con bloques A/B predeterminados, no solo una comparación contra mediciones de días anteriores. La ficha concreta orden, percentiles, incertidumbre y manifiesto de fixtures. Los percentiles no demuestran por sí solos causalidad; si las condiciones o la incertidumbre no permiten sostener mejora/no regresión, el resultado es no demostrado. Primera exposición, exposición de recarga y cambios de día/vencimiento se distinguen; restauraciones solo fuera del reloj y en datos sintéticos protegidos, sin sacar efectos del tiempo medido.
+
 ## 7. Archivos, dependencias y checks
 
 Servidor: nuevos helpers de contexto y proyección en `apps/merchant/src/server/`; wrappers de `auth-guards`, `api-owner`, `api-permission`, `billing-gate`, contexto de staff y checklist; reporter GET sesión y GET módulos solo si necesitan compartir constructores conservando contratos. Excluir operaciones de escritura de staff y resto de flujos salvo regresiones comprobadas del helper.
+
+Asignar además `apps/merchant/src/modules/activation.ts` únicamente para extraer/reutilizar constructor puro y lectura con categoría precargada; conservar mutaciones, locks y políticas de activación. El límite de módulos no autoriza tocar schema ni código de otros módulos.
 
 Cliente: `app/backoffice/layout.tsx`, `page.tsx`, nuevo provider/hooks, `backoffice-navigation.tsx`, `subscription/trial-notice.tsx`, `settings/module-request.ts`, `analytics/inbox-state.ts` y checklist si requiere el deduplicador. No modificar kit/guardias/CSS para pasar un check. Contrato de contexto es dependencia común con un escritor, definido antes de sus consumidores.
 
