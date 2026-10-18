@@ -354,7 +354,7 @@ export async function inspectFlows(m: Manifest, directory: string) {
  (select count(*)::int from core."order" o where o.business_id=p.business_id and o.membership_id=(select membership_id from core."order" where id=p.order_id)) as membership_orders,
  (select coalesce(jsonb_agg(jsonb_build_object('class',q.class,'status',q.status,'attempts',q.attempts,'createdAt',q.created_at,'sentAt',q.sent_at)),'[]'::jsonb) from consumer.wallet_push_queue q where q.consumer_id=(select consumer_id from core."order" where id=p.order_id)) as wallet_outbox,
  (select coalesce(jsonb_agg(jsonb_build_object('outcome',d.outcome,'decidedAt',d.decided_at)),'[]'::jsonb) from core.cross_decision d where d.order_id=p.order_id) as cross_decisions,
- (select jsonb_build_object('net',o.total,'units',o.units_granted,'balance',o.balance_after,'membership',o.membership_id,'consumer',o.consumer_id) from core."order" o where o.id=p.order_id) as ledger
+ (select jsonb_build_object('net',o.total::text,'units',o.units_granted,'balance',o.balance_after,'membership',o.membership_id,'consumer',o.consumer_id) from core."order" o where o.id=p.order_id) as ledger
  from pos.pos_order p where p.business_id=${flow.businessId} and p.table_label like 'Flow %' order by p.table_label`);
   await writeFile(
     `${directory}/flow-inspection-${Date.now()}.json`,
