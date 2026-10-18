@@ -320,6 +320,7 @@ export function RecipeModal({
               ...(saved ? { expectedRevisionId: saved.revisionId } : {}),
             },
           );
+          if (!mounted.current) return;
           saved = result.recipe;
           // Library persistence can succeed before composition fails. Keep its identity,
           // revision and resolved item IDs so retry neither recreates recipe nor insumos.
