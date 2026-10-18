@@ -1,5 +1,5 @@
 import { and, eq, inArray } from "drizzle-orm";
-import { getDb } from "@mi-pasaporte/db";
+import { type DbTransaction, getDb } from "@mi-pasaporte/db";
 import { catalogImports } from "@mi-pasaporte/db/schema";
 import { CATALOG_IMPORT_OPEN_STATUSES } from "@mi-pasaporte/db/schema/catalog-import";
 import { CatalogError } from "./core";
@@ -28,8 +28,11 @@ import { CatalogError } from "./core";
 export const CATALOG_IMPORT_IN_PROGRESS = "catalog_import_in_progress";
 
 /** Si el negocio tiene un import en alguno de los cuatro estados no terminales. */
-export async function hasOpenImport(businessId: string): Promise<boolean> {
-  const [row] = await getDb()
+export async function hasOpenImport(
+  businessId: string,
+  db: DbTransaction | ReturnType<typeof getDb> = getDb(),
+): Promise<boolean> {
+  const [row] = await db
     .select({ id: catalogImports.id })
     .from(catalogImports)
     .where(
@@ -47,8 +50,11 @@ export async function hasOpenImport(businessId: string): Promise<boolean> {
  * dominio catalogo **no tiene lista cerrada de codigos** y la pantalla no puede distinguir
  * este 409 de otro conflicto leyendo el texto.
  */
-export async function assertNoOpenImport(businessId: string): Promise<void> {
-  if (!(await hasOpenImport(businessId))) return;
+export async function assertNoOpenImport(
+  businessId: string,
+  db: DbTransaction | ReturnType<typeof getDb> = getDb(),
+): Promise<void> {
+  if (!(await hasOpenImport(businessId, db))) return;
   throw new CatalogError(
     409,
     "Estamos importando tu menú. Cuando termine vas a poder volver a cargar a mano.",

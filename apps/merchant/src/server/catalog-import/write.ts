@@ -40,6 +40,9 @@ export async function writeImportedCatalog(
   extraction: ProviderExtraction,
 ): Promise<WriteOutcome> {
   const outcome = await withDbTransaction<WriteOutcome>(async (tx) => {
+    await tx.execute(
+      sql`select pg_advisory_xact_lock(hashtextextended(${"business-config/" + businessId},0))`,
+    );
     const [row] = await tx
       .select()
       .from(catalogImports)
@@ -75,6 +78,9 @@ export async function writeImportedCatalog(
       unitPrice: string | null;
       unitCost: null;
       availableAllLocations: true;
+      soldByWeight: false;
+      pricingUnit: "unit";
+      salesRevision: 1;
     }[] = [];
     for (const category of plan.categories) {
       let categoryId = category.existingId;
@@ -100,6 +106,9 @@ export async function writeImportedCatalog(
           unitPrice: product.unitPrice,
           unitCost: null,
           availableAllLocations: true,
+          soldByWeight: false,
+          pricingUnit: "unit",
+          salesRevision: 1,
         });
       }
     }
