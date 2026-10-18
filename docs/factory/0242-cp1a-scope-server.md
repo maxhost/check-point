@@ -1,6 +1,6 @@
 # 0242 — Ficha preparada CP1a scope de servidor
 
-Estado: preparada; **no iniciar código hasta CP0/M0 completo aceptado y reserva explícita**. Nuevo implementador con contexto vacío. Entrega pequeña paralela a financial puro, sin cambios de esquema ni UI. La adopción del cliente/seed/cache será otro entregable con otro agente nuevo.
+Estado: CP0/M0 aceptado con QA9ee475dc; código habilitado solo tras reserva explícita del coordinador. Nuevo implementador con contexto vacío. Entrega pequeña paralela a financial puro, sin cambios de esquema ni UI. La adopción del cliente/seed/cache será otro entregable con otro agente nuevo.
 
 ## Objetivo y contrato
 

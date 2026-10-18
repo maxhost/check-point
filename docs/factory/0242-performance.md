@@ -64,6 +64,8 @@ Separar navegación completa, transición interna con layout persistente, retorn
 
 Frío tiene dimensiones distintas: navegador/assets nuevos, proceso/pool nuevo, DB suspendida. No llamar DB fría a una DB que el wrapper ya despertó. No poner secrets/cookies/QR/scopeKey en informes versionados; HAR trazas privados saneados.
 
+Aprendizaje M0 de flujos: las18 respuestas de cierre y sus efectos durables fueron observados, pero los18 GET de refresco posteriores quedaron sin evento finish al terminar cada contexto; sus SQL sí terminaron. En M1, observar ese trabajo posterior **fuera del reloj closeConfirmed**, con la misma condición de terminación y timeout declarado en ambas fuentes antes de cerrar el contexto. Registrar finish/error/timeout y bytes realmente observados; no inferir cancelación, HTTP200 ni bytes0. No repetir M0 para completar esa cola ni mover su tiempo dentro del marcador ya congelado.
+
 ## Gates fijados antes de M1
 
 Estructurales obligatorios:

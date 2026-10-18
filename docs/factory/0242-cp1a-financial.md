@@ -1,6 +1,6 @@
 # 0242 — Ficha preparada CP1a financial puro
 
-Estado: preparada, **sin autorización de código hasta salida CP0/M0 aceptada**. Owner pidió entregables manejables y agentes nuevos con contexto limpio para el siguiente bloque. Esta ficha es contexto mínimo del nuevo implementador; no heredar historial de coordinación.
+Estado: CP0/M0 aceptado con QA9ee475dc; código habilitado solo tras reserva explícita del coordinador. Owner pidió entregables manejables y agentes nuevos con contexto limpio para el siguiente bloque. Esta ficha es contexto mínimo del nuevo implementador; no heredar historial de coordinación.
 
 ## Objetivo y entrada
 

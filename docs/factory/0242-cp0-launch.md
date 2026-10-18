@@ -34,13 +34,13 @@ Aceptación preparatoria: informes ligados a base real, paths comprobados, lími
 
 El anexo congela firma pura ResourceMeasurementValidator<Tx> y política ModuleRoute.backofficeScope optional|required. A implementa solo tipos puros CP0; ensamblado/consumers se reservan en CP1.
 
-## Gates restantes y siguiente paso
+## Cierre CP0 y siguiente paso
 
 Preparación documental A ca15a01c y B86d0a682 aceptadas con QA42bf3422; informe integrado en dev. A puro329c7917 aceptado e integrado con QA7fc88bad:53/53 pruebas independientes sobre9d719476, sin skips/retries; helpers exactos/DTO/medidas/legacy y tipos puros del hook. Correcciones previas de selección2x1 y límites legacy preservadas, no se presentan como primer intento verde.
 
 B LISTA c379c9a8 aceptada con QA80b32497 e integrada dev1f40112e:36muestras válidas(30recargas+6firstassets),888SQLstart/end0errores. Fuente build6f8e1e9c y runnersf33/647 con hashes compatibles; fallos anteriores3inválidos+1incompleto de normal y smokeChromium0intentos preservados. Archivo control y265hashes/config/schema/RAW auditados. Es referencia descriptiva, no M1 ni CP0 global.
 
-Owner pidió contexto limpio por entrega. Autor/QA anteriores terminaron listado; nuevos agentes fork_none `/root/m0_flows` y `/root/qa_m0_flows` tienen ficha [M0 flows](0242-cp0-flows.md) y reservas reconciliadas sobre WTUIc379/WTQA1f40112e. Implementación limitada a fixture/runner/freeze+handoff de18flujos y3smokes separados, sin cambiar producto. WIP32df inspeccionado, recuperado y corregido; fuente7c4a pre-run aceptada,5c81corrige precondición listado listo antes de catálogo,29b716cbcorrige SQLnumérico→texto en inspector (sin nuevas ventas). Setup21identidades propioCI y3smokesUI válidos; inspección read-only sobre mismos3IDs conforme tras corrección, sin resetledger/repetición de cobro. Campaña18 en curso sobre source29b/build6f. Entrega global/QA durable siguen pendientes; CP1 no inicia aún.
+Owner pidió contexto limpio por entrega. Nuevos autor/QA terminaron flujos8dca14ee/QA9ee475dc:18/18 campaña y3/3smokes,2856SQLpares0errores,21cierres durables únicos inspeccionados. Combinación congelada a5cbd20c PASS con53pruebas puras+2instrumentales y tipos merchant. **SalidaCP0 aceptada e integrada en dev; CP1 habilitado.** Fuente campaña29b/build6f; fallos iniciales UI/inspector preservados, sin repetir ventas para corregir oráculo. Límites y18GETtail sin finish en handoff/QA; M1 observará esa cola fuera del reloj. Recetas desactivadas/wallet suprimido/cross sin origen no certifican entrega física. M0 descriptivo, no V2/M1. Procesos propios detenidos,0CWD/0listeners43242/43243; CI/config/cookies/RAW/control intactos.
 
 Siguientes fichas pequeñas preparadas: [financial puro](0242-cp1a-financial.md) y [scope servidor](0242-cp1a-scope-server.md), con nuevos agentes tras aceptar M0. Cliente/seed/cache será otra entrega/contexto, sin acumular todo auth/transporte en un worker.
 
