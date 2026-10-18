@@ -3,7 +3,13 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — 0238 CONTRASTADA CON INDUSTRIA Y CÓDIGO; SOLO DOCUMENTACIÓN (2026-10-17/18 UTC)
+## ESTADO — PLAN OPERATIVO 0238 PARA DOS IMPLEMENTADORES; SIN ARRANQUE (2026-10-17/18 UTC)
+
+Owner pidió preparar plan de implementación con dos agentes. Ampliada [ficha0238](../factory/0238-plan-carga-backoffice.md), sección «Ejecución con dos implementadores», sobre referencia documental21f4f629: A contexto/guards/JOIN/constructores servidor y contrato puro; B shell/hoja RSC/provider/transportes cliente. A1 entrega contrato separado antes de paralelizar A2 y B1→B2; paths exclusivos y suites focales, tareas condicionales scopeKey, recursos/worktrees/DB, handoffs y QA independiente. Coordinador controla M0 antes de optimizar, integración serial y M1 con control contemporáneo, estados/índices y reservas. Hasta3worktrees operativos; DB real/mediciones serializadas, sin cuarta copia por benchmark; dos implementadores también corrigen y QA no implementa.
+
+No agentes nuevos, producto, worktrees, DB ni benchmarks iniciados. Spec sigue borrador/ADR propuesto; scopeKey todavía requiere decisión explícita antes de cerrar/despachar, no inferida de pedir plan. Recomendación: adoptar garantía acotada propuesta; alternativa rechazada exige retirar tareas/garantías. Guardias/kit/schema/PROD/push fuera del arranque y harnessDB/tooling requiere paths asignados explícitamente antes de cambios. Checks documentales pertinentes; evidencia/revisiones previas, QA manual, FAIL histórico y todos los diferidos preservados.102migraciones sigue dato histórico, sin nueva comprobación.
+
+## HISTÓRICO — 0238 CONTRASTADA CON INDUSTRIA Y CÓDIGO; SOLO DOCUMENTACIÓN (2026-10-17/18 UTC)
 
 Owner pidió dos agentes separados y secuenciales: comparación con prácticas publicadas y contraste posterior con código/backend para evitar sobreingeniería. [Industria](../factory/0238-industry-review.md), `/root/backoffice_industry_review`, y [aplicabilidad](../factory/0238-applicability-review.md), `/root/backoffice_applicability_review`, revisaron base congelada `c642af5a`; ninguno autor del plan ni reviewer adversarial anterior. Confirman pertinencia de1+2+3 frente a duplicaciones concretas, sin nuevos bloqueantes demostrados. No certifican implementación/latencia PROD ni sustituyen aceptación pendiente de scopeKey. Fuentes primarias y límites históricos en informe de industria.
 
