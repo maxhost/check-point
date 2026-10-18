@@ -4,7 +4,7 @@ Estado vigente: implementación autorizada por checkpoints; spec cerrada y ADR a
 
 ## Avance operativo
 
-Actualización: dev556a313b integra S-servidor y B1b corregido+B2a sesión/módulos, fuente d2495750. QA58unit+16browser PASS acotado, con límites en informe0238-qa. B1b4916 rechazado y su evidencia siguen preservados. Próximo B2b se divide para conectar Inbox y después checklist/escritores/actualizaciones restantes. Next real/streaming/formularios y M1 aún pendientes; no declarar mejora temporal ni spec completa. Los párrafos siguientes registran subdivisiones anteriores.
+Actualización: dev8f34359e integra backend, shell/sesión/módulos, Inbox/tours y checklist/módulos cliente aceptados. Último checkpoint foco/reconexión/refresh coordinado está en implementación. Histórico: dev556a313b integró S-servidor y B1b corregido+B2a sesión/módulos, fuente d2495750. QA58unit+16browser PASS acotado, con límites en informe0238-qa. B1b4916 rechazado y su evidencia siguen preservados. Próximo B2b se divide para conectar Inbox y después checklist/escritores/actualizaciones restantes. Next real/streaming/formularios y M1 aún pendientes; no declarar mejora temporal ni spec completa. Los párrafos siguientes registran subdivisiones anteriores.
 
 M0, A1, B1a y A2a aceptados con evidencia en el informe QA. A2b comienza sobre dev4e3b0a56. Mientras B1b espera los constructores A2c, B adelanta **S1-client**, únicamente helpers de transporte opt-in con pruebas y sin consumidores activos; entrega9de98a2b pendiente de QA. La adopción efectiva de cabecera permanece supeditada al guard servidor y a la integración correspondiente. Esta subdivisión no cambia el contrato ni los gates del conjunto.
 
