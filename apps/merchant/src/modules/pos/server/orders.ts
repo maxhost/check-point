@@ -52,7 +52,7 @@ async function insertLines(
       productId: item.productId,
       nameSnapshot: item.nameSnapshot,
       unitPriceSnapshot: item.unitPrice,
-      quantity: item.quantity,
+      quantity: String(item.quantity),
       position,
     })),
   );
@@ -235,7 +235,7 @@ export async function updatePosOrder(
         for (const line of merge.kept) {
           await tx
             .update(posOrderItems)
-            .set({ quantity: line.quantity, position: line.position })
+            .set({ quantity: String(line.quantity), position: line.position })
             .where(
               and(
                 eq(posOrderItems.id, line.id),
