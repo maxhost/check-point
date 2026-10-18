@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type {
   buildDay,
   buildHistory,
@@ -27,6 +27,50 @@ const periods = [
   { id: "9m", label: "9 meses" },
   { id: "12m", label: "12 meses" },
 ];
+function Metric({
+  label,
+  value,
+  detail,
+  tone,
+}: {
+  label: string;
+  value: ReactNode;
+  detail?: ReactNode;
+  tone?: "success" | "danger";
+}) {
+  return (
+    <div className="grid min-w-0 grid-cols-2 content-start gap-2 rounded-lg bg-surface-subtle p-4 sm:grid-cols-1">
+      <dt>
+        <Text as="span" variant="small">
+          {label}
+        </Text>
+      </dt>
+      <dd className="m-0 break-words text-right tabular-nums sm:text-left">
+        <Text
+          as="span"
+          variant="label"
+          className={
+            tone === "danger"
+              ? "text-danger"
+              : tone === "success"
+                ? "text-success"
+                : undefined
+          }
+        >
+          {value}
+        </Text>
+      </dd>
+      {detail && (
+        <dd className="col-span-2 m-0 sm:col-span-1">
+          <Text as="span" variant="small">
+            {detail}
+          </Text>
+        </dd>
+      )}
+    </div>
+  );
+}
+
 export default function AnalyticsConsole({
   initialDate = "",
   initialPeriod = "month",
@@ -78,13 +122,13 @@ export default function AnalyticsConsole({
   const money = (n: number) =>
     formatMoney(n, history?.currencyCode ?? "USD", history?.minorUnit ?? 2);
   return (
-    <main className="merchant-shell grid gap-6">
+    <main className="merchant-shell grid min-w-0 content-start gap-6">
       <PageHeader
         title="Analíticas"
         description="Tus ventas, costos, gastos, clientes y promos en números."
         actions={<Link href="/backoffice">Volver al inicio</Link>}
       />
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 lg:max-w-2xl">
         <SelectField
           label="Período"
           options={periods}
@@ -111,49 +155,180 @@ export default function AnalyticsConsole({
       )}
       {loading && <Text variant="muted">Leyendo tus números…</Text>}
       {history && !loading && !error && (
-        <>
-          <Card className="grid gap-4">
-            <Heading level={2}>Ventas del período</Heading>
-            <Text variant="small">
-              Del {history.from} al {history.to}
-            </Text>
+        <div className="grid min-w-0 items-start gap-6 lg:grid-cols-12">
+          <Card className="grid min-w-0 gap-4 lg:col-span-12">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <Heading level={2}>Ventas del período</Heading>
+              <Text variant="small">
+                Del {history.from} al {history.to}
+              </Text>
+            </div>
             <dl className="grid gap-3 sm:grid-cols-3">
-              <div>
-                <dt>Ventas</dt>
-                <dd>{money(history.revenueMinor)}</dd>
-              </div>
-              <div>
-                <dt>Tickets</dt>
-                <dd>{history.tickets}</dd>
-              </div>
-              <div>
-                <dt>Ticket promedio</dt>
-                <dd>{money(history.averageTicketMinor)}</dd>
-              </div>
+              <Metric
+                label="Ventas"
+                value={money(history.revenueMinor)}
+                detail={
+                  history.previous.variation === null
+                    ? "Sin ventas anteriores para comparar"
+                    : `${Math.round(Math.abs(history.previous.variation) * 100)}% ${history.previous.variation >= 0 ? "más" : "menos"} que el período anterior de igual duración`
+                }
+              />
+              <Metric label="Tickets" value={history.tickets} />
+              <Metric
+                label="Ticket promedio"
+                value={money(history.averageTicketMinor)}
+              />
             </dl>
-            <Text variant="muted">
-              {history.previous.variation === null
-                ? "Todavía no hay ventas en el período anterior para comparar."
-                : `${Math.round(Math.abs(history.previous.variation) * 100)}% ${history.previous.variation >= 0 ? "más" : "menos"} ventas que en el período anterior de igual duración.`}
-            </Text>
             {history.annual && (
-              <Text>
+              <Text variant="small">
                 En el mismo período del año anterior vendiste{" "}
                 {money(history.annual.revenueMinor)}.
               </Text>
             )}
-            <Heading level={3}>Los productos que más vendieron</Heading>
+          </Card>
+          <Card className="grid min-w-0 gap-4 lg:col-span-7">
+            <Heading level={2}>Ganancia y gastos</Heading>
+            <dl className="grid gap-3 sm:grid-cols-2">
+              <Metric
+                label="Ganancia bruta"
+                value={
+                  history.soldUnits === 0 || history.coverage === 0
+                    ? "Pendiente"
+                    : history.coverage < 1
+                      ? "Cálculo incompleto"
+                      : money(history.grossProfitMinor)
+                }
+              />
+              <Metric
+                label="Resultado después de gastos"
+                tone={
+                  history.resultMinor === null || history.resultMinor === 0
+                    ? undefined
+                    : history.resultMinor < 0
+                      ? "danger"
+                      : "success"
+                }
+                value={
+                  history.resultMinor === null
+                    ? "Pendiente"
+                    : money(history.resultMinor)
+                }
+              />
+              <Metric
+                label="Gastos fijos"
+                value={money(history.fixedExpensesMinor)}
+              />
+              <Metric
+                label="Gastos variables"
+                value={money(history.variableExpensesMinor)}
+              />
+            </dl>
+            {history.soldUnits === 0 ? (
+              <Text>No hay unidades vendidas en este período.</Text>
+            ) : history.coverage === 0 ? (
+              <>
+                <Text>Ventas: {money(history.revenueMinor)}.</Text>
+                <Text variant="muted">
+                  Los costos de estas ventas todavía no están incluidos.
+                </Text>
+              </>
+            ) : history.coverage < 1 ? (
+              <>
+                <Text>Ventas: {money(history.revenueMinor)}.</Text>
+                <Text variant="muted">
+                  Falta conocer el costo de {history.unitsWithoutCost} de las{" "}
+                  {history.soldUnits} unidades vendidas.
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text variant="muted">
+                  Vendiste {money(history.revenueMinor)} y el costo de esos
+                  productos fue {money(history.costOfGoodsMinor)}.
+                  {history.paymentCommissionMinor !== 0 &&
+                    ` También se descontaron ${money(history.paymentCommissionMinor)} de comisiones.`}
+                </Text>
+              </>
+            )}
+            {history.resultMinor === null ? (
+              <Text variant="muted">
+                Con el costo de al menos el 80% de lo vendido podrás ver el
+                resultado después de gastos.
+              </Text>
+            ) : null}
+          </Card>
+          <section id="calculo" className="min-w-0 lg:col-span-5">
+            <Card className="grid min-w-0 gap-4">
+              <Heading level={2}>El cálculo de este mes</Heading>
+              {history.goal.breakEvenMinor === null ? (
+                <Text variant="muted">
+                  {!history.goal.closedMonth
+                    ? "La meta se calcula al cerrar tu primer mes con gastos."
+                    : history.goal.coverage < 0.8
+                      ? "Falta conocer el costo de al menos el 80% de lo vendido para calcular tu meta."
+                      : "Tus ventas con costo conocido todavía no dejan un margen positivo para calcular una meta."}
+                </Text>
+              ) : (
+                <>
+                  <dl className="grid gap-3 sm:grid-cols-2">
+                    <Metric
+                      label="Para cubrir el mes"
+                      value={money(history.goal.breakEvenMinor)}
+                      detail={history.goal.estimated ? "Estimado" : undefined}
+                    />
+                    <Metric
+                      label="Ventas del mes"
+                      value={money(history.goal.monthRevenueMinor)}
+                    />
+                  </dl>
+                  <Text>
+                    Margen de contribución:{" "}
+                    {Math.round((history.goal.margin ?? 0) * 100)}%. Gastos del
+                    mes: {money(history.goal.expensesMinor)}
+                    {history.goal.estimated ? " (estimado)" : ""}.
+                  </Text>
+                  {history.goal.targetMinor !== null && (
+                    <Text>
+                      Meta de hoy: {money(history.goal.targetMinor)} en{" "}
+                      {history.goal.remainingDays} días de venta restantes.
+                    </Text>
+                  )}
+                  <ul className="grid divide-y divide-border">
+                    {history.goal.concepts.map((c) => (
+                      <li key={c.id} className="py-3">
+                        <Text>
+                          {c.label}: {money(c.amountMinor)}
+                          {c.estimated
+                            ? " · estimado con meses anteriores"
+                            : " · pagado este mes"}
+                          .
+                        </Text>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </Card>
+          </section>
+          <Card className="grid min-w-0 gap-4 lg:col-span-7">
+            <Heading level={2}>Los productos que más vendieron</Heading>
             {history.topProducts.length ? (
-              <ul className="grid gap-2">
+              <ul className="grid divide-y divide-border">
                 {history.topProducts.map((p) => (
                   <li
                     key={p.id}
-                    className="flex flex-wrap justify-between gap-2"
+                    className="grid min-w-0 grid-cols-1 gap-2 py-3 sm:grid-cols-3"
                   >
-                    <Text as="span">
+                    <Text as="span" className="break-words sm:col-span-2">
                       {p.label} · {p.units} unidades
                     </Text>
-                    <Text as="span">{money(p.revenueMinor)}</Text>
+                    <Text
+                      as="span"
+                      variant="label"
+                      className="tabular-nums sm:text-right"
+                    >
+                      {money(p.revenueMinor)}
+                    </Text>
                   </li>
                 ))}
               </ul>
@@ -163,54 +338,7 @@ export default function AnalyticsConsole({
               </Text>
             )}
           </Card>
-          <Card className="grid gap-4">
-            <Heading level={2}>Ganancia y gastos</Heading>
-            {history.soldUnits === 0 ? (
-              <Text>No hay unidades vendidas en este período.</Text>
-            ) : history.coverage === 0 ? (
-              <>
-                <Text>Ventas: {money(history.revenueMinor)}.</Text>
-                <Text>Ganancia bruta: pendiente de cálculo.</Text>
-                <Text variant="muted">
-                  Los costos de estas ventas todavía no están incluidos.
-                </Text>
-              </>
-            ) : history.coverage < 1 ? (
-              <>
-                <Text>Ventas: {money(history.revenueMinor)}.</Text>
-                <Text>Ganancia bruta: cálculo incompleto.</Text>
-                <Text variant="muted">
-                  Falta conocer el costo de {history.unitsWithoutCost} de las{" "}
-                  {history.soldUnits} unidades vendidas.
-                </Text>
-              </>
-            ) : (
-              <>
-                <Text>Ganancia bruta: {money(history.grossProfitMinor)}.</Text>
-                <Text variant="muted">
-                  Vendiste {money(history.revenueMinor)} y el costo de esos
-                  productos fue {money(history.costOfGoodsMinor)}.
-                  {history.paymentCommissionMinor !== 0 &&
-                    ` También se descontaron ${money(history.paymentCommissionMinor)} de comisiones.`}
-                </Text>
-              </>
-            )}
-            <Text>
-              Gastos fijos: {money(history.fixedExpensesMinor)}. Gastos
-              variables: {money(history.variableExpensesMinor)}.
-            </Text>
-            {history.resultMinor === null ? (
-              <Text variant="muted">
-                Con el costo de al menos el 80% de lo vendido podrás ver el
-                resultado después de gastos.
-              </Text>
-            ) : (
-              <Text>
-                Resultado después de gastos: {money(history.resultMinor)}.
-              </Text>
-            )}
-          </Card>
-          <Card className="grid gap-4">
+          <Card className="grid min-w-0 gap-4 lg:col-span-5">
             <Heading level={2}>Stock e insumos</Heading>
             {history.stock.valueMinor !== null ? (
               <Text>
@@ -255,8 +383,16 @@ export default function AnalyticsConsole({
             )}
           </Card>
           {history.customers && (
-            <Card className="grid gap-4">
+            <Card className="grid min-w-0 gap-4 lg:col-span-5">
               <Heading level={2}>Clientes del período</Heading>
+              <dl className="grid gap-3 sm:grid-cols-3">
+                <Metric label="Clientes" value={history.customers.count} />
+                <Metric label="Visitas" value={history.customers.visits} />
+                <Metric
+                  label="Clientes que regresaron"
+                  value={history.customers.returning}
+                />
+              </dl>
               <Text>
                 {history.customers.count}{" "}
                 {history.customers.count === 1
@@ -274,16 +410,16 @@ export default function AnalyticsConsole({
             </Card>
           )}
           {history.promos && (
-            <Card className="grid gap-4">
+            <Card className="grid min-w-0 gap-4 lg:col-span-7">
               <Heading level={2}>Promos del período</Heading>
               <Text variant="muted">
                 Descuentos y ventas en los mismos tickets. Estas ventas no
                 indican que la promo las haya causado.
               </Text>
               {history.promos.length ? (
-                <ul className="grid gap-3">
+                <ul className="grid divide-y divide-border">
                   {history.promos.map((p) => (
-                    <li key={p.id}>
+                    <li key={p.id} className="grid gap-2 py-3">
                       <Text>
                         {p.label}: {money(p.discountMinor)} en descuentos y{" "}
                         {money(p.salesMinor)} en ventas asociadas.
@@ -303,54 +439,7 @@ export default function AnalyticsConsole({
               )}
             </Card>
           )}
-          <section id="calculo">
-            <Card className="grid gap-4">
-              <Heading level={2}>El cálculo de este mes</Heading>
-              {history.goal.breakEvenMinor === null ? (
-                <Text variant="muted">
-                  {!history.goal.closedMonth
-                    ? "La meta se calcula al cerrar tu primer mes con gastos."
-                    : history.goal.coverage < 0.8
-                      ? "Falta conocer el costo de al menos el 80% de lo vendido para calcular tu meta."
-                      : "Tus ventas con costo conocido todavía no dejan un margen positivo para calcular una meta."}
-                </Text>
-              ) : (
-                <>
-                  <Text>
-                    Para cubrir el mes necesitas vender{" "}
-                    {money(history.goal.breakEvenMinor)}. Llevas{" "}
-                    {money(history.goal.monthRevenueMinor)}.
-                  </Text>
-                  <Text>
-                    Margen de contribución:{" "}
-                    {Math.round((history.goal.margin ?? 0) * 100)}%. Gastos del
-                    mes: {money(history.goal.expensesMinor)}
-                    {history.goal.estimated ? " (estimado)" : ""}.
-                  </Text>
-                  {history.goal.targetMinor !== null && (
-                    <Text>
-                      Meta de hoy: {money(history.goal.targetMinor)} en{" "}
-                      {history.goal.remainingDays} días de venta restantes.
-                    </Text>
-                  )}
-                  <ul className="grid gap-2">
-                    {history.goal.concepts.map((c) => (
-                      <li key={c.id}>
-                        <Text>
-                          {c.label}: {money(c.amountMinor)}
-                          {c.estimated
-                            ? " · estimado con meses anteriores"
-                            : " · pagado este mes"}
-                          .
-                        </Text>
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              )}
-            </Card>
-          </section>
-        </>
+        </div>
       )}
       <Card className="grid gap-4">
         <Heading level={2}>Ver un día</Heading>
@@ -362,16 +451,22 @@ export default function AnalyticsConsole({
               tickets.
             </Text>
             {day.products.length ? (
-              <ul className="grid gap-2">
+              <ul className="grid divide-y divide-border">
                 {day.products.map((p) => (
                   <li
                     key={p.id}
-                    className="flex flex-wrap justify-between gap-2"
+                    className="grid min-w-0 grid-cols-1 gap-2 py-3 sm:grid-cols-3"
                   >
-                    <Text as="span">
+                    <Text as="span" className="break-words sm:col-span-2">
                       {p.label} · {p.units} unidades
                     </Text>
-                    <Text as="span">{money(p.revenueMinor)}</Text>
+                    <Text
+                      as="span"
+                      variant="label"
+                      className="tabular-nums sm:text-right"
+                    >
+                      {money(p.revenueMinor)}
+                    </Text>
                   </li>
                 ))}
               </ul>
