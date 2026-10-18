@@ -1,6 +1,7 @@
 // Descriptive M0 only. Reads preserved private evidence; never accesses DB or auth APIs.
 import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
+import { format } from "prettier";
 const dir = "/private/tmp/checkpass-pos-0242/private";
 const read = (name) => JSON.parse(readFileSync(`${dir}/${name}`, "utf8"));
 const hash = (name) =>
@@ -255,15 +256,9 @@ const report = {
     ].map((n) => [n, hash(n)]),
   ),
 };
-writeFileSync(
-  "tools/pos-measurement/flow-baseline.json",
-  JSON.stringify(report, null, 2) + "\n",
-);
-writeFileSync(
-  `${dir}/m0-flow-summary.json`,
-  JSON.stringify(report, null, 2) + "\n",
-  { mode: 0o600 },
-);
+const serialized = await format(JSON.stringify(report), { parser: "json" });
+writeFileSync("tools/pos-measurement/flow-baseline.json", serialized);
+writeFileSync(`${dir}/m0-flow-summary.json`, serialized, { mode: 0o600 });
 process.stdout.write(
   JSON.stringify(
     { totals: report.totals, cells: report.cells, durable: report.durable },
