@@ -16,6 +16,7 @@ No cambiar productor, versionar eventos históricos, reemitir ventas, ampliar su
 
 - `apps/merchant/src/modules/pos/server/metrics.ts`.
 - `apps/merchant/src/modules/pos/server/metrics-measured.test.ts`, nuevo.
+- `apps/merchant/src/modules/analytics-an3-translators.test.ts`, ampliación explícita tras reproducción: solo corregir helper de envelope que fija1 para payload3; derivar versión real del payload, conservando todos los casos y sus aserciones. No relajar decoder ni producir un fixture inconsistente.
 - `docs/factory/0242-cp1c-pos-metrics-handoff.md`.
 
 Sin domain/decoder/DB/schema/journal/ingestion/core-translators, productor/eventos de comisión/cupones, Recetas/Stock/UI/ranking/auth/kit/tooling/deps/estados/índices. Si hace falta actualizar una expectativa/fixture ajena, enviar path/razón y reproducción al coordinador antes de editar.
