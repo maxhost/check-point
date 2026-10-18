@@ -17,6 +17,8 @@ import {
 import { loadRecipes } from "./recipe-requests";
 import { recipeError, recipeMoney, type RecipeProduct } from "./recipe-types";
 
+import { basisLabel, unitLabel } from "./composition-basis-draft";
+
 export function RecipesConsole() {
   const local = useStockLocations("/api/modules/recipes/locations");
   const { locationId } = local;
@@ -165,7 +167,11 @@ export function RecipesConsole() {
                       {product.isCombo
                         ? `${product.recipeCount} ${product.recipeCount === 1 ? "receta" : "recetas"}`
                         : `${product.ingredientCount} ${product.ingredientCount === 1 ? "ingrediente" : "ingredientes"}`}{" "}
-                      por unidad
+                      para {basisLabel(product)} de producto
+                    </Text>
+                    <Text variant="small">
+                      Costo, precio y ganancia por 1{" "}
+                      {unitLabel(product.pricingUnit ?? "unit")}
                     </Text>
                   </div>
                   <Button
@@ -224,6 +230,25 @@ export function RecipesConsole() {
                     </div>
                   ))}
                 </div>
+                {product.costStatus === "incompatible_basis" && (
+                  <Alert
+                    kind="warning"
+                    title="La base y el modo de venta no son compatibles"
+                  >
+                    Define una base en unidades para venta por unidad o en masa
+                    para venta por peso. Después cambia el modo en Catálogo. El
+                    costo y la ganancia no están disponibles.
+                  </Alert>
+                )}
+                {product.costStatus === "rounded_to_zero" && (
+                  <Alert
+                    kind="warning"
+                    title="Consumo menor que la precisión de stock"
+                  >
+                    Hay un consumo positivo que se redondea a cero. Revisa las
+                    cantidades; el costo y la ganancia no están completos.
+                  </Alert>
+                )}
                 {product.missingCosts.length > 0 && (
                   <Alert kind="warning" title="Falta costo en este local">
                     {product.missingCosts
@@ -237,10 +262,20 @@ export function RecipesConsole() {
         )}
         {editing && data && (
           <RecipeModal
+            key={`${locationId}:${editing === "new" ? "new" : editing.productId}`}
             products={data.products}
             library={data.library}
             initialProduct={editing === "new" ? null : editing}
             onClose={() => setEditing(null)}
+            onAccessDenied={() => {
+              setEditing(null);
+              setData(null);
+              setError({
+                locationId: locationId ?? "",
+                message:
+                  "Tu acceso a Recetas cambió. Revisa tus permisos antes de continuar.",
+              });
+            }}
             onSaved={() => {
               setEditing(null);
               setNotice("Receta guardada");

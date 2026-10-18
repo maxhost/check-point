@@ -1,3 +1,4 @@
+import { validBasis, type BasisDraft } from "./composition-basis-draft";
 import {
   countedQuantity,
   editableAmount,
@@ -103,6 +104,7 @@ export function compositionPayload(
   isCombo: boolean,
   components: RecipeComponent[],
   expectedRevisionId: string | null,
+  basis?: BasisDraft,
 ) {
   if (!components.length || components.length > (isCombo ? 50 : 1))
     throw new Error(
@@ -121,7 +123,12 @@ export function compositionPayload(
     countedQuantity(quantity, "unit");
     return { recipeId: component.recipeId, quantity };
   });
-  return { isCombo, recipes, expectedRevisionId };
+  return {
+    isCombo,
+    recipes,
+    expectedRevisionId,
+    ...(basis ? validBasis(basis) : {}),
+  };
 }
 export function recipePayload(
   lines: RecipeLine[],
