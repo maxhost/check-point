@@ -53,6 +53,23 @@
     execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim()
   )
     throw Error("Frozen source mismatch");
+  if (
+    fs.readFileSync("apps/merchant/.next/BUILD_ID", "utf8").trim() !==
+      freeze.buildId ||
+    hash(fs.readFileSync(path.join(directory, "selected.json"))) !==
+      freeze.privateConfigSha256 ||
+    hash(manifestRaw) !== freeze.manifestSha256 ||
+    hash(fs.readFileSync("pnpm-lock.yaml")) !== freeze.lockSha256 ||
+    hash(fs.readFileSync(path.join(directory, "schema-preflight.json"))) !==
+      freeze.schemaPreflightSha256 ||
+    !Object.entries(freeze.files).every(
+      ([file, expected]) => hash(fs.readFileSync(file)) === expected,
+    ) ||
+    execFileSync("git", ["status", "--porcelain"], {
+      encoding: "utf8",
+    }).trim() !== ""
+  )
+    throw Error("Frozen build/config/manifest/schema/instrumentation drift");
   const report = {
     freeze,
     freezeSha256: hash(freezeRaw),

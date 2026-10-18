@@ -31,6 +31,7 @@ const files = run(
 const report = {
   createdAt: new Date().toISOString(),
   source: run("git", "rev-parse", "HEAD"),
+  buildSource: run("git", "rev-parse", "HEAD"),
   controlProduct: "89dc17071eb0a2a5cf1379f5cb2018881a42b9a3",
   node: process.version,
   pnpm: run("pnpm", "--version"),
@@ -64,11 +65,41 @@ const report = {
   },
   privateArtifacts: readdirSync(directory).filter((f) => f.endsWith(".log")),
 };
-writeFileSync(
-  resolve(directory, "freeze.json"),
-  JSON.stringify(report, null, 2) + "\n",
-  { flag: "wx", mode: 0o600 },
-);
-process.stdout.write(
-  `Freeze created for ${report.source}; build ${report.buildId}.\n`,
-);
+if (process.argv[2] === "--reuse-build") {
+  const previous = JSON.parse(readFileSync(resolve(directory, "freeze.json")));
+  if (
+    report.buildId !== previous.buildId ||
+    report.lockSha256 !== previous.lockSha256 ||
+    report.privateConfigSha256 !== previous.privateConfigSha256
+  )
+    throw Error("Build identity changed");
+  for (const [file, expected] of Object.entries(previous.files)) {
+    if (
+      (file.startsWith("apps/") ||
+        file.startsWith("packages/") ||
+        file.includes("preload")) &&
+      hash(readFileSync(file)) !== expected
+    )
+      throw Error("Compiled/instrumented source changed; rebuild required");
+  }
+  report.buildSource = previous.buildSource ?? previous.source;
+  writeFileSync(
+    resolve(directory, `freeze-${previous.source}.json`),
+    JSON.stringify(previous, null, 2) + "\n",
+    { flag: "wx", mode: 0o600 },
+  );
+  writeFileSync(
+    resolve(directory, "freeze.json"),
+    JSON.stringify(report, null, 2) + "\n",
+    { mode: 0o600 },
+  );
+} else {
+  writeFileSync(
+    resolve(directory, "freeze.json"),
+    JSON.stringify(report, null, 2) + "\n",
+    { flag: "wx", mode: 0o600 },
+  );
+  process.stdout.write(
+    `Freeze created for ${report.source}; build ${report.buildId}.\n`,
+  );
+}
