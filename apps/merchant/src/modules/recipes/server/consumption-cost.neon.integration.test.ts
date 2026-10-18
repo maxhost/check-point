@@ -51,6 +51,7 @@ run("0230 frozen cost and captured sale coverage", { timeout: 60000 }, () => {
     const result = await retryModuleEvents({
       businessId: s.businessId,
       eventIds: [s.eventId!],
+      subscriberIds: ["recipes"],
       force: true,
     });
     expect(result).toMatchObject({ applied: 1, failed: 0 });
@@ -208,8 +209,12 @@ run("0230 frozen cost and captured sale coverage", { timeout: 60000 }, () => {
           state: moduleEventDeliveries.state,
         })
         .from(moduleEventDeliveries)
-        .where(eq(moduleEventDeliveries.eventId, s.eventId!)),
-    ).toEqual([{ subscriberId: "recipes", state: "applied" }]);
+        .where(eq(moduleEventDeliveries.eventId, s.eventId!))
+        .orderBy(moduleEventDeliveries.subscriberId),
+    ).toEqual([
+      { subscriberId: "core.analytics", state: "pending" },
+      { subscriberId: "recipes", state: "applied" },
+    ]);
     expect(await readSaleConsumptionCost(s)).toMatchObject({
       state: "completo",
       knownCost: "0",
@@ -236,6 +241,7 @@ run("0230 frozen cost and captured sale coverage", { timeout: 60000 }, () => {
     const retry = await retryModuleEvents({
       businessId: world.businessId,
       eventIds: [s.eventId!],
+      subscriberIds: ["recipes"],
       force: true,
     });
     expect(retry.failed).toBe(1);
@@ -299,7 +305,14 @@ run("0230 frozen cost and captured sale coverage", { timeout: 60000 }, () => {
     expect((await readSaleConsumptionCost(next)).knownCost).toBe("9.00");
     const absent = await sale(null);
     // Model an order from before durable events: AN-1 never backfills it.
-    await getDb().delete(moduleEvents).where(and(eq(moduleEvents.businessId,world.businessId),eq(moduleEvents.sourceId,absent.sourceOrderId)));
+    await getDb()
+      .delete(moduleEvents)
+      .where(
+        and(
+          eq(moduleEvents.businessId, world.businessId),
+          eq(moduleEvents.sourceId, absent.sourceOrderId),
+        ),
+      );
     const noContext = await readSaleConsumptionCost(absent);
     expect(noContext).toMatchObject({
       state: "incompleto",

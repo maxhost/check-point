@@ -274,8 +274,12 @@ describe.runIf(enabled)("AN1 atomic real producers", { timeout: 30000 }, () => {
         ),
       );
     expect(consumption.payload).toMatchObject({ lines: [{ cost: null }] });
+    const consumptionTranslator = recipeMetrics.find(
+      (translator) => translator.eventType === "recipes.consumption.applied",
+    );
+    expect(consumptionTranslator).toBeDefined();
     expect(
-      recipeMetrics[0].translate({
+      consumptionTranslator!.translate({
         ...consumption,
         capturedAt: consumption.createdAt.toISOString(),
       }).rows,
