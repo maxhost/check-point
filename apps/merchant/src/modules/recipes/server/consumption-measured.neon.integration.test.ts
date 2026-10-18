@@ -132,6 +132,22 @@ async function fixture(basisUnit: "unit" | "lb" = "lb", tiny = false) {
     resolution: measuredResolution,
   };
 }
+function moneySnapshot(
+  settlement: ReturnType<typeof buildFinancialSettlementFromSnapshots>,
+) {
+  return {
+    gross: settlement.gross,
+    discount: settlement.discount,
+    roundingAdjustment: settlement.roundingAdjustment,
+    collected: settlement.collected,
+    currencyCode: settlement.currencyCode,
+    minorUnit: settlement.minorUnit,
+    originalGross: settlement.originals.gross,
+    originalDiscount: settlement.originals.discount,
+    originalNet: settlement.originals.net,
+    normalizationAdjustments: settlement.normalizationAdjustments,
+  };
+}
 async function rawEvent(
   f: Awaited<ReturnType<typeof fixture>>,
   quantity = "1",
@@ -172,18 +188,7 @@ async function rawEvent(
         },
       ],
     })),
-    money: {
-      gross: settlement.gross,
-      discount: settlement.discount,
-      roundingAdjustment: settlement.roundingAdjustment,
-      collected: settlement.collected,
-      currencyCode: settlement.currencyCode,
-      minorUnit: settlement.minorUnit,
-      originalGross: settlement.originals.gross,
-      originalDiscount: settlement.originals.discount,
-      originalNet: settlement.originals.net,
-      normalizationAdjustments: settlement.normalizationAdjustments,
-    },
+    money: moneySnapshot(settlement),
     payments: [],
     paymentOriginals: [],
   };
@@ -360,6 +365,72 @@ describe.skipIf(!modulesIntegrationEnabled)(
         ),
       ).rejects.toThrow("conflict");
       expect(await derived(event.payload.sourceOrderId)).toEqual([stored]);
+    }, 60000);
+    it("compares the complete durable V4 parent, including subminor originals and envelope identity", async () => {
+      const f = await fixture("unit");
+      const event = await rawEvent(f, "1", UNIT_MEASURE);
+      const reprice = (unitPrice: string) => {
+        const settlement = buildFinancialSettlementFromSnapshots({
+          currencyCode: "USD",
+          lines: event.payload.lines.map((l) => ({ ...l, unitPrice })),
+          discount: null,
+          payments: [],
+        });
+        return {
+          ...event.payload,
+          money: moneySnapshot(settlement),
+          lines: event.payload.lines.map((l, i) => ({
+            ...l,
+            money: settlement.lines[i].money,
+          })),
+        };
+      };
+      event.payload = reprice("0.001");
+      await getDb()
+        .update(moduleEvents)
+        .set({ payload: event.payload })
+        .where(eq(moduleEvents.id, event.id));
+      await publish(event);
+      const [stored] = await derived(event.payload.sourceOrderId);
+      const ds = await deliveries(stored.id);
+      const altered = reprice("0.002");
+      decodeMeasuredSaleClosedEvent(altered, 4);
+      expect(altered.money.gross).toBe(event.payload.money.gross);
+      expect(altered.money.originalNet).not.toEqual(
+        event.payload.money.originalNet,
+      );
+      await expect(
+        withDbTransaction((tx) =>
+          publishConsumptionApplied(tx, { ...event, payload: altered }, []),
+        ),
+      ).rejects.toThrow("conflict");
+      for (const patch of [
+        { id: randomUUID() },
+        { businessId: randomUUID() },
+        { payload: { ...event.payload, sourceOrderId: randomUUID() } },
+        { payload: { ...event.payload, locationId: randomUUID() } },
+      ])
+        await expect(
+          withDbTransaction((tx) =>
+            publishConsumptionApplied(tx, { ...event, ...patch }, []),
+          ),
+        ).rejects.toThrow("conflict");
+      const reordered = {
+        ...event,
+        payload: Object.fromEntries(
+          Object.entries(event.payload).reverse(),
+        ) as SaleClosedEventV4,
+      };
+      await withDbTransaction((tx) =>
+        publishConsumptionApplied(tx, reordered, []),
+      );
+      expect(await derived(event.payload.sourceOrderId)).toEqual([stored]);
+      expect(await deliveries(stored.id)).toEqual(ds);
+      const [parent] = await getDb()
+        .select()
+        .from(moduleEvents)
+        .where(eq(moduleEvents.id, event.id));
+      expect(parent.payload).toEqual(event.payload);
     }, 60000);
     it("does not fabricate coverage for incomplete or tiny positive sources without ledger", async () => {
       for (const tiny of [false, true]) {

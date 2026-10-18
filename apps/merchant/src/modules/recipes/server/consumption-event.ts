@@ -36,8 +36,26 @@ export async function publishConsumptionApplied(
   expectedLines: ExpectedCostLine[],
 ) {
   const p = event.payload;
-  if (p.eventVersion === 4)
+  if (p.eventVersion === 4) {
     decodeMeasuredSaleClosedEvent(p, event.eventVersion ?? 4);
+    // The durable parent is the authority for every original financial/physical capture.
+    const [parent] = await tx
+      .select({ id: moduleEvents.id })
+      .from(moduleEvents)
+      .where(
+        and(
+          eq(moduleEvents.id, event.id),
+          eq(moduleEvents.businessId, event.businessId),
+          eq(moduleEvents.eventType, "sale.closed"),
+          eq(moduleEvents.eventVersion, 4),
+          eq(moduleEvents.sourceId, p.sourceOrderId),
+          eq(moduleEvents.locationId, p.locationId),
+          sql`${moduleEvents.payload} = ${JSON.stringify(p)}::jsonb`,
+        ),
+      );
+    if (!parent)
+      throw new Error("Captured consumption event snapshot conflict");
+  }
   const eventVersion = p.eventVersion === 4 ? 2 : 1;
   const currencyCode = p.eventVersion === 1 ? null : p.money.currencyCode;
   const minorUnit = p.eventVersion === 1 ? null : p.money.minorUnit;
