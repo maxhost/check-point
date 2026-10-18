@@ -3,7 +3,17 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — 0239 CÁLCULO SIN MARGEN VISIBLE Y MOVIMIENTOS; LISTO PARA OWNER EN DEV (2026-10-18 UTC)
+## ESTADO — 0240 EN IMPLEMENTACIÓN: EVOLUCIÓN DE COSTOS POR INSUMO (2026-10-18 UTC)
+
+Owner pidió spec L1/L2 e implementar con flujoagentes. ClasificadoL2 por contratoUI/selección/datosmonetarios. Autorizó EXPLÍCITAMENTE gráfico nuevo en kit. [Spec0240](../specs/0240-evolucion-costos-insumos.md) +INDEX reservados9010d335 antescódigo; contrato puro compartidoac5fedf8. Baseactualdevac5fedf860df80af74f33a482a714cf5293631b2, rootnoedita producto mientrasworkersactivos. No push/PROD.
+
+Dos WTfactory: stock-cost-data-0240 y stock-cost-ui-0240 bajo `/private/tmp/checkpass-stock-cost-0240/`, ramas homónimas/baseac5fedf8/dependenciaspropias sinenvcopiado. Agentes `/root/stock_cost_data_0240` A dominio/queries/index/tests y db:ci-integration reservado, `/root/stock_cost_ui_0240` B selector/tarjeta/gráficokit/formato/browser y harnesspropio. Paths explícitos enfactory; no subdelegar ni estados/índicesworkers. QA `/root/stock_cost_qa_0240` preparaciónreadonlycompleta, esperaSHAscongelados/tercerWT, NO certificar aún. Evidencia prevista `/private/tmp/checkpass-0240-evidence/`.
+
+Contrato stockCosts en GET history, sin nuevas SQL/GET/DBesquema: reutilizar gauges/labels/locations existentes. Opciones insumo+local (evitarmezclarprecios); defaultcomparableprimero/másreciente; conservar selecciónválida. Puntosdiarios reales/período+una baseline realconfechaprevia; amountMinor decimalstringexacto/subcentavo. Línea recta/ejesfechasmonedaunidad, tabla/listadocompletoaccesible (puededesplegarparaevitarlistainfinita). Cero/uno/plano/pendiente/precisión y filtros positivos/negativos reales decisivos. Valoraciónstock y restoAnalíticas intactos.
+
+CI remoto confirmadoROJO90ebe18f, no corregir/publicar deoficio.3201/túnel y demosJoyas locales intactos (3costosdemo sirven deejemploal integrar). Diferidos conservados: QAmanual0237/owner, guardias24PASS2FAIL, FAILfrío1817.621042ms, ciudades/weather/calendarios/crons/Marketingcupón11/realtimeinfra. M1 anterior66067758 no certifica payloadnuevo. Próximo: entregasA/B,QA/combinación, integrar dev/mainlocal ycleanup sóloaceptados; nunca push/PRODsin autorización nueva.
+
+## HISTÓRICO — 0239 CÁLCULO SIN MARGEN VISIBLE Y MOVIMIENTOS; LISTO PARA OWNER EN DEV (2026-10-18 UTC)
 
 L0 layout ranking pedido owner: tabla semántica (roles table/row/columnheader/cell) Producto/Unidades/Ventas, sin fotos ni filtros/botones nuevos, importes alineados y nombres completos. Ranking vive directamente bajo Ganancia/gastos en columna izquierda independiente; cálculo/stock columna derecha, eliminando espera de altura de cálculo para posicionar ranking. Móvil ordenDOM:ganancia→ranking→cálculo→stock. Sin números/cálculos/HTTP/DB nuevos; tiposUI/lint/guard/diffPASS,2browserexistentes390/1440PASSsinretries/skips y capturas abiertas. Demos/diferidos intactos; sin push/PROD.
 
