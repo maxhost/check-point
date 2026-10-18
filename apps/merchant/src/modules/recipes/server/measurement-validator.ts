@@ -93,15 +93,19 @@ export const validateProductMeasurementChange: ResourceMeasurementValidator<
     resolution.conversionVersion !== revision.conversionVersion
   )
     throw invalid();
+  const declaredRecipes = new Map(
+    revision.recipes.map((recipe) => [recipe.recipeId, recipe.quantity]),
+  );
+  const resolvedIds = new Set(
+    resolution.components.map((component) => component.recipeId),
+  );
   if (
-    resolution.components.length !== revision.recipes.length ||
-    revision.recipes.some(
-      (recipe) =>
-        !resolution.components.some(
-          (component) =>
-            component.recipeId === recipe.recipeId &&
-            component.quantity === recipe.quantity,
-        ),
+    declaredRecipes.size !== revision.recipes.length ||
+    resolvedIds.size !== resolution.components.length ||
+    resolution.components.length !== declaredRecipes.size ||
+    resolution.components.some(
+      (component) =>
+        declaredRecipes.get(component.recipeId) !== component.quantity,
     )
   )
     throw invalid();

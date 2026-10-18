@@ -161,7 +161,7 @@ describe.runIf(modulesIntegrationEnabled)(
         await validate(productId, mass("lb"), world.businessId, mass("lb")),
       ).toMatchObject({ code: "measurement_basis_required" });
       expect(await snapshot(productId)).toEqual(before);
-    });
+    }, 120000);
     it("each captured mass base accepts every mass tariff unit and rejects unit without rewriting its base", async () => {
       for (const basis of ["kg", "lb", "g"] as const) {
         const productId = await fixture(basis),
@@ -188,7 +188,7 @@ describe.runIf(modulesIntegrationEnabled)(
         before = await snapshot(foreign);
       expect(await validate(foreign, mass("kg"))).toBeNull();
       expect(await snapshot(foreign)).toEqual(before);
-    });
+    }, 120000);
     it("legacy recipe slot means one unit and foreign/different-product references fail closed", async () => {
       const productId = await seedProduct(world, randomUUID(), "1.00");
       const [revision] = await getDb()
@@ -230,7 +230,7 @@ describe.runIf(modulesIntegrationEnabled)(
         );
         expect(await snapshot(productId)).toEqual(before);
       }
-    });
+    }, 120000);
     it("rejects inconsistent published pointer, basis and component references rather than treating them as absence", async () => {
       const productId = await fixture(),
         original = await snapshot(productId);
@@ -294,6 +294,48 @@ describe.runIf(modulesIntegrationEnabled)(
       await expect(validate(productId, unit)).rejects.toThrow(
         "Inconsistent published",
       );
-    });
+    }, 120000);
+    it("rejects a persistible duplicate declared recipe despite valid distinct resolved components", async () => {
+      const productId = await fixture();
+      const original = await snapshot(productId);
+      const second = await snapshot(await fixture());
+      const [revision] = await getDb()
+        .insert(compositionRevisions)
+        .values({
+          ...original.revisions[0],
+          id: randomUUID(),
+          isCombo: true,
+          recipes: [
+            original.revisions[0].recipes[0],
+            original.revisions[0].recipes[0],
+          ],
+        })
+        .returning();
+      const [resolution] = await getDb()
+        .insert(recipeSaleResolutions)
+        .values({
+          ...original.resolutions[0],
+          id: randomUUID(),
+          compositionRevisionId: revision.id,
+          components: [
+            original.resolutions[0].components[0],
+            second.resolutions[0].components[0],
+          ],
+        })
+        .returning();
+      await getDb()
+        .update(productCompositions)
+        .set({ revisionId: revision.id, resolutionId: resolution.id })
+        .where(eq(productCompositions.productId, productId));
+      await getDb()
+        .update(moduleResourceVersions)
+        .set({ versionId: resolution.id })
+        .where(eq(moduleResourceVersions.resourceId, productId));
+      const before = await snapshot(productId);
+      await expect(validate(productId, unit)).rejects.toThrow(
+        "Inconsistent published",
+      );
+      expect(await snapshot(productId)).toEqual(before);
+    }, 120000);
   },
 );
