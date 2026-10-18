@@ -1,3 +1,9 @@
+import {
+  captureQuantity,
+  isMassUnit,
+  MeasureError,
+} from "@mi-pasaporte/domain/measures";
+import type { CapturedCompositionBasis } from "./expand-measured";
 import { isUuid } from "@mi-pasaporte/domain/server/counter/core";
 import { formatDecimal, parseDecimal } from "../../../decimal";
 import { ModuleError, invalidBody } from "../../../errors";
@@ -144,6 +150,7 @@ export function parseComposition(body: Record<string, unknown>) {
     );
   const seen = new Set<string>();
   return {
+    ...parseCompositionBasis(body),
     isCombo: body.isCombo,
     recipes: body.recipes.map((raw: unknown, position) => {
       if (!raw || typeof raw !== "object" || Array.isArray(raw))
@@ -168,4 +175,38 @@ export function parseComposition(body: Record<string, unknown>) {
       return { recipeId, quantity: formatDecimal(quantity, 3), position };
     }),
   };
+}
+
+/** Omitted legacy fields preserve the current immutable capture. */
+export function parseCompositionBasis(
+  body: Record<string, unknown>,
+): Partial<CapturedCompositionBasis> {
+  const quantity = Object.hasOwn(body, "basisQuantity");
+  const unit = Object.hasOwn(body, "basisUnit");
+  if (!quantity && !unit && !Object.hasOwn(body, "conversionVersion"))
+    return {};
+  if (!quantity || !unit)
+    throw invalidBody("Define cantidad y unidad de la base juntas.");
+  try {
+    if (body.basisUnit !== "unit" && !isMassUnit(body.basisUnit))
+      throw new MeasureError("invalid_unit", "basisUnit");
+    if (
+      Object.hasOwn(body, "conversionVersion") &&
+      body.conversionVersion !== "mass-si-1"
+    )
+      throw new MeasureError("invalid_measure", "conversionVersion");
+    const captured = captureQuantity(body.basisQuantity, body.basisUnit);
+    return {
+      basisQuantity: captured.quantity,
+      basisUnit: captured.quantityUnit,
+      conversionVersion: "mass-si-1",
+    };
+  } catch (error) {
+    if (!(error instanceof MeasureError)) throw error;
+    throw new ModuleError(
+      422,
+      error.code,
+      "Define una base de composición válida.",
+    );
+  }
 }

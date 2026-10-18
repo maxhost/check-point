@@ -1,3 +1,5 @@
+import { captureQuantity } from "@mi-pasaporte/domain/measures";
+import type { CapturedCompositionBasis } from "./expand-measured";
 import { type DbTransaction } from "@mi-pasaporte/db";
 import {
   compositionRevisions,
@@ -59,6 +61,7 @@ export async function publishResolution(
       productId: revision.productId,
       compositionRevisionId: revision.id,
       components,
+      ...compositionBasis(revision),
     })
     .returning();
   await tx
@@ -131,4 +134,49 @@ export async function revisionIngredients(
           ),
         )
     : [];
+}
+
+export function compositionBasis(row: {
+  basisQuantity: string;
+  basisUnit: string;
+  conversionVersion: string;
+}): CapturedCompositionBasis {
+  if (
+    (row.basisUnit !== "unit" &&
+      row.basisUnit !== "kg" &&
+      row.basisUnit !== "lb" &&
+      row.basisUnit !== "g") ||
+    row.conversionVersion !== "mass-si-1"
+  )
+    throw new Error("Invalid captured composition basis");
+  const capture = captureQuantity(row.basisQuantity, row.basisUnit);
+  return {
+    basisQuantity: capture.quantity,
+    basisUnit: capture.quantityUnit,
+    conversionVersion: "mass-si-1",
+  };
+}
+export function assertCompositionCapture(
+  revision: typeof compositionRevisions.$inferSelect,
+  resolution: typeof recipeSaleResolutions.$inferSelect,
+) {
+  const a = compositionBasis(revision),
+    b = compositionBasis(resolution);
+  if (
+    revision.productId !== resolution.productId ||
+    resolution.compositionRevisionId !== revision.id ||
+    a.basisQuantity !== b.basisQuantity ||
+    a.basisUnit !== b.basisUnit ||
+    a.conversionVersion !== b.conversionVersion ||
+    revision.recipes.length !== resolution.components.length ||
+    revision.recipes.some((c, i) => {
+      const r = resolution.components[i];
+      return (
+        c.recipeId !== r.recipeId ||
+        c.quantity !== r.quantity ||
+        c.position !== r.position
+      );
+    })
+  )
+    throw new Error("Inconsistent published composition capture");
 }
