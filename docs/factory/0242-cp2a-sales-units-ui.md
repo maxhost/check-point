@@ -20,6 +20,7 @@ Preferir helper puro pequeño para revisión/reconciliación si reduce cierres o
 - apps/merchant/src/app/backoffice/business/sales-units-fields.tsx, nuevo
 - apps/merchant/src/app/backoffice/business/settings-drafts.ts y settings-drafts.test.ts, nuevos si se necesita helper
 - tests/e2e/business-negocio-settings.spec.ts
+- tests/e2e/business-negocio.spec.ts, incluir sección nueva y conservar medios de pago
 - tests/e2e/support/business-negocio-fixture.ts y business-negocio-entry.tsx
 - docs/factory/0242-cp2a-sales-units-ui-handoff.md
 
