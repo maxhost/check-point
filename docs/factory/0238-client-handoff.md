@@ -67,3 +67,17 @@ El harness browser real se inventariará con el coordinador antes de reservar el
 ## Entrega de esta preparación
 
 Solo este informe cambia. No servidor/proceso/DB ni fixtures/sesiones abiertos. El siguiente paso permitido es esperar cierre D0, referencia M0, commit A1 transmitido por el coordinador, reservas ampliadas del checkpoint y orden explícita de B1a. La preparación no constituye entrega factory de producto ni autorización para avanzar de checkpoint.
+
+## Encargo adicional: harness M0, sin producto
+
+El coordinador informó aceptación explícita de scopeKey y cierre D0 `6e45066c`; leído mediante `git show`, sin cambiar esta base. Autorizó y reservó `tests/e2e/support/backoffice-measurement.cjs` exclusivamente como medición previa a optimizar. No habilita B1a ni sustituye M0.
+
+Harness opt-in, Playwright existente resuelto con createRequire del package raíz, sin dependencias/config nuevas. Exige `BASE_URL` origen localhost, `COOKIE_FILE` array cookies Playwright privado600 (dominios locales), `MANIFEST` sintético, `OUT` privado y `RUN_TAG` inocuo. Opcionales `RELOADS=5`, `TIMEOUT_MS=30000`, `SETTLE_TIMEOUT_MS=5000`, `CPU_TRACE=0`. Cada ejecución crea contexto nuevo1280x900/caché HTTP Chromium normal/serviceworkers bloqueados; registra primera entrada separada y cinco recargas reales en ese contexto. Las recargas no representan DB fría.
+
+Manifest requerido: `{case:'ready-empty'|'ready-five',cards:[{id,title,decisions:[{key,label}],action?:{label,href}}]}`. Cinco tarjetas necesitan ids/títulos únicos. IDs propios se validan contra response Inbox contractVersion2/state ready; DOM actual no expone ids, así que observador comprueba artículos/títulos/decisiones habilitadas y acción esperados. Solo ids sintéticos de whitelist, versiones numéricas y resultados booleanos salen al JSON; no títulos/body/respuestas crudas/cookies/cabeceras/scopeKey. Archivo incluye hash del harness/manifest. Correlación servidor por `x-inbox-measurement` distinto por intento.
+
+Observador MutationObserver y PerformanceObservers instalados antes de navegar; goto/reload espera commit y ready usa performance.now al cumplir DOM. DCL/load/responseEnd y fin recursos se recogen después, con timeout declarado conservando muestra. CDP conserva solicitudes, fallos/abortos, status, rutas sin query, tiempos y bytes por documento/RSC/JS/CSS; ResourceTiming acompaña caché/tamaños y GET Inbox. RSC embebido ya pertenece al documento: no se suma otra vez. CPU_TRACE solo habilita contador de muestreo diagnóstico separado, sin fuente JS/heap/trace privado.
+
+Límites: solo checks estáticos, **no ejecutado en navegador/servidor/DB por instrucción expresa**. Bytes hasta ready agregan recursos completados; streams abiertos y bytes aún en curso se identifican por waterfall, no se presentan como cero costo. Tamaño exacto de seed requiere evidencia servidor/build adicional. No inventa hito de hidratación ni tiempo interno SQL/CPU; longtasks y muestreo son diagnóstico. Fixtures/estado temporal/restauración, SHA de fuente, orden seis bloques A/B, incertidumbre e inventario de entorno son responsabilidad del coordinador; el harness no crea sesiones/fixtures/login ni afirma performance PASS.
+
+Verificación local Node24.20.0: `node --check` PASS; ESLint focal PASS; prettier write aplicado; `git diff --check` PASS. Primer lint detectó imports require prohibidos: se sustituyeron por import dinámico manteniendo extensión CommonJS/createRequire de Playwright, sin desactivar regla. Sin browser lanzado, procesos ni DB.
