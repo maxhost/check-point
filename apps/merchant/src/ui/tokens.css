@@ -53,6 +53,7 @@
   --ui-success-soft: #e8f4ee;
   --ui-info: #145f82;
   --ui-info-soft: #e7f5fb;
+  --ui-expense-variable: #fd5c63;
 
   /* Interaction and elevation. */
   --ui-focus: #176548;
@@ -159,6 +160,7 @@
   --color-success-soft: var(--ui-success-soft);
   --color-info: var(--ui-info);
   --color-info-soft: var(--ui-info-soft);
+  --color-expense-variable: var(--ui-expense-variable);
   --color-focus: var(--ui-focus);
   --font-sans: var(--font-sans);
   --radius-sm: var(--radius-sm);

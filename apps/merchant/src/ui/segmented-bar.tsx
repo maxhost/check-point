@@ -6,12 +6,17 @@ export type SegmentedBarProps = {
   segments: readonly {
     id: string;
     value: number;
-    tone: "primary" | "info";
+    tone: "primary" | "info" | "accent" | "expense-variable";
   }[];
   className?: string;
 };
 
-const tones = { primary: "bg-primary", info: "bg-info" } as const;
+const tones = {
+  primary: "bg-primary",
+  info: "bg-info",
+  accent: "bg-accent",
+  "expense-variable": "bg-expense-variable",
+} as const;
 
 /** Distribución estática de cantidades no negativas; cero o ajustes negativos no forman una barra. */
 export function SegmentedBar({
