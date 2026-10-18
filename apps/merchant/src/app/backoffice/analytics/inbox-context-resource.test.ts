@@ -66,6 +66,8 @@ async function flush() {
 }
 function setup() {
   const io = {
+    readChecklist: vi.fn(),
+    verifyEmail: vi.fn(),
     readSession: vi.fn(async (): Promise<unknown> => {
       throw new Error("unexpected reporter");
     }),

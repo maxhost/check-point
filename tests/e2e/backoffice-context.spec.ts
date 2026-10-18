@@ -524,3 +524,263 @@ test("0238 Inbox restringido oculta tarjetas sin bucle de navegación y un reint
   await expect(page.getByText("Acceso restringido")).toHaveCount(0);
   expect(reads).toBe(3);
 });
+
+const checklistEnvelope = (done = false, verify = false) => ({
+  locale: "es",
+  items: [
+    {
+      id: verify ? "verify" : "brand",
+      anchor: verify ? "verify-email" : "brand",
+      position: 0,
+      required: verify,
+      done,
+      title: verify ? "Verifica tu email" : "Configura tu marca",
+      body: "Paso sintético",
+    },
+  ],
+});
+const ended = "checkpass:onboarding-tour-ended";
+
+test("0238 checklist comparte GET scoped entre dos lectores y soltar uno no cancela al otro", async ({
+  page,
+}) => {
+  const reads: string[] = [];
+  let release!: () => void;
+  const gate = new Promise<void>((done) => {
+    release = done;
+  });
+  await page.route("**/api/onboarding/checklist", async (route) => {
+    reads.push(route.request().headers()["x-backoffice-scope"]);
+    await gate;
+    await route.fulfill({ json: checklistEnvelope() });
+  });
+  await page.goto(
+    `${harness.url}?modules=ready&checklist&checklistReaders=2&strict&fixturePath=/backoffice`,
+  );
+  await expect.poll(() => reads.length).toBe(1);
+  await page.evaluate(() =>
+    (
+      window as unknown as { backofficeFixture: BackofficeFixtureApi }
+    ).backofficeFixture.setChecklistReaders(1),
+  );
+  release();
+  await expect(
+    page.getByText("Configura tu marca", { exact: true }),
+  ).toHaveCount(1);
+  expect(reads).toEqual(["a".repeat(64)]);
+});
+
+test("0238 counter no adquiere checklist; END y reintento fuera de counter pasan por propietario", async ({
+  page,
+}) => {
+  let reads = 0;
+  await page.route("**/api/onboarding/checklist", (route) => {
+    reads += 1;
+    return route.fulfill({ json: checklistEnvelope() });
+  });
+  await page.goto(
+    `${harness.url}?modules=ready&checklist&fixturePath=/backoffice/counter`,
+  );
+  await expect(page.getByText("Contenido privado sintético")).toBeVisible();
+  await page.evaluate((event) => window.dispatchEvent(new Event(event)), ended);
+  await expect(
+    page.getByRole("heading", { name: "Hoy en tu negocio" }),
+  ).toBeVisible();
+  expect(reads).toBe(0);
+  await page.goto(
+    `${harness.url}?modules=ready&checklist&fixturePath=/backoffice`,
+  );
+  await expect(
+    page.getByText("Configura tu marca", { exact: true }),
+  ).toBeVisible();
+  expect(reads).toBe(1);
+  await page.evaluate((event) => {
+    for (let i = 0; i < 5; i++) window.dispatchEvent(new Event(event));
+  }, ended);
+  await expect.poll(() => reads).toBe(2);
+  await expect(
+    page.getByText("Configura tu marca", { exact: true }),
+  ).toBeVisible();
+});
+
+test("0238 checklist operativo falla y reintenta con HTTP nueva sin navegación", async ({
+  page,
+}) => {
+  let reads = 0;
+  await page.route("**/api/onboarding/checklist", (route) => {
+    reads += 1;
+    return reads === 1
+      ? route.fulfill({ status: 503, json: { error: "offline" } })
+      : route.fulfill({ json: checklistEnvelope() });
+  });
+  await page.goto(
+    `${harness.url}?modules=ready&checklist&fixturePath=/backoffice`,
+  );
+  await expect(
+    page.getByText("No pudimos cargar los pasos de configuración"),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Reintentar", exact: true }).click();
+  await expect(
+    page.getByText("Configura tu marca", { exact: true }),
+  ).toBeVisible();
+  expect(reads).toBe(2);
+  expect(
+    await page.evaluate(
+      () =>
+        (window as unknown as { backofficeFixture: BackofficeFixtureApi })
+          .backofficeFixture.navigations,
+    ),
+  ).toEqual([]);
+});
+
+test("0238 tour POST capturado y END final invalidan checklist anterior aún montado", async ({
+  page,
+}) => {
+  let reads = 0,
+    saved = false;
+  const writes: string[] = [];
+  let releaseRead!: () => void, releaseWrite!: () => void;
+  const readGate = new Promise<void>((done) => {
+    releaseRead = done;
+  });
+  const writeGate = new Promise<void>((done) => {
+    releaseWrite = done;
+  });
+  await page.route("**/api/onboarding/checklist", async (route) => {
+    reads += 1;
+    const count = reads;
+    const value = checklistEnvelope(saved);
+    if (count === 2) await readGate;
+    await route.fulfill({ json: value });
+  });
+  await page.route("**/api/onboarding/tours/brand", async (route) => {
+    writes.push(route.request().headers()["x-backoffice-scope"]);
+    await writeGate;
+    saved = true;
+    await route.fulfill({ json: { ok: true } });
+  });
+  await page.goto(
+    `${harness.url}?modules=ready&checklist&fixturePath=/backoffice`,
+  );
+  await expect(
+    page.getByText("Configura tu marca", { exact: true }),
+  ).toBeVisible();
+  const persisted = page.evaluate(() =>
+    (
+      window as unknown as { backofficeFixture: BackofficeFixtureApi }
+    ).backofficeFixture.persistTour(),
+  );
+  await expect.poll(() => reads).toBe(2);
+  await expect.poll(() => writes.length).toBe(1);
+  releaseWrite();
+  expect(await persisted).toBe(true);
+  await expect.poll(() => reads).toBe(3);
+  await expect(page.getByLabel("Estado checklist")).toHaveText("ready:1");
+  releaseRead();
+  await expect(
+    page.getByText("Configura tu marca", { exact: true }),
+  ).toHaveCount(0);
+  expect(writes).toEqual(["a".repeat(64)]);
+  expect(reads).toBe(3);
+});
+
+test("0238 verify auth exento confirma checklist sólo por GET scoped", async ({
+  page,
+}) => {
+  let reads = 0;
+  const scopes: string[] = [];
+  const authScopes: (string | undefined)[] = [];
+  let release!: () => void;
+  const gate = new Promise<void>((done) => {
+    release = done;
+  });
+  await page.route("**/api/onboarding/checklist", async (route) => {
+    reads += 1;
+    scopes.push(route.request().headers()["x-backoffice-scope"]);
+    if (reads === 2) await gate;
+    await route.fulfill({ json: checklistEnvelope(reads >= 2, true) });
+  });
+  await page.route("**/api/merchant/auth/verify-email", (route) => {
+    authScopes.push(route.request().headers()["x-backoffice-scope"]);
+    return route.fulfill({ json: { verified: true } });
+  });
+  await page.goto(
+    `${harness.url}?modules=ready&checklist&unverified&fixturePath=/backoffice`,
+  );
+  await page
+    .getByRole("button", { name: "Verificar mi email", exact: true })
+    .click();
+  await expect.poll(() => reads).toBe(2);
+  await expect(
+    page.getByText("Verifica tu email", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Estado checklist")).toHaveText("loading:0");
+  release();
+  await expect(page.getByLabel("Estado checklist")).toHaveText("ready:1");
+  await expect(
+    page.getByText("Verifica tu email", { exact: true }),
+  ).toHaveCount(0);
+  expect(authScopes).toEqual([undefined]);
+  expect(scopes).toEqual(["a".repeat(64), "a".repeat(64)]);
+});
+
+for (const outcome of ["sent", "error"] as const) {
+  test(`0238 verify ${outcome} tardío tras retirada no cambia UI ni revalida`, async ({
+    page,
+  }) => {
+    let reads = 0;
+    let auth = 0;
+    let release!: () => void;
+    const gate = new Promise<void>((done) => {
+      release = done;
+    });
+    await page.route("**/api/onboarding/checklist", (route) => {
+      reads += 1;
+      return route.fulfill({ json: checklistEnvelope(false, true) });
+    });
+    await page.route("**/api/merchant/auth/verify-email", async (route) => {
+      auth += 1;
+      await gate;
+      await route.fulfill({
+        status: outcome === "error" ? 503 : 200,
+        json: { sent: true },
+      });
+    });
+    await page.goto(
+      `${harness.url}?modules=ready&checklist&unverified&fixturePath=/backoffice`,
+    );
+    await page
+      .getByRole("button", { name: "Verificar mi email", exact: true })
+      .click();
+    await expect.poll(() => auth).toBe(1);
+    await page.evaluate(() =>
+      (
+        window as unknown as { backofficeFixture: BackofficeFixtureApi }
+      ).backofficeFixture.retire(),
+    );
+    await expect(page.getByText("Contenido privado sintético")).toHaveCount(0);
+    const completed = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === "/api/merchant/auth/verify-email",
+    );
+    release();
+    await (await completed).finished();
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+        ),
+    );
+    await expect(
+      page.getByText("Te enviamos el enlace. Revisa tu correo para continuar."),
+    ).toHaveCount(0);
+    expect(reads).toBe(1);
+    expect(
+      await page.evaluate(
+        () =>
+          (window as unknown as { backofficeFixture: BackofficeFixtureApi })
+            .backofficeFixture.navigations,
+      ),
+    ).toEqual(["/backoffice"]);
+  });
+}

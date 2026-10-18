@@ -27,6 +27,9 @@ import {
 import { panelRequest } from "./panel-request";
 import { emptyInboxContext } from "./analytics/inbox-context-resource";
 import { readModules } from "./settings/module-request";
+import { emptyChecklistContext } from "./onboarding/checklist-context-resource";
+import { getOnboardingChecklist } from "./onboarding/onboarding-api";
+import { ONBOARDING_TOUR_ENDED_EVENT } from "./onboarding/onboarding-tour";
 import { MODULES_CHANGED_EVENT } from "./settings/module-navigation";
 
 type BackofficeContextValue = {
@@ -40,6 +43,11 @@ type BackofficeContextValue = {
   acquireInbox: BackofficeContextController["acquireInbox"];
   refreshInbox: BackofficeContextController["refreshInbox"];
   decideInbox: BackofficeContextController["decideInbox"];
+  applyConfirmedModule: BackofficeContextController["applyConfirmedModule"];
+  revalidateModules: BackofficeContextController["revalidateModules"];
+  acquireChecklist: BackofficeContextController["acquireChecklist"];
+  refreshChecklist: BackofficeContextController["refreshChecklist"];
+  verifyChecklistEmail: BackofficeContextController["verifyChecklistEmail"];
 };
 
 const BackofficeContext = createContext<BackofficeContextValue | null>(null);
@@ -76,6 +84,16 @@ export function BackofficeProvider({
             command.body,
             { scopeKey: ticket.scopeKey },
           ),
+        readChecklist: (signal, ticket) =>
+          getOnboardingChecklist(signal, { scopeKey: ticket.scopeKey }),
+        verifyEmail: async () => {
+          const response = await fetch("/api/merchant/auth/verify-email", {
+            method: "POST",
+            credentials: "same-origin",
+          });
+          if (!response.ok) throw new Error("verify-email-failed");
+          return response.json();
+        },
         navigate: (href) => window.location.assign(href),
       }),
   );
@@ -90,8 +108,9 @@ export function BackofficeProvider({
       ...observed,
       sessionState: stored.sessionState,
       inbox: observed.core ? stored.inbox : emptyInboxContext(),
+      checklist: observed.core ? stored.checklist : emptyChecklistContext(),
     }),
-    [observed, stored.sessionState, stored.inbox],
+    [observed, stored.sessionState, stored.inbox, stored.checklist],
   );
   // Hide a different scope during render, but reconcile/cancel only after commit:
   // an abandoned concurrent render must never mutate the live request owner.
@@ -101,9 +120,17 @@ export function BackofficeProvider({
   useEffect(() => {
     const release = controller.attach();
     const changed = () => controller.revalidateSessionModules();
+    window.addEventListener(
+      ONBOARDING_TOUR_ENDED_EVENT,
+      controller.refreshChecklist,
+    );
     window.addEventListener(MODULES_CHANGED_EVENT, changed);
     window.addEventListener("checkpass:modules-changed", changed);
     return () => {
+      window.removeEventListener(
+        ONBOARDING_TOUR_ENDED_EVENT,
+        controller.refreshChecklist,
+      );
       window.removeEventListener(MODULES_CHANGED_EVENT, changed);
       window.removeEventListener("checkpass:modules-changed", changed);
       release();
@@ -119,6 +146,11 @@ export function BackofficeProvider({
       acquireInbox: controller.acquireInbox,
       refreshInbox: controller.refreshInbox,
       decideInbox: controller.decideInbox,
+      applyConfirmedModule: controller.applyConfirmedModule,
+      revalidateModules: controller.revalidateModules,
+      acquireChecklist: controller.acquireChecklist,
+      refreshChecklist: controller.refreshChecklist,
+      verifyChecklistEmail: controller.verifyChecklistEmail,
     }),
     [state, controller],
   );

@@ -17,6 +17,10 @@ import { fixtureBackofficeCore } from "./backoffice-seed-fixture";
 import { businessModules } from "./modules-fixture";
 import { createBackofficeContextController } from "../../../apps/merchant/src/app/backoffice/backoffice-context-controller";
 import { panelRequest } from "../../../apps/merchant/src/app/backoffice/panel-request";
+import { getOnboardingChecklist } from "../../../apps/merchant/src/app/backoffice/onboarding/onboarding-api";
+import { OnboardingChecklist } from "../../../apps/merchant/src/app/backoffice/onboarding/onboarding-checklist";
+import { captureOnboardingTourIntent } from "../../../apps/merchant/src/app/backoffice/onboarding/onboarding-tour-persistence";
+import { ONBOARDING_TOUR_ENDED_EVENT } from "../../../apps/merchant/src/app/backoffice/onboarding/onboarding-tour";
 import { readModules } from "../../../apps/merchant/src/app/backoffice/settings/module-request";
 
 export type BackofficeFixtureApi = {
@@ -29,6 +33,8 @@ export type BackofficeFixtureApi = {
   invalidateInbox: () => void;
   navigations: string[];
   setInboxReaders: (count: number) => void;
+  setChecklistReaders: (count: number) => void;
+  persistTour: () => Promise<boolean>;
 };
 const query = new URLSearchParams(location.search);
 const core = fixtureBackofficeCore(
@@ -37,7 +43,10 @@ const core = fixtureBackofficeCore(
     isOwner: true,
     permissions: ["analytics", "stock"],
   },
-  { billing: { access: "trial", trialDaysLeft: 10, trialEndsAt: null } },
+  {
+    user: { emailVerified: !query.has("unverified") },
+    billing: { access: "trial", trialDaysLeft: 10, trialEndsAt: null },
+  },
 );
 const initialSeed = (
   result: BackofficeModulesResult,
@@ -69,6 +78,8 @@ const fixture: BackofficeFixtureApi = {
   invalidateInbox: () => controller.invalidate(["inbox"]),
   navigations: [],
   setInboxReaders: () => {},
+  setChecklistReaders: () => {},
+  persistTour: async () => false,
 };
 const controller = createBackofficeContextController(core, {
   readSession: (signal) =>
@@ -87,6 +98,16 @@ const controller = createBackofficeContextController(core, {
       command.body,
       { scopeKey: ticket.scopeKey },
     ),
+  readChecklist: (signal, ticket) =>
+    getOnboardingChecklist(signal, { scopeKey: ticket.scopeKey }),
+  verifyEmail: async () => {
+    const response = await fetch("/api/merchant/auth/verify-email", {
+      method: "POST",
+      credentials: "same-origin",
+    });
+    if (!response.ok) throw new Error("verify-email-failed");
+    return response.json();
+  },
   navigate: (href) => {
     fixture.navigations.push(href);
   },
@@ -95,16 +116,40 @@ const controller = createBackofficeContextController(core, {
   window as unknown as { backofficeFixture: BackofficeFixtureApi }
 ).backofficeFixture = fixture;
 function Bridge() {
-  const { state, retire, applyModulesSeed } = useBackofficeContext();
+  const { state, retire, applyModulesSeed, captureTicket, invalidate } =
+    useBackofficeContext();
   useEffect(() => {
     fixture.retire = retire;
     fixture.lateSeed = () =>
       applyModulesSeed(
         initialSeed({ state: "ready", modules: businessModules(true, false) }),
       );
+    fixture.persistTour = async () => {
+      const intent = captureOnboardingTourIntent("brand", {
+        captureTicket,
+        invalidate,
+        retire,
+      });
+      if (!intent) return false;
+      const pending = intent.persistProgress("completed");
+      window.dispatchEvent(new Event(ONBOARDING_TOUR_ENDED_EVENT));
+      const saved = await pending;
+      if (saved) window.dispatchEvent(new Event(ONBOARDING_TOUR_ENDED_EVENT));
+      return saved;
+    };
     fixture.ready = true;
-  }, [retire, applyModulesSeed]);
-  return <output aria-label="Estado módulos">{state.modules.state}</output>;
+  }, [retire, applyModulesSeed, captureTicket, invalidate]);
+  return (
+    <>
+      <output aria-label="Estado módulos">{state.modules.state}</output>
+      {query.has("checklist") && (
+        <output aria-label="Estado checklist">
+          {state.checklist.status}:
+          {state.checklist.data?.items.filter((item) => item.done).length ?? 0}
+        </output>
+      )}
+    </>
+  );
 }
 function StreamedSeed() {
   return <BackofficeModulesSeedConsumer seed={use(stream)} />;
@@ -122,6 +167,21 @@ function InboxReaders() {
     </>
   );
 }
+function ChecklistReaders() {
+  const [readers, setReaders] = useState(
+    Number(query.get("checklistReaders") ?? "1"),
+  );
+  useEffect(() => {
+    fixture.setChecklistReaders = setReaders;
+  }, []);
+  return (
+    <>
+      {Array.from({ length: readers }, (_, index) => (
+        <OnboardingChecklist key={index} />
+      ))}
+    </>
+  );
+}
 function Fixture({ initial }: { initial: BackofficeInitialContext }) {
   return (
     <BackofficeProvider initialContext={initial} controller={controller}>
@@ -135,6 +195,7 @@ function Fixture({ initial }: { initial: BackofficeInitialContext }) {
           <TrialNotice />
           <p>Contenido privado sintético</p>
           <InboxReaders />
+          {query.has("checklist") && <ChecklistReaders />}
         </div>
       </div>
     </BackofficeProvider>
