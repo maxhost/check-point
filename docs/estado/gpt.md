@@ -3,7 +3,15 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — 0238 S-SERVER ACEPTADO; CORRECCIÓN CLIENTE EN CURSO (2026-10-18 UTC)
+## ESTADO — 0238 CLIENTE B1b+B2a ACEPTADO; B2b SIGUIENTE (2026-10-18 UTC)
+
+Dev `556a313b` integra fuente B corregida `d24957504d2443727ac3be208260ab83e441cdea`, aceptada por factory tras QA independiente del candidato congelado `f8875c2c`. QA reprodujo58/58unit y16/16browser (context10+módulos6 completos), autor22browser compatibles. Primer arranque browser QA sandbox falló16casos0ms por MachPort; mismo candidato con permiso técnico pasó, logs separados/preservados, sin retries de casos. No es PASS Next real/StrictModebrowser explícito ni rendimiento. Fallos4916 históricos conservados; revisión corregida aceptada conjuntamente, no aceptación retrospectiva de4916.
+
+B limpio en d249, esperando continue/reserva del siguiente checkpoint B2b. Actualmente prepara por mensaje división mínima Inbox primero/checklist y writers después, sin editar mientras QA. Provider/controller/estado/owner compartidos y sesión/módulos ya integrados; Inbox GET/POST todavía legacy y checklist/escritores/foco/reconnect/router.refresh pendientes. QA tercerWT limpio en556a313b tras informe; recurso harness:0238-client-qa liberado. A preparación streaming terminada, recurso harness:0238-streaming-prep liberado, artefactos intactos; todavía falta revisión/ejecución real. Backend S aceptado permanece integrado. No tarea DB/app real activa.
+
+Siguiente: reservar y habilitar B2b en piezas pequeñas, QA pertinente/combinación real, campaña M1 comparable. M1 NO ejecutada, sin mejora declarada. Main local sin avanzar; sin push/PROD; todos los diferidos, QA manual anterior, CI remoto rojo y FAIL histórico conservados. Contexto operativo/artefactos/SHAs anteriores en bloques siguientes. Archivos ajenos sin seguimiento intactos.
+
+## HISTÓRICO — 0238 S-SERVER ACEPTADO; CORRECCIÓN CLIENTE EN CURSO (2026-10-18 UTC)
 
 Dev `15a8772aaf5d4ea8a5e19c1671a9c18c008a3f81` integra S-servidor `3c5b330eaf8c8f8722240527e504aa92550ce3fe`, aceptado tras QA independiente139/139 unit y reutilización compatible de6 Neon nativas del autor (297unit). Scope HTTP en seis superficies adoptadas, guards antes de comparación constante y dominio después; reporter/auth exentos. Snapshots nativos verifican conteos de cinco tablas, no valores completos. No certifica aún cliente vinculado, RSC real ni rendimiento. Backend de A completo; DB CI libre, último preflight S102ledger/0DDL/111columnas relevantes iguales y drift histórico intacto.
 
