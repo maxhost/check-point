@@ -13,6 +13,7 @@ import {
 import { initial, type PaymentRuntime } from "./pos-payment-state";
 export function createPaymentActions(runtime: PaymentRuntime) {
   const {
+    client,
     current,
     selected,
     locked,
@@ -38,9 +39,10 @@ export function createPaymentActions(runtime: PaymentRuntime) {
       return;
     locked.current = true;
     const value = ticket();
+    const request = client?.capture() ?? posRequest;
     update({ phase: "resolving", error: null });
     try {
-      const data = await posRequest<ResolveResponse>(
+      const data = await request<ResolveResponse>(
         "/api/modules/pos/resolve",
         "POST",
         {
@@ -75,6 +77,7 @@ export function createPaymentActions(runtime: PaymentRuntime) {
     if (!selected.current || locked.current || denyNavigation()) return;
     locked.current = true;
     const value = ticket();
+    const request = client?.capture() ?? posRequest;
     update({ phase: "preparingPayment", error: null, validated: false });
     const resolved = current.current.resolved;
     try {
@@ -83,7 +86,7 @@ export function createPaymentActions(runtime: PaymentRuntime) {
         return;
       }
       if (resolved) {
-        const result = await posRequest<{ couponState: CounterCouponState }>(
+        const result = await request<{ couponState: CounterCouponState }>(
           `/api/modules/pos/coupon-state?membershipId=${encodeURIComponent(resolved.membership.id)}`,
         );
         if (!live(value)) return;
@@ -113,7 +116,7 @@ export function createPaymentActions(runtime: PaymentRuntime) {
         current.current.excludedId,
       );
       if ((currentPreview.netCents ?? 0) > 0) {
-        const result = await posRequest<{
+        const result = await request<{
           methods: PosPaymentMethod[];
           defaultMethodId: string | null;
         }>("/api/modules/pos/payment-methods");
@@ -140,8 +143,9 @@ export function createPaymentActions(runtime: PaymentRuntime) {
     message: string,
     value: ReturnType<typeof ticket>,
   ) {
+    const request = client?.capture() ?? posRequest;
     try {
-      const result = await posRequest<PosOrder>(orderUrl(saved.id));
+      const result = await request<PosOrder>(orderUrl(saved.id));
       if (!live(value)) return;
       recoveryRequired.current = null;
       update({
@@ -222,14 +226,18 @@ export function createPaymentActions(runtime: PaymentRuntime) {
             }
           : {}),
       };
-      attempt.current = { orderId: saved.id, body: Object.freeze(body) };
+      attempt.current = {
+        orderId: saved.id,
+        body: Object.freeze(body),
+        request: client?.capture() ?? posRequest,
+      };
     }
     locked.current = true;
     const value = ticket();
     update({ phase: "closing", error: null });
     onBeginClose();
     try {
-      const request = posRequest<PosOrder>(
+      const request = (attempt.current.request ?? posRequest)<PosOrder>(
         `${orderUrl(attempt.current.orderId)}/close`,
         "POST",
         attempt.current.body,

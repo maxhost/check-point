@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { Alert, Button, Text, TextField } from "../../../ui";
-import { PosError, posRequest } from "./pos-types";
+import { PosError } from "./pos-types";
 
+import { usePosContext } from "./pos-context";
 type PosTable = { id: string; name: string; openOrderId: string | null };
 export function usePosTables(
   locationId: string,
@@ -11,6 +12,8 @@ export function usePosTables(
   onError: (cause: unknown) => void,
   enabled = true,
 ) {
+  const scope = usePosContext();
+  const posRequest = scope.client.request;
   const [attempt, setAttempt] = useState(0);
   const [snapshot, setSnapshot] = useState<{
     location: string;
@@ -20,7 +23,12 @@ export function usePosTables(
   useEffect(() => {
     let active = true;
     setSnapshot({ location: locationId, tables: null, error: null });
-    if (!locationId || !enabled) return;
+    if (
+      !locationId ||
+      !enabled ||
+      (scope.present && (!scope.identity || scope.loading))
+    )
+      return;
     void posRequest<{ tables: PosTable[] }>(
       `/api/modules/pos/tables?locationId=${encodeURIComponent(locationId)}`,
     )
@@ -42,13 +50,27 @@ export function usePosTables(
               ? cause.message
               : "No pudimos cargar las mesas.",
         });
-        if (cause instanceof PosError && [401, 403].includes(cause.status ?? 0))
+        if (
+          cause instanceof PosError &&
+          ([401, 403].includes(cause.status ?? 0) ||
+            cause.code === "backoffice_context_changed")
+        )
           onError(cause);
       });
     return () => {
       active = false;
     };
-  }, [locationId, revision, attempt, onError, enabled]);
+  }, [
+    locationId,
+    revision,
+    attempt,
+    onError,
+    enabled,
+    scope.identity,
+    scope.loading,
+    scope.present,
+    posRequest,
+  ]);
   return {
     enabled,
     tables: !enabled
