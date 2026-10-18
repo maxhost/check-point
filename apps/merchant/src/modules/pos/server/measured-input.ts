@@ -24,7 +24,10 @@ export type TrustedPosOrderContext = Readonly<{ saleType: SaleType }>;
 function context(
   value: Record<string, unknown>,
   existing?: TrustedPosOrderContext,
-) {
+): Pick<
+  PosUpdateV2,
+  "saleType" | "orderLabel" | "locationId" | "tableId" | "note"
+> {
   const saleType = value.saleType;
   if (
     saleType !== "table" &&
