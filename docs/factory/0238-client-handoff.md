@@ -93,3 +93,21 @@ Coordinador informó M0 de62/62 observaciones válidas según el harness congela
 Corrección acotada autorizada: cada tarjeta del manifiesto necesita `version` string hexadecimal minúscula64; manifestos antiguos sin versión se rechazan. Response se valida por identidad y versión exacta esperada, además de los checks anteriores; `versionsValidated` y `versionError` conservan resultado explícito. `cardVersions` registra como máximo cinco hashes de versión con formato válido y solo para IDs sintéticos de whitelist. No son credenciales; ningún body/header/cookie/scopeKey se agrega al informe. Manifest vacío mantiene cards[] sin versiones.
 
 El nuevo commit/hash es método **M1 para ambas fuentes, controlA y candidatoB**. M0 queda conservado con16ec1154 y su limitación; comparación temporal causal depende de control contemporáneo usando exactamente la misma corrección que candidato. Solo syntax/lint/diff-check; sin ejecutar browser/DB ni avanzar B1a. La descripción histórica anterior «versiones numéricas» corresponde al comportamiento defectuoso de M0, no al nuevo contrato.
+
+## B1a — Provider y tickets iniciales aislados
+
+Habilitado explícitamente por coordinador tras M0 y QA de A1 `4fb07d33`. `factory continue` sincronizó este worktree a base `77dc18aaea1d0b66fbc0043e06d07ec5f5d2b511`; no se cambió base manualmente. Solo tres archivos de producto nuevos, reservados: `backoffice-context.tsx`, `backoffice-context-state.ts`, `backoffice-context-state.test.ts` bajo `apps/merchant/src/app/backoffice/`. Hoja RSC reservada permanece sin crear. Harness M1 permanece en0c0f9a44, sin delta ni nuevas mediciones.
+
+Estado puro: core disponible con módulos loading; resultados ready/lista vacía/restricted/unavailable diferenciados. Seed inicial exige bootId/scopeKey/época/generación vigentes y se cierra al aplicarlo; una invalidación lo cierra antes de resultado tardío. Tickets incluyen recurso/ámbito/época/generación. Retirar el ámbito elimina core/módulos privados, avanza época e invalida todos los recursos; no emite tickets ni puede revivir por seed RSC. Nuevo core RSC mismo ámbito solo señala revalidación por bootId no observado, nunca instala permisos/nombre de una instantánea como frescura. Cambio de usuario/negocio/scopeKey retira datos sin aceptar nuevo contexto prefetcheado.
+
+Provider React usa solo componentes/context/hooks, sin nativos/CSS ni import runtime servidor. Reconciliación de prop con ámbito distinto sucede durante render antes de descendientes, evitando conservar privados hasta un efecto. `useOptionalBackofficeContext()` retorna null únicamente si no existe provider; provider retirado sigue presente con state.core null. `useBackofficeContext()` exige provider, no presupone core disponible; `captureTicket` devuelve null para estado retirado. No fallback a props privadas ni operaciones de red. La captura expuesta es del snapshot React actual: no presupone que setState sea síncrono ni sirve para capturar después de await/invalidate y despachar transporte; B2 implementará propiedad y orden atómico de intenciones/transportes dentro del provider. Esto no es transporte parcialmente activo: ningún consumidor existente lo usa todavía.
+
+Comprobaciones sobre base77dc18aa más este delta, Node24.20.0:
+
+- `pnpm exec vitest run src/app/backoffice/backoffice-context-state.test.ts` desde merchant: **14/14 PASS**, sin skips/retries; prueba estado/transiciones, no montaje React.
+- `pnpm typecheck` desde merchant: PASS (tsc --noEmit, exit0).
+- ESLint focal de los tres archivos: PASS; prettier aplicado.
+- `node tools/ui-guard.ts --base 77dc18aaea1d0b66fbc0043e06d07ec5f5d2b511`: PASS, dos archivos de producto sin aumentos; warning de Node sobre módulo de tooling preexistente, sin modificarlo.
+- `git diff --check`: PASS.
+
+Sin DB/browser/servidor, sin fetch/event listeners/loops, sin tocar layout/page/navegación/TrialNotice/Inbox/checklist ni helper de A. Pruebas usan DTOs tipados sintéticos del contrato A1. QA independiente y montaje/streaming real pertenecen a siguientes entregas: B1b espera A2c y nueva instrucción del coordinador. Estado de esta entrega no certifica conteos/performance ni implementación total de0238.
