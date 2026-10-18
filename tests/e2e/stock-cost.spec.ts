@@ -31,32 +31,36 @@ for (const width of [390, 1440]) {
     await expect(card.getByRole("img")).toHaveAccessibleName(
       /Costos registrados de Harina de trigo/,
     );
-    await expect(card.getByText("0,0015 USD/g", { exact: true })).toBeVisible();
-    await card.getByRole("button", { name: "Ver registros (3)" }).focus();
-    await page.keyboard.press("Enter");
+    const firstNode = card.getByRole("button", {
+      name: "30 sept 2026 · 0,001 USD/g · Anterior al período",
+      exact: true,
+    });
+    await firstNode.hover();
+    await expect(page.getByRole("tooltip")).toHaveText(
+      "30 sept 2026 · 0,001 USD/g · Anterior al período",
+    );
+    await page.mouse.move(0, 0);
+    await firstNode.focus();
+    await expect(page.getByRole("tooltip")).toHaveText(
+      "30 sept 2026 · 0,001 USD/g · Anterior al período",
+    );
+    await page.keyboard.press("Escape");
+    await card
+      .getByRole("button", { name: "5 oct 2026 · 0,00125 USD/g", exact: true })
+      .click();
+    await expect(page.getByRole("tooltip")).toHaveText(
+      "5 oct 2026 · 0,00125 USD/g",
+    );
+    await page.keyboard.press("Escape");
     await expect(
-      card
-        .getByRole("list", { name: "Registros de costo" })
-        .getByRole("listitem"),
-    ).toHaveCount(3);
-    await expect(
-      card.getByText("Anterior al período", { exact: true }),
-    ).toBeVisible();
-    await expect(card.getByText("0,001 USD/g", { exact: true })).toBeVisible();
-    await expect(
-      card.getByText("0,00125 USD/g", { exact: true }),
-    ).toBeVisible();
-    await expect(
-      card.getByText("30 sept 2026", { exact: true }).last(),
-    ).toBeVisible();
+      card.getByRole("button", { name: /Ver registros/ }),
+    ).toHaveCount(0);
     const reads = fixture.reads.length;
     await card.getByRole("button", { name: /Insumo y local/ }).focus();
     await page.keyboard.press("Enter");
     await page.keyboard.press("ArrowDown");
     await page.keyboard.press("Enter");
-    await expect(
-      card.getByText("0 USD/g", { exact: true }).first(),
-    ).toBeVisible();
+    await expect(card.getByText("Mín. 0 USD/g", { exact: true })).toBeVisible();
     await expect(card.getByRole("img")).toHaveAccessibleName(
       /Costos registrados de Harina · Norte/,
     );
@@ -78,9 +82,9 @@ for (const width of [390, 1440]) {
       .getByRole("option", { name: "Leche · Centro", exact: true })
       .click();
     await expect(
-      card.getByText("Un registro. Falta otro costo para ver la evolución."),
+      card.getByText(/Un registro; falta otro costo para ver la evolución/),
     ).toBeVisible();
-    await expect(card.getByText("0,002 USD/ml", { exact: true })).toBeVisible();
+    await expect(card.getByText(/0,002 USD\/ml/)).toBeVisible();
     await expect(card.getByRole("img")).toHaveCount(0);
     await expect(
       card.getByText("Conjunto de insumos · este período", { exact: true }),
@@ -89,7 +93,7 @@ for (const width of [390, 1440]) {
     await page.getByRole("option", { name: /Harina de trigo/ }).click();
     await card.scrollIntoViewIfNeeded();
     await page.screenshot({
-      path: `/private/tmp/checkpass-0240-evidence/redesign/stock-${width}.png`,
+      path: `/private/tmp/checkpass-0240-evidence/nodes/stock-${width}.png`,
       fullPage: true,
     });
     const overflow = await page.evaluate(() => ({

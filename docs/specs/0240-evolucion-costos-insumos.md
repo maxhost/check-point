@@ -50,3 +50,6 @@ Handoffs: [datos](../factory/0240-data-handoff.md), [UI](../factory/0240-ui-hand
 ## Refinamiento visual L1 solicitado por owner
 
 Tras revisar la UI, owner pidió priorizar cifra de stock y gráfico, fecha secundaria y menos texto. Valor total/conocido se presenta con Text metric y fecha localizada separada; estados incompletos siguen explícitos. Selector conserva nombre completo accesible sin duplicarlo visualmente; costo/fecha forman una fila breve. Explicaciones de línea y baseline pasan al desplegable de registros. Resumen agregado usa dos cifras con contexto de conjunto, sin párrafo continuo; cuando no es calculable no ocupa un bloque de texto. LineChart del kit autorizado añade área degradada lavanda y línea con tono info de contraste, sin suavizar ni inventar puntos. Un registro muestra estado breve, sin falsa evolución. Sin cambios de datos/SQL/HTTP/DB. Es un ajuste L1 dentro del alcance visual ya autorizado del kit, sin nueva spec.
+
+
+Ajuste L0 posterior autorizado por owner: nodos más grandes y tooltips accesibles con costo exacto/fecha/baseline al hover/foco/press sustituyen el detalle desplegable y la fila del último costo. Se retira Ver registros; todos los puntos se consultan directamente en el gráfico sin HTTP adicional. Geometría y datos intactos; singleton conserva costo/fecha y estado breve sin tendencia inventada.

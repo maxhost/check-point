@@ -1,7 +1,6 @@
 "use client";
-import { useState } from "react";
 import type { StockCostHistory } from "@mi-pasaporte/domain/analytics/stock-cost-contract";
-import { Button, Heading, LineChart, SelectField, Text } from "../../../ui";
+import { Heading, LineChart, SelectField, Text } from "../../../ui";
 import {
   compareStockCosts,
   formatStockCost,
@@ -19,7 +18,6 @@ export function StockCostCard({
   selectedId: string | null;
   onSelect: (id: string) => void;
 }) {
-  const [showRecords, setShowRecords] = useState(false);
   const series =
     history?.series.find(({ id }) => id === selectedId) ??
     history?.series.find(({ id }) => id === history.defaultSeriesId);
@@ -63,29 +61,20 @@ export function StockCostCard({
           />
           {series && last && (
             <>
-              <div
-                className="flex min-w-0 flex-wrap items-baseline justify-between gap-2"
-                aria-live="polite"
-              >
-                <Text variant="label" className="sr-only">
-                  {series.label} · {series.locationName}
-                </Text>
-                <Text variant="label" className="break-words tabular-nums">
-                  {format(last.amountMinor)}
-                </Text>
-                <Text variant="small">
-                  {stockCostDate(last.date)} · último costo
-                </Text>
-              </div>
               {points.length < 2 ? (
                 <Text variant="muted">
-                  Un registro. Falta otro costo para ver la evolución.
+                  {format(last.amountMinor)} · {stockCostDate(last.date)}. Un
+                  registro; falta otro costo para ver la evolución.
                 </Text>
               ) : validGeometry ? (
                 <LineChart
                   title={`Costos registrados de ${series.label} · ${series.locationName}`}
-                  description={`Línea recta entre ${points.length} observaciones reales. Eje horizontal: fecha. Eje vertical: ${history.currencyCode} por ${stockCostUnit(series.unit)}. Todos los valores están disponibles en Ver registros.`}
-                  points={geometry.map(({ x, y }) => ({ x, y: y! }))}
+                  description={`Línea recta entre ${points.length} observaciones reales. Eje horizontal: fecha. Eje vertical: ${history.currencyCode} por ${stockCostUnit(series.unit)}. Cada nodo permite consultar fecha y costo.`}
+                  points={geometry.map(({ x, y }, index) => ({
+                    x,
+                    y: y!,
+                    label: `${stockCostDate(points[index].date)} · ${format(points[index].amountMinor)}${points[index].isBaseline ? " · Anterior al período" : ""}`,
+                  }))}
                   firstDate={stockCostDate(points[0].date)}
                   lastDate={stockCostDate(last.date)}
                   minimum={format(sorted[0].amountMinor)}
@@ -93,59 +82,8 @@ export function StockCostCard({
                 />
               ) : (
                 <Text variant="muted">
-                  Revisa los importes exactos en los registros; estos valores no
-                  se pueden representar en el gráfico.
+                  Estos valores no se pueden representar en el gráfico.
                 </Text>
-              )}
-              <Button
-                variant="quiet"
-                aria-expanded={showRecords}
-                onPress={() => setShowRecords((value) => !value)}
-              >
-                {showRecords
-                  ? "Ocultar registros"
-                  : `Ver registros (${points.length})`}
-              </Button>
-              {showRecords && (
-                <div className="grid gap-3">
-                  <Text variant="small">
-                    Costos registrados en {history.currencyCode} por{" "}
-                    {stockCostUnit(series.unit)}. La línea une los registros; no
-                    completa días sin datos.
-                  </Text>
-                  {points.some((point) => point.isBaseline) && (
-                    <Text variant="small">
-                      La observación anterior al período conserva su fecha
-                      original y sirve como referencia.
-                    </Text>
-                  )}
-                  <ul
-                    aria-label="Registros de costo"
-                    className="grid min-w-0 divide-y divide-border"
-                  >
-                    {points.map((point) => (
-                      <li
-                        key={point.date}
-                        className="grid min-w-0 gap-1 py-3 sm:grid-cols-2"
-                      >
-                        <div className="grid gap-1">
-                          <Text variant="small">
-                            {stockCostDate(point.date)}
-                          </Text>
-                          {point.isBaseline && (
-                            <Text variant="small">Anterior al período</Text>
-                          )}
-                        </div>
-                        <Text
-                          variant="label"
-                          className="break-words tabular-nums sm:text-right"
-                        >
-                          {format(point.amountMinor)}
-                        </Text>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
               )}
             </>
           )}
