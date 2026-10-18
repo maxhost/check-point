@@ -1,7 +1,7 @@
 ---
 spec: 0241
 fecha: 2026-10-18
-estado: conciliación completada; propuesta funcional en revisión, sin implementación
+estado: contrato funcional cerrado; implementación autorizada
 nivel: L2
 resumen: Conciliar gastos registrados y estimación mensual; definir ventas adicionales para equilibrio con contexto y calidad de datos explícitos.
 disjunta: no; cambia potencialmente el cálculo compartido por Histórico, resumen e Inbox0237/0239.
@@ -9,7 +9,7 @@ disjunta: no; cambia potencialmente el cálculo compartido por Histórico, resum
 
 # 0241 — Gastos y equilibrio mensual comprensibles
 
-Owner autorizó avanzar con el plan: primero conciliar cifras y proponer reglas, antes de cambiar cálculos/UI. Este documento entrega esa primera etapa. No cierra todavía el contrato funcional de implementación ni modifica DB, fórmulas, HTTP, kit o UI. Push/PROD no autorizados. Demos/diferidos anteriores se conservan.
+Owner autorizó avanzar con el plan: primero conciliar cifras y proponer reglas, antes de cambiar cálculos/UI. Este documento conserva la primera etapa y cierra abajo el contrato tras la respuesta del owner. La reserva documental no modifica DB, fórmulas, HTTP, kit o UI. Push/PROD no autorizados. Demos/diferidos anteriores se conservan.
 
 ## Evidencia de origen
 
@@ -101,3 +101,21 @@ No modifica ni certifica PROD, CI remoto rojo90ebe18f, QAmanual0237, guardias24P
 ## Revisión independiente de esta etapa
 
 QA existente revisó documento/INDEX y evidencia readonly: conformidad documental acotada, sin errores concretos de conciliación. No ejecutó DB, tests, env ni modificó producto/refs. La revisión valida la separación de hechos/escenarios/propuestas, no aprueba un nuevo algoritmo. Pregunta de producto enviada al owner para cerrar calidad: ante costos de ventas o gastos pendientes desconocidos, mostrar «Aún no podemos estimarlo» (recomendado) o permitir escenario parcial claramente incompleto. No implementar esa decisión antes de resolverla.
+
+## Contrato funcional cerrado tras respuesta del owner
+
+Owner eligió «Aún no podemos estimarlo» con motivo breve cuando faltan costos o referencias de gastos; no escenarios parciales como metas. Se autoriza implementar este alcance L2. Las preguntas anteriores quedan resueltas para esta versión mediante las reglas conservadoras siguientes, sin nuevas tablas ni captura de presupuestos/cierres.
+
+- GET history añade `goal.finance: MonthlyFinance` (contrato puro `packages/domain/src/analytics/monthly-finance-contract.ts`). Versión2 explícita; datos por mes calendario actual en zona del negocio/local seleccionado, independiente del filtro histórico. Registrados/pending/forecast, aporte neto del mes, ventas adicionales/objetivo total, estado/reasons, coberturas de unidades e importe y desglose de referencias por concepto. Desconocido=null, nunca0.
+- Fijos: conceptos con importe positivo actual o en los3meses calendario anteriores. Referencia = media de los meses con importe positivo observado de ese concepto dentro de esa ventana. No inventar meses0 ni usar referencias más antiguas. Sin referencia de un fijo actual: pendiente/forecast de ese concepto desconocido. Con referencia: previsto=max(registrado,referencia), pendiente=max(referencia−registrado,0). Es suposición histórica explícita, no deuda ni confirmación de pago completo.
+- Variables: una referencia agregada del total variable por mes, usando sólo meses con importe positivo observado de los3anteriores. Sin meses observados: referencia/pendiente/forecast desconocidos. Si existe: previsto=max(variables actuales,referencia), pendiente=diferencia. Nunca omitir gastos actuales ni sumar promedio completo encima de lo ya registrado. Meses sin filas no son ceros confirmados; cantidad de meses observados visible en detalle. No prometer completitud contable de esos meses.
+- Referencias por concepto/agregado se redondean una vez a centavos con moneyRatio; totales son suma exacta de esas referencias/resultados monetarios. Ventas adicionales se redondean hacia arriba una sola vez al final del cociente. Sin floats para decidir dinero; los ratios de cobertura sólo informan.
+- Previsión del mes disponible sólo si todas esas referencias existen, incluido el agregado variable. De lo contrario puede mostrarse lo pagado y el desglose incompleto, pero previsión y ventas adicionales permanecen null. No pedir un mes contable cerrado inexistente ni convertir el flag hasClosedExpenseMonth en garantía de completitud.
+- Costos de ventas: para publicar meta, todas las ventas del mes y de la referencia deben tener costo y comisión conocidos, con unidades, importes y contadores coherentes. Sin ventas en el mes, aporte actual0 es válido; referencia siempre exige ventas positivas conocidas. No extrapolar una parte sin costo; sustituye el umbral80% para esta meta. Si falta algo: reason sales_costs. Referencia de28días hasta ayer; inexistente reason reference_sales; margen<=0 reason positive_margin. Pueden coexistir motivos con expense_history; UI muestra una explicación breve coherente.
+- Con previsión P y aporte actual C (ventas netas menos costo vendido y comisiones): ventas adicionales=max(P−C,0)/margen de referencia. Objetivo total de ventas=ventas netas actuales+adicionales. Si C>=P: covered y adicionales0, siempre identificado como cobertura de gastos previstos. No sumar compras stock ni tomar ventas brutas como aporte.
+- Compatibilidad explícita: goal conserva campos legados, ahora bajo `finance.version=2`. breakEvenMinor será alias del objetivo total dinámico (o null si unavailable); expensesMinor será previsión cuando exista y subtotal registrado cuando no, no usarlo como previsión sin consultar finance. targetMinor conserva condición de ritmo/riesgo y usa restantes/días cuando sea calculable. Datos nuevos UI usan finance y nunca derivan fórmulas en cliente. Se actualizan las expectativas de tests de versión anterior por cambio aprobado, sin ocultar fallos.
+- Moneda: sumas financieras de Histórico/calculateGoal/resumen/Inbox sólo moneda+minorUnit del negocio; métricas de cantidades sin moneda se conservan. Sin conversión ni borrado de filas ajenas. Ingestión puede conservar monedas soportadas segregadas; esta entrega corrige lectura/cálculo, no migración ni limpieza de datos. DB CI prueba negativos de moneda/unidad/tenant/local; no SQL/GET adicionales por UI.
+- Dashboard conserva contrato summary.version1 y campos monetarios; reflejan objetivo total v2 y promedio diario calendario existente (no meta de hoy), y añade motivo expense_history a unavailableReason/validador/copy. todayRevenue también filtra moneda. Histórico, resumen e Inbox dejan de emitir metas numéricas si unavailable. Tarjeta3 sólo con meta válida; tarjeta4 mantiene condición/invitación existente sin afirmar que ya se puede calcular. Cambiar revision de política para reevaluación normal, sin resetear decisiones/manualDB; contextos de meta incluyen versión de cálculo. Sin procesar/resembrar demos locales de oficio.
+- UI mensual: título «Para cubrir los gastos del mes», mes y corte explícitos; cifra principal «Te falta vender» y ventas netas del mes como apoyo. Se aclara brevemente que se descuentan costo de productos y comisiones; desglose de registrado/referencia/pendiente estimado con kit existente, opcional. Unavailable: texto elegido por owner y motivo; no680,23 ni759,88 como placeholders. Movimientos recientes permanecen.
+
+Checks: unidad pura con referencias/pagos parciales/meses ausentes, moneda/unidad, comisiones/precisión/costos incompletos, margen0, cubierto y sin ventas; regresión de consumidores/política afectados; query CI tenant/local/moneda aislada, browser focal390/1440 estados y detalle. Dos implementadores en WT propios y QA independiente. No módulos ajenos, kit/guardias/tooling/migraciones/dependencias/PROD/push en esta implementación.
