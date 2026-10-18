@@ -206,7 +206,7 @@ describe.skipIf(process.env.POS_MEASUREMENT_SETUP !== "true")(
                     productId: f.products[i],
                     nameSnapshot: `Producto ${String(i).padStart(4, "0")}`,
                     unitPriceSnapshot: "2.00",
-                    quantity: 1,
+                    quantity: "1",
                     position: i,
                   })),
                 ),

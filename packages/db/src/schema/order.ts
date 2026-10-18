@@ -98,14 +98,33 @@ export const orderItems = core.table(
     }),
     nameSnapshot: text("name_snapshot").notNull(),
     unitPriceSnapshot: numeric("unit_price_snapshot", {
-      precision: 12,
-      scale: 2,
+      precision: 24,
+      scale: 9,
     }).notNull(),
-    quantity: integer("quantity").notNull(),
+    quantity: numeric("quantity", { precision: 24, scale: 9 }).notNull(),
+    measureKind: text("measure_kind").notNull().default("unit"),
+    quantityUnit: text("quantity_unit").notNull().default("unit"),
+    priceUnit: text("price_unit").notNull().default("unit"),
+    conversionVersion: text("conversion_version")
+      .notNull()
+      .default("mass-si-1"),
     lineTotal: numeric("line_total", { precision: 12, scale: 2 }).notNull(),
   },
   (table) => [
     check("core_order_item_quantity_check", sql`${table.quantity} > 0`),
+    // Temporary expand barriers: retain every historical unit row until CP2c.
+    check(
+      "order_item_quantity_legacy_check",
+      sql`${table.quantity} <= 2147483647 and ${table.quantity} = trunc(${table.quantity})`,
+    ),
+    check(
+      "order_item_price_legacy_check",
+      sql`${table.unitPriceSnapshot} between -9999999999.99 and 9999999999.99 and ${table.unitPriceSnapshot} = trunc(${table.unitPriceSnapshot}, 2)`,
+    ),
+    check(
+      "order_item_measure_legacy_check",
+      sql`${table.measureKind} = 'unit' and ${table.quantityUnit} = 'unit' and ${table.priceUnit} = 'unit' and ${table.conversionVersion} = 'mass-si-1'`,
+    ),
     index("core_order_item_order_idx").on(table.orderId),
   ],
 );
