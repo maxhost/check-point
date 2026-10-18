@@ -10,6 +10,8 @@ Para no forzar la adaptación de todos los consumidores en este mismo bloque, co
 
 El decoder no decide por typeof string ni UUID: V4 exige shape/version/measure y cantidad válida; V1–V3 conservan cantidad unit histórica. Una medida V4 ausente/inválida jamás activa fallback legacy. Rechazar versiones desconocidas, IDs/refs/fechas inválidos, sourceLineId repetido, pagos/financial inconsistente y metadatos V3/V4 ausentes. Si se proporciona versión externa de envelope, exigir coincidencia con payload; no reinterpretar payload para arreglarla.
 
+No estrechar el contrato anterior de cantidad safeInteger de V1–V3 al crear su vista: el límite INT32 de snapshots DB no sustituye la validación histórica del decoder legacy. La entrada V4 medida sí usa su contrato explícito; no elegir permisividad por typeof string.
+
 V4 unit de historia confiable conserva cantidad INT32 y medidas coherentes; mass valida límites de captura9dec/unidades/conversión. Usar helpers existentes, no ensanchar parserHTTP. Una vista/helper medido de líneas legacy puede exponer quantity string y medida unit mediante copia explícita y versionada, sin mutar/regrabar el payload original ni fabricar evidencia financiera de V1. No introducir número JS en cálculos de masa/dinero ni reconstruir racional desde una proyección redondeada.
 
 ## Paths previstos
