@@ -5,6 +5,7 @@ import {
   type PosHistory,
   type PosOrder,
 } from "./pos-types";
+import type { PosRequest } from "./pos-context";
 
 export class DiscardedPosRead extends Error {}
 export const historyKey = "history";
@@ -13,7 +14,10 @@ export const detailKey = (id: string) => `order:${id}`;
 
 /** Private to one mounted console. No timers, persistence or shared module state. */
 export class PosCache {
-  constructor(private readonly status?: "voided") {}
+  constructor(
+    private readonly status?: "voided",
+    private readonly request: PosRequest = posRequest,
+  ) {}
   context: string | null = null;
   epoch = 0;
   private entries = new Map<string, { value: unknown; valid: boolean }>();
@@ -87,7 +91,7 @@ export class PosCache {
     return this.read(
       historyKey,
       () =>
-        posRequest<PosHistory>(
+        this.request<PosHistory>(
           "/api/modules/pos/orders" + (this.status ? "?status=voided" : ""),
         ),
       force,
@@ -96,13 +100,13 @@ export class PosCache {
   order(id: string, force = false) {
     return this.read(
       detailKey(id),
-      () => posRequest<PosOrder>(orderUrl(id)),
+      () => this.request<PosOrder>(orderUrl(id)),
       force,
     );
   }
   catalog(locationId: string) {
     return this.read(catalogKey(locationId), () =>
-      posRequest<PosCatalog>(
+      this.request<PosCatalog>(
         `/api/modules/pos/catalog${locationId ? `?locationId=${encodeURIComponent(locationId)}` : ""}`,
       ),
     );

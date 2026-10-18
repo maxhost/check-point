@@ -1,3 +1,4 @@
+import type { PosClient, PosRequest } from "./pos-context";
 import type { RefObject } from "react";
 import type { ResolveResponse } from "../../../app/backoffice/counter/types";
 import type { PosOrder, PosPaymentMethod } from "./pos-types";
@@ -43,11 +44,13 @@ export const initial = (): PaymentState => ({
 
 export type PaymentTicket = { generation: number; identity: string };
 export type PaymentRuntime = {
+  client?: PosClient;
   current: RefObject<PaymentState>;
   selected: RefObject<PosOrder | null>;
   locked: RefObject<boolean>;
   recoveryRequired: RefObject<string | null>;
   attempt: RefObject<{
+    request?: PosRequest;
     orderId: string;
     body: Readonly<Record<string, unknown>>;
   } | null>;
