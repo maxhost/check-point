@@ -7,7 +7,7 @@ resumen: Resolver y compartir los datos de acceso dentro de cada petición, entr
 
 # 0154 — Contexto del backoffice por petición
 
-El owner eligió combinar las alternativas 1, 2 y 3 y medir después. El owner autorizó iniciar implementación por checkpoints y aceptó explícitamente el contrato scopeKey (2026-10-18 UTC). ADR aceptado; no declara implementación, QA ni publicación. Implementación: [spec 0238](../specs/0238-carga-inicial-del-backoffice.md). Plan: [ficha operativa](../factory/0238-plan-carga-backoffice.md).
+El owner eligió combinar las alternativas 1, 2 y 3 y medir después. El owner autorizó iniciar implementación por checkpoints y aceptó explícitamente el contrato scopeKey (2026-10-18 UTC). ADR aceptado; implementación y QA del conjunto registradas en [M1](../factory/0238-m1.md), con sus límites. No declara publicación. Implementación: [spec 0238](../specs/0238-carga-inicial-del-backoffice.md). Plan: [ficha operativa](../factory/0238-plan-carga-backoffice.md).
 
 ## Contexto
 

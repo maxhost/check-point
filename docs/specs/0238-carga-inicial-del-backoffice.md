@@ -1,7 +1,7 @@
 ---
 spec: 0238
 fecha: 2026-10-17
-estado: cerrada
+estado: implementada
 resumen: Reducir lecturas y peticiones repetidas del backoffice compartiendo datos por petición, entregando contexto inicial al navegador y uniendo la lectura de membresía/negocio con facturación; medir el resultado combinado sin cambiar acceso ni ciclo del Inbox.
 disjunta: no; contrato servidor/cliente y guards compartidos requieren integración serial y QA de combinación.
 archivos: apps/merchant/src/server/auth-guards.ts; server/api-owner.ts; server/api-permission.ts; server/billing-gate.ts; server/session-view.ts y nuevos helpers de contexto; server/onboarding/checklist-facts.ts; app/backoffice/layout.tsx y page.tsx; navegación, trial-notice, contexto cliente e inbox-state; rutas auxiliares afectadas y tests focales. Sin cambios al kit, esquema o migraciones.
@@ -9,7 +9,7 @@ archivos: apps/merchant/src/server/auth-guards.ts; server/api-owner.ts; server/a
 
 # 0238 — Carga inicial del backoffice
 
-Piso L2 por autenticación/tenant; alcance transversal acotado según ADR 0144 y `VERIFICACION.md`. Implementa la propuesta [ADR 0154](../adr/0154-contexto-del-backoffice-por-peticion.md). El owner eligió las mejoras 1, 2 y 3 juntas y medición posterior. El owner autorizó iniciar la implementación por checkpoints y aceptó explícitamente `scopeKey` de §4.3 (2026-10-18 UTC). Contrato cerrado para implementar con ADR0154 aceptado; no declara producto implementado, QA aprobado ni autorización de push/PROD.
+Piso L2 por autenticación/tenant; alcance transversal acotado según ADR 0144 y `VERIFICACION.md`. Implementa la propuesta [ADR 0154](../adr/0154-contexto-del-backoffice-por-peticion.md). El owner eligió las mejoras 1, 2 y 3 juntas y medición posterior. El owner autorizó iniciar la implementación por checkpoints y aceptó explícitamente `scopeKey` de §4.3 (2026-10-18 UTC). Implementación integrada y QA independiente de combinación/rendimiento PASS en el entorno medido; [resultado M1](../factory/0238-m1.md) y [QA](../factory/0238-qa.md) detallan fuentes, evidencia y límites. No autoriza push ni operaciones PROD.
 
 ## 1. Problema y comportamiento esperado
 
@@ -192,12 +192,12 @@ Pruebas focales de guards/reporters/billing/tenant, datos/consultas y browser de
 ## 8. Definition of Done
 
 - [x] Spec y ADR revisados y cerrados/aceptados, incluida aceptación explícita del contrato de ámbito de §4.3; reserva documental local antes del código.
-- [ ] Las 3 mejoras integradas con contrato inicial versionado y sin cambios de acceso/ciclo.
-- [ ] Matriz de aislamiento/precedencia y negativos reales PASS; guards compartidos revisados en todos sus consumidores afectados.
-- [ ] Conteos de página/API/navegador comprobados en app real y Strict Mode sin ocultar duplicación.
-- [ ] Comparación de build base/candidato satisface la aceptación o se registra FAIL sin declarar trabajo entregado.
-- [ ] QA independiente, combinación y handoff ligados a SHA/entorno, con fallos/skips y límites explícitos.
-- [ ] Sin DDL/PROD/push ni incorporación de los diferidos; rollback local documentado y artefactos privados protegidos.
+- [x] Las 3 mejoras integradas con contrato inicial versionado y sin cambios de acceso/ciclo.
+- [x] Matriz de aislamiento/precedencia y negativos reales PASS; guards compartidos revisados en todos sus consumidores afectados.
+- [x] Conteos de página/API/navegador comprobados en app real de entrega y secuencia Strict Mode probada en unidades reales de controller/owner, sin ocultar duplicación. No equivale a certificar replay de Nextdev en browser nativo.
+- [x] Comparación de build base/candidato satisface la aceptación o se registra FAIL sin declarar trabajo entregado.
+- [x] QA independiente, combinación y handoff ligados a SHA/entorno, con fallos/skips y límites explícitos.
+- [x] Sin DDL/PROD/push ni incorporación de los diferidos; rollback local documentado y artefactos privados protegidos.
 
 ## 9. Reversión y límites
 
