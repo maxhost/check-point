@@ -101,6 +101,8 @@ Expand schema/decoders, migración de datos, cliente/rutasv2, activación mass/V
 
 Usar comandos reales localizados al preparar cada ficha: Node24; types/lint/guard focal; `node tools/check-numbers.ts`; boundaries y módulos cuando cambia contrato/core. Vitest puro financial/measure/decode/cupon; browser e2ePOS/tickets más pruebas reales de sesión; DB solo `tools/neon-test.sh` con suite aislada y teardown reservado, no DATABASE_URLPROD. No escribir pruebas que solo repitan markup.
 
+En cambios de contrato/core, `tools/app-boundary.test.ts` no sustituye las tres guardias de módulos `modules-boundary.test.ts`, `modules-boundary-between.test.ts` y `modules-boundary-literals.test.ts`. Separar backlog anterior demostrado de un offender nuevo0242 aunque ya estuviera en la base de un subentregable posterior; corregir ubicación/imports/fixtures sin tocar guardias ni reducir cobertura.
+
 Registro de evidencia: SHA/base/runtime/lock/config/buildID/schema/fixture, checks y intentos fallidos/skips/límites. No confundir QA documental de esta etapa con QA de entrega o combinación del producto futuro. No marcar implementada ni reutilizar PASS de0238/M1 para POS.
 
 ## Handoff tras clear
