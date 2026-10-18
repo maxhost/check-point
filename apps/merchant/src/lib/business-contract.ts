@@ -1,3 +1,4 @@
+import type { MassUnit } from "@mi-pasaporte/domain/measures";
 import type { ExactAmount } from "@mi-pasaporte/domain/financial";
 export type ChargeShape = "none" | "percent" | "fixed" | "percent_and_fixed";
 export type BusinessCommission = {
@@ -47,5 +48,11 @@ export type BusinessFiscal = {
   chargesVat: boolean;
   saleVatRate: string | null;
   recoversPurchaseVat: boolean;
+  revision: number;
+};
+
+export type { MassUnit } from "@mi-pasaporte/domain/measures";
+export type BusinessSalesUnits = {
+  salesMassUnits: MassUnit[];
   revision: number;
 };
