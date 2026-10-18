@@ -6,7 +6,12 @@ import { createPaymentMethod, archivePaymentMethod } from "./payment-methods";
 import { listPaymentCatalog } from "./payment-catalog";
 import { listCommissions, saveCommission } from "./commission-config";
 import { readSaleCommissions } from "./commission-read";
-import { readConfiguration, saveConfiguration } from "./configuration";
+import {
+  readConfiguration,
+  saveConfiguration,
+  readSalesUnits,
+  saveSalesUnits,
+} from "./configuration";
 import { BusinessError } from "./error";
 async function body(request: Request): Promise<Record<string, unknown>> {
   try {
@@ -19,12 +24,23 @@ async function body(request: Request): Promise<Record<string, unknown>> {
   throw new BusinessError(400, "invalid_body", "El cuerpo no es válido.");
 }
 export async function businessHttp(request: Request, paths: string[]) {
-  const auth = await requireApiPermission(request, "business");
-  if ("failure" in auth) return apiOwnerFailureResponse(auth.failure);
+  const response = await dispatchBusinessHttp(request, paths);
+  if (paths.length === 1 && paths[0] === "sales-units")
+    response.headers.set("Cache-Control", "private, no-store");
+  return response;
+}
+async function dispatchBusinessHttp(request: Request, paths: string[]) {
   try {
+    const auth = await requireApiPermission(request, "business");
+    if ("failure" in auth) return apiOwnerFailureResponse(auth.failure);
     const id = auth.business.id,
       url = new URL(request.url),
       method = request.method;
+    if (paths.length === 1 && paths[0] === "sales-units") {
+      if (method === "GET") return NextResponse.json(await readSalesUnits(id));
+      if (method === "PUT")
+        return NextResponse.json(await saveSalesUnits(id, await body(request)));
+    }
     if (
       paths.length === 1 &&
       (paths[0] === "regional" || paths[0] === "fiscal")
@@ -118,7 +134,16 @@ export async function businessHttp(request: Request, paths: string[]) {
   } catch (error) {
     if (error instanceof CounterError)
       return NextResponse.json(
-        { error: error.message, code: error.code },
+        {
+          error: error.message,
+          code: error.code,
+          ...(error instanceof BusinessError && error.metadata?.fields
+            ? { fields: error.metadata.fields }
+            : {}),
+          ...(error instanceof BusinessError && error.metadata?.products
+            ? { products: error.metadata.products }
+            : {}),
+        },
         { status: error.status },
       );
     console.error("business_request_failed", {
