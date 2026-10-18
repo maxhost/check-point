@@ -14,6 +14,14 @@ Test nuevo: create1; cambios comerciales/no-op/decimales padded/orden+duplicados
 - ESLint cuatro archivos TypeScript propios y Prettier: PASS; diff whitespace PASS.
 - Puros catálogo/import-plan/import-price: 47PASS. Carga offline de suites revisions/import-guard:12SKIP esperados, sin evidencia DB.
 - app-boundary/ui-guard-rules:23PASS; ui-guard74archivos sin aumentos.
-- modules-boundary/literals:18PASS/1FAIL por los cinco archivos core de backlog declarados, sin nuevos offenders; pendiente entre-módulos para completar comparación de guardias.
+- modules-boundary/literals:18PASS/1FAIL por los cinco archivos core de backlog declarados. Primera corrida entre-módulos:5PASS/2FAIL, uno de backlog expenses→stock/count y otro nuevo por fixture imageAction stock. Corregida esa fixture a replace/uploadId, conservando el mismo pipeline de preparación simulado; no se cambian guardias.
 
-CI aún no ejecutada en este commit. Root transfirió reserva exclusiva; selección propia únicamente por `tools/neon-test.sh --no-file-parallelism` y `/private/tmp/checkpass-pos-0242/private/ci.env`. Se compartirá SHA congelado antes de ejecutar. No afirmar PASS DB por skips. Sin publicación/push/PROD ni certificación de HTTPv2, mass, hooks/composición/publicación o carrera de inicio de import no asignada.
+## CI en código congelado `90e491d0a9ba126c3270882178596e77b14eba94`
+
+Wrapper selección5 suites, serial: EXIT1,25PASS/4FAIL/0SKIP; no se declara PASS global. Suite propia6PASS, catalog legacy7PASS, import-guard6PASS, import-write2PASS/3FAIL, import-write-races4PASS/1FAIL. Los cuatro fallos son aserciones legacy de escala2 contra almacenamiento numeric(24,9) de0102: write líneas113 (`3.25` vs `3.250000000`),186 (`1.00` vs `1.000000000`),243 (`5.00` vs `5.000000000`), races170 (`9.99` vs `9.990000000`). Sin cambiar tests fuera de scope; las aserciones posteriores al fallo no se alegan cubiertas. La suite propia compara escala9, filas completas y replay.
+
+Suite propia6PASS observó incremento exacto/concurrencia, normalización decimales/locales, aislamiento, rollback real por señal controlada, conflicto imagen y prefijo propio, import nuevo/reutilizado/omitido. Su afterAll comprobó ausencia de owners/negocios/esquema; sin errores de teardown. DDL test retirada también en finally.
+
+Tras corregir únicamente fixture de imagen en test, guardias completas24PASS/2FAIL exactamente backlog expenses→stock/count y5core literales, sin nuevos offenders. Se repetirá suite propia sobre el SHA corregido antes de entrega final.
+
+Root transfirió reserva exclusiva; selección propia únicamente por `tools/neon-test.sh --no-file-parallelism` y `/private/tmp/checkpass-pos-0242/private/ci.env`. Se compartirá SHA congelado antes de ejecutar. No afirmar PASS DB por skips. Sin publicación/push/PROD ni certificación de HTTPv2, mass, hooks/composición/publicación o carrera de inicio de import no asignada.
