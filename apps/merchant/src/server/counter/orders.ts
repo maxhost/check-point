@@ -1,3 +1,4 @@
+import { trustedUnitQuantityNumber } from "@mi-pasaporte/domain/measures";
 import { visitEventCtes } from "./analytics-events";
 import type { DiscountOrigin } from "@mi-pasaporte/domain/financial";
 import { type SQL, sql } from "drizzle-orm";
@@ -63,7 +64,7 @@ function itemValuesSql(items: GrantItem[]) {
   return sql.join(
     items.map(
       (it) =>
-        sql`(${it.productId}::uuid, ${it.nameSnapshot}::text, ${it.unitPrice}::numeric, ${it.quantity}::integer, ${it.lineTotal}::numeric)`,
+        sql`(${it.productId}::uuid, ${it.nameSnapshot}::text, ${it.unitPrice}::numeric, ${String(trustedUnitQuantityNumber(it.quantity))}::numeric, ${it.lineTotal}::numeric)`,
     ),
     sql`, `,
   );

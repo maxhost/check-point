@@ -159,8 +159,8 @@ describe.skipIf(!posIntegrationEnabled)(
         .where(eq(posOrderItems.posOrderId, order.id))
         .orderBy(posOrderItems.position);
       expect(stored).toEqual([
-        { price: "9999999999.99", quantity: 1 },
-        { price: "0.00", quantity: 2147483647 },
+        { price: "9999999999.990000000", quantity: "1.000000000" },
+        { price: "0.000000000", quantity: "2147483647.000000000" },
       ]);
     }, 120_000);
 
@@ -296,7 +296,13 @@ describe.skipIf(!posIntegrationEnabled)(
           expect(sales).toHaveLength(1);
           expect(sales[0]).toMatchObject({
             total: "0.20",
-            items: [{ quantity: 3, unitPrice: "0.10", lineTotal: "0.30" }],
+            items: [
+              {
+                quantity: "3.000000000",
+                unitPrice: "0.100000000",
+                lineTotal: "0.30",
+              },
+            ],
           });
           expect(await redemptionsOf(couponId)).toHaveLength(1);
           const catalog = await businessCatalog(
