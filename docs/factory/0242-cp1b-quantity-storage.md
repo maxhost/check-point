@@ -22,9 +22,13 @@ Writer Drizzle POS convierte cantidades validadas unit a string al insertar y ed
 - `apps/merchant/src/modules/pos/server/pos-measurement.neon.integration.test.ts`, inserción Drizzle quantity a string; no reejecutar setup M0 ni tocar evidencia congelada
 - `apps/merchant/src/modules/pos/server/quantity-storage-expand.neon.integration.test.ts` nuevo
 - `apps/merchant/src/modules/pos/server/unit-expand-compat.neon.integration.test.ts`, solo las dos aserciones de representación DB de precio/quantity (`stored` y `ordersWithItems`) a strings padded9; payloadHTTP/DTO/eventos y pruebas de rollback/retry intactos
+- Mover íntegra `apps/merchant/src/server/catalog-storage-expand.neon.integration.test.ts` a `apps/merchant/src/modules/pos/server/catalog-storage-expand.neon.integration.test.ts`, ajustando únicamente imports y ubicación relativa del SQL, para respetar frontera core→módulo; todos los casos/oráculos intactos
+- `apps/merchant/src/server/module-events/decode-measured.test.ts`, solo proveedor de fixture `recipes`→`provider-a` y referencias asociadas, sin cambiar shape/ref/negativos
 - `docs/factory/0242-cp1b-quantity-storage-handoff.md`
 
 Ampliaciones para fixtures/aserciones de almacenamiento en suites existentes se solicitan antes de editar con archivo/caso/motivo. No normalizar ciegamente todos los tests ni modificar payload HTTP para satisfacer tipo DB. Adaptadores ya aceptados no se duplican. No catálogo/business/config UI, scope/transporte, Recetas/Stock/analytics/decoders/publisher/V4/kit/guardias/tooling/deps/estados/índices. Si surge un consumidor real incompatible por la expansión, se identifica y reserva explícitamente, sin tomar CP1c entero.
+
+Las dos correcciones de fixture anteriores eliminan regresiones introducidas en entregas previas de0242: no son backlog anterior al encargo aunque ya existieran en la base de este writer. Root reprodujo guard principal por import POS desde core y literals por ambos tests. No editar guardias/excepciones ni eliminar aserciones. Terminar primero cualquier corrida activa; congelar revisión nueva y repetir catálogo4/decoder focal/tipos/guardias afectados. Los between/literals de los seis archivos idénticos a00efff81 conservan su atribución previa. No ampliar afterAll de suites ajenas: los seis casos unit-expand cubren cierre/cupón/retry con teardown completo.
 
 ## Checks y límites
 
