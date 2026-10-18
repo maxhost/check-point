@@ -1,3 +1,7 @@
+import {
+  backofficeScopeFailure,
+  privateBackofficeResponse,
+} from "../../../server/backoffice-scope-http";
 import { NextResponse } from "next/server";
 import { apiOwnerFailureResponse } from "../../../server/api-owner";
 import { requireApiMember } from "../../../server/api-member";
@@ -16,11 +20,16 @@ export const dynamic = "force-dynamic";
  * integrante sin `catalog` tambien necesita saber que modulos estan encendidos.
  */
 export async function GET(request: Request) {
-  const auth = await requireApiMember(request, {
-    emailNotVerified: "Verifica tu email para ver los módulos.",
-  });
-  if ("failure" in auth) return apiOwnerFailureResponse(auth.failure);
+  return privateBackofficeResponse(await modulesResponse(request));
+}
+async function modulesResponse(request: Request) {
   try {
+    const auth = await requireApiMember(request, {
+      emailNotVerified: "Verifica tu email para ver los módulos.",
+    });
+    if ("failure" in auth) return apiOwnerFailureResponse(auth.failure);
+    const scope = await backofficeScopeFailure(request, auth.business.id);
+    if (scope) return scope;
     const selection =
       await getBackofficeRequestContext(request).readSelection("active-member");
     if (selection.state === "recovered") throw selection.error;

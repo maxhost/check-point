@@ -1,3 +1,7 @@
+import {
+  backofficeScopeFailure,
+  privateBackofficeResponse,
+} from "../../../../../server/backoffice-scope-http";
 import { NextResponse } from "next/server";
 import {
   apiOwnerFailureResponse,
@@ -60,10 +64,11 @@ export const dynamic = "force-dynamic";
  * El guard va ADENTRO del `try` (spec 0068 §3): resolver la sesion **tambien consulta la
  * base**, asi que afuera un fallo de base saldria 500 sin `code` en vez del 503 del contrato.
  */
-export async function POST(
-  request: Request,
-  { params }: { params: Promise<{ tourId: string }> },
-) {
+type Context = { params: Promise<{ tourId: string }> };
+export async function POST(request: Request, context: Context) {
+  return privateBackofficeResponse(await tourResponse(request, context));
+}
+async function tourResponse(request: Request, { params }: Context) {
   try {
     const auth = await requireApiOwner(request, {
       notOwner:
@@ -72,6 +77,8 @@ export async function POST(
         "Verifica tu email antes de avanzar con la configuración.",
     });
     if ("failure" in auth) return apiOwnerFailureResponse(auth.failure);
+    const scope = await backofficeScopeFailure(request, auth.business.id);
+    if (scope) return scope;
 
     const { tourId } = await params;
     if (!isOnboardingTourId(tourId)) {
