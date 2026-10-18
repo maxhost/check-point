@@ -5,6 +5,8 @@ import {
 } from "@mi-pasaporte/domain/server/catalog";
 import {
   catalogError,
+  catalogOptions,
+  catalogResponse,
   readJson,
   requireCatalogOwner,
   requireOwner,
@@ -16,18 +18,22 @@ export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const auth = await requireOwner(request);
-  if ("response" in auth) return auth.response;
-  const { id } = await params;
   try {
+    const auth = await requireOwner(request);
+    if ("response" in auth) return catalogResponse(request, auth.response);
+    const { id } = await params;
     const product = await updateProduct(
       auth.business,
       id,
       await readJson(request),
+      catalogOptions(request),
     );
-    return NextResponse.json(product);
+    return catalogResponse(request, NextResponse.json(product));
   } catch (error) {
-    return catalogError(error, "No pudimos guardar el producto.");
+    return catalogResponse(
+      request,
+      catalogError(error, "No pudimos guardar el producto."),
+    );
   }
 }
 
@@ -38,11 +44,17 @@ export async function DELETE(
   // Spec 0086 §3 / ADR 0079 §2: el borrado es DURO y no se delega. `requireCatalogOwner`
   // conserva su `403 not_owner`, que acá sigue siendo literal (sin email desde el ADR 0125).
   const auth = await requireCatalogOwner(request);
-  if ("response" in auth) return auth.response;
+  if ("response" in auth) return catalogResponse(request, auth.response);
   const { id } = await params;
   try {
-    return NextResponse.json(await deleteProduct(auth.business, id));
+    return catalogResponse(
+      request,
+      NextResponse.json(await deleteProduct(auth.business, id)),
+    );
   } catch (error) {
-    return catalogError(error, "No pudimos borrar el producto.");
+    return catalogResponse(
+      request,
+      catalogError(error, "No pudimos borrar el producto."),
+    );
   }
 }

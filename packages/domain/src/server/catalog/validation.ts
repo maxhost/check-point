@@ -1,3 +1,6 @@
+import type { DbTransaction } from "@mi-pasaporte/db";
+import { locations, productCategories } from "@mi-pasaporte/db/schema";
+import { and, eq, inArray } from "drizzle-orm";
 import { CatalogError, uuidPattern } from "./core";
 
 export type ImageAction = "keep" | "replace" | "remove" | "stock";
@@ -112,7 +115,10 @@ function parseImage(input: Record<string, unknown>): {
   return { imageAction: "keep", ...base };
 }
 
-export function validateProductInput(value: unknown): ProductInput {
+export function validateProductInput(
+  value: unknown,
+  prices?: { unitPrice: string | null; unitCost: string | null },
+): ProductInput {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new CatalogError(422, "La solicitud no es válida.");
   }
@@ -125,8 +131,12 @@ export function validateProductInput(value: unknown): ProductInput {
     );
   }
   const categoryId = parseCategoryId(input.categoryId);
-  const unitPrice = parseOptionalMoney(input.unitPrice, "El precio");
-  const unitCost = parseOptionalMoney(input.unitCost, "El coste");
+  const unitPrice = prices
+    ? prices.unitPrice
+    : parseOptionalMoney(input.unitPrice, "El precio");
+  const unitCost = prices
+    ? prices.unitCost
+    : parseOptionalMoney(input.unitCost, "El coste");
   const availableAllLocations = input.availableAllLocations !== false;
   let locationIds: string[] = [];
   if (!availableAllLocations) {
@@ -166,4 +176,47 @@ export function validateCategoryName(value: unknown): string {
     );
   }
   return name;
+}
+
+/** Rejects a category that isn't the owner's; a null category is always allowed. */
+export async function assertCategory(
+  tx: DbTransaction,
+  businessId: string,
+  categoryId: string | null,
+) {
+  if (!categoryId) return;
+  const [row] = await tx
+    .select({ id: productCategories.id })
+    .from(productCategories)
+    .where(
+      and(
+        eq(productCategories.id, categoryId),
+        eq(productCategories.businessId, businessId),
+      ),
+    )
+    .limit(1);
+  if (!row)
+    throw new CatalogError(422, "La categoría no pertenece a tu negocio.");
+}
+
+/** Rejects a restricted visibility list containing a location outside the business. */
+export async function assertLocations(
+  tx: DbTransaction,
+  businessId: string,
+  availableAllLocations: boolean,
+  locationIds: string[],
+) {
+  if (availableAllLocations || locationIds.length === 0) return;
+  const rows = await tx
+    .select({ id: locations.id })
+    .from(locations)
+    .where(
+      and(
+        eq(locations.businessId, businessId),
+        inArray(locations.id, locationIds),
+      ),
+    );
+  if (rows.length !== locationIds.length) {
+    throw new CatalogError(422, "Hay un local que no pertenece a tu negocio.");
+  }
 }
