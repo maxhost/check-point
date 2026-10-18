@@ -2,10 +2,11 @@
  * Required: BASE_URL, COOKIE_FILE (Playwright cookies JSON array), MANIFEST, OUT,
  * RUN_TAG. Optional: RELOADS=5, TIMEOUT_MS=30000,
  * SETTLE_TIMEOUT_MS=5000, CPU_TRACE=0. CPU_TRACE is diagnostic, outside A/B timing.
- * Manifest: {case:'ready-empty'|'ready-five', cards:[{id,title,
+ * Manifest: {case:'ready-empty'|'ready-five', cards:[{id,title,version:<64 lowercase hex>,
  *   decisions:[{key,label}], action?:{label,href}}]}.
  * DOM has no card IDs: exact IDs come from validated Inbox response; titles and
- * actions identify the same synthetic cards in DOM. Only IDs leave this harness.
+ * actions identify the same synthetic cards in DOM. Only whitelisted IDs and
+ * their version hashes leave this harness; no raw response bodies.
  */
 (async () => {
   const fs = await import("node:fs");
@@ -82,6 +83,8 @@
           !c.id ||
           typeof c.title !== "string" ||
           !c.title ||
+          typeof c.version !== "string" ||
+          !/^[a-f0-9]{64}$/.test(c.version) ||
           !Array.isArray(c.decisions) ||
           c.decisions.some(
             (d) => typeof d.key !== "string" || typeof d.label !== "string",
@@ -138,7 +141,7 @@
       limitations: [
         "Synthetic fixture manifest is required. This runner neither prepares nor restores DB/session state.",
         "Local browser/network measurements do not establish PostgreSQL execution time or PROD performance.",
-        "DOM has no card IDs. IDs/versions/actions are validated independently from response; DOM matches synthetic titles/buttons.",
+        "DOM has no card IDs. IDs/version hashes/actions are validated independently from response; DOM matches synthetic titles/buttons. This version validation was added after frozen M0 harness16ec1154; M1 must run this revised method on both control and candidate.",
         "CDP decoded bytes can be zero/unavailable for disk cache and some redirects; never interpreted as zero work.",
         "No hydration completion or full JS CPU estimate is inferred; long tasks are diagnostic only.",
         "Server trace must correlate x-inbox-measurement; cookie/session renewal counts require server evidence.",
@@ -314,6 +317,8 @@
           state: null,
           cardIds: [],
           cardVersions: [],
+          versionsValidated: false,
+          versionError: null,
         };
         attempt.inboxResponses.push(observed);
         try {
@@ -326,13 +331,30 @@
           observed.cardIds = cards.map((c) =>
             manifest.cards.some((m) => m.id === c.id) ? c.id : "[unexpected]",
           );
-          observed.cardVersions = cards.map((c) =>
-            typeof c.version === "number" ? c.version : null,
-          );
+          observed.cardVersions = cards
+            .slice(0, 5)
+            .map((c) =>
+              manifest.cards.some((expected) => expected.id === c.id) &&
+              typeof c.version === "string" &&
+              /^[a-f0-9]{64}$/.test(c.version)
+                ? c.version
+                : null,
+            );
+          observed.versionsValidated =
+            cards.length === manifest.cards.length &&
+            manifest.cards.every((expected) =>
+              cards.some(
+                (card) =>
+                  card.id === expected.id && card.version === expected.version,
+              ),
+            );
+          if (!observed.versionsValidated)
+            observed.versionError = "manifest_version_mismatch";
           observed.valid =
             response.ok() &&
             payload.contractVersion === 2 &&
             payload.state === "ready" &&
+            observed.versionsValidated &&
             cards.length === manifest.cards.length &&
             manifest.cards.every((expected) =>
               cards.some(
@@ -353,6 +375,7 @@
             );
         } catch {
           observed.readError = true;
+          observed.versionError = "response_unreadable";
         }
       };
       page.on("response", (response) => {
