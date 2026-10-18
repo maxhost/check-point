@@ -1,7 +1,7 @@
 import type { AnalyticsPolicyConfig } from "./schema";
 /** Único catálogo editable. Unidades y recetas: README.md de esta carpeta. */
 export const ANALYTICS_POLICY_CONFIG: AnalyticsPolicyConfig = {
-  revision: "inbox-lifecycle-1",
+  revision: "monthly-finance-2",
   weights: {
     minimum: 0.05,
     maximumCards: 5,
@@ -272,9 +272,10 @@ export const ANALYTICS_POLICY_CONFIG: AnalyticsPolicyConfig = {
       "Hoy necesitas vender {{v0}} para cubrir el mes: te faltan {{v1}} en {{v2}} días de venta.",
     card_expenses_1: "Tu primer mes con gastos",
     card_expenses_2: "Completa tus gastos fijos",
-    card_expenses_3: "La meta se calcula al cerrar tu primer mes con gastos.",
+    card_expenses_3:
+      "En tu primer mes, registra tus gastos para preparar sus referencias. La estimación también necesita costos de venta completos.",
     card_expenses_4:
-      "Carga tus gastos fijos (alquiler, sueldos, luz) y te digo cuánto tienes que vender cada día para cubrir el mes.",
+      "Carga tus gastos fijos (alquiler, sueldos, luz). Para estimar cuánto falta vender también necesitamos referencias de gastos y costos de venta completos.",
     card_expenses_5:
       " Analíticas empieza a contar con tus ventas y gastos desde hoy.",
     card_expenses_6: "",

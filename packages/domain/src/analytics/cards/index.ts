@@ -1,5 +1,7 @@
 import { canonicalContext } from "./context";
-import { add, rational } from "../../financial/rational";
+import { buildMonthlyFinance, salesBasis } from "../monthly-finance";
+import type { MonthlyFinance } from "../monthly-finance-contract";
+import { financialMetrics } from "../financial-metrics";
 import {
   ANALYTICS_POLICY,
   policyText,
@@ -10,7 +12,6 @@ import { buildCustomerPromoCandidates } from "./customer-promo";
 import { buildStockCandidates } from "./stock";
 import {
   addDays,
-  addMonths,
   daysBetween,
   formatMoney,
   median,
@@ -55,6 +56,7 @@ export function products(
   rows: readonly AnalyticsMetric[],
   policy: AnalyticsPolicy = ANALYTICS_POLICY,
 ): ProductSummary[] {
+  rows = financialMetrics(input, rows);
   const ids = [
     ...new Set(
       rows
@@ -107,6 +109,7 @@ export function contribution(
   rows: readonly AnalyticsMetric[],
   policy: AnalyticsPolicy = ANALYTICS_POLICY,
 ) {
+  rows = financialMetrics(input, rows);
   const product = products(input, rows, policy);
   const units = sum(rows, "units_sold", "quantity");
   const knownUnits = product.reduce(
@@ -138,6 +141,7 @@ export function contribution(
   };
 }
 export type GoalCalculation = {
+  finance: MonthlyFinance;
   expensesMinor: number;
   estimated: boolean;
   concepts: {
@@ -159,100 +163,36 @@ export function calculateGoal(
   input: AnalyticsInput,
   policy: AnalyticsPolicy = ANALYTICS_POLICY,
 ): GoalCalculation {
-  const { salesDays, closedMonths, minimumCoverage } = policy.finance;
-  const { today, metrics } = input;
+  const finance = buildMonthlyFinance(input, policy.finance);
+  const metrics = financialMetrics(input),
+    { today } = input;
   const start = monthStart(today);
-  const closed = period(
-    metrics,
-    addMonths(start, -closedMonths),
-    addDays(start, -1),
-  );
-  const current = period(metrics, start, today);
-  const recent = period(
-    metrics,
-    addDays(today, -salesDays),
-    addDays(today, -1),
-  );
-  const c = contribution(input, recent, policy);
-  const concepts = [
-    ...new Set(
-      [...metrics.filter((r) => r.day < start), ...current]
-        .filter((r) => r.metric === "expense_fixed")
-        .map((r) => r.dimensionId ?? "unknown"),
-    ),
-  ].map((id) => {
-    const thisMonth = current.filter(
-      (r) =>
-        r.metric === "expense_fixed" &&
-        (r.dimensionId ?? "unknown") === id &&
-        r.amountMinor > 0,
-    );
-    const previous = new Map<string, number>();
-    for (const row of metrics.filter(
-      (r) =>
-        r.day < start &&
-        r.metric === "expense_fixed" &&
-        (r.dimensionId ?? "unknown") === id,
-    ))
-      previous.set(
-        row.day.slice(0, 7),
-        sumIntegers([previous.get(row.day.slice(0, 7)) ?? 0, row.amountMinor]),
-      );
-    const paidMonths = [...previous.entries()]
-      .filter(([, amount]) => amount > 0)
-      .sort(([a], [b]) => b.localeCompare(a))
-      .slice(0, closedMonths)
-      .map(([, amount]) => amount);
-    return {
-      id,
-      label:
-        input.labels.find((l) => l.kind === "concept" && l.id === id)?.label ??
-        policyText(policy, "expense_generic"),
-      amountMinor: thisMonth.length
-        ? sum(thisMonth, "expense_fixed")
-        : paidMonths.length
-          ? sumIntegers(paidMonths) / paidMonths.length
-          : 0,
-      estimated: !thisMonth.length,
-    };
-  });
-  const variable = sum(closed, "expense_variable") / closedMonths;
-  const expenses = concepts.reduce(
-    (total, concept) => {
-      if (!concept.estimated)
-        return add(total, rational(BigInt(concept.amountMinor)));
-      const months = new Map<string, number>();
-      for (const row of metrics.filter(
-        (r) =>
-          r.metric === "expense_fixed" &&
-          (r.dimensionId ?? "unknown") === concept.id &&
-          r.day < start,
-      ))
-        months.set(
-          row.day.slice(0, 7),
-          sumIntegers([months.get(row.day.slice(0, 7)) ?? 0, row.amountMinor]),
-        );
-      const amounts = [...months]
-        .filter(([, v]) => v > 0)
-        .sort(([a], [b]) => b.localeCompare(a))
-        .slice(0, closedMonths)
-        .map(([, v]) => v);
-      return amounts.length
-        ? add(
-            total,
-            rational(BigInt(sumIntegers(amounts)), BigInt(amounts.length)),
-          )
-        : total;
-    },
-    rational(BigInt(sum(closed, "expense_variable")), BigInt(closedMonths)),
-  );
-  const expensesMinor = moneyRatio(expenses.n, expenses.d);
-  const monthRevenueMinor = sum(current, "revenue");
+  const recent = period(metrics, finance.referenceFrom, finance.referenceTo);
+  const basis = salesBasis(recent);
+  const c = {
+    coverage: basis.unitCoverage,
+    margin:
+      basis.complete && basis.revenue > 0
+        ? basis.contribution! / basis.revenue
+        : null,
+  };
+  const expensesMinor =
+    finance.forecastExpensesMinor ?? finance.recordedExpensesMinor;
+  const concepts = finance.expenses
+    .filter((e) => e.kind === "fixed")
+    .map((e) => ({
+      id: e.id,
+      label: e.label,
+      amountMinor: e.forecastMinor ?? e.recordedMinor,
+      estimated: e.pendingMinor === null || e.pendingMinor > 0,
+    }));
+  const monthRevenueMinor = finance.monthRevenueMinor;
   const closedMonth =
     input.hasClosedExpenseMonth ??
-    metrics
-      .filter((r) => r.day < start)
-      .some((r) => r.metric.startsWith("expense_") && r.amountMinor > 0);
+    metrics.some(
+      (r) =>
+        r.day < start && r.metric.startsWith("expense_") && r.amountMinor > 0,
+    );
   const weekdays = new Set(
     recent
       .filter(
@@ -263,18 +203,7 @@ export function calculateGoal(
   let remainingDays = 0;
   for (let day = today; day <= monthEnd(today); day = addDays(day, 1))
     if (weekdays.has(weekday(day))) remainingDays++;
-  const breakEvenMinor =
-    closedMonth &&
-    c.coverage >= minimumCoverage &&
-    c.exact &&
-    c.margin !== null &&
-    c.margin > 0
-      ? moneyRatio(
-          expenses.n * BigInt(c.knownRevenue),
-          expenses.d * BigInt(c.grossProfit),
-          "ceil",
-        )
-      : null;
+  const breakEvenMinor = finance.totalSalesTargetMinor;
   const elapsed = Number(today.slice(8)) - 1;
   const days = Number(monthEnd(today).slice(8));
   const atRisk =
@@ -282,8 +211,9 @@ export function calculateGoal(
     BigInt(monthRevenueMinor) * BigInt(days) <
       BigInt(breakEvenMinor) * BigInt(Math.max(1, elapsed));
   return {
+    finance,
     expensesMinor,
-    estimated: concepts.some((c) => c.estimated) || variable > 0,
+    estimated: true,
     concepts,
     closedMonth,
     coverage: c.coverage,
@@ -310,6 +240,7 @@ export function buildCandidates(
   states: readonly CardState[] = [],
   policy: AnalyticsPolicy = ANALYTICS_POLICY,
 ): CardCandidate[] {
+  input = { ...input, metrics: financialMetrics(input) };
   return policy.rules
     .filter((rule) => rule.enabled)
     .flatMap((rule) => {
@@ -351,7 +282,7 @@ export function buildCandidates(
                     ),
                   ),
                   ...(rule.handler === "goal"
-                    ? { finance: policy.finance }
+                    ? { finance: policy.finance, calculationVersion: 2 }
                     : {}),
                   ...(rule.handler !== "expenses"
                     ? { materialBucketBase: policy.weights.materialBucketBase }
@@ -369,7 +300,8 @@ function buildRuleCandidates(
   policy: AnalyticsPolicy,
   rule: AnalyticsRulePolicy,
 ): CardCandidate[] {
-  const { today, metrics } = input,
+  const { today } = input,
+    metrics = financialMetrics(input),
     p = rule.parameters,
     yesterday = addDays(today, -1);
   const recent = period(
@@ -673,6 +605,7 @@ function buildRuleCandidates(
           period: { from: monthStart(today), to: today, label: "" },
           context: {
             kind: "goal",
+            calculationVersion: 2,
             month: monthStart(today),
             gap: materialFingerprint("gap", gap, policy),
             margin: goal.margin,
@@ -722,6 +655,7 @@ function buildRuleCandidates(
           category: firstMonth ? "informational" : rule.category,
           context: {
             kind: "expenses",
+            calculationVersion: 2,
             hasFixed,
             closedMonth: goal.closedMonth,
             firstMonth,
