@@ -5,6 +5,10 @@ const mocks = vi.hoisted(() => ({
   access: "trial",
   guard: vi.fn(),
   read: vi.fn(),
+  routerRefresh: vi.fn(),
+}));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: mocks.routerRefresh }),
 }));
 vi.mock("../../server/auth-guards", () => ({
   requireBackofficeSession: mocks.guard,
@@ -55,6 +59,7 @@ beforeEach(() => {
   mocks.read.mockImplementation(async () => ({ access: mocks.access }));
   mocks.guard.mockClear();
   mocks.read.mockClear();
+  mocks.routerRefresh.mockClear();
 });
 
 for (const access of ["blocked", "trial", "subscribed"]) {
@@ -67,6 +72,7 @@ for (const access of ["blocked", "trial", "subscribed"]) {
     // Billing comes from the authorized initial constructor, without another DB reader.
     expect(mocks.read).not.toHaveBeenCalled();
     expect(html).toContain("Suscripción");
+    expect(mocks.routerRefresh).not.toHaveBeenCalled();
     if (access === "blocked") {
       expect(html).not.toContain("Navegación del negocio");
       expect(html).not.toContain("Checklist del negocio");
@@ -89,5 +95,6 @@ it("la suspensión conserva prioridad sobre el bloqueo de cobro", async () => {
     await Layout({ children: "Negocio suspendido" }),
   );
   expect(html).toContain("Negocio suspendido");
+  expect(mocks.routerRefresh).not.toHaveBeenCalled();
   expect(html).toContain("Navegación del negocio");
 });

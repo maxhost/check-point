@@ -286,6 +286,9 @@ export function createInboxContextResource(host: Host, io: InboxAdapters) {
   return {
     acquire,
     refresh,
+    refreshIfObserved: () => {
+      if (subscribers) refresh();
+    },
     decide,
     reconcile,
     dispose() {

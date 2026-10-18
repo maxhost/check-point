@@ -368,6 +368,8 @@ test("0238 POST Inbox scoped + foco/remount conserva una cola y recupera módulo
   await page.goto(`${harness.url}?fixturePath=/backoffice`);
   await page.getByRole("button", { name: "Entendido", exact: true }).click();
   await expect.poll(() => writes.length).toBe(1);
+  await expect.poll(() => moduleReads.length).toBe(1);
+  expect(moduleReads).toEqual(["a".repeat(64)]);
   await page.evaluate(() => {
     const api = (
       window as unknown as { backofficeFixture: BackofficeFixtureApi }
@@ -402,7 +404,8 @@ test("0238 POST Inbox scoped + foco/remount conserva una cola y recupera módulo
       },
     },
   ]);
-  expect(moduleReads).toEqual(["a".repeat(64)]);
+  await expect.poll(() => moduleReads.length).toBe(2);
+  expect(moduleReads).toEqual(["a".repeat(64), "a".repeat(64)]);
   await page.evaluate(() =>
     (
       window as unknown as { backofficeFixture: BackofficeFixtureApi }
@@ -784,3 +787,321 @@ for (const outcome of ["sent", "error"] as const) {
     ).toEqual(["/backoffice"]);
   });
 }
+
+function refreshSession(staff = false, verified = true) {
+  return {
+    authenticated: true,
+    user: {
+      id: "fixture-user",
+      name: "Fixture",
+      email: "fixture@example.invalid",
+      emailVerified: verified,
+    },
+    business: {
+      id: "fixture-business",
+      name: "Comercio sintético",
+      status: "active",
+      slug: "fixture",
+      suspensionReason: null,
+      timezone: "America/Guayaquil",
+      currencyCode: "USD",
+      enabledModules: ["stock"],
+    },
+    membership: {
+      role: staff ? "staff" : "owner",
+      status: "active",
+      permissions: staff
+        ? ["business", "analytics", "stock"]
+        : ["analytics", "stock"],
+    },
+    billing: {
+      access: "trial" as "trial" | "subscribed",
+      trialDaysLeft: 10,
+      trialEndsAt: null,
+    },
+  };
+}
+const fireVisibleSignals = async (page: import("@playwright/test").Page) =>
+  page.evaluate(() => {
+    window.dispatchEvent(new Event("focus"));
+    window.dispatchEvent(new Event("online"));
+    window.dispatchEvent(new Event("focus"));
+  });
+
+test("0238 foco/reconnect visibles coalescen por recurso y no leen recursos sin suscriptores", async ({
+  page,
+}) => {
+  const counts = { session: 0, modules: 0, inbox: 0, checklist: 0 };
+  await page.route("**/api/merchant/session", (route) => {
+    counts.session += 1;
+    return route.fulfill({ json: refreshSession() });
+  });
+  await page.route("**/api/modules", (route) => {
+    counts.modules += 1;
+    return route.fulfill({ json: { modules: businessModules(true, false) } });
+  });
+  await page.route("**/api/analytics/inbox", (route) => {
+    counts.inbox += 1;
+    return route.fulfill({ json: inboxEnvelope([]) });
+  });
+  await page.route("**/api/onboarding/checklist", (route) => {
+    counts.checklist += 1;
+    return route.fulfill({ json: checklistEnvelope() });
+  });
+  await page.goto(
+    `${harness.url}?modules=ready&checklist&fixturePath=/backoffice`,
+  );
+  await expect(
+    page.getByText("Configura tu marca", { exact: true }),
+  ).toBeVisible();
+  expect(counts).toEqual({ session: 0, modules: 0, inbox: 1, checklist: 1 });
+  await page.evaluate(() => {
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      value: "hidden",
+    });
+    window.dispatchEvent(new Event("focus"));
+    window.dispatchEvent(new Event("online"));
+  });
+  expect(counts).toEqual({ session: 0, modules: 0, inbox: 1, checklist: 1 });
+  await page.evaluate(() =>
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      value: "visible",
+    }),
+  );
+  await fireVisibleSignals(page);
+  await expect
+    .poll(() => counts)
+    .toEqual({ session: 1, modules: 1, inbox: 2, checklist: 2 });
+  await page.evaluate(() => {
+    const f = (window as unknown as { backofficeFixture: BackofficeFixtureApi })
+      .backofficeFixture;
+    f.setInboxReaders(0);
+    f.setChecklistReaders(0);
+  });
+  await expect(
+    page.getByRole("heading", { name: "Hoy en tu negocio" }),
+  ).toHaveCount(0);
+  await fireVisibleSignals(page);
+  await expect.poll(() => counts.session).toBe(2);
+  await expect.poll(() => counts.modules).toBe(2);
+  expect(counts.inbox).toBe(2);
+  expect(counts.checklist).toBe(2);
+  expect(
+    await page.evaluate(
+      () =>
+        (window as unknown as { backofficeFixture: BackofficeFixtureApi })
+          .backofficeFixture.refreshes,
+    ),
+  ).toBe(0);
+});
+
+test("0238 nombre vivo/días/permisos ordenados actualizan presentación sin refreshRSC", async ({
+  page,
+}) => {
+  const session = refreshSession();
+  session.business.name = "Comercio renombrado";
+  session.billing.trialDaysLeft = 9;
+  session.membership.permissions = ["stock", "analytics"];
+  await page.route("**/api/merchant/session", (route) =>
+    route.fulfill({ json: session }),
+  );
+  await page.route("**/api/modules", (route) =>
+    route.fulfill({ json: { modules: businessModules(true, false) } }),
+  );
+  await page.goto(
+    `${harness.url}?modules=ready&live-name&fixturePath=/backoffice`,
+  );
+  await expect(page.getByLabel("Nombre negocio actual")).toHaveText(
+    "Comercio sintético",
+  );
+  await fireVisibleSignals(page);
+  await expect(page.getByLabel("Nombre negocio actual")).toHaveText(
+    "Comercio renombrado",
+  );
+  await expect(
+    page.getByText("Prueba de CheckPass: quedan 9 días"),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () =>
+        (window as unknown as { backofficeFixture: BackofficeFixtureApi })
+          .backofficeFixture.refreshes,
+    ),
+  ).toBe(0);
+});
+
+test("0238 formulario fiscal REAL conserva edición con trial→subscribed, permiso ajeno y ackRSC sin loop", async ({
+  page,
+}) => {
+  const session = refreshSession(true);
+  await page.route("**/api/merchant/session", (route) =>
+    route.fulfill({ json: session }),
+  );
+  await page.route("**/api/modules", (route) =>
+    route.fulfill({ json: { modules: businessModules(true, false) } }),
+  );
+  await page.goto(
+    `${harness.url}?modules=ready&form&fixturePath=/backoffice/business`,
+  );
+  const rate = page.getByRole("textbox", { name: "Tasa de IVA de venta (%)" });
+  await rate.fill("17.5");
+  const field = await rate.elementHandle();
+  session.billing.access = "subscribed";
+  await fireVisibleSignals(page);
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as unknown as { backofficeFixture: BackofficeFixtureApi })
+            .backofficeFixture.refreshes,
+      ),
+    )
+    .toBe(1);
+  const billingAck = page.waitForResponse(
+    (response) => new URL(response.url()).pathname === "/api/merchant/session",
+  );
+  await page.evaluate(() =>
+    (
+      window as unknown as { backofficeFixture: BackofficeFixtureApi }
+    ).backofficeFixture.ackBoot("refresh-billing"),
+  );
+  await expect(page.getByLabel("Boot observado")).toHaveText("refresh-billing");
+  await (await billingAck).finished();
+  await expect(rate).toHaveValue("17.5");
+  expect(await field!.evaluate((node) => node.isConnected)).toBe(true);
+  session.membership.permissions.push("catalog");
+  await fireVisibleSignals(page);
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as unknown as { backofficeFixture: BackofficeFixtureApi })
+            .backofficeFixture.refreshes,
+      ),
+    )
+    .toBe(2);
+  const permissionAck = page.waitForResponse(
+    (response) => new URL(response.url()).pathname === "/api/merchant/session",
+  );
+  await page.evaluate(() =>
+    (
+      window as unknown as { backofficeFixture: BackofficeFixtureApi }
+    ).backofficeFixture.ackBoot("refresh-permission"),
+  );
+  await expect(page.getByLabel("Boot observado")).toHaveText(
+    "refresh-permission",
+  );
+  await (await permissionAck).finished();
+  await expect(rate).toHaveValue("17.5");
+  expect(await field!.evaluate((node) => node.isConnected)).toBe(true);
+  const finalRead = page.waitForResponse(
+    (response) => new URL(response.url()).pathname === "/api/merchant/session",
+  );
+  await fireVisibleSignals(page);
+  await (await finalRead).finished();
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
+  await expect(rate).toHaveValue("17.5");
+  const state = await page.evaluate(() => {
+    const f = (window as unknown as { backofficeFixture: BackofficeFixtureApi })
+      .backofficeFixture;
+    return { refreshes: f.refreshes, navigations: f.navigations };
+  });
+  expect(state).toEqual({ refreshes: 2, navigations: [] });
+});
+
+test("0238 PIN403 confirmado solicita guardRSC una vez, ack y foco repetido no hacen loop", async ({
+  page,
+}) => {
+  await page.route("**/api/merchant/session", (route) =>
+    route.fulfill({ json: refreshSession(true) }),
+  );
+  await page.route("**/api/modules", (route) =>
+    route.fulfill({
+      status: 403,
+      json: { error: "Cambia tu PIN", code: "pin_change_required" },
+    }),
+  );
+  await page.goto(
+    `${harness.url}?modules=ready&form&readers=0&fixturePath=/backoffice/business`,
+  );
+  await fireVisibleSignals(page);
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as unknown as { backofficeFixture: BackofficeFixtureApi })
+            .backofficeFixture.refreshes,
+      ),
+    )
+    .toBe(1);
+  await page.evaluate(() =>
+    (
+      window as unknown as { backofficeFixture: BackofficeFixtureApi }
+    ).backofficeFixture.ackBoot("pin-guard"),
+  );
+  await fireVisibleSignals(page);
+  await expect(page.getByLabel("Estado módulos")).toHaveText("restricted");
+  expect(
+    await page.evaluate(
+      () =>
+        (window as unknown as { backofficeFixture: BackofficeFixtureApi })
+          .backofficeFixture.refreshes,
+    ),
+  ).toBe(1);
+  expect(
+    await page.evaluate(
+      () =>
+        (window as unknown as { backofficeFixture: BackofficeFixtureApi })
+          .backofficeFixture.navigations,
+    ),
+  ).toEqual([]);
+});
+
+test("0238 email403 mantiene restricted sin pedir salida de página ni bucle de refresh", async ({
+  page,
+}) => {
+  let reads = 0;
+  await page.route("**/api/merchant/session", (route) =>
+    route.fulfill({ json: refreshSession(false, false) }),
+  );
+  await page.route("**/api/modules", (route) => {
+    reads += 1;
+    return route.fulfill({
+      status: 403,
+      json: { error: "Verifica tu email", code: "email_not_verified" },
+    });
+  });
+  await page.goto(
+    `${harness.url}?unverified&readers=0&fixturePath=/backoffice`,
+  );
+  await page.evaluate(() =>
+    (
+      window as unknown as { backofficeFixture: BackofficeFixtureApi }
+    ).backofficeFixture.resolveModules("restricted"),
+  );
+  await expect(page.getByLabel("Estado módulos")).toHaveText("restricted");
+  expect(reads).toBe(0);
+  await fireVisibleSignals(page);
+  await expect.poll(() => reads).toBe(1);
+  expect(
+    await page.evaluate(
+      () =>
+        (window as unknown as { backofficeFixture: BackofficeFixtureApi })
+          .backofficeFixture.refreshes,
+    ),
+  ).toBe(0);
+  expect(
+    await page.evaluate(
+      () =>
+        (window as unknown as { backofficeFixture: BackofficeFixtureApi })
+          .backofficeFixture.navigations,
+    ),
+  ).toEqual([]);
+});

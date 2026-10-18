@@ -7,6 +7,7 @@ import type {
 } from "../../../apps/merchant/src/backoffice-context-contract";
 import {
   BackofficeProvider,
+  BackofficeBusinessName,
   BackofficeModulesSeedConsumer,
   useBackofficeContext,
 } from "../../../apps/merchant/src/app/backoffice/backoffice-context";
@@ -21,6 +22,7 @@ import { getOnboardingChecklist } from "../../../apps/merchant/src/app/backoffic
 import { OnboardingChecklist } from "../../../apps/merchant/src/app/backoffice/onboarding/onboarding-checklist";
 import { captureOnboardingTourIntent } from "../../../apps/merchant/src/app/backoffice/onboarding/onboarding-tour-persistence";
 import { ONBOARDING_TOUR_ENDED_EVENT } from "../../../apps/merchant/src/app/backoffice/onboarding/onboarding-tour";
+import { BusinessSettings } from "../../../apps/merchant/src/app/backoffice/business/business-settings";
 import { readModules } from "../../../apps/merchant/src/app/backoffice/settings/module-request";
 
 export type BackofficeFixtureApi = {
@@ -32,6 +34,8 @@ export type BackofficeFixtureApi = {
   changeIdentity: () => void;
   invalidateInbox: () => void;
   navigations: string[];
+  refreshes: number;
+  ackBoot: (bootId: string) => void;
   setInboxReaders: (count: number) => void;
   setChecklistReaders: (count: number) => void;
   persistTour: () => Promise<boolean>;
@@ -40,8 +44,10 @@ const query = new URLSearchParams(location.search);
 const core = fixtureBackofficeCore(
   {
     businessName: "Comercio sintético",
-    isOwner: true,
-    permissions: ["analytics", "stock"],
+    isOwner: !query.has("form"),
+    permissions: query.has("form")
+      ? ["business", "analytics", "stock"]
+      : ["analytics", "stock"],
   },
   {
     user: { emailVerified: !query.has("unverified") },
@@ -77,6 +83,8 @@ const fixture: BackofficeFixtureApi = {
   changeIdentity: () => {},
   invalidateInbox: () => controller.invalidate(["inbox"]),
   navigations: [],
+  refreshes: 0,
+  ackBoot: () => {},
   setInboxReaders: () => {},
   setChecklistReaders: () => {},
   persistTour: async () => false,
@@ -107,6 +115,9 @@ const controller = createBackofficeContextController(core, {
     });
     if (!response.ok) throw new Error("verify-email-failed");
     return response.json();
+  },
+  requestRefresh: () => {
+    fixture.refreshes += 1;
   },
   navigate: (href) => {
     fixture.navigations.push(href);
@@ -142,6 +153,9 @@ function Bridge() {
   return (
     <>
       <output aria-label="Estado módulos">{state.modules.state}</output>
+      <output aria-label="Boot observado">
+        {state.observedBootIds.at(-1)}
+      </output>
       {query.has("checklist") && (
         <output aria-label="Estado checklist">
           {state.checklist.status}:
@@ -194,6 +208,28 @@ function Fixture({ initial }: { initial: BackofficeInitialContext }) {
         <div className="backoffice-content">
           <TrialNotice />
           <p>Contenido privado sintético</p>
+          {query.has("live-name") && (
+            <output aria-label="Nombre negocio actual">
+              <BackofficeBusinessName />
+            </output>
+          )}
+          {query.has("form") && (
+            <BusinessSettings
+              initialRegional={{
+                timezone: "America/Guayaquil",
+                currencyCode: "USD",
+                revision: 1,
+              }}
+              initialFiscal={{
+                chargesVat: true,
+                saleVatRate: initial.bootId === core.bootId ? "12" : "5",
+                recoversPurchaseVat: false,
+                revision: 1,
+              }}
+              onCurrencyChange={() => {}}
+              onAccessDenied={() => {}}
+            />
+          )}
           <InboxReaders />
           {query.has("checklist") && <ChecklistReaders />}
         </div>
@@ -213,6 +249,12 @@ fixture.changeIdentity = () =>
       }}
     />,
   );
+fixture.ackBoot = (bootId) => {
+  const component = <Fixture initial={{ ...core, bootId }} />;
+  root.render(
+    query.has("strict") ? <StrictMode>{component}</StrictMode> : component,
+  );
+};
 if (query.get("modules") === "ready") fixture.resolveModules("ready");
 root.render(
   query.has("strict") ? (

@@ -35,6 +35,16 @@ import {
   type ChecklistContextState,
 } from "./onboarding/checklist-context-resource";
 
+import {
+  createBackofficeRefreshState,
+  confirmBackofficeCore,
+  confirmBackofficeModules,
+  confirmBackofficeModuleGate,
+  beginBackofficeRefresh,
+  acknowledgeBackofficeRefresh,
+  failBackofficeRefresh,
+} from "./backoffice-context-refresh";
+
 export type BackofficeContextSnapshot = BackofficeContextState & {
   readonly sessionState: "ready" | "pending" | "unavailable";
   readonly inbox: InboxContextState;
@@ -48,6 +58,7 @@ type Adapters = InboxAdapters &
       ticket: BackofficeResourceTicket,
     ) => Promise<ModuleDTO[]>;
     navigate: (href: "/" | "/backoffice") => void;
+    requestRefresh: () => void;
   };
 const stampOf = (state: BackofficeContextState) => ({
   scopeKey: state.core?.scopeKey ?? null,
@@ -97,6 +108,9 @@ export function createBackofficeContextController(
     checklist: emptyChecklistContext(),
   };
   let snapshot = serverSnapshot;
+  let refreshState = createBackofficeRefreshState(initial);
+  let refreshScheduled = false,
+    visibleScheduled = false;
   const owner = createBackofficeRequestOwner(stampOf(snapshot));
   const listeners = new Set<() => void>();
   const queued = new Set<"session" | "modules">();
@@ -167,6 +181,35 @@ export function createBackofficeContextController(
     }
   }
 
+  function scheduleRscRefresh() {
+    if (disposed || !snapshot.core || refreshScheduled) return;
+    refreshScheduled = true;
+    queueMicrotask(() => {
+      refreshScheduled = false;
+      if (disposed || !snapshot.core) return;
+      const next = beginBackofficeRefresh(refreshState);
+      if (next === refreshState) return;
+      refreshState = next; // Mark issued BEFORE calling a void router adapter (including StrictMode).
+      try {
+        adapters.requestRefresh();
+      } catch {
+        refreshState = failBackofficeRefresh(refreshState);
+      }
+    });
+  }
+  function revalidateVisible() {
+    if (disposed || !snapshot.core || visibleScheduled) return;
+    visibleScheduled = true;
+    queueMicrotask(() => {
+      visibleScheduled = false;
+      if (disposed || !snapshot.core) return;
+      revalidateSessionModules();
+      inbox.refreshIfObserved();
+      checklist.refreshIfObserved();
+      scheduleRscRefresh();
+    });
+  }
+
   function enqueue(resources: readonly ("session" | "modules")[]) {
     if (disposed || !snapshot.core) return;
     for (const resource of resources) queued.add(resource);
@@ -189,10 +232,18 @@ export function createBackofficeContextController(
         ? adapters.readSession(signal)
         : adapters.readModules(signal, captured),
     );
+    let structuralChanged = false;
     try {
       const value = await lease.promise;
       if (!current(ticket) || !snapshot.core) return;
       if (resource === "modules") {
+        const previous = refreshState.revision;
+        refreshState = confirmBackofficeModules(
+          refreshState,
+          value as ModuleDTO[],
+        );
+        structuralChanged = refreshState.revision !== previous;
+        if (structuralChanged) invalidate(["inbox", "checklist"]);
         commit({
           ...snapshot,
           modules: { state: "ready", modules: value as ModuleDTO[] },
@@ -214,20 +265,23 @@ export function createBackofficeContextController(
           return;
         }
         if (!session.billing) throw new Error("backoffice-session-billing");
-        commit(
-          {
-            ...snapshot,
-            core: {
-              ...snapshot.core,
-              emailVerified: session.user.emailVerified,
-              business: session.business,
-              membership: session.membership,
-              billing: session.billing,
-            },
-          },
-          "ready",
-        );
+        const core: BackofficeInitialContext = {
+          ...snapshot.core,
+          emailVerified: session.user.emailVerified,
+          business: session.business,
+          membership: session.membership,
+          billing: session.billing,
+        };
+        const previous = refreshState.revision;
+        refreshState = confirmBackofficeCore(refreshState, core);
+        structuralChanged = refreshState.revision !== previous;
+        if (structuralChanged) {
+          invalidate(["modules", "inbox", "checklist"]);
+          enqueue(["modules"]);
+        }
+        commit({ ...snapshot, core }, "ready");
       }
+      if (structuralChanged) scheduleRscRefresh();
     } catch (error) {
       if (
         !current(ticket) ||
@@ -248,6 +302,15 @@ export function createBackofficeContextController(
           retire("/");
           return;
         }
+        const previous = refreshState.revision;
+        if (
+          status === 403 &&
+          error &&
+          typeof error === "object" &&
+          "code" in error &&
+          typeof error.code === "string"
+        )
+          refreshState = confirmBackofficeModuleGate(refreshState, error.code);
         commit({
           ...snapshot,
           modules: {
@@ -255,6 +318,7 @@ export function createBackofficeContextController(
               status === 402 || status === 403 ? "restricted" : "unavailable",
           },
         });
+        if (refreshState.revision !== previous) scheduleRscRefresh();
       }
     } finally {
       lease.release();
@@ -327,20 +391,22 @@ export function createBackofficeContextController(
       snapshot.modules.state !== "ready"
     )
       return false;
-    commit({
-      ...snapshot,
-      modules: {
-        state: "ready",
-        modules: snapshot.modules.modules.map((module) =>
-          module.id === confirmed.id ? confirmed : module,
-        ),
-      },
-    });
+    const modules = snapshot.modules.modules.map((module) =>
+      module.id === confirmed.id ? confirmed : module,
+    );
+    refreshState = confirmBackofficeModules(refreshState, modules);
+    commit({ ...snapshot, modules: { state: "ready", modules } });
+    scheduleRscRefresh();
     return true;
   }
   function applyModulesSeed(seed: BackofficeModulesSeed) {
     const next = applyBackofficeModulesSeed(snapshot, seed);
     if (next === snapshot || disposed) return;
+    if (seed.result.state === "ready")
+      refreshState = confirmBackofficeModules(
+        refreshState,
+        seed.result.modules,
+      );
     commit(next);
     if (seed.result.state === "unavailable") {
       invalidate(["modules"]);
@@ -354,8 +420,10 @@ export function createBackofficeContextController(
       retire();
       return;
     }
+    refreshState = acknowledgeBackofficeRefresh(refreshState);
     commit(next, "pending");
     enqueue(["session", "modules"]);
+    scheduleRscRefresh();
   }
   function dispose() {
     if (disposed) return;
@@ -401,6 +469,7 @@ export function createBackofficeContextController(
     applyModulesSeed,
     observeCoreSeed,
     revalidateSessionModules,
+    revalidateVisible,
     revalidateModules,
     applyConfirmedModule,
     acquireInbox: inbox.acquire,

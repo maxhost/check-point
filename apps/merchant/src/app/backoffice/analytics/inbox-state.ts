@@ -33,13 +33,6 @@ export function useAnalyticsInbox() {
   const [reminderTimezone, setReminderTimezone] = useState("UTC");
   useEffect(() => acquireInbox(), [acquireInbox]);
   useEffect(() => {
-    const onFocus = () => {
-      if (document.visibilityState === "visible") refresh();
-    };
-    window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
-  }, [refresh]);
-  useEffect(() => {
     const instant = inbox?.nextReminderAt;
     if (!instant) return;
     const due = Date.parse(instant);

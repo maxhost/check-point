@@ -90,6 +90,7 @@ function setup() {
     verifyEmail: vi.fn<ChecklistAdapters["verifyEmail"]>(async () => ({
       sent: true,
     })),
+    requestRefresh: vi.fn(),
     navigate: vi.fn(),
   };
   const controller = createBackofficeContextController(core, io);

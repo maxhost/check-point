@@ -6,7 +6,10 @@ import { readBackofficeInitialCore } from "../../server/backoffice-initial-conte
 import { SignOutButton } from "../components/sign-out-button";
 import { Text } from "../../ui";
 import { TrialNotice } from "./subscription/trial-notice";
-import { BackofficeProvider } from "./backoffice-context";
+import {
+  BackofficeProvider,
+  BackofficeBusinessName,
+} from "./backoffice-context";
 import { BackofficeModulesSeed } from "./backoffice-modules-seed";
 
 export default async function BackofficeLayout({
@@ -28,7 +31,9 @@ export default async function BackofficeLayout({
       {blocked ? (
         <div className="merchant-shell">
           <div className="flex flex-wrap items-center justify-between gap-4 py-4">
-            <Text variant="label">CheckPass · {business.name}</Text>
+            <Text variant="label">
+              CheckPass · <BackofficeBusinessName />
+            </Text>
             <SignOutButton />
           </div>
           {children}
