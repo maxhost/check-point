@@ -25,7 +25,13 @@ const local = {
   status: "active",
 };
 
-async function setup(page: Page) {
+async function setup(
+  page: Page,
+  viewer = { role: "owner", permissions: ["stock", "appointments_manage"] },
+) {
+  const state = {
+    modules: [...businessModules(true, true), extraModule(true)],
+  };
   await page.route("**/api/modules/stock/locations", (route) =>
     route.fulfill({
       json: { locations: [local], defaultLocationId: local.id },
@@ -34,9 +40,28 @@ async function setup(page: Page) {
   await page.route("**/api/merchant/session", (route) =>
     route.fulfill({
       json: {
-        membership: { role: "owner" },
+        authenticated: true,
+        user: {
+          id: "fixture-user",
+          name: "Fixture",
+          email: "fixture@example.invalid",
+          emailVerified: true,
+        },
+        membership: { ...viewer, status: "active" },
+        billing: {
+          access: "subscribed",
+          trialEndsAt: null,
+          trialDaysLeft: null,
+        },
         business: {
-          enabledModules: ["stock", "recipes", "appointments"],
+          id: "fixture-business",
+          name: "Comercio de prueba",
+          slug: "fixture",
+          status: "active",
+          suspensionReason: null,
+          enabledModules: state.modules
+            .filter((module) => module.enabled)
+            .map((module) => module.id),
           timezone: "America/Guayaquil",
           currencyCode: "USD",
         },
@@ -45,16 +70,20 @@ async function setup(page: Page) {
   );
   await page.route("**/api/modules", (route) =>
     route.fulfill({
-      json: { modules: [...businessModules(true, true), extraModule(true)] },
+      json: { modules: state.modules },
     }),
   );
+  return state;
 }
 
 for (const width of [390, 1280]) {
   test(`menú delega por permisos propios, estado y manifiestos (${width})`, async ({
     page,
   }) => {
-    await setup(page);
+    const server = await setup(page, {
+      role: "staff",
+      permissions: ["stock", "appointments_manage"],
+    });
     await page.setViewportSize({ width, height: 900 });
     await page.goto(
       `${harness.url}?role=staff&permissions=stock,appointments_manage`,
@@ -91,6 +120,8 @@ for (const width of [390, 1280]) {
     await expect(
       nav.getByRole("link", { name: "Historial de turnos", exact: true }),
     ).toHaveCount(0);
+    // 0238: raw detail is only invalidation. Confirm the changed state through GET.
+    server.modules = businessModules(false, false);
     await page.evaluate(
       (modules) =>
         window.dispatchEvent(
@@ -188,35 +219,131 @@ for (const width of [390, 1280]) {
   });
 }
 
-test("GET iniciado antes de un evento no pisa el estado confirmado", async ({
+test("0238 raw module payload cannot override scoped server truth; both signals coalesce", async ({
   page,
 }) => {
-  await setup(page);
+  await setup(page, {
+    role: "staff",
+    permissions: ["stock", "appointments_manage"],
+  });
+  const reads: string[] = [];
   let release!: () => void;
   const pending = new Promise<void>((resolve) => {
     release = resolve;
   });
-  let reading = false;
   await page.route("**/api/modules", async (route) => {
-    reading = true;
-    await pending;
-    await route.fulfill({ json: { modules: businessModules(true, true) } });
+    const scope = route.request().headers()["x-backoffice-scope"];
+    if (scope) {
+      reads.push(scope);
+      await pending;
+    }
+    await route.fallback();
+  });
+  await page.goto(
+    `${harness.url}?role=staff&permissions=stock,appointments_manage`,
+  );
+  const nav = page.locator(".backoffice-sidebar");
+  await expect(
+    nav.getByRole("link", { name: "Stock", exact: true }),
+  ).toBeVisible();
+  const confirmed = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === "/api/modules" &&
+      !!response.request().headers()["x-backoffice-scope"],
+  );
+  try {
+    await page.evaluate(
+      (modules) => {
+        window.dispatchEvent(
+          new CustomEvent("business-modules-changed", { detail: modules }),
+        );
+        window.dispatchEvent(new Event("checkpass:modules-changed"));
+      },
+      businessModules(false, false),
+    );
+    await expect.poll(() => reads.length).toBe(1);
+    expect(reads).toEqual(["a".repeat(64)]);
+    // While the authoritative GET is held, raw detail cannot even transiently hide links.
+    await expect(
+      nav.getByRole("link", { name: "Stock", exact: true }),
+    ).toBeVisible();
+    await expect(
+      nav.getByRole("link", { name: "Turnos de prueba", exact: true }),
+    ).toBeVisible();
+  } finally {
+    release();
+  }
+  await (await confirmed).finished();
+  await expect(
+    nav.getByRole("link", { name: "Stock", exact: true }),
+  ).toBeVisible();
+});
+
+test("GET iniciado antes de un evento no pisa el estado confirmado", async ({
+  page,
+}) => {
+  const server = await setup(page);
+  const scopes: string[] = [];
+  let releaseOld!: () => void,
+    releaseFresh!: () => void,
+    oldServerDone!: () => void;
+  const old = new Promise<void>((resolve) => {
+    releaseOld = resolve;
+  });
+  const fresh = new Promise<void>((resolve) => {
+    releaseFresh = resolve;
+  });
+  const oldFinished = new Promise<void>((resolve) => {
+    oldServerDone = resolve;
+  });
+  await page.route("**/api/modules", async (route) => {
+    const scope = route.request().headers()["x-backoffice-scope"];
+    if (!scope) return route.fallback(); // Fixture bootstrap represents the already completed server seed.
+    scopes.push(scope);
+    if (scopes.length === 1) {
+      try {
+        await old;
+        await route.fulfill({ json: { modules: businessModules(true, true) } });
+      } catch (error) {
+        // Abort is a valid drain of the old browser transport, not proof of SQL cancellation.
+        if (!route.request().failure()) throw error;
+      } finally {
+        oldServerDone();
+      }
+    } else {
+      await fresh;
+      await route.fallback();
+    }
   });
   await page.goto(harness.url);
-  await expect.poll(() => reading).toBe(true);
-  await page.evaluate(
-    (modules) =>
-      window.dispatchEvent(
-        new CustomEvent("business-modules-changed", { detail: modules }),
-      ),
-    businessModules(false, false),
-  );
-  const response = page.waitForResponse("**/api/modules");
-  release();
-  await response;
-  await expect(
-    page
-      .locator(".backoffice-sidebar")
-      .getByRole("link", { name: "Stock", exact: true }),
-  ).toHaveCount(0);
+  const stock = page
+    .locator(".backoffice-sidebar")
+    .getByRole("link", { name: "Stock", exact: true });
+  await expect(stock).toBeVisible();
+  try {
+    await page.evaluate(() =>
+      window.dispatchEvent(new Event("checkpass:modules-changed")),
+    );
+    await expect.poll(() => scopes.length).toBe(1);
+    server.modules = businessModules(false, false);
+    await page.evaluate(
+      (modules) =>
+        window.dispatchEvent(
+          new CustomEvent("business-modules-changed", { detail: modules }),
+        ),
+      businessModules(false, false),
+    );
+    await expect.poll(() => scopes.length).toBe(2);
+    // Neither the raw false detail nor reporter.enabledModules can replace the pending GET result.
+    await expect(stock).toBeVisible();
+    releaseOld();
+    await oldFinished;
+    await expect(stock).toBeVisible();
+    releaseFresh();
+    await expect(stock).toHaveCount(0);
+    expect(scopes).toEqual(["a".repeat(64), "a".repeat(64)]);
+  } finally {
+    releaseOld();
+    releaseFresh();
+  }
 });

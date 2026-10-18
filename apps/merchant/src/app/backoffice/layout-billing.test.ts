@@ -12,15 +12,39 @@ vi.mock("../../server/auth-guards", () => ({
 vi.mock("../../server/billing-gate", () => ({
   readBusinessBilling: mocks.read,
 }));
+vi.mock("../../server/backoffice-initial-context", () => ({
+  readBackofficeInitialCore: async () => {
+    const guarded = await mocks.guard({ allowBlocked: true });
+    return {
+      version: 1,
+      bootId: "fixture-boot",
+      scopeKey: "a".repeat(64),
+      userId: "fixture-user",
+      emailVerified: true,
+      business: guarded.business,
+      membership: guarded.membership,
+      billing: { access: mocks.access, trialEndsAt: null, trialDaysLeft: 10 },
+    };
+  },
+}));
+vi.mock("./backoffice-modules-seed", () => ({
+  BackofficeModulesSeed: () => null,
+}));
 vi.mock("./backoffice-navigation", () => ({
   BackofficeNavigation: () => "Navegación del negocio",
 }));
 vi.mock("./onboarding/onboarding-checklist", () => ({
   OnboardingChecklist: () => "Checklist del negocio",
 }));
-vi.mock("./subscription/trial-notice", () => ({
-  TrialNotice: () => "Aviso de prueba",
-}));
+vi.mock("./subscription/trial-notice", async () => {
+  const { useBackofficeContext } = await import("./backoffice-context");
+  return {
+    TrialNotice: () =>
+      useBackofficeContext().state.core?.billing.access === "trial"
+        ? "Aviso de prueba"
+        : null,
+  };
+});
 import Layout from "./layout";
 
 beforeEach(() => {
@@ -40,7 +64,8 @@ for (const access of ["blocked", "trial", "subscribed"]) {
       await Layout({ children: "Suscripción" }),
     );
     expect(mocks.guard).toHaveBeenCalledWith({ allowBlocked: true });
-    expect(mocks.read).toHaveBeenCalledWith("business-1");
+    // Billing comes from the authorized initial constructor, without another DB reader.
+    expect(mocks.read).not.toHaveBeenCalled();
     expect(html).toContain("Suscripción");
     if (access === "blocked") {
       expect(html).not.toContain("Navegación del negocio");

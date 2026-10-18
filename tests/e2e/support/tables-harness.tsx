@@ -1,6 +1,6 @@
 import { LocationTables } from "../../../apps/merchant/src/modules/tables/ui/location-tables";
 import { useEffect, useState } from "react";
-import { createRoot } from "react-dom/client";
+import { renderBackofficeSeedFixture } from "./backoffice-seed-fixture";
 import { LocationsConsole } from "../../../apps/merchant/src/app/backoffice/locations/locations-console";
 import { locationModulePanels } from "../../../apps/merchant/src/app/backoffice/locations/module-panels";
 import type { LocationView } from "../../../apps/merchant/src/app/backoffice/locations/location-form";
@@ -52,15 +52,16 @@ function LocationsPage() {
 }
 
 const params = new URLSearchParams(window.location.search);
-createRoot(document.getElementById("root")!).render(
+void renderBackofficeSeedFixture(
   params.get("mode") === "locations" ? (
     <LocationsPage />
   ) : (
     <div className="backoffice-layout">
-      <BackofficeNavigation businessName="Café" isOwner permissions={["pos"]} />
+      <BackofficeNavigation />
       <div className="backoffice-content">
         <PosConsole locations={locations} />
       </div>
     </div>
   ),
+  { businessName: "Café", isOwner: true, permissions: ["pos"] },
 );

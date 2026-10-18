@@ -1,7 +1,6 @@
 import { billingPlanName } from "./subscription/billing-state";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { eq } from "drizzle-orm";
 import {
   ArrowRight,
   CreditCard,
@@ -14,8 +13,7 @@ import {
 } from "iconoir-react";
 import { requireBackofficeSession } from "../../server/auth-guards";
 import { statusLabel } from "../../server/billing";
-import { getDb } from "@mi-pasaporte/db";
-import { subscriptions } from "@mi-pasaporte/db/schema";
+import { readBackofficePagePlan } from "../../server/backoffice-initial-context";
 
 import { AnalyticsInbox } from "./analytics/inbox";
 
@@ -106,13 +104,7 @@ export default async function BackofficePage() {
   const isOwner = membership.role === "owner";
   if (!isOwner && !membership.permissions.includes("analytics"))
     redirect("/backoffice/counter");
-  const [subscription] = await getDb()
-    .select({ plan: subscriptions.plan, status: subscriptions.status })
-    .from(subscriptions)
-    .where(eq(subscriptions.businessId, owned.id))
-    .limit(1);
-  const plan = subscription?.plan ?? "none";
-  const status = subscription?.status ?? "active";
+  const { plan, status } = await readBackofficePagePlan();
   const firstName = userName.trim().split(/\s+/)[0];
   const greeting = firstName ? `Hola, ${firstName}` : "Hola";
 

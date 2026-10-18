@@ -1,4 +1,4 @@
-import { createRoot } from "react-dom/client";
+import { renderBackofficeSeedFixture } from "./backoffice-seed-fixture";
 import { SubscriptionConsole } from "../../../apps/merchant/src/app/backoffice/subscription/subscription-console";
 import { TrialNotice } from "../../../apps/merchant/src/app/backoffice/subscription/trial-notice";
 import { subscriptionOffers } from "../../../apps/merchant/src/server/billing/view";
@@ -12,7 +12,7 @@ const subscription = {
   pendingPlanAt: query.has("scheduled") ? "2026-12-01T12:00:00.000Z" : null,
   trialEndsAt: "2026-12-20T12:00:00.000Z",
 };
-createRoot(document.getElementById("root")!).render(
+void renderBackofficeSeedFixture(
   <>
     {query.has("banner") && <TrialNotice />}
     <SubscriptionConsole
@@ -33,4 +33,5 @@ createRoot(document.getElementById("root")!).render(
       notice={null}
     />
   </>,
+  { businessName: "Café", isOwner: true, permissions: [] },
 );
