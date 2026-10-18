@@ -4,7 +4,8 @@ import type {
   MetricTranslator,
   MetricRow,
 } from "@mi-pasaporte/domain/analytics/metrics";
-import type { ConsumptionApplied } from "./consumption-event";
+import { decodeConsumptionApplied } from "./consumption-applied";
+import { exactGrams } from "@mi-pasaporte/domain/measures";
 export const metricTranslators: readonly MetricTranslator[] = [
   {
     eventType: "recipes.product_cost.changed",
@@ -64,7 +65,7 @@ export const metricTranslators: readonly MetricTranslator[] = [
   {
     eventType: "recipes.consumption.applied",
     translate(event) {
-      const p = event.payload as ConsumptionApplied;
+      const p = decodeConsumptionApplied(event.payload, event.eventVersion);
       const rows: MetricRow[] = [];
       for (const line of p.lines) {
         if (line.cost) {
@@ -77,7 +78,18 @@ export const metricTranslators: readonly MetricTranslator[] = [
           };
           rows.push(
             { ...base, metric: "cost_of_goods", count: 1, ...line.cost },
-            { ...base, metric: "units_with_cost", quantity: line.quantity },
+            p.eventVersion === 2 &&
+              "measure" in line &&
+              line.measure.kind === "mass"
+              ? {
+                  ...base,
+                  metric: "mass_with_cost_g",
+                  quantity: exactGrams({
+                    quantity: line.quantity,
+                    quantityUnit: line.measure.quantityUnit,
+                  }),
+                }
+              : { ...base, metric: "units_with_cost", quantity: line.quantity },
           );
           if (
             typeof line.revenueMinor === "string" &&
