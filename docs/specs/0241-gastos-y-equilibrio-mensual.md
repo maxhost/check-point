@@ -1,7 +1,7 @@
 ---
 spec: 0241
 fecha: 2026-10-18
-estado: contrato funcional cerrado; implementación autorizada
+estado: implementada localmente; QA independiente conforme; sin push/PROD
 nivel: L2
 resumen: Conciliar gastos registrados y estimación mensual; definir ventas adicionales para equilibrio con contexto y calidad de datos explícitos.
 disjunta: no; cambia potencialmente el cálculo compartido por Histórico, resumen e Inbox0237/0239.
@@ -119,3 +119,16 @@ Owner eligió «Aún no podemos estimarlo» con motivo breve cuando faltan costo
 - UI mensual: título «Para cubrir los gastos del mes», mes y corte explícitos; cifra principal «Te falta vender» y ventas netas del mes como apoyo. Se aclara brevemente que se descuentan costo de productos y comisiones; desglose de registrado/referencia/pendiente estimado con kit existente, opcional. Unavailable: texto elegido por owner y motivo; no680,23 ni759,88 como placeholders. Movimientos recientes permanecen.
 
 Checks: unidad pura con referencias/pagos parciales/meses ausentes, moneda/unidad, comisiones/precisión/costos incompletos, margen0, cubierto y sin ventas; regresión de consumidores/política afectados; query CI tenant/local/moneda aislada, browser focal390/1440 estados y detalle. Dos implementadores en WT propios y QA independiente. No módulos ajenos, kit/guardias/tooling/migraciones/dependencias/PROD/push en esta implementación.
+
+
+## Cierre de implementación local — 2026-10-18
+
+Implementación aceptada: datos `88df2147d404b5931855a0e6a8e6e7a218e51934`, UI `0d216d609863f34b18c2b290e441741c6f4ebfd0`; candidato combinado `6fbd0b68fd5ebb0f712e69cbf124800a1998b381`. [QA independiente](../factory/0241-qa.md) entregada en `9e3b05d0e0078e60dfbe33ab4eb82090871c35e9`, conforme sobre ese producto. [Handoff datos](../factory/0241-data-handoff.md) y [UI](../factory/0241-ui-handoff.md).
+
+Las ventanas de referencia conservan configuración existente mediante policy.finance/readWindows: 28 días y 3 meses son valores por defecto, no constantes impuestas a negocios con otra política. Summary conserva los aliases legados: reference_sales→closed_month, expense_history→expense_history, sales_costs→cost_coverage, positive_margin→positive_margin; copy de closed_month ahora describe ventas de referencia insuficientes. El promedio diario calendario se distingue de una meta de hoy.
+
+Evidencia `/private/tmp/checkpass-0241-evidence/`: 31 pruebas de modelo/resumen, 59 de regresión, 2 NeonCI protegido y 4 boundary conformes; tipos de dominio y UI, lint y guardia focal conformes. Typecheck merchant aislado de A falló por mapa UI pendiente, resuelto y verificado en combinación. Browser UI: 21 casos únicos entre corrida inicial16PASS/3FAIL y confirmación7PASS; fallos de navegación conservados, no una suite global verde. QA combinada: tipos merchant PASS y confirmación browser2/2 a390/1440 sin retries/skips, estados reales indisponibles y parser expense_history; fallo inicial del locator externo conservado y corregido sin tocar producto.
+
+Lectura local protegida sin escrituras: gastos registrados516,75, ventas569, cobertura de costos por importe9,49%; finance unavailable por sales_costs+expense_history. Pendiente, previsión y ventas adicionales son null. Mes/3meses preservan el mismo cálculo mensual; tres promos DEMO y ocho series stock siguen presentes. No sustituir estas ausencias por570/680,23 ni por escenarios parciales. Capturas combinan DTO financiero local real con otros fixtures del harness; no certifican todo el contenido como snapshot real. Health3201=200 e history sin sesión=401 private/no-store. Handler autenticado cubierto por NeonCI, sin recorrido Next autenticado browser ni campaña global/M1 nueva.
+
+Demos, servidor3201/túnel, datos existentes y todos los diferidos anteriores conservados. Sin kit/guard/tooling/dependencias/migraciones nuevas, sin push/PROD. La etapa de auditoría anterior es histórica y queda supersedida por el contrato cerrado y este cierre.
