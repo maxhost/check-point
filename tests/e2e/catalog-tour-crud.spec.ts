@@ -23,7 +23,11 @@ test("crear categoría no avanza por un clic fallido ni persiste onboarding", as
   await next(page);
   api.failWrite = true;
   await page.getByRole("button", { name: "Añadir", exact: true }).click();
-  await expect(page.getByText("No pudimos guardar el producto.")).toBeVisible();
+  await expect(
+    page
+      .locator(".toast.error")
+      .filter({ hasText: "No pudimos guardar el producto." }),
+  ).toBeVisible();
   await page.evaluate(
     () =>
       new Promise<void>((resolve) =>
@@ -87,7 +91,11 @@ test("editar el segundo producto conserva el id y espera éxito", async ({
   await page
     .getByRole("button", { name: "Guardar producto", exact: true })
     .click();
-  await expect(page.getByText("No pudimos guardar el producto.")).toBeVisible();
+  await expect(
+    page
+      .locator(".toast.error")
+      .filter({ hasText: "No pudimos guardar el producto." }),
+  ).toBeVisible();
   await page.evaluate(
     () =>
       new Promise<void>((resolve) =>
@@ -96,6 +104,29 @@ test("editar el segundo producto conserva el id y espera éxito", async ({
   );
   await expect(title(page)).toHaveText("Guarda los datos");
   api.failWrite = false;
+  // Leave the focused save step to review an uncertain write; Escape retains the draft.
+  await page.keyboard.press("Escape");
+  await expect(
+    page.getByRole("textbox", { name: "Nombre del producto" }),
+  ).toHaveValue("Torta de cacao");
+  await page.getByRole("button", { name: "Revisar estado actual" }).click();
+  await page
+    .getByRole("button", { name: "Ya revisé: conservar mis cambios" })
+    .click();
+  await page
+    .getByRole("button", { name: "Guardar producto", exact: true })
+    .click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(
+    page.locator('[data-catalog-id="product-second"]'),
+  ).toContainText("Torta de cacao");
+  // A fresh editing tour still observes the explicit confirmed write.
+  await help(page, "Editar un producto");
+  await page
+    .locator('[data-catalog-id="product-second"]')
+    .getByRole("button", { name: "Editar", exact: true })
+    .click();
+  await fieldsToSave(page);
   await page
     .getByRole("button", { name: "Guardar producto", exact: true })
     .click();

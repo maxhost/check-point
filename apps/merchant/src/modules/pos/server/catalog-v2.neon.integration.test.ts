@@ -3,6 +3,7 @@ import { eq, inArray } from "drizzle-orm";
 import { getDb } from "@mi-pasaporte/db";
 import {
   businesses,
+  businessConfiguration,
   users,
   sessions,
   products,
@@ -149,6 +150,58 @@ describe.skipIf(!modulesIntegrationEnabled)(
       const old = await oldCreate.json();
       expect(old.unitPrice).toBe(4.25);
       expect(old).not.toHaveProperty("salesRevision");
+    }, 60000);
+    it("projects configured units per tenant under catalog permission, without writing a default or changing V1", async () => {
+      const configurations = () =>
+        getDb()
+          .select()
+          .from(businessConfiguration)
+          .where(eq(businessConfiguration.businessId, world.businessId));
+      expect(await configurations()).toEqual([]);
+      const defaultUnits = await response(
+        await GET(request("GET", undefined, staff)),
+        200,
+      );
+      expect(defaultUnits.salesMassUnits).toEqual(["kg"]);
+      expect(await configurations()).toEqual([]);
+      const legacy = await GET(request("GET", undefined, staff, false));
+      expect(legacy.status).toBe(200);
+      expect(await legacy.json()).not.toHaveProperty("salesMassUnits");
+      await getDb()
+        .insert(businessConfiguration)
+        .values({
+          businessId: world.businessId,
+          salesMassUnits: ["lb", "g"],
+        });
+      try {
+        const configured = await response(
+          await GET(request("GET", undefined, staff)),
+          200,
+        );
+        expect(configured.salesMassUnits).toEqual(["lb", "g"]);
+        expect(
+          (
+            await response(
+              await GET(request("GET", undefined, other.cookie)),
+              200,
+            )
+          ).salesMassUnits,
+        ).toEqual(["kg"]);
+        const deniedResponse = await response(
+          await GET(request("GET", undefined, denied)),
+          403,
+        );
+        expect(deniedResponse).not.toHaveProperty("salesMassUnits");
+        const anonymous = await response(
+          await GET(request("GET", undefined, "")),
+          401,
+        );
+        expect(anonymous).not.toHaveProperty("salesMassUnits");
+      } finally {
+        await getDb()
+          .delete(businessConfiguration)
+          .where(eq(businessConfiguration.businessId, world.businessId));
+      }
     }, 60000);
     it("increments once for commercial delta, preserves no-op and returns authorized conflict DTO", async () => {
       const p = await create();

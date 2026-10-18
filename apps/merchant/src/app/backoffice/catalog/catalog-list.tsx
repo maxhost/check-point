@@ -1,7 +1,7 @@
 "use client";
 
 import type { Category, Product } from "./types";
-import { formatMoney } from "./types";
+import { formatMoney, unitLabels } from "./types";
 
 type Props = {
   products: Product[];
@@ -49,6 +49,8 @@ export function CatalogList({
               {product.unitPrice != null
                 ? formatMoney(product.unitPrice, currencyCode)
                 : "Sin precio"}
+              {product.soldByWeight &&
+                ` por ${unitLabels[product.pricingUnit]}`}
               {!product.availableAllLocations && " · Locales limitados"}
             </span>
           </div>

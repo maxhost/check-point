@@ -9,12 +9,14 @@ import { and, asc, eq, inArray } from "drizzle-orm";
 import { getDb } from "@mi-pasaporte/db";
 import {
   businesses,
+  businessConfiguration,
   memberships,
   products,
   productCategories,
   productLocations,
   locations,
 } from "@mi-pasaporte/db/schema";
+import type { MassUnit } from "../../measures";
 import { ACCEPTED_IMAGE_CONTENT_TYPE_SET } from "../../lib/image-formats";
 
 /**
@@ -162,7 +164,18 @@ export async function listCatalog(
     byProduct.set(link.productId, list);
   }
 
+  const configuration =
+    options.contract === 2
+      ? await db
+          .select({ units: businessConfiguration.salesMassUnits })
+          .from(businessConfiguration)
+          .where(eq(businessConfiguration.businessId, business.id))
+      : null;
+
   return {
+    ...(configuration
+      ? { salesMassUnits: (configuration[0]?.units ?? ["kg"]) as MassUnit[] }
+      : {}),
     products: rows.map((row) =>
       catalogProductDTO(
         { ...row, locationIds: byProduct.get(row.id) ?? [] },

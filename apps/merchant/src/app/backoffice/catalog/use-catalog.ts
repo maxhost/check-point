@@ -2,11 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useCatalogTour } from "./catalog-tour-context";
-import type { Catalog, Category } from "./types";
+import { CatalogWriteError } from "./catalog-product-draft";
+import type { Catalog, Category, Product } from "./types";
+
+export const catalogHeaders = { "X-Catalog-Contract": "2" };
 
 export const jsonInit = (method: string, body: unknown): RequestInit => ({
   method,
-  headers: { "content-type": "application/json" },
+  headers: { "content-type": "application/json", ...catalogHeaders },
   body: JSON.stringify(body),
 });
 
@@ -22,7 +25,10 @@ export function useCatalog() {
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshFailed, setRefreshFailed] = useState(false);
+  const [uncertainWrite, setUncertainWrite] = useState(false);
+  const uncertainRef = useRef(false);
   const [writing, setWriting] = useState(false);
+  const writingRef = useRef(false);
   const pendingRefresh = useRef<(() => void) | null>(null);
   const readAccessError = useRef<string | null>(null);
   const tour = useCatalogTour();
@@ -32,7 +38,10 @@ export function useCatalog() {
   const reload = useCallback(async () => {
     readAccessError.current = null;
     try {
-      const res = await fetch("/api/catalog");
+      const res = await fetch("/api/catalog", {
+        headers: catalogHeaders,
+        cache: "no-store",
+      });
       const payload = (await res.json().catch(() => null)) as
         Catalog | { error?: string } | null;
       if (res.status === 401 || res.status === 403) {
@@ -41,6 +50,8 @@ export function useCatalog() {
             ? "Tu sesión venció. Vuelve a iniciar sesión para continuar."
             : "Ya no tienes permiso para acceder al catálogo.";
         pendingRefresh.current = null;
+        setCatalog(null);
+        setNotice(null);
         stop?.();
         throw new Error(readAccessError.current);
       }
@@ -50,13 +61,15 @@ export function useCatalog() {
             "No pudimos cargar el catálogo.",
         );
       }
+      uncertainRef.current = false;
+      setUncertainWrite(false);
       setCatalog(payload);
       setRefreshFailed(false);
       setError(null);
       const completed = pendingRefresh.current;
       pendingRefresh.current = null;
       completed?.();
-      return true;
+      return payload;
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Error de carga.");
       return false;
@@ -74,8 +87,12 @@ export function useCatalog() {
       okMessage: string,
       fallback: string,
       onRefreshed?: () => void,
+      productWrite = false,
     ): Promise<boolean> => {
+      if (writingRef.current || uncertainRef.current) return false;
+      writingRef.current = true;
       setWriting(true);
+      setNotice(null);
       setError(null);
       const notify = ticket?.();
       try {
@@ -83,10 +100,24 @@ export function useCatalog() {
         const payload = (await res.json().catch(() => null)) as {
           error?: string;
           code?: string;
+          product?: Product;
         } | null;
         if (!res.ok) {
-          if (res.status === 401 || res.status === 403) stop?.();
+          if (res.status === 401 || res.status === 403) {
+            setCatalog(null);
+            setNotice(null);
+            stop?.();
+          }
           if (payload?.code === "catalog_import_in_progress") await reload();
+          if (productWrite)
+            throw new CatalogWriteError(
+              res.status >= 500
+                ? "uncertain"
+                : (payload?.code ??
+                    (res.status === 404 ? "missing" : "rejected")),
+              payload?.error ?? fallback,
+              payload?.product,
+            );
           throw new Error(payload?.error ?? fallback);
         }
         pendingRefresh.current = onRefreshed ?? null;
@@ -103,8 +134,23 @@ export function useCatalog() {
         return true;
       } catch (reason) {
         setError(reason instanceof Error ? reason.message : fallback);
+        if (productWrite) {
+          const failure =
+            reason instanceof CatalogWriteError
+              ? reason
+              : new CatalogWriteError(
+                  "uncertain",
+                  "No sabemos si se guardó. Revisa el catálogo antes de continuar.",
+                );
+          if (failure.code === "uncertain") {
+            uncertainRef.current = true;
+            setUncertainWrite(true);
+          }
+          throw failure;
+        }
         return false;
       } finally {
+        writingRef.current = false;
         setWriting(false);
       }
     },
@@ -116,7 +162,7 @@ export function useCatalog() {
       name: string,
       onRefreshed?: (id: string) => void,
     ): Promise<Category | null> => {
-      if (!name) return null;
+      if (!name || uncertainRef.current || writingRef.current) return null;
       setWriting(true);
       setError(null);
       const notify = ticket?.();
@@ -128,7 +174,11 @@ export function useCatalog() {
         const cat = (await res.json().catch(() => null)) as
           Category | { error?: string; code?: string } | null;
         if (!res.ok || !cat || !("id" in cat)) {
-          if (res.status === 401 || res.status === 403) stop?.();
+          if (res.status === 401 || res.status === 403) {
+            setCatalog(null);
+            setNotice(null);
+            stop?.();
+          }
           if (cat && "code" in cat && cat.code === "catalog_import_in_progress")
             await reload();
           throw new Error(
@@ -168,6 +218,7 @@ export function useCatalog() {
     mutate,
     createCategory,
     refreshFailed,
-    writing,
+    writing: writing || uncertainWrite,
+    uncertainWrite,
   };
 }

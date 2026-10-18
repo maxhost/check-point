@@ -11,16 +11,19 @@ export async function catalogApiFixture(page: Page, empty = false) {
     id,
     name,
     categoryId,
-    unitPrice: 3,
+    unitPrice: "3",
+    soldByWeight: false,
+    pricingUnit: "unit",
+    catalogRevision: "1",
     unitCost: null,
-    imagePath: null,
+    imagePath: null as string | null,
     imageVersion: 0,
     imageSource: null,
     imageAuthor: null,
     imageAuthorUrl: null,
     imageSourceUrl: null,
     availableAllLocations: true,
-    locationIds: [],
+    locationIds: [] as string[],
   });
   const products = empty
     ? []
@@ -42,6 +45,15 @@ export async function catalogApiFixture(page: Page, empty = false) {
       bytes: Buffer | null;
     }>,
     progress: [] as string[],
+    salesMassUnits: ["kg", "lb", "g"],
+    headers: [] as Array<{ method: string; path: string; contract?: string }>,
+    writeError: null as {
+      status: number;
+      code: string;
+      error: string;
+      product?: unknown;
+    } | null,
+    readStatus: 200,
     failWrite: false,
     failRead: false,
     importing: false,
@@ -65,6 +77,11 @@ export async function catalogApiFixture(page: Page, empty = false) {
     const request = route.request();
     const url = new URL(request.url());
     const method = request.method();
+    state.headers.push({
+      method,
+      path: url.pathname,
+      contract: request.headers()["x-catalog-contract"],
+    });
     const body =
       request.headers()["content-type"]?.includes("application/json") &&
       request.postData()
@@ -102,12 +119,15 @@ export async function catalogApiFixture(page: Page, empty = false) {
       return json({ ok: true });
     }
     if (url.pathname === "/api/catalog") {
+      if (state.readStatus !== 200)
+        return json({ error: "Acceso retirado" }, state.readStatus);
       if (state.failRead) return json({ error: "No se pudo actualizar" }, 503);
       return json({
         products: state.products,
         categories: state.categories,
         locations: state.locations,
         currencyCode: "USD",
+        salesMassUnits: state.salesMassUnits,
         importInProgress: state.importing,
       });
     }
@@ -175,6 +195,8 @@ export async function catalogApiFixture(page: Page, empty = false) {
       ["POST", "PUT", "DELETE"].includes(method)
     ) {
       state.writes.push({ method, path: url.pathname, body });
+      if (state.writeError)
+        return json(state.writeError, state.writeError.status);
       if (state.failWrite)
         return json({ error: "No pudimos guardar el producto." }, 503);
       const kind = url.pathname.split("/")[3];
@@ -209,7 +231,9 @@ export async function catalogApiFixture(page: Page, empty = false) {
         return json(created, 201);
       }
       const item = state.products.find((item) => item.id === id)!;
-      Object.assign(item, body);
+      Object.assign(item, body, {
+        catalogRevision: String(BigInt(item.catalogRevision) + 1n),
+      });
       return json(item);
     }
     return json({ ok: true });
