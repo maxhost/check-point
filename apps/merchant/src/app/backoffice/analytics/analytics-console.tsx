@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useId, useState, type ReactNode } from "react";
 import type {
   buildDay,
   buildHistory,
@@ -86,6 +86,8 @@ export default function AnalyticsConsole({
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [reload, setReload] = useState(0);
+  const [showGoalDetails, setShowGoalDetails] = useState(false);
+  const goalDetailsId = useId();
   useEffect(() => {
     let active = true;
     const query = new URLSearchParams({
@@ -307,38 +309,95 @@ export default function AnalyticsConsole({
                     <Metric
                       label="Para cubrir el mes"
                       value={money(history.goal.breakEvenMinor)}
-                      detail={history.goal.estimated ? "Estimado" : undefined}
                     />
                     <Metric
                       label="Ventas del mes"
                       value={money(history.goal.monthRevenueMinor)}
                     />
                   </dl>
-                  <Text>
-                    Margen de contribución:{" "}
-                    {Math.round((history.goal.margin ?? 0) * 100)}%. Gastos del
-                    mes: {money(history.goal.expensesMinor)}
-                    {history.goal.estimated ? " (estimado)" : ""}.
-                  </Text>
+                  <dl className="grid grid-cols-2 gap-3 border-y border-border py-3 sm:grid-cols-3">
+                    {[
+                      [
+                        "Margen de contribución",
+                        `${Math.round((history.goal.margin ?? 0) * 100)}%`,
+                      ],
+                      [
+                        history.goal.estimated
+                          ? "Gastos estimados"
+                          : "Gastos del mes",
+                        money(history.goal.expensesMinor),
+                      ],
+                      ...(history.goal.targetMinor === null
+                        ? []
+                        : [["Meta de hoy", money(history.goal.targetMinor)]]),
+                    ].map(([label, value]) => (
+                      <div
+                        key={label}
+                        className="grid min-w-0 content-start gap-1"
+                      >
+                        <dt>
+                          <Text as="span" variant="small">
+                            {label}
+                          </Text>
+                        </dt>
+                        <dd className="m-0 break-words tabular-nums">
+                          <Text as="span" variant="label">
+                            {value}
+                          </Text>
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
                   {history.goal.targetMinor !== null && (
-                    <Text>
-                      Meta de hoy: {money(history.goal.targetMinor)} en{" "}
-                      {history.goal.remainingDays} días de venta restantes.
+                    <Text variant="small">
+                      {history.goal.remainingDays} días de venta restantes para
+                      cubrir el mes.
                     </Text>
                   )}
-                  <ul className="grid divide-y divide-border">
-                    {history.goal.concepts.map((c) => (
-                      <li key={c.id} className="py-3">
-                        <Text>
-                          {c.label}: {money(c.amountMinor)}
-                          {c.estimated
-                            ? " · estimado con meses anteriores"
-                            : " · pagado este mes"}
-                          .
-                        </Text>
-                      </li>
-                    ))}
-                  </ul>
+                  {history.goal.concepts.length > 0 && (
+                    <div className="grid gap-2">
+                      <Button
+                        variant="quiet"
+                        className="justify-start"
+                        aria-expanded={showGoalDetails}
+                        aria-controls={goalDetailsId}
+                        onPress={() => setShowGoalDetails((open) => !open)}
+                      >
+                        {showGoalDetails
+                          ? "Ocultar desglose"
+                          : "Ver desglose de gastos"}{" "}
+                        ({history.goal.concepts.length})
+                      </Button>
+                      <div id={goalDetailsId} hidden={!showGoalDetails}>
+                        <ul className="grid divide-y divide-border">
+                          {history.goal.concepts.map((c) => (
+                            <li
+                              key={c.id}
+                              className="grid grid-cols-2 gap-1 py-2"
+                            >
+                              <Text as="span" className="min-w-0 break-words">
+                                {c.label}
+                              </Text>
+                              <Text
+                                as="span"
+                                variant="label"
+                                className="break-words text-right tabular-nums"
+                              >
+                                {money(c.amountMinor)}
+                              </Text>
+                              <div className="col-span-2">
+                                <Text variant="small">
+                                  {c.estimated
+                                    ? "Estimado con meses anteriores"
+                                    : "Pagado este mes"}
+                                </Text>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
             </Card>

@@ -58,6 +58,20 @@ for (const width of [390, 768, 1440]) {
             ...data.goal,
             closedMonth: true,
             coverage: 1,
+            concepts: [
+              {
+                id: "services",
+                label: "Servicios",
+                amountMinor: 10000,
+                estimated: true,
+              },
+              {
+                id: "rent",
+                label: "Alquiler",
+                amountMinor: 20000,
+                estimated: false,
+              },
+            ],
             breakEvenMinor: 60000,
             monthRevenueMinor: 21000,
             margin: 0.5,
@@ -78,7 +92,19 @@ for (const width of [390, 768, 1440]) {
       profit.locator("dd").filter({ hasText: "-" }).first(),
     ).toContainText("100");
     await expect(profit).toContainText("$0,00");
-    await expect(goal).toContainText("Estimado");
+    await expect(goal).toContainText("Gastos estimados");
+    const toggle = goal.getByRole("button", {
+      name: /desglose.*\(2\)/,
+    });
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await expect(goal.getByText("Servicios", { exact: true })).toBeHidden();
+    await toggle.focus();
+    await page.keyboard.press("Enter");
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await expect(goal.getByText("Estimado con meses anteriores")).toBeVisible();
+    await expect(goal.getByText("Pagado este mes")).toBeVisible();
+    await page.keyboard.press("Space");
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
     await expect(page.getByText(/Estas ventas no indican/)).toBeVisible();
     const a = await profit.boundingBox();
     const b = await goal.boundingBox();
