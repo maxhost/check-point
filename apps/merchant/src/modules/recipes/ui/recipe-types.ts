@@ -1,3 +1,4 @@
+import { validBasis, type BasisDraft } from "./composition-basis-draft";
 import {
   countedQuantity,
   editableAmount,
@@ -103,6 +104,7 @@ export function compositionPayload(
   isCombo: boolean,
   components: RecipeComponent[],
   expectedRevisionId: string | null,
+  basis?: BasisDraft,
 ) {
   if (!components.length || components.length > (isCombo ? 50 : 1))
     throw new Error(
@@ -121,7 +123,12 @@ export function compositionPayload(
     countedQuantity(quantity, "unit");
     return { recipeId: component.recipeId, quantity };
   });
-  return { isCombo, recipes, expectedRevisionId };
+  return {
+    isCombo,
+    recipes,
+    expectedRevisionId,
+    ...(basis ? validBasis(basis) : {}),
+  };
 }
 export function recipePayload(
   lines: RecipeLine[],
@@ -176,4 +183,55 @@ export function recipePayload(
       throw new Error(`Ingrediente ${index + 1}: ${recipeError(cause)}`);
     }
   });
+}
+
+/** Canonical saved identity/body shared by initial load, partial persistence and review. */
+export function savedRecipeState(
+  recipe: LibraryRecipeDTO,
+  existingItems: StockItem[] = [],
+) {
+  const resolved: StockItem[] = recipe.lines.map((line) => ({
+    id: line.itemId,
+    name: line.itemName,
+    unit: line.unit as StockItem["unit"],
+    status: line.itemStatus,
+  }));
+  const items = [
+    ...existingItems.filter(
+      (item) => !resolved.some((entry) => entry.id === item.id),
+    ),
+    ...resolved,
+  ];
+  const lines = savedIngredients(recipe);
+  return {
+    items,
+    lines,
+    body: JSON.stringify({
+      name: recipe.name,
+      lines: recipePayload(
+        lines,
+        items,
+        recipe.lines.map((line) => line.itemId),
+        true,
+      ),
+    }),
+  };
+}
+export function reconcileRecipeDraft(
+  recipe: LibraryRecipeDTO,
+  draft: RecipeLine[],
+  existingItems: StockItem[] = [],
+) {
+  const state = savedRecipeState(recipe, existingItems);
+  return {
+    ...state,
+    lines: draft.map((line) => {
+      const resolved = recipe.lines.find(
+        (entry) => entry.itemName === line.name && entry.unit === line.unit,
+      );
+      return !line.itemId && resolved
+        ? { ...line, itemId: resolved.itemId }
+        : line;
+    }),
+  };
 }
