@@ -91,6 +91,25 @@ if (process.argv[2] === "--reuse-build") {
     "apps/merchant/src/modules/pos/server/pos-measurement.neon.integration.test.ts",
     "apps/merchant/src/modules/pos/server/pos-measurement-login.test-support.ts",
   ]);
+  const changedBuildFiles = run(
+    "git",
+    "diff",
+    "--name-only",
+    previous.buildSource ?? previous.source,
+    "HEAD",
+    "--",
+    "apps",
+    "packages",
+  )
+    .split("\n")
+    .filter(Boolean);
+  if (changedBuildFiles.some((file) => !uncompiledFixtures.has(file)))
+    throw Error("Compiled source differs from attributed build source");
+  if (
+    report.controlArchiveSha256 !==
+    "54cbc567143f7d3e2af43309810c14da6bea647ab50926534ecb4b78109ec5fe"
+  )
+    throw Error("Original archived control changed");
   report.uncompiledFixtureChanges = [];
   for (const [file, expected] of Object.entries(previous.files)) {
     if (uncompiledFixtures.has(file) && hash(readFileSync(file)) !== expected)

@@ -349,6 +349,9 @@ export async function inspectFlows(m: Manifest, directory: string) {
  (select count(*)::int from core.module_event e where e.business_id=p.business_id and e.source_id=p.id and e.event_type='sale.closed') as sale_events,
  (select coalesce(jsonb_agg(jsonb_build_object('subscriber',d.subscriber_id,'state',d.state,'attempts',d.attempts,'reason',d.terminal_reason)),'[]'::jsonb) from core.module_event e join core.module_event_delivery d on d.event_id=e.id where e.business_id=p.business_id and e.source_id=p.id) as deliveries,
  (select count(*)::int from core.coupon_redemption r where r.order_id=p.order_id) as coupon_redemptions,
+ (select count(*)::int from core."order" o where o.business_id=p.business_id and o.membership_id=(select membership_id from core."order" where id=p.order_id)) as membership_orders,
+ (select coalesce(jsonb_agg(jsonb_build_object('class',q.class,'status',q.status,'attempts',q.attempts,'createdAt',q.created_at,'sentAt',q.sent_at)),'[]'::jsonb) from consumer.wallet_push_queue q where q.consumer_id=(select consumer_id from core."order" where id=p.order_id)) as wallet_outbox,
+ (select coalesce(jsonb_agg(jsonb_build_object('outcome',d.outcome,'decidedAt',d.decided_at)),'[]'::jsonb) from core.cross_decision d where d.order_id=p.order_id) as cross_decisions,
  (select jsonb_build_object('net',o.total,'units',o.units_granted,'balance',o.balance_after,'membership',o.membership_id,'consumer',o.consumer_id) from core."order" o where o.id=p.order_id) as ledger
  from pos.pos_order p where p.business_id=${flow.businessId} and p.table_label like 'Flow %' order by p.table_label`);
   await writeFile(
@@ -372,6 +375,7 @@ export async function inspectFlows(m: Manifest, directory: string) {
     expect(row.status).toBe("closed");
     expect(row.close_request_id).toBe(c!.closeRequestId);
     expect(row.sale_events).toBe(1);
+    expect(row.membership_orders).toBe(1);
     expect(row.payment_count).toBe(c!.variant === "zero" ? 0 : 1);
     expect(row.coupon_redemptions).toBe(c!.couponId ? 1 : 0);
     const ledger = row.ledger as {
