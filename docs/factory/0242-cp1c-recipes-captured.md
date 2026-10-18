@@ -21,9 +21,10 @@ Sources medidas guardan quantityVersion2, los cuatro textos racionales reducidos
 - `apps/merchant/src/modules/recipes/server/model/provenance.ts`.
 - `apps/merchant/src/modules/recipes/server/model/captured-measured.neon.integration.test.ts`, nuevo.
 - `apps/merchant/src/modules/recipes/server/model/consumption.neon.integration.test.ts`, ampliación del coordinador tras reproducción: tres expectativas obsoletas de1delivery frente a2 reales (Recetas/core.analytics); exigir resultado exacto y ambas deliveries, conservar aserciones de ledger/costo/procedencia. Limpieza propia comprobable, sin alterar helper común.
+- `apps/merchant/src/modules/recipes/server/consumption-event.ts`, ampliación posterior por fallo real de replay: evitar segundo append de recipes.consumption.applied ya existente para el mismo negocio/orden; validar identidad de envelope/payload y conservar evento/deliveries/observedAt originales. No cambiar versión/shape, costos, política de analytics ni framework. No capturar unique-violation para fingir éxito.
 - `docs/factory/0242-cp1c-recipes-captured-handoff.md`.
 
-Sin schema/migraciones/journal, publicación/composiciones/UI, subscriptions/consumption-event/metrics, framework/retry/producer, Stock/analytics, auth/kit/tooling/deps ni estados/índices. Solicitar ampliación justificada de paths antes de editar. Otro autor conectará la cadena cuando los eventos derivados y analytics distingan masa/piezas.
+Sin schema/migraciones/journal, publicación/composiciones/UI, subscriptions/metrics, framework/retry/producer, Stock/analytics, auth/kit/tooling/deps ni estados/índices. consumption-event solo admite el arreglo de replay anterior; no contrato V2 ni medidas todavía. Solicitar ampliación justificada de paths antes de editar. Otro autor conectará la cadena cuando los eventos derivados y analytics distingan masa/piezas.
 
 ## Gate y evidencia
 
