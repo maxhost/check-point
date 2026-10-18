@@ -19,11 +19,19 @@ vi.mock("driver.js", () => ({
   },
 }));
 
-vi.mock("./onboarding-api", () => ({
-  recordOnboardingTour: mocks.record,
-}));
+import {
+  startOnboardingTour,
+  disposeOnboardingTour,
+  type OnboardingTourOptions,
+} from "./onboarding-tour";
 
-import { startOnboardingTour, disposeOnboardingTour } from "./onboarding-tour";
+// Persistence is injected; the separate helper suite verifies scope and transport.
+const start = (options: OnboardingTourOptions) =>
+  startOnboardingTour({
+    ...options,
+    persistProgress: (status) =>
+      mocks.record(options.tourId, status).then(() => true),
+  });
 
 beforeEach(() => {
   mocks.config = null;
@@ -33,12 +41,12 @@ beforeEach(() => {
 
 describe("driver del onboarding", () => {
   it("configura el enfoque automático de cada elemento resaltado", () => {
-    startOnboardingTour({ tourId: "staff", steps: [] });
+    start({ tourId: "staff", steps: [] });
     expect(mocks.config?.onHighlighted).toBeTypeOf("function");
   });
 
   it("registra completed al terminar el último paso", () => {
-    startOnboardingTour({ tourId: "catalog", steps: [] });
+    start({ tourId: "catalog", steps: [] });
 
     mocks.config?.onDoneClick();
 
@@ -47,7 +55,7 @@ describe("driver del onboarding", () => {
   });
 
   it("registra skipped al cerrar el recorrido", () => {
-    startOnboardingTour({ tourId: "brand", steps: [] });
+    start({ tourId: "brand", steps: [] });
 
     mocks.config?.onDestroyStarted();
 
@@ -56,14 +64,14 @@ describe("driver del onboarding", () => {
   });
 
   it("una ayuda independiente no persiste progreso", () => {
-    startOnboardingTour({ tourId: "staff", steps: [], persist: false });
+    start({ tourId: "staff", steps: [], persist: false });
     mocks.config?.onDoneClick();
     expect(mocks.record).not.toHaveBeenCalled();
     expect(mocks.destroy).toHaveBeenCalledOnce();
   });
 
   it("ofrece avanzar o saltar desde el primer paso cuando se solicita", () => {
-    startOnboardingTour({
+    start({
       tourId: "staff",
       steps: [{ element: "[data-tour='staff-add']", popover: {} }],
       showSkipOnFirstStep: true,
@@ -77,7 +85,7 @@ describe("driver del onboarding", () => {
     expect(firstStep?.popover?.showButtons).toEqual(["next", "close"]);
   });
   it("desmontar un tour no registra skipped y limpia el driver", () => {
-    const tour = startOnboardingTour({ tourId: "catalog", steps: [] });
+    const tour = start({ tourId: "catalog", steps: [] });
     disposeOnboardingTour(tour);
     mocks.config?.onDestroyStarted();
     expect(mocks.record).not.toHaveBeenCalled();
@@ -87,11 +95,35 @@ describe("driver del onboarding", () => {
     mocks.record.mockRejectedValueOnce(new Error("offline"));
     const onSaved = vi.fn();
     const onSaveError = vi.fn();
-    startOnboardingTour({ tourId: "catalog", steps: [], onSaved, onSaveError });
+    start({ tourId: "catalog", steps: [], onSaved, onSaveError });
     mocks.config?.onDoneClick();
     await vi.waitFor(() =>
       expect(onSaveError).toHaveBeenCalledWith("completed"),
     );
     expect(onSaved).not.toHaveBeenCalled();
   });
+});
+
+it("persistent tours fail closed without an injected intention", async () => {
+  const onSaveError = vi.fn();
+  startOnboardingTour({ tourId: "catalog", steps: [], onSaveError });
+  mocks.config?.onDoneClick();
+  await vi.waitFor(() => expect(onSaveError).toHaveBeenCalledWith("completed"));
+  expect(mocks.record).not.toHaveBeenCalled();
+});
+it("a discarded intention produces neither saved nor operational failure UI", async () => {
+  const onSaved = vi.fn(),
+    onSaveError = vi.fn();
+  startOnboardingTour({
+    tourId: "catalog",
+    steps: [],
+    persistProgress: async () => false,
+    onSaved,
+    onSaveError,
+  });
+  mocks.config?.onDoneClick();
+  await Promise.resolve();
+  await Promise.resolve();
+  expect(onSaved).not.toHaveBeenCalled();
+  expect(onSaveError).not.toHaveBeenCalled();
 });

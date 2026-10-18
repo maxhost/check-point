@@ -1,4 +1,5 @@
 "use client";
+import { useOnboardingTourIntent } from "../onboarding/use-onboarding-tour-intent";
 import { loyaltyHelpStep } from "./loyalty-tour-step";
 import { useEffect, useRef, useState } from "react";
 import type { Driver } from "driver.js";
@@ -9,10 +10,7 @@ import {
   startOnboardingTour,
   ONBOARDING_TOUR_ENDED_EVENT,
 } from "../onboarding/onboarding-tour";
-import {
-  recordOnboardingTour,
-  type OnboardingTourStatus,
-} from "../onboarding/onboarding-api";
+import { type OnboardingTourStatus } from "../onboarding/onboarding-api";
 import {
   LOYALTY_HELP,
   LOYALTY_TOUR_QUERY_KEY,
@@ -30,6 +28,7 @@ import { loyaltyTourKeyboard } from "./loyalty-tour-focus";
 import type { LoyaltyVm } from "./use-loyalty-program";
 export function LoyaltyTourController({ vm }: { vm: LoyaltyVm }) {
   const { editor } = useLoyaltyTour();
+  const captureTour = useOnboardingTourIntent();
   const [helpOpen, setHelpOpen] = useState(false);
   const [session, setSession] = useState<LoyaltyTourSession | null>(null);
   const [accrual, setAccrual] = useState(false);
@@ -88,13 +87,15 @@ export function LoyaltyTourController({ vm }: { vm: LoyaltyVm }) {
   useEffect(() => {
     if (denied) stop();
   }, [denied]);
-  function orient(persist: boolean) {
+  function orient(persist: boolean, intent?: ReturnType<typeof captureTour>) {
+    if (persist && !intent?.isCurrent()) return;
     setHelpOpen(false);
     setOrienting(true);
     driver.current = startOnboardingTour({
       tourId: "program",
       steps: loyaltyOrientation(vm),
       persist,
+      persistProgress: intent?.persistProgress,
       showSkipOnFirstStep: true,
       disableActiveInteraction: true,
       onClosed: () => {
@@ -117,14 +118,17 @@ export function LoyaltyTourController({ vm }: { vm: LoyaltyVm }) {
       !wantsLoyaltyOnboardingTour(window.location.search)
     )
       return;
+    const intent = captureTour("program");
+    if (!intent) return;
     const frame = requestAnimationFrame(() => {
+      if (!intent.isCurrent()) return;
       const url = new URL(window.location.href);
       url.searchParams.delete(LOYALTY_TOUR_QUERY_KEY);
       window.history.replaceState(window.history.state, "", url);
-      orient(true);
+      orient(true, intent);
     });
     return () => cancelAnimationFrame(frame);
-  }, [vm.isOwner, blocked, session, orienting]);
+  }, [vm.isOwner, blocked, session, orienting, captureTour]);
   function start(task: LoyaltyTask) {
     if (blocked || helpUnavailable(task, vm)) return;
     setHelpOpen(false);
@@ -210,9 +214,11 @@ export function LoyaltyTourController({ vm }: { vm: LoyaltyVm }) {
   ]);
   async function retry() {
     if (!saveFailed || retrying || denied) return;
+    const intent = captureTour("program");
+    if (!intent) return;
     setRetrying(true);
     try {
-      await recordOnboardingTour("program", saveFailed);
+      if (!(await intent.persistProgress(saveFailed))) return;
       if (alive.current) {
         setSaveFailed(null);
         window.dispatchEvent(new Event(ONBOARDING_TOUR_ENDED_EVENT));

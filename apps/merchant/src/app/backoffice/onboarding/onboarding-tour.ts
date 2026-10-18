@@ -7,11 +7,7 @@ import {
   type Popover,
   type Driver,
 } from "driver.js";
-import {
-  recordOnboardingTour,
-  type OnboardingTourId,
-  type OnboardingTourStatus,
-} from "./onboarding-api";
+import type { OnboardingTourId, OnboardingTourStatus } from "./onboarding-api";
 import {
   TOUR_ADVANCE_EVENT,
   TOUR_REFRESH_EVENT,
@@ -24,6 +20,7 @@ export type OnboardingTourOptions = {
   onSaved?: (status: OnboardingTourStatus) => void;
   onSaveError?: (status: OnboardingTourStatus) => void;
   persist?: boolean;
+  persistProgress?: (status: OnboardingTourStatus) => Promise<boolean>;
   showSkipOnFirstStep?: boolean;
   onClosed?: () => void;
   showProgress?: boolean;
@@ -46,11 +43,11 @@ export function disposeOnboardingTour(tour: Driver) {
  * only the resulting state crosses the API boundary.
  */
 export function startOnboardingTour({
-  tourId,
   steps,
   onSaved,
   onSaveError,
   persist = true,
+  persistProgress,
   showSkipOnFirstStep = false,
   onClosed,
   showProgress = true,
@@ -77,8 +74,12 @@ export function startOnboardingTour({
       onSaved?.(status);
       return;
     }
-    void recordOnboardingTour(tourId, status)
-      .then(() => {
+    const pending = persistProgress
+      ? persistProgress(status)
+      : Promise.reject(new Error("Missing captured onboarding tour intention"));
+    void pending
+      .then((saved) => {
+        if (!saved) return;
         onSaved?.(status);
         if (typeof window !== "undefined")
           window.dispatchEvent(new Event(ONBOARDING_TOUR_ENDED_EVENT));
