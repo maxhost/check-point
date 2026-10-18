@@ -743,6 +743,13 @@
       "when": 1792360004444,
       "tag": "0105_catalog_measure_storage_expand",
       "breakpoints": true
+    },
+    {
+      "idx": 106,
+      "version": "7",
+      "when": 1792367005545,
+      "tag": "0106_pos_order_intent",
+      "breakpoints": true
     }
   ]
 }
