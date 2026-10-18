@@ -368,7 +368,7 @@ test("POST biblioteca incierto identifica lo guardado y no repite alta ni insumo
   ).toHaveLength(1);
   expect(api.writes[1].body).toMatchObject({
     basisQuantity: "10",
-    recipes: [{ recipeId: "recipe-1", quantity: "1" }],
+    recipes: [{ recipeId: "recipe-new", quantity: "1" }],
   });
 });
 test("409 biblioteca conserva intención y adopta solo revisión consultada", async ({

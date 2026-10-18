@@ -96,6 +96,7 @@ export async function setupRecipes(
       }
       storedLibrary = {
         ...storedLibrary,
+        id: method === "POST" ? "recipe-new" : storedLibrary.id,
         revisionId: "library-2",
         name: route.request().postDataJSON().name,
         lines: (
@@ -150,7 +151,7 @@ export async function setupRecipes(
       });
     if (url.pathname.endsWith("composition"))
       return route.fulfill({ json: { composition } });
-    if (url.pathname.endsWith("library/recipe-1"))
+    if (url.pathname.endsWith(`library/${storedLibrary.id}`))
       return route.fulfill({ json: { recipe: storedLibrary } });
     if (url.pathname.endsWith("library"))
       return route.fulfill({
