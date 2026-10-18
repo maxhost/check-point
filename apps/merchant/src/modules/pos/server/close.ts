@@ -1,4 +1,8 @@
 import {
+  beginRequestMeasurement,
+  measureRequestPhase,
+} from "../../../server/request-measurement";
+import {
   freezeSaleCommission,
   prepareSaleCommission,
 } from "../../../server/business/commission-close";
@@ -314,19 +318,28 @@ export async function closePosOrder(
   }
   // Best-effort y no bloqueante (ADR 0037, spec 0143): el push y la venta cruzada, solo si ESTE
   // cierre creo la orden — nunca en el reintento ni en un rollback.
-  if (outcome.created) afterGrant(outcome.created);
+  if (outcome.created) {
+    const finish = beginRequestMeasurement("after-grant-schedule");
+    try {
+      afterGrant(outcome.created);
+    } finally {
+      finish();
+    }
+  }
   // Durable deliveries survive request completion; acceleration is bounded and cannot fail this sale.
   const retry = () =>
-    retryModuleEvents({
-      eventTypes: [
-        "sale.closed",
-        "recipes.consumption.applied",
-        "sale.commission.frozen",
-      ],
-      businessId: business.id,
-      budgetMs: 20000,
-      batchSize: 50,
-    }).then(
+    measureRequestPhase("module-events-aftercommit", () =>
+      retryModuleEvents({
+        eventTypes: [
+          "sale.closed",
+          "recipes.consumption.applied",
+          "sale.commission.frozen",
+        ],
+        businessId: business.id,
+        budgetMs: 20000,
+        batchSize: 50,
+      }),
+    ).then(
       () => undefined,
       () => undefined,
     );

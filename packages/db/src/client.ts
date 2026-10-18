@@ -3,6 +3,7 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { drizzle as drizzleWs } from "drizzle-orm/neon-serverless";
 import { assertNotProdOutsideProduction, configureNeonForLocal } from "./local";
 import * as schema from "./schema";
+import { instrumentPosPool } from "./pos-measurement";
 
 export function getDb() {
   const connectionString = process.env.DATABASE_URL;
@@ -46,6 +47,7 @@ function poolFor(connectionString: string, connectionTimeoutMs?: number): Pool {
     // driver error/client context, which may contain connection credentials. Active
     // query failures still propagate through their transaction promise below.
     pool.on("error", () => {});
+    instrumentPosPool(pool);
     pools.set(key, pool);
   }
   return pool;
