@@ -47,8 +47,8 @@ export const products = core.table(
       onDelete: "set null",
     }),
     name: text("name").notNull(),
-    unitPrice: numeric("unit_price", { precision: 12, scale: 2 }),
-    unitCost: numeric("unit_cost", { precision: 12, scale: 2 }),
+    unitPrice: numeric("unit_price", { precision: 24, scale: 9 }),
+    unitCost: numeric("unit_cost", { precision: 24, scale: 9 }),
     /** Internal R2 prefix. NEVER serialized to the client. */
     imageObjectKey: text("image_object_key"),
     imageVersion: integer("image_version").notNull().default(0),
@@ -79,6 +79,15 @@ export const products = core.table(
     check(
       "product_unit_cost_check",
       sql`${table.unitCost} is null or ${table.unitCost} >= 0`,
+    ),
+    // Temporary expand barrier: precise tariffs remain disabled until compatible cutover.
+    check(
+      "product_unit_price_legacy_check",
+      sql`${table.unitPrice} is null or (${table.unitPrice} <= 9999999999.99 and ${table.unitPrice} = trunc(${table.unitPrice}, 2))`,
+    ),
+    check(
+      "product_unit_cost_legacy_check",
+      sql`${table.unitCost} is null or (${table.unitCost} <= 9999999999.99 and ${table.unitCost} = trunc(${table.unitCost}, 2))`,
     ),
     check("product_image_version_check", sql`${table.imageVersion} >= 0`),
   ],

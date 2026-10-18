@@ -1,0 +1,4 @@
+ALTER TABLE "core"."product" ALTER COLUMN "unit_price" SET DATA TYPE numeric(24, 9);--> statement-breakpoint
+ALTER TABLE "core"."product" ALTER COLUMN "unit_cost" SET DATA TYPE numeric(24, 9);--> statement-breakpoint
+ALTER TABLE "core"."product" ADD CONSTRAINT "product_unit_price_legacy_check" CHECK ("core"."product"."unit_price" is null or ("core"."product"."unit_price" <= 9999999999.99 and "core"."product"."unit_price" = trunc("core"."product"."unit_price", 2)));--> statement-breakpoint
+ALTER TABLE "core"."product" ADD CONSTRAINT "product_unit_cost_legacy_check" CHECK ("core"."product"."unit_cost" is null or ("core"."product"."unit_cost" <= 9999999999.99 and "core"."product"."unit_cost" = trunc("core"."product"."unit_cost", 2)));
