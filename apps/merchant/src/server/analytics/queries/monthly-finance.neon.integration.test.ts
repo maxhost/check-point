@@ -19,6 +19,10 @@ import {
 } from "@mi-pasaporte/domain/analytics/cards/index";
 import { buildDashboardSummary } from "@mi-pasaporte/domain/analytics/dashboard-summary-calculation";
 import { readHistory, readInput } from "./index";
+import { salesBasis } from "@mi-pasaporte/domain/analytics/monthly-finance";
+import { financialMetrics } from "@mi-pasaporte/domain/analytics/financial-metrics";
+import { addDays } from "@mi-pasaporte/domain/analytics/date";
+import { assertSnapshotEquivalence } from "../evaluation/snapshot-equivalence.test-support";
 import { historyGET } from "../http";
 
 const business = randomUUID(),
@@ -244,6 +248,219 @@ describe.skipIf(!permisosIntegrationEnabled)(
           )
         ).status,
       ).toBe(404);
+    }, 30_000);
+  },
+);
+
+const exactBusiness = randomUUID(),
+  exactOwner = randomUUID();
+const exactLocals = Array.from({ length: 8 }, () => randomUUID());
+const exactProduct = randomUUID(),
+  extraProduct = randomUUID();
+const grams = "453.59237000000001",
+  lessGrams = "453.59237000000000";
+
+describe.skipIf(!permisosIntegrationEnabled)(
+  "exact mass reader and SQL segments",
+  () => {
+    beforeAll(async () => {
+      await seedOwnerDeNegocio(
+        exactOwner,
+        exactBusiness,
+        `exact-${exactBusiness}`,
+      );
+      await getDb()
+        .insert(locations)
+        .values(
+          exactLocals.map((id, i) => ({
+            id,
+            businessId: exactBusiness,
+            name: `Exact ${i}`,
+            addressLabel: `Exact ${i}`,
+            countryCode: "EC",
+            addressSnapshot: {},
+          })),
+        );
+      const fact = (
+        metric: string,
+        locationId: string,
+        day: string,
+        quantity = "0",
+        amountMinor = 0n,
+        dimensionId: string | null = exactProduct,
+      ) => ({
+        businessId: exactBusiness,
+        locationId,
+        day,
+        metric,
+        quantity,
+        amountMinor,
+        dimensionKind: dimensionId ? "product" : "none",
+        dimensionId,
+        currencyCode:
+          metric.includes("sold") ||
+          metric.includes("with_cost_g") ||
+          metric === "units_with_cost"
+            ? ""
+            : "USD",
+        minorUnit:
+          metric.includes("sold") ||
+          metric.includes("with_cost_g") ||
+          metric === "units_with_cost"
+            ? 0
+            : 2,
+        count: [
+          "revenue",
+          "product_revenue",
+          "revenue_with_cost",
+          "cost_of_goods",
+          "payment_commission_with_cost",
+        ].includes(metric)
+          ? 1
+          : 0,
+      });
+      const sale = (local: string, day: string) => [
+        fact("revenue", local, day, "0", 10000n, null),
+        fact("product_revenue", local, day, "0", 10000n),
+        fact("revenue_with_cost", local, day, "0", 10000n),
+        fact("cost_of_goods", local, day, "0", 4000n),
+        fact("payment_commission", local, day, "0", 0n, null),
+        fact("payment_commission_with_cost", local, day),
+        fact("units_sold", local, day, "2"),
+        fact("units_with_cost", local, day, "2"),
+        fact("mass_sold_g", local, day, grams),
+        fact("mass_with_cost_g", local, day, grams),
+      ];
+      const rows = exactLocals.slice(0, 7).flatMap((local, i) =>
+        sale(local, "2026-10-16").map((r) => {
+          if (i === 1 && r.metric === "mass_with_cost_g")
+            return { ...r, quantity: lessGrams };
+          if (i === 2 && r.metric === "units_with_cost")
+            return { ...r, quantity: "1" };
+          if (i === 2 && r.metric === "mass_with_cost_g")
+            return { ...r, quantity: "99999" };
+          if (i === 3 && r.metric === "mass_with_cost_g")
+            return { ...r, dimensionId: extraProduct };
+          if (i === 4 && r.metric === "mass_with_cost_g")
+            return { ...r, day: "2026-10-15" };
+          if (i === 5 && r.metric === "mass_with_cost_g")
+            return { ...r, locationId: exactLocals[7] };
+          if (
+            i === 6 &&
+            ["revenue_with_cost", "cost_of_goods"].includes(r.metric)
+          )
+            return { ...r, currencyCode: "MXN" };
+          return r;
+        }),
+      );
+      // Another minor unit must not cover own captured revenue either.
+      rows.push(
+        fact("revenue_with_cost", exactLocals[6], "2026-10-16", "0", 10000n),
+      );
+      rows[rows.length - 1].minorUnit = 0;
+      // Reference/extended inclusive boundaries, outside recent window, and old same-weekday.
+      for (const offset of [0, 1, 28, 29, 45, 46, 49]) {
+        const day = addDays("2026-10-18", -offset);
+        for (const local of exactLocals.slice(0, 2)) {
+          rows.push(...sale(local, day));
+        }
+      }
+      await getDb().insert(metrics).values(rows);
+    }, 120_000);
+    afterAll(async () => {
+      await limpiarNegocios([exactBusiness], [exactOwner]);
+    }, 120_000);
+
+    it("preserves exact text, own money, mixed contribution and rejects every cross-compensation", async () => {
+      const all = await readInput(exactBusiness, now);
+      const own = financialMetrics(all);
+      expect(salesBasis(own).complete).toBe(false);
+      for (let i = 0; i < 7; i++) {
+        const scoped = await readInput(
+          exactBusiness,
+          now,
+          undefined,
+          exactLocals[i],
+        );
+        const day = financialMetrics(scoped).filter(
+          (r) => r.day === "2026-10-16",
+        );
+        expect(salesBasis(day)).toMatchObject(
+          i === 0
+            ? { complete: true, contribution: 6000 }
+            : { complete: false, contribution: null },
+        );
+        expect(
+          calculateGoal(scoped).finance.reasons.includes("sales_costs"),
+        ).toBe(i !== 0);
+      }
+      const sold = own.find(
+        (r) =>
+          r.locationId === exactLocals[1] &&
+          r.day === "2026-10-16" &&
+          r.metric === "mass_sold_g",
+      )!;
+      const known = own.find(
+        (r) =>
+          r.locationId === exactLocals[1] &&
+          r.day === "2026-10-16" &&
+          r.metric === "mass_with_cost_g",
+      )!;
+      expect(sold.quantityExact).toBe(grams);
+      expect(known.quantityExact).toBe(lessGrams);
+      expect(sold.quantity).toBe(known.quantity);
+    }, 30_000);
+
+    it("keeps reference/extended local boundaries exactly once without extending discrete same-weekday ranking to mass", async () => {
+      const input = await readInput(exactBusiness, now);
+      for (const offset of [0, 1, 28, 29, 45]) {
+        for (const metric of [
+          "mass_sold_g",
+          "mass_with_cost_g",
+          "units_sold",
+          "units_with_cost",
+        ]) {
+          const rows = input.metrics.filter(
+            (r) =>
+              r.day === addDays(input.today, -offset) && r.metric === metric,
+          );
+          expect(rows).toHaveLength(2);
+          expect(new Set(rows.map((r) => r.locationId))).toEqual(
+            new Set(exactLocals.slice(0, 2)),
+          );
+          expect(rows.map((r) => r.quantityExact)).toEqual([
+            metric.startsWith("mass") ? grams : "2",
+            metric.startsWith("mass") ? grams : "2",
+          ]);
+        }
+      }
+      for (const offset of [46, 49]) {
+        const day = addDays(input.today, -offset);
+        expect(
+          input.metrics.filter(
+            (r) => r.day === day && r.metric.startsWith("mass"),
+          ),
+        ).toHaveLength(0);
+      }
+      expect(
+        input.metrics.filter(
+          (r) =>
+            r.day === addDays(input.today, -49) && r.metric === "units_sold",
+        ),
+      ).toHaveLength(2);
+      const scoped = await readInput(
+        exactBusiness,
+        now,
+        undefined,
+        exactLocals[0],
+      );
+      expect(
+        scoped.metrics
+          .filter((r) => r.metric.startsWith("mass"))
+          .every((r) => r.locationId === exactLocals[0]),
+      ).toBe(true);
+      await assertSnapshotEquivalence(exactBusiness, now);
+      await assertSnapshotEquivalence(exactBusiness, now, exactLocals[0]);
     }, 30_000);
   },
 );
