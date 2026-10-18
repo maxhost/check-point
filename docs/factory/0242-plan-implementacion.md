@@ -42,6 +42,8 @@ El coordinador puede reasignar al implementador disponible un bloque independien
 
 En CP2a/b las capacidades nuevas de peso siguen dormidas hasta cierre/consumidores compatibles: tampoco se habilitan writes operativas de catálogo o creación de órdenes mass que dejen el circuito unit inaccesible por exigir un reader v2 prematuro. Las entregas pueden incorporar contratos/UI preparados, pero la activación de masa y V4 ocurre en el combinado completo CP2c. CP1c que requiera otra expansión de procedencia/base vuelve a reservar el mismo writer serial de esquema/journal.
 
+Al conectar consumidores medidos mediante `defineEventSubscription`/dispatch genérico, conservar explícitamente la comprobación de envelope de venta (eventVersion externo igual al payload y locationId capturado igual al envelope) antes de efectos, también para core.analytics. El camino legacy actual la hace dentro de su rama, pero el dispatch genérico no la hereda automáticamente. Esa conexión tendrá ficha/reserva propia: no ampliar el union legacy ni perder este control para aceptar V4. Captura/provenance dormidas y lectores puros no autorizan aún ese cambio de runtime.
+
 ### Implementador A: esquema y dominio de cantidades
 
 Writer único de `packages/db/src/schema/{business,catalog,order}.ts`, schema modules/pos, migrations/journal; tipos/financial; eventos types/decode/publish. Puede extender paths concretos de `packages/domain/src/financial`, tipos puros de medida, core orders/acreditación, POS line/settlement, Recetas/Stock/analytics cuando les toque. Reservas enumeran archivos reales, no la notación abreviada de esta página.
