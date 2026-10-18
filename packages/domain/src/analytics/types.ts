@@ -4,7 +4,9 @@ export type AnalyticsMetric = {
   locationId: string | null;
   dimensionId: string | null;
   amountMinor: number;
+  /** Presentation projection; quantityExact is authoritative when present. */
   quantity: number;
+  quantityExact?: string;
   count: number;
   currencyCode: string;
   minorUnit: number;

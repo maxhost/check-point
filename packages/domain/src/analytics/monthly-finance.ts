@@ -1,6 +1,6 @@
 import { addDays, addMonths, monthEnd, monthStart } from "./date";
-import { decimal, moneyRatio, sumIntegers } from "./money";
-import { add } from "../financial/rational";
+import { moneyRatio, sumIntegers } from "./money";
+import { exactQuantity, sameQuantity, sumQuantity } from "./quantity";
 import { financialMetrics } from "./financial-metrics";
 import type { AnalyticsInput, AnalyticsMetric } from "./types";
 import type {
@@ -14,17 +14,18 @@ const sum = (
   metric: string,
   field: "amountMinor" | "count" = "amountMinor",
 ) => sumIntegers(rows.filter((r) => r.metric === metric).map((r) => r[field]));
-const quantity = (rows: readonly AnalyticsMetric[], metric: string) =>
-  rows
-    .filter((r) => r.metric === metric)
-    .reduce((total, row) => add(total, decimal(String(row.quantity))), {
-      n: 0n,
-      d: 1n,
-    });
-const sameQuantity = (
-  a: { n: bigint; d: bigint },
-  b: { n: bigint; d: bigint },
-) => a.n * b.d === b.n * a.d;
+const physicalMetrics = [
+  "units_sold",
+  "units_with_cost",
+  "mass_sold_g",
+  "mass_with_cost_g",
+];
+const nonempty = (row: AnalyticsMetric) =>
+  row.amountMinor !== 0 ||
+  row.count !== 0 ||
+  (physicalMetrics.includes(row.metric)
+    ? exactQuantity(row)?.n !== 0n
+    : row.quantity !== 0);
 
 /** Complete captured sales, with no extrapolation from a known fraction. */
 function segmentBasis(rows: readonly AnalyticsMetric[]) {
@@ -33,16 +34,26 @@ function segmentBasis(rows: readonly AnalyticsMetric[]) {
     goods = sum(rows, "cost_of_goods"),
     commission = sum(rows, "payment_commission"),
     knownCommission = sum(rows, "payment_commission_with_cost"),
-    sold = quantity(rows, "units_sold"),
-    known = quantity(rows, "units_with_cost");
+    sold = sumQuantity(rows, "units_sold"),
+    known = sumQuantity(rows, "units_with_cost"),
+    massSold = sumQuantity(rows, "mass_sold_g"),
+    massKnown = sumQuantity(rows, "mass_with_cost_g");
+  const validQuantities = [sold, known, massSold, massKnown].every(
+    (value) => value !== null,
+  );
   const hasSales =
-    sum(rows, "revenue", "count") > 0 || revenue !== 0 || sold.n !== 0n;
+    sum(rows, "revenue", "count") > 0 ||
+    revenue !== 0 ||
+    sold?.n !== 0n ||
+    massSold?.n !== 0n;
   const ids = new Set(
     rows
       .filter((r) =>
         [
           "units_sold",
           "units_with_cost",
+          "mass_sold_g",
+          "mass_with_cost_g",
           "product_revenue",
           "cost_of_goods",
           "revenue_with_cost",
@@ -51,61 +62,66 @@ function segmentBasis(rows: readonly AnalyticsMetric[]) {
       )
       .map((r) => r.dimensionId),
   );
-  const complete = !hasSales
-    ? knownRevenue === 0 &&
-      goods === 0 &&
-      commission === 0 &&
-      known.n === 0n &&
-      knownCommission === 0 &&
-      sum(rows, "cost_of_goods", "count") === 0 &&
-      sum(rows, "revenue_with_cost", "count") === 0 &&
-      sum(rows, "payment_commission_with_cost", "count") === 0
-    : revenue >= 0 &&
-      goods >= 0 &&
-      commission >= 0 &&
-      revenue === knownRevenue &&
-      revenue === sum(rows, "product_revenue") &&
-      commission === knownCommission &&
-      sold.n > 0n &&
-      sameQuantity(sold, known) &&
-      [
-        ...new Set(
-          rows
-            .filter(
-              (r) =>
-                r.metric === "revenue" && (r.count > 0 || r.amountMinor !== 0),
+  const complete =
+    validQuantities &&
+    (!hasSales
+      ? knownRevenue === 0 &&
+        goods === 0 &&
+        commission === 0 &&
+        known?.n === 0n &&
+        massKnown?.n === 0n &&
+        knownCommission === 0 &&
+        sum(rows, "cost_of_goods", "count") === 0 &&
+        sum(rows, "revenue_with_cost", "count") === 0 &&
+        sum(rows, "payment_commission_with_cost", "count") === 0
+      : revenue >= 0 &&
+        goods >= 0 &&
+        commission >= 0 &&
+        revenue === knownRevenue &&
+        revenue === sum(rows, "product_revenue") &&
+        commission === knownCommission &&
+        ((sold !== null && sold.n > 0n) ||
+          (massSold !== null && massSold.n > 0n)) &&
+        sameQuantity(sold, known) &&
+        sameQuantity(massSold, massKnown) &&
+        [
+          ...new Set(
+            rows
+              .filter(
+                (r) =>
+                  r.metric === "revenue" &&
+                  (r.count > 0 || r.amountMinor !== 0),
+              )
+              .map((r) => r.day),
+          ),
+        ].every((day) =>
+          rows.some((r) => r.metric === "payment_commission" && r.day === day),
+        ) &&
+        [...ids].every((id) => {
+          const product = rows.filter((r) => r.dimensionId === id),
+            lines = sum(product, "cost_of_goods", "count");
+          if (!product.some(nonempty)) return true;
+          return (
+            lines > 0 &&
+            sum(product, "product_revenue", "count") > 0 &&
+            sum(product, "product_revenue") >= 0 &&
+            sum(product, "cost_of_goods") >= 0 &&
+            sum(product, "payment_commission_with_cost") >= 0 &&
+            lines >= sum(product, "product_revenue", "count") &&
+            lines === sum(product, "revenue_with_cost", "count") &&
+            lines === sum(product, "payment_commission_with_cost", "count") &&
+            sum(product, "product_revenue") ===
+              sum(product, "revenue_with_cost") &&
+            sameQuantity(
+              sumQuantity(product, "units_sold"),
+              sumQuantity(product, "units_with_cost"),
+            ) &&
+            sameQuantity(
+              sumQuantity(product, "mass_sold_g"),
+              sumQuantity(product, "mass_with_cost_g"),
             )
-            .map((r) => r.day),
-        ),
-      ].every((day) =>
-        rows.some((r) => r.metric === "payment_commission" && r.day === day),
-      ) &&
-      [...ids].every((id) => {
-        const product = rows.filter((r) => r.dimensionId === id),
-          lines = sum(product, "cost_of_goods", "count");
-        if (
-          !product.some(
-            (r) => r.amountMinor !== 0 || r.quantity !== 0 || r.count !== 0,
-          )
-        )
-          return true;
-        return (
-          lines > 0 &&
-          sum(product, "product_revenue", "count") > 0 &&
-          sum(product, "product_revenue") >= 0 &&
-          sum(product, "cost_of_goods") >= 0 &&
-          sum(product, "payment_commission_with_cost") >= 0 &&
-          lines >= sum(product, "product_revenue", "count") &&
-          lines === sum(product, "revenue_with_cost", "count") &&
-          lines === sum(product, "payment_commission_with_cost", "count") &&
-          sum(product, "product_revenue") ===
-            sum(product, "revenue_with_cost") &&
-          sameQuantity(
-            quantity(product, "units_sold"),
-            quantity(product, "units_with_cost"),
-          )
-        );
-      });
+          );
+        }));
   return {
     revenue,
     knownRevenue,
@@ -115,7 +131,9 @@ function segmentBasis(rows: readonly AnalyticsMetric[]) {
     complete,
     contribution: complete ? sumIntegers([revenue, -goods, -commission]) : null,
     unitCoverage:
-      sold.n > 0n ? Number(known.n * sold.d) / Number(known.d * sold.n) : 0,
+      sold !== null && known !== null && sold.n > 0n
+        ? Number(known.n * sold.d) / Number(known.d * sold.n)
+        : 0,
     revenueCoverage: revenue > 0 ? knownRevenue / revenue : 0,
   };
 }
@@ -130,6 +148,8 @@ export function salesBasis(rows: readonly AnalyticsMetric[]) {
         "product_revenue",
         "units_sold",
         "units_with_cost",
+        "mass_sold_g",
+        "mass_with_cost_g",
         "cost_of_goods",
         "revenue_with_cost",
         "payment_commission",
