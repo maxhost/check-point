@@ -10,7 +10,7 @@ export default defineConfig({
   workers: 1,
   retries: 0,
   reporter: "list",
-  outputDir: "/private/tmp/checkpass-0240-evidence/ui/browser",
+  outputDir: "/private/tmp/checkpass-0241-evidence/ui/stock-browser",
   use: { browserName: "chromium", headless: true },
 });
 // Baseline + sparse observations are real fixture events, never filled days.

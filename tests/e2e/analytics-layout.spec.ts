@@ -4,6 +4,7 @@ import {
   setupAnalytics,
   startAnalyticsHarness,
 } from "./support/analytics-fixture";
+import { financeSnapshot } from "./support/finance-plan-fixture";
 import { buildHistory } from "../../packages/domain/src/analytics/history";
 let harness: Awaited<ReturnType<typeof startAnalyticsHarness>>;
 test.beforeAll(async () => {
@@ -79,6 +80,38 @@ for (const width of [390, 768, 1440]) {
           ],
           goal: {
             ...data.goal,
+            finance: {
+              ...financeSnapshot(),
+              recordedExpensesMinor: 20000,
+              pendingExpensesMinor: 10000,
+              forecastExpensesMinor: 30000,
+              monthRevenueMinor: 21000,
+              monthContributionMinor: 10000,
+              remainingSalesMinor: 40000,
+              totalSalesTargetMinor: 61000,
+              expenses: [
+                {
+                  id: "rent",
+                  label: "Alquiler",
+                  kind: "fixed",
+                  recordedMinor: 20000,
+                  referenceMinor: 20000,
+                  referenceMonths: 1,
+                  pendingMinor: 0,
+                  forecastMinor: 20000,
+                },
+                {
+                  id: "variables",
+                  label: "Gastos variables",
+                  kind: "variable",
+                  recordedMinor: 0,
+                  referenceMinor: 10000,
+                  referenceMonths: 1,
+                  pendingMinor: 10000,
+                  forecastMinor: 10000,
+                },
+              ],
+            },
             closedMonth: true,
             coverage: 1,
             concepts: [
@@ -109,17 +142,19 @@ for (const width of [390, 768, 1440]) {
     await page.goto(`${harness.url}/backoffice/analytics`);
     const sales = section(page, "Ventas del período");
     const profit = section(page, "Gastos");
-    const goal = section(page, "El cálculo de este mes");
+    const goal = section(page, "Para cubrir los gastos del mes");
     await expect(sales).toContainText("30% menos");
     await expect(
       profit.locator("dd").filter({ hasText: "-" }).first(),
     ).toContainText("100");
     await expect(profit).toContainText("$0,00");
-    await expect(goal).toContainText("Gastos estimados");
+    await expect(goal).toContainText("Total previsto");
     await expect(
       goal.getByText("Margen de contribución", { exact: true }),
     ).toHaveCount(0);
-    await expect(goal.getByRole("button")).toHaveCount(0);
+    await expect(
+      goal.getByRole("button", { name: "Ver detalle de gastos", exact: true }),
+    ).toHaveCount(1);
     await expect(goal.getByRole("link")).toHaveCount(0);
     await expect(goal.getByRole("listitem")).toHaveCount(3);
     await expect(
@@ -142,7 +177,7 @@ for (const width of [390, 768, 1440]) {
       ),
     ).toBe(true);
     await page.screenshot({
-      path: `test-results/analytics-layout/${width}.png`,
+      path: `/private/tmp/checkpass-0241-evidence/ui/layout-${width}.png`,
       fullPage: true,
     });
   });
@@ -153,15 +188,13 @@ test("unknown costs and empty data remain explicit; filters and day still work",
   const fixture = await setupAnalytics(page);
   await page.goto(`${harness.url}/backoffice/analytics`);
   await expect(section(page, "Gastos")).toContainText("Pendiente");
-  await expect(section(page, "El cálculo de este mes")).toContainText(
+  await expect(section(page, "Para cubrir los gastos del mes")).toContainText(
     "No hay movimientos recientes disponibles de este mes.",
   );
   await expect(
     page.getByText("Los costos de estas ventas todavía no están incluidos."),
   ).toBeVisible();
-  await expect(
-    page.getByText("La meta se calcula al cerrar tu primer mes con gastos."),
-  ).toBeVisible();
+  await expect(page.getByText("Aún no podemos estimarlo")).toBeVisible();
   await page.getByRole("button", { name: /Período/ }).click();
   await page.getByRole("option", { name: "3 meses", exact: true }).click();
   await expect
