@@ -268,7 +268,7 @@ export default function AnalyticsConsole({
             )}
           </Card>
           <div className="grid min-w-0 items-stretch gap-6 lg:col-span-12 lg:grid-cols-2">
-            <Card className="grid min-w-0 content-start gap-4">
+            <Card className="grid min-w-0 content-start gap-4 self-start">
               <Heading level={2}>Ganancia y gastos</Heading>
               <dl>
                 <dt>

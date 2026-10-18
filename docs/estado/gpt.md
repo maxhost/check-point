@@ -5,6 +5,8 @@
 
 ## ESTADO — 0239 CÁLCULO SIN MARGEN VISIBLE Y MOVIMIENTOS; LISTO PARA OWNER EN DEV (2026-10-18 UTC)
 
+L0 posterior solicitado por owner: Ganancia/gastos usa self-start para tomar altura natural y no estirarse con la tarjeta de movimientos contigua; owner acepta alturas distintas. Sólo una clase, sin cambiar datos/layout restantes. Diff/ESLint/ui-guard focales, sin nueva campaña browser ni DB. Diferidos intactos; sin push/PROD.
+
 Owner pidió quitar margen visible y rediseñar cálculo mensual con boxes y lista, sin ViewAll; aclaró «Ventas y gastos recientes». Producto`92fcbd344b88f7499a747fb71982e77dc2c24cab`, base4f124e4f (contrato0239 reservado antes del código). [Entrega](../factory/0239-monthly-activity.md). Margen sigue en fórmula; tarjeta mantiene equilibrio/ventasmes/gastos estimados/meta/plazo, lista visible incluso pendiente y vacío explícito. No desglose desplegable ni botón/enlaceViewAll.
 
 HistoryGET incorpora recentMovements hasta4 operaciones vigentes de metric_contribution: revenue/expense_fixed/expense_variable, negocio/local/moneda/unidad/mescalendariolocal actual (como goal), agrupadasfuente/día/tipo/local. Fechadesc/desempateestable, NOordenhorario intradía ni promesa sincronía cobro. Tipo/fecha/concepto/importe, sin fuentes ni clientes/personal. Core no importa módulos, sin esquema ni APIs de módulos. UnSELECTadicional/ceroGETadicional, sin caché/polling; M1previo no certifica esta ampliación. History adopta scope trasguards antesdominio y private/no-store en todasrespuestas; day/Inbox/summary intactos.
