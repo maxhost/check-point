@@ -26,7 +26,7 @@ for (const width of [390, 1440]) {
       }),
     });
     await expect(
-      card.getByText("Valor conocido del stock:", { exact: false }),
+      card.getByText("Falta conocer el costo de 1 insumo", { exact: false }),
     ).toContainText("Falta conocer el costo de 1 insumo");
     await expect(card.getByRole("img")).toHaveAccessibleName(
       /Costos registrados de Harina de trigo/,
@@ -78,18 +78,18 @@ for (const width of [390, 1440]) {
       .getByRole("option", { name: "Leche · Centro", exact: true })
       .click();
     await expect(
-      card.getByText("Todavía no hay cambios para comparar."),
+      card.getByText("Un registro. Falta otro costo para ver la evolución."),
     ).toBeVisible();
     await expect(card.getByText("0,002 USD/ml", { exact: true })).toBeVisible();
     await expect(card.getByRole("img")).toHaveCount(0);
     await expect(
-      card.getByRole("heading", { name: "Resumen del conjunto de insumos" }),
+      card.getByText("Conjunto de insumos · este período", { exact: true }),
     ).toBeVisible();
     await card.getByRole("button", { name: /Insumo y local/ }).click();
     await page.getByRole("option", { name: /Harina de trigo/ }).click();
     await card.scrollIntoViewIfNeeded();
     await page.screenshot({
-      path: `/private/tmp/checkpass-0240-evidence/ui/stock-${width}.png`,
+      path: `/private/tmp/checkpass-0240-evidence/redesign/stock-${width}.png`,
       fullPage: true,
     });
     const overflow = await page.evaluate(() => ({

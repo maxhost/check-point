@@ -43,7 +43,7 @@ export function StockCostCard({
   );
   const last = points.at(-1);
   return (
-    <div className="grid min-w-0 gap-4 border-t border-border pt-6">
+    <div className="grid min-w-0 gap-3 border-t border-border pt-4">
       <Heading level={3}>Evolución del costo</Heading>
       {!history?.series.length ? (
         <Text variant="muted">
@@ -63,20 +63,23 @@ export function StockCostCard({
           />
           {series && last && (
             <>
-              <div className="grid min-w-0 gap-1" aria-live="polite">
-                <Text variant="label" className="break-words">
+              <div
+                className="flex min-w-0 flex-wrap items-baseline justify-between gap-2"
+                aria-live="polite"
+              >
+                <Text variant="label" className="sr-only">
                   {series.label} · {series.locationName}
                 </Text>
                 <Text variant="label" className="break-words tabular-nums">
                   {format(last.amountMinor)}
                 </Text>
                 <Text variant="small">
-                  Último costo registrado · {stockCostDate(last.date)}
+                  {stockCostDate(last.date)} · último costo
                 </Text>
               </div>
               {points.length < 2 ? (
                 <Text variant="muted">
-                  Todavía no hay cambios para comparar.
+                  Un registro. Falta otro costo para ver la evolución.
                 </Text>
               ) : validGeometry ? (
                 <LineChart
@@ -94,17 +97,6 @@ export function StockCostCard({
                   se pueden representar en el gráfico.
                 </Text>
               )}
-              <Text variant="small">
-                Costos registrados en {history.currencyCode} por{" "}
-                {stockCostUnit(series.unit)}. La línea une los registros; no
-                completa días sin datos.
-              </Text>
-              {points.some((point) => point.isBaseline) && (
-                <Text variant="small">
-                  La observación anterior al período conserva su fecha original
-                  y sirve como referencia.
-                </Text>
-              )}
               <Button
                 variant="quiet"
                 aria-expanded={showRecords}
@@ -115,30 +107,45 @@ export function StockCostCard({
                   : `Ver registros (${points.length})`}
               </Button>
               {showRecords && (
-                <ul
-                  aria-label="Registros de costo"
-                  className="grid min-w-0 divide-y divide-border"
-                >
-                  {points.map((point) => (
-                    <li
-                      key={point.date}
-                      className="grid min-w-0 gap-1 py-3 sm:grid-cols-2"
-                    >
-                      <div className="grid gap-1">
-                        <Text variant="small">{stockCostDate(point.date)}</Text>
-                        {point.isBaseline && (
-                          <Text variant="small">Anterior al período</Text>
-                        )}
-                      </div>
-                      <Text
-                        variant="label"
-                        className="break-words tabular-nums sm:text-right"
+                <div className="grid gap-3">
+                  <Text variant="small">
+                    Costos registrados en {history.currencyCode} por{" "}
+                    {stockCostUnit(series.unit)}. La línea une los registros; no
+                    completa días sin datos.
+                  </Text>
+                  {points.some((point) => point.isBaseline) && (
+                    <Text variant="small">
+                      La observación anterior al período conserva su fecha
+                      original y sirve como referencia.
+                    </Text>
+                  )}
+                  <ul
+                    aria-label="Registros de costo"
+                    className="grid min-w-0 divide-y divide-border"
+                  >
+                    {points.map((point) => (
+                      <li
+                        key={point.date}
+                        className="grid min-w-0 gap-1 py-3 sm:grid-cols-2"
                       >
-                        {format(point.amountMinor)}
-                      </Text>
-                    </li>
-                  ))}
-                </ul>
+                        <div className="grid gap-1">
+                          <Text variant="small">
+                            {stockCostDate(point.date)}
+                          </Text>
+                          {point.isBaseline && (
+                            <Text variant="small">Anterior al período</Text>
+                          )}
+                        </div>
+                        <Text
+                          variant="label"
+                          className="break-words tabular-nums sm:text-right"
+                        >
+                          {format(point.amountMinor)}
+                        </Text>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
             </>
           )}

@@ -63,25 +63,31 @@ export function LineChart({
         viewBox="0 0 640 220"
         role="img"
         aria-labelledby={`${id}-title ${id}-description`}
-        className="block w-full text-primary"
+        className="block w-full rounded-xl bg-surface-subtle text-chart-lavender"
       >
         <title id={`${id}-title`}>{title}</title>
         <desc id={`${id}-description`}>{description}</desc>
+        <defs>
+          <linearGradient id={`${id}-area`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="currentColor" stopOpacity="0.38" />
+            <stop offset="100%" stopColor="currentColor" stopOpacity="0.03" />
+          </linearGradient>
+        </defs>
         <path
-          d="M16,200 H624"
-          fill="none"
-          className="stroke-border"
-          vectorEffect="non-scaling-stroke"
+          d={`${geometry.path} L624,220 L16,220 Z`}
+          fill={`url(#${id}-area)`}
+          aria-hidden="true"
         />
         <path
           d={geometry.path}
           fill="none"
           stroke="currentColor"
-          strokeWidth="2"
+          className="text-info"
+          strokeWidth="3"
           vectorEffect="non-scaling-stroke"
         />
         {geometry.coordinates.map(({ x, y }, index) => (
-          <circle key={index} cx={x} cy={y} r="4" fill="currentColor" />
+          <circle key={index} cx={x} cy={y} r="3" className="fill-info" />
         ))}
       </svg>
       <div className="flex justify-between gap-4">

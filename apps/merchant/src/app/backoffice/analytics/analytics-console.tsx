@@ -9,6 +9,7 @@ import type {
 } from "@mi-pasaporte/domain/analytics/history";
 import type { StockCostHistory } from "@mi-pasaporte/domain/analytics/stock-cost-contract";
 import { StockCostCard } from "./stock-cost-card";
+import { stockCostDate } from "./stock-cost-format";
 import { sumIntegers } from "@mi-pasaporte/domain/analytics/money";
 import { formatMoney } from "@mi-pasaporte/domain/analytics/date";
 import {
@@ -638,23 +639,28 @@ export default function AnalyticsConsole({
               </section>
               <Card className="grid min-w-0 gap-4">
                 <Heading level={2}>Stock e insumos</Heading>
-                {history.stock.valueMinor !== null ? (
-                  <Text>
-                    Valor del stock al {history.to}:{" "}
-                    {money(history.stock.valueMinor)}.
-                  </Text>
-                ) : history.stock.valuedItems > 0 ? (
-                  <Text>
-                    Valor conocido del stock:{" "}
-                    {money(history.stock.knownValueMinor)}. Falta conocer el
-                    costo de {history.stock.unvaluedItems}{" "}
-                    {history.stock.unvaluedItems === 1 ? "insumo" : "insumos"}{" "}
-                    para completar el total.
-                  </Text>
-                ) : (
-                  <Text variant="muted">
-                    Todavía no hay existencias con costo registrado para valorar
-                    tu stock.
+                <div className="flex min-w-0 flex-wrap items-end justify-between gap-3">
+                  <div className="grid min-w-0 gap-1">
+                    <Text variant="small">
+                      {history.stock.valueMinor !== null
+                        ? "Valor del stock"
+                        : "Valor conocido del stock"}
+                    </Text>
+                    <Text variant="metric" className="break-words">
+                      {history.stock.valueMinor !== null
+                        ? money(history.stock.valueMinor)
+                        : history.stock.valuedItems > 0
+                          ? money(history.stock.knownValueMinor)
+                          : "Pendiente"}
+                    </Text>
+                  </div>
+                  <Text variant="small">Al {stockCostDate(history.to)}</Text>
+                </div>
+                {history.stock.valueMinor === null && (
+                  <Text variant="small">
+                    {history.stock.valuedItems > 0
+                      ? `Falta conocer el costo de ${history.stock.unvaluedItems} ${history.stock.unvaluedItems === 1 ? "insumo" : "insumos"} para completar el total.`
+                      : "Todavía no hay existencias con costo registrado."}
                   </Text>
                 )}
                 <StockCostCard
@@ -662,29 +668,45 @@ export default function AnalyticsConsole({
                   selectedId={stockSeriesId}
                   onSelect={setStockSeriesId}
                 />
-                <Heading level={3}>Resumen del conjunto de insumos</Heading>
-                {history.stock.averageIncrease === null ? (
-                  <Text variant="muted">
-                    Necesitas al menos dos costos registrados de un mismo insumo
-                    y local para comparar sus subas.
-                  </Text>
-                ) : history.stock.increaseDays === 0 ? (
-                  <Text>
-                    No se registraron subas de los insumos comparables en este
-                    período.
-                  </Text>
-                ) : (
-                  <Text>
-                    En este período el costo de tus insumos varió en promedio{" "}
-                    {new Intl.NumberFormat("es-EC", {
-                      style: "percent",
-                      maximumFractionDigits: 1,
-                    }).format(history.stock.averageIncrease)}
-                    , comparando el primer y el último costo conocidos.
-                    {history.stock.averageDaysBetweenIncreases !== null
-                      ? ` Pasaron unos ${Math.round(history.stock.averageDaysBetweenIncreases)} días entre subas de un mismo insumo.`
-                      : " Todavía no hay subas repetidas de un mismo insumo para comparar su frecuencia."}
-                  </Text>
+                {history.stock.averageIncrease !== null && (
+                  <div className="grid gap-3 border-t border-border pt-4">
+                    <Text variant="small">
+                      Conjunto de insumos · este período
+                    </Text>
+                    <dl className="m-0 grid grid-cols-2 divide-x divide-border">
+                      <div className="grid gap-1 pr-3">
+                        <dt>
+                          <Text as="span" variant="small">
+                            Variación media del costo
+                          </Text>
+                        </dt>
+                        <dd className="m-0">
+                          <Text variant="label">
+                            {new Intl.NumberFormat("es-EC", {
+                              style: "percent",
+                              maximumFractionDigits: 1,
+                            }).format(history.stock.averageIncrease)}
+                          </Text>
+                        </dd>
+                      </div>
+                      <div className="grid gap-1 pl-3">
+                        <dt>
+                          <Text as="span" variant="small">
+                            Entre subas
+                          </Text>
+                        </dt>
+                        <dd className="m-0">
+                          <Text variant="label">
+                            {history.stock.averageDaysBetweenIncreases !== null
+                              ? `${Math.round(history.stock.averageDaysBetweenIncreases)} días`
+                              : history.stock.increaseDays === 0
+                                ? "Sin subas"
+                                : "Sin repetición"}
+                          </Text>
+                        </dd>
+                      </div>
+                    </dl>
+                  </div>
                 )}
               </Card>
             </div>
