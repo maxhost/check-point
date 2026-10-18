@@ -15,6 +15,9 @@ import { TrialNotice } from "../../../apps/merchant/src/app/backoffice/subscript
 import { AnalyticsInbox } from "../../../apps/merchant/src/app/backoffice/analytics/inbox";
 import { fixtureBackofficeCore } from "./backoffice-seed-fixture";
 import { businessModules } from "./modules-fixture";
+import { createBackofficeContextController } from "../../../apps/merchant/src/app/backoffice/backoffice-context-controller";
+import { panelRequest } from "../../../apps/merchant/src/app/backoffice/panel-request";
+import { readModules } from "../../../apps/merchant/src/app/backoffice/settings/module-request";
 
 export type BackofficeFixtureApi = {
   ready: boolean;
@@ -23,6 +26,8 @@ export type BackofficeFixtureApi = {
   retire: () => void;
   lateSeed: () => void;
   changeIdentity: () => void;
+  invalidateInbox: () => void;
+  navigations: string[];
 };
 const query = new URLSearchParams(location.search);
 const core = fixtureBackofficeCore(
@@ -60,7 +65,18 @@ const fixture: BackofficeFixtureApi = {
   retire: () => {},
   lateSeed: () => {},
   changeIdentity: () => {},
+  invalidateInbox: () => controller.invalidate(["inbox"]),
+  navigations: [],
 };
+const controller = createBackofficeContextController(core, {
+  readSession: (signal) =>
+    panelRequest("/api/merchant/session", "GET", undefined, { signal }),
+  readModules: (signal, ticket) =>
+    readModules({ signal, scopeKey: ticket.scopeKey }),
+  navigate: (href) => {
+    fixture.navigations.push(href);
+  },
+});
 (
   window as unknown as { backofficeFixture: BackofficeFixtureApi }
 ).backofficeFixture = fixture;
@@ -81,7 +97,7 @@ function StreamedSeed() {
 }
 function Fixture({ initial }: { initial: BackofficeInitialContext }) {
   return (
-    <BackofficeProvider initialContext={initial}>
+    <BackofficeProvider initialContext={initial} controller={controller}>
       <Suspense fallback={null}>
         <StreamedSeed />
       </Suspense>

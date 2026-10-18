@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { startCatalogHarness } from "./support/catalog-harness-server";
 import type { BackofficeFixtureApi } from "./support/backoffice-context-fixture";
 import type { AnalyticsInboxResponse } from "../../packages/domain/src/analytics/types";
+import { businessModules } from "./support/modules-fixture";
 
 let harness: Awaited<ReturnType<typeof startCatalogHarness>>;
 test.beforeAll(async () => {
@@ -14,6 +15,38 @@ test.afterAll(async () => {
   await harness.close();
 });
 test.beforeEach(async ({ page }) => {
+  await page.route("**/api/merchant/session", (route) =>
+    route.fulfill({
+      json: {
+        authenticated: true,
+        user: {
+          id: "fixture-user",
+          name: "Fixture",
+          email: "fixture@example.invalid",
+          emailVerified: true,
+        },
+        business: {
+          id: "fixture-business",
+          name: "Comercio sintético",
+          status: "active",
+          slug: "fixture",
+          suspensionReason: null,
+          timezone: "America/Guayaquil",
+          currencyCode: "USD",
+          enabledModules: ["stock"],
+        },
+        membership: {
+          role: "owner",
+          status: "active",
+          permissions: ["analytics", "stock"],
+        },
+        billing: { access: "trial", trialDaysLeft: 10, trialEndsAt: null },
+      },
+    }),
+  );
+  await page.route("**/api/modules", (route) =>
+    route.fulfill({ status: 503, json: { error: "Synthetic unavailable" } }),
+  );
   const emptyInbox: AnalyticsInboxResponse = {
     contractVersion: 2,
     policyVersion: "synthetic-0238",
@@ -92,7 +125,7 @@ test("módulos pendientes no bloquean Inbox/core y el seed tardío se aplica", a
 });
 
 for (const result of ["unavailable", "restricted", "reject"] as const) {
-  test(`módulos ${result} preservan el core sin GET ad hoc`, async ({
+  test(`módulos ${result} preservan el core con recuperación inicial acotada`, async ({
     page,
   }) => {
     const requests: string[] = [];
@@ -119,10 +152,16 @@ for (const result of ["unavailable", "restricted", "reject"] as const) {
       page.getByRole("link", { name: "Stock", exact: true }),
     ).toHaveCount(0);
     expect(
-      requests.filter(
-        (path) => path === "/api/modules" || path === "/api/merchant/session",
-      ),
+      requests.filter((path) => path === "/api/merchant/session"),
     ).toHaveLength(0);
+    if (result === "restricted")
+      expect(requests.filter((path) => path === "/api/modules")).toHaveLength(
+        0,
+      );
+    else
+      await expect
+        .poll(() => requests.filter((path) => path === "/api/modules").length)
+        .toBe(1);
   });
 }
 
@@ -159,5 +198,86 @@ for (const action of ["retire", "changeIdentity"] as const) {
     await expect(
       page.getByText("Comercio sintético", { exact: true }),
     ).toHaveCount(0);
+    expect(
+      await page.evaluate(
+        () =>
+          (window as unknown as { backofficeFixture: BackofficeFixtureApi })
+            .backofficeFixture.navigations,
+      ),
+    ).toEqual(["/backoffice"]);
   });
 }
+
+test("0238 invalidación durante stream recupera módulos sin aceptar seed viejo ni cargar sesión", async ({
+  page,
+}) => {
+  const scoped: string[] = [];
+  await page.route("**/api/modules", (route) => {
+    scoped.push(route.request().headers()["x-backoffice-scope"]);
+    return route.fulfill({ json: { modules: businessModules(true, false) } });
+  });
+  const sessionReads: string[] = [];
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname === "/api/merchant/session")
+      sessionReads.push(request.url());
+  });
+  await page.goto(`${harness.url}?fixturePath=/backoffice`);
+  await expect(
+    page.getByText("Hoy no tengo nada para avisarte."),
+  ).toBeVisible();
+  await page.evaluate(() =>
+    (
+      window as unknown as { backofficeFixture: BackofficeFixtureApi }
+    ).backofficeFixture.invalidateInbox(),
+  );
+  await expect(
+    page.getByRole("link", { name: "Stock", exact: true }),
+  ).toBeVisible();
+  await page.evaluate(() =>
+    (
+      window as unknown as { backofficeFixture: BackofficeFixtureApi }
+    ).backofficeFixture.resolveModules("restricted"),
+  );
+  await expect(page.getByLabel("Estado módulos")).toHaveText("ready");
+  expect(scoped).toEqual(["a".repeat(64)]);
+  expect(sessionReads).toHaveLength(0);
+});
+
+test("0238 scope409 retira privados y navega una sola vez sin repetir lecturas", async ({
+  page,
+}) => {
+  let moduleReads = 0;
+  await page.route("**/api/modules", (route) => {
+    moduleReads += 1;
+    expect(route.request().headers()["x-backoffice-scope"]).toBe(
+      "a".repeat(64),
+    );
+    return route.fulfill({
+      status: 409,
+      json: {
+        code: "backoffice_context_changed",
+        error: "Tu sesión cambió. Actualiza el panel para continuar.",
+      },
+    });
+  });
+  await page.goto(`${harness.url}?modules=ready&fixturePath=/backoffice`);
+  await expect(
+    page.getByRole("link", { name: "Stock", exact: true }),
+  ).toBeVisible();
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event("business-modules-changed"));
+    window.dispatchEvent(new Event("checkpass:modules-changed"));
+  });
+  await expect(page.getByText("Contenido privado sintético")).toHaveCount(0);
+  await page.evaluate(() =>
+    window.dispatchEvent(new Event("business-modules-changed")),
+  );
+  expect(
+    await page.evaluate(
+      () =>
+        (window as unknown as { backofficeFixture: BackofficeFixtureApi })
+          .backofficeFixture.navigations,
+    ),
+  ).toEqual(["/backoffice"]);
+  expect(moduleReads).toBe(1);
+});
