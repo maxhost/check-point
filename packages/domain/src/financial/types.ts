@@ -1,3 +1,5 @@
+import type { Decimal, LineMeasure } from "../measures/types";
+
 export type ExactAmount = { numerator: string; denominator: string; scale: 2 };
 export type DiscountOrigin = {
   type: "campaign_coupon" | "program_reward";
@@ -60,6 +62,16 @@ export type FinancialInput = {
     quantity: number;
   }[];
   discount: { amount: string; origin: DiscountOrigin } | null;
+};
+/** New captures require explicit measures and strict decimal strings. */
+export type FinancialInputV2 = Omit<FinancialInput, "lines"> & {
+  lines: readonly {
+    sourceLineId: string;
+    position: number;
+    unitPrice: Decimal;
+    quantity: Decimal;
+    measure: LineMeasure;
+  }[];
 };
 export type PaymentInput = {
   paymentId: string;

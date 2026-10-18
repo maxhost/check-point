@@ -5,7 +5,10 @@ import {
   FinancialError,
   normalizeMoney,
   type DiscountOrigin,
+  type FinancialInput,
 } from "@mi-pasaporte/domain/financial";
+import { UNIT_MEASURE } from "@mi-pasaporte/domain/measures";
+import { assertFinancialSettlement } from "@mi-pasaporte/domain/financial/validate";
 const origin: DiscountOrigin = {
   type: "campaign_coupon",
   sourceId: "coupon",
@@ -215,4 +218,47 @@ describe("P1 financial snapshot exact settlement", () => {
     for (const invalid of ["NaN", "Infinity", "1.001", "-1", "1e3"])
       expect(() => normalizeMoney(invalid, 2)).toThrow(FinancialError);
   });
+});
+
+describe("0242 legacy and explicit unit settlement equivalence", () => {
+  it.each(["USD", "COP"])(
+    "preserves the entire settlement in %s",
+    (currencyCode) => {
+      for (const discount of [
+        null,
+        { amount: "0.60", origin },
+        {
+          amount: "0.60",
+          origin: {
+            ...origin,
+            scope: "line" as const,
+            targetSourceLineId: "l1",
+          },
+        },
+      ]) {
+        const legacy: FinancialInput = {
+          currencyCode,
+          lines: lines(["0.60", "1.40", "0.00"]).reverse(),
+          discount,
+        };
+        legacy.lines[1].quantity = 2;
+        const amounts = buildFinancialAmounts(legacy);
+        const payments = [
+          { paymentId: "p", methodId: "cash", amount: amounts.collected },
+        ];
+        const expected = buildFinancialSettlement({ ...legacy, payments });
+        const actual = buildFinancialSettlement({
+          ...legacy,
+          lines: legacy.lines.map((l) => ({
+            ...l,
+            quantity: String(l.quantity),
+            measure: UNIT_MEASURE,
+          })),
+          payments,
+        });
+        expect(actual).toEqual(expected);
+        assertFinancialSettlement(actual);
+      }
+    },
+  );
 });
