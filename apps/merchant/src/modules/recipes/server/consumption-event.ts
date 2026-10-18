@@ -1,6 +1,7 @@
 import { formatDecimal, fromDb } from "../../decimal";
 import type { DbTransaction } from "@mi-pasaporte/db";
 import {
+  moduleEvents,
   stockItems,
   stockItemLocations,
   stockMovements,
@@ -51,6 +52,61 @@ export async function publishConsumptionApplied(
   expectedLines: ExpectedCostLine[],
 ) {
   const p = event.payload;
+  const currencyCode = p.eventVersion === 1 ? null : p.money.currencyCode;
+  const minorUnit = p.eventVersion === 1 ? null : p.money.minorUnit;
+  const identities = p.lines.map((line) => ({
+    sourceLineId: line.sourceLineId,
+    productId: line.productId,
+    productLabel: "productLabel" in line ? String(line.productLabel) : null,
+    quantity: String(line.quantity),
+    revenueMinor:
+      p.eventVersion !== 1 && "money" in line
+        ? String(toMinor(originalMoney(line.money.net), p.money.minorUnit))
+        : null,
+    allocatedCommissionMinor:
+      p.eventVersion === 3 && "commissionMinor" in line
+        ? line.commissionMinor
+        : null,
+  }));
+  const [existing] = await tx
+    .select()
+    .from(moduleEvents)
+    .where(
+      and(
+        eq(moduleEvents.businessId, event.businessId),
+        eq(moduleEvents.eventType, "recipes.consumption.applied"),
+        eq(moduleEvents.sourceId, p.sourceOrderId),
+      ),
+    );
+  if (existing) {
+    const previous = existing.payload as Partial<ConsumptionApplied> | null;
+    if (
+      existing.eventVersion !== 1 ||
+      existing.locationId !== p.locationId ||
+      !previous ||
+      previous.eventVersion !== 1 ||
+      previous.sourceOrderId !== p.sourceOrderId ||
+      previous.locationId !== p.locationId ||
+      previous.closedAt !== p.closedAt ||
+      previous.currencyCode !== currencyCode ||
+      previous.minorUnit !== minorUnit ||
+      !Array.isArray(previous.lines) ||
+      previous.lines.some((line) => !line || typeof line !== "object") ||
+      JSON.stringify(
+        previous.lines.map((line) => ({
+          sourceLineId: line.sourceLineId,
+          productId: line.productId,
+          productLabel: line.productLabel,
+          quantity: line.quantity,
+          revenueMinor: line.revenueMinor,
+          allocatedCommissionMinor: line.allocatedCommissionMinor,
+        })),
+      ) !== JSON.stringify(identities)
+    )
+      throw new Error("Captured consumption event snapshot conflict");
+    // Costs, inventory observations and the original observation time stay frozen.
+    return;
+  }
   const cost = await readConsumptionCost(tx, {
     businessId: event.businessId,
     locationId: p.locationId,
@@ -94,30 +150,12 @@ export async function publishConsumptionApplied(
     sourceOrderId: p.sourceOrderId,
     locationId: p.locationId,
     closedAt: p.closedAt,
-    currencyCode: p.eventVersion === 1 ? null : p.money.currencyCode,
-    minorUnit: p.eventVersion === 1 ? null : p.money.minorUnit,
-    lines: p.lines.map((line) => {
-      const financialLine = "money" in line ? line : null;
-      const money = p.eventVersion === 1 ? null : p.money;
+    currencyCode,
+    minorUnit,
+    lines: identities.map((line) => {
       const c = cost.lines.find((c) => c.sourceLineId === line.sourceLineId);
       return {
-        sourceLineId: line.sourceLineId,
-        productId: line.productId,
-        productLabel: "productLabel" in line ? String(line.productLabel) : null,
-        quantity: String(line.quantity),
-        revenueMinor:
-          financialLine && money
-            ? String(
-                toMinor(
-                  originalMoney(financialLine.money.net),
-                  money.minorUnit,
-                ),
-              )
-            : null,
-        allocatedCommissionMinor:
-          p.eventVersion === 3 && "commissionMinor" in line
-            ? line.commissionMinor
-            : null,
+        ...line,
         cost:
           c?.state === "completo" &&
           c.knownCost !== null &&
