@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { StockCostHistory } from "@mi-pasaporte/domain/analytics/stock-cost-contract";
 import { Button, Heading, LineChart, SelectField, Text } from "../../../ui";
 import {
+  compareStockCosts,
   formatStockCost,
   stockCostDate,
   stockCostGeometryValue,
@@ -37,8 +38,8 @@ export function StockCostCard({
   const validGeometry = geometry.every(
     (point) => point.y !== null && Number.isFinite(point.x),
   );
-  const sorted = [...points].sort(
-    (a, b) => Number(a.amountMinor) - Number(b.amountMinor),
+  const sorted = [...points].sort((a, b) =>
+    compareStockCosts(a.amountMinor, b.amountMinor),
   );
   const last = points.at(-1);
   return (

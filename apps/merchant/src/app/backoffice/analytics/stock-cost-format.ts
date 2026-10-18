@@ -46,3 +46,18 @@ export function stockCostDate(date: string): string {
 export function stockCostUnit(unit: string): string {
   return unit === "unit" ? "unidad" : unit;
 }
+
+/** Compare validated nonnegative contract decimals without approximating either value. */
+export function compareStockCosts(left: string, right: string): number {
+  const [leftWhole, leftFraction = ""] = left.split(".");
+  const [rightWhole, rightFraction = ""] = right.split(".");
+  const leftInteger = leftWhole.replace(/^0+/, "") || "0";
+  const rightInteger = rightWhole.replace(/^0+/, "") || "0";
+  if (leftInteger.length !== rightInteger.length)
+    return leftInteger.length < rightInteger.length ? -1 : 1;
+  if (leftInteger !== rightInteger) return leftInteger < rightInteger ? -1 : 1;
+  const precision = Math.max(leftFraction.length, rightFraction.length);
+  const leftDecimal = leftFraction.padEnd(precision, "0");
+  const rightDecimal = rightFraction.padEnd(precision, "0");
+  return leftDecimal === rightDecimal ? 0 : leftDecimal < rightDecimal ? -1 : 1;
+}
