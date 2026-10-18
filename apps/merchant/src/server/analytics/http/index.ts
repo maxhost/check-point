@@ -1,3 +1,7 @@
+import {
+  backofficeScopeFailure,
+  privateBackofficeResponse,
+} from "../../backoffice-scope-http";
 import { AnalyticsAmountError } from "@mi-pasaporte/domain/analytics/money";
 import { ANALYTICS_POLICY } from "@mi-pasaporte/domain/analytics/policy/index";
 import type { InboxDecision } from "@mi-pasaporte/domain/analytics/types";
@@ -68,9 +72,14 @@ async function authenticated(request: Request) {
     : auth;
 }
 export async function inboxGET(request: Request) {
-  const auth = await authenticated(request);
-  if ("response" in auth) return auth.response;
+  return privateBackofficeResponse(await inboxResponse(request));
+}
+async function inboxResponse(request: Request) {
   try {
+    const auth = await authenticated(request);
+    if ("response" in auth) return auth.response;
+    const scope = await backofficeScopeFailure(request, auth.business.id);
+    if (scope) return scope;
     return NextResponse.json(await inboxWithFallback(auth.business.id, auth));
   } catch (e) {
     return analyticsFailure(e);
@@ -81,13 +90,22 @@ export async function cardPOST(
   id: string,
   decision: InboxDecision,
 ) {
-  const auth = await authenticated(request);
-  if ("response" in auth) return auth.response;
-  if (!cardIdPattern.test(id))
-    return analyticsFailure(
-      new AnalyticsError(404, "card_not_found", "No encontramos ese aviso."),
-    );
+  return privateBackofficeResponse(await cardResponse(request, id, decision));
+}
+async function cardResponse(
+  request: Request,
+  id: string,
+  decision: InboxDecision,
+) {
   try {
+    const auth = await authenticated(request);
+    if ("response" in auth) return auth.response;
+    const scope = await backofficeScopeFailure(request, auth.business.id);
+    if (scope) return scope;
+    if (!cardIdPattern.test(id))
+      return analyticsFailure(
+        new AnalyticsError(404, "card_not_found", "No encontramos ese aviso."),
+      );
     const body: unknown = await request.json().catch(() => null);
     if (
       !body ||

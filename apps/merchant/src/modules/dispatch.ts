@@ -1,3 +1,7 @@
+import {
+  backofficeScopeFailure,
+  privateBackofficeResponse,
+} from "../server/backoffice-scope-http";
 import { NextResponse } from "next/server";
 import { apiOwnerFailureResponse, requireApiOwner } from "../server/api-owner";
 import { setModuleEnabled } from "./activation";
@@ -46,11 +50,13 @@ export function routePermission(
 }
 
 async function toggle(request: Request, moduleId: string): Promise<Response> {
-  const auth = await requireApiOwner(request, {
-    notOwner: "Solo el dueño puede activar o desactivar módulos.",
-  });
-  if ("failure" in auth) return apiOwnerFailureResponse(auth.failure);
   try {
+    const auth = await requireApiOwner(request, {
+      notOwner: "Solo el dueño puede activar o desactivar módulos.",
+    });
+    if ("failure" in auth) return apiOwnerFailureResponse(auth.failure);
+    const scope = await backofficeScopeFailure(request, auth.business.id);
+    if (scope) return scope;
     const updated = await setModuleEnabled(
       auth.business.id,
       moduleId,
@@ -69,7 +75,7 @@ export async function dispatchModuleRequest(
 ): Promise<Response> {
   const segments = path ?? [];
   if (segments.length === 0 && method === "PUT") {
-    return toggle(request, moduleId);
+    return privateBackofficeResponse(await toggle(request, moduleId));
   }
   const manifest = moduleById(moduleId);
   const routes =

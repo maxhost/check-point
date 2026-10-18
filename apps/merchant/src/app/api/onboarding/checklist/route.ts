@@ -1,3 +1,7 @@
+import {
+  backofficeScopeFailure,
+  privateBackofficeResponse,
+} from "../../../../server/backoffice-scope-http";
 import { NextResponse } from "next/server";
 import {
   apiOwnerFailureResponse,
@@ -55,12 +59,17 @@ export const dynamic = "force-dynamic";
  * casilla que no existe y cuya accion contesta 400.
  */
 export async function GET(request: Request) {
+  return privateBackofficeResponse(await checklistResponse(request));
+}
+async function checklistResponse(request: Request) {
   try {
     const auth = await requireApiOwnerSinGateDeEmail(request, {
       notOwner:
         "Solo la persona propietaria puede ver los pasos de configuración.",
     });
     if ("failure" in auth) return apiOwnerFailureResponse(auth.failure);
+    const scope = await backofficeScopeFailure(request, auth.business.id);
+    if (scope) return scope;
 
     // Los hechos del `done` viven en `checklist-facts.ts`: el contrato de retorno del guard
     // son `business` y `userId`, no la sesion, y su cuerpo no se toca (invariante de la spec
