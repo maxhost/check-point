@@ -3,7 +3,17 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — 0242 POS: MAPA/SPEC/PLAN, UNA DECISIÓN MONETARIA PENDIENTE (2026-10-18 UTC)
+## ESTADO — 0242 RETOMADA: PREPARACIÓN CP0 CON DOS IMPLEMENTADORES Y QA (2026-10-18 UTC)
+
+Owner pidió retomar desde estado/handoff, revisar decisión y continuar con dos implementadores+QA independiente. Base dev621951fc98f63e1e57b5166b93dd8ac9a911944d; main5f9cb2b2, sin cambio de rama principal ni push/PROD. CI consultado sigue ROJO90ebe18f verifyUnit+Neon, no reparado. Sigue pendiente respuesta explícita sobre gratis/2x1masa: operador indica peso / una unidad tarifaria / diferir. Pregunta reenviada al owner mediante input asíncrono; no inferir aprobación general. Spec funcional sin cerrar: no producto ni cálculo monetario hasta resolver.
+
+Tres agentes y WT propios en /private/tmp/checkpass-pos-0242/: pos-data-0242 (A), pos-ui-0242 (B), pos-qa-0242 (QA). Node24 y dependencias offline/frozen-lockfile propias; sin env heredado. Bloqueo sandbox de ref Git resuelto mediante escalación autorizada. Factory reservas iniciales SOLO docs/factory/0242-cp0-data.md, 0242-cp0-ui-m0.md y 0242-cp0-qa.md respectivamente; sin DB/puertos/migraciones/producto. Leer docs/factory/0242-cp0-launch.md para fichas y siguiente gate; no ampliar código sin nueva reserva explícita y cierre de spec.
+
+Hallazgos técnicos añadidos al anexo: PosOrderV2.items; input9dec distinto de gramos derivados14dec; procedencia racional aditiva para cantidad insumo y receta, columnas legacy6/3 como proyecciones, constraints admiten proyección0 de racional positivo. Hook genérico de cambio de medida/política de rutas aún debe congelarse ejecutable antes consumers. M0 no existe todavía: harness actual APIinterceptada/Nextdev no acredita benchmark; seed fixtureconsulta sesión/módulos. Peso solo diagnóstico/aceptaciónM1 porque control no lo soporta; A/B solo recorridos equivalentes. No declarar CP0 terminado, PASSproducto ni mejora medida.
+
+Artefactos ajenos y .impeccable/config.json preservados. Servidor3201/túnel/demos y diferidos previos intactos. Próximo paso tras decisión: sustituir propuesta bono en spec/anexo, QA focal, extender fichas para contratos puros/harness e instrumentación opt-in; reservar CI/teardown antes M0. CP1 solo tras salidaCP0 aceptada. Cada push/PROD requiere autorización del caso.
+
+## HISTÓRICO — 0242 POS: MAPA/SPEC/PLAN, UNA DECISIÓN MONETARIA PENDIENTE (2026-10-18 UTC)
 
 Owner pidió mapear con agentes el POS actual, compararlo con laboratorio y preparar spec/plan antes de implementar con dos workers+QA. Producto base5f9cb2b2; reserva documental spec0242/ADR0155/INDEX commiteada ec454681. Mapeo read-only por2agentes y QA documental independiente: sin código/DB/worktrees/servidores de producto, sin push/PROD. Laboratorio persistido en docs/design-explorations/2026-10-18-mostrador, v001–v004 y decisiones. POS único con listado abierto/cerrado/anulado y ciclo entero, Mostrador modalidad, Retiro/Delivery etiqueta obligatoria y cobro solo al cierre. Peso checkbox en catálogo y unidades kg/lb/g habilitadas en business; captura manual sin balanza; exactitud y snapshots toda cadena.
 

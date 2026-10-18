@@ -58,6 +58,8 @@ Congelar en worktree/artefacto propio: SHA control, lockfile, Node24/Next/pnpm, 
 
 Casos: 0 abiertas; normal24órdenes×8líneas,120productos/8categorías/2locales; volumen200órdenes×30líneas y2000productos. Declarar que son fixtures sintéticas, además de una muestra representativa si existe. QR con/sin cupón, cupón total0, peso, sesión owner y staff. No mezclar poblaciones.
 
+El control621951fc no soporta peso: ese caso queda como diagnóstico/aceptación funcional del candidato M1, sin par A/B ni baseline monetario inventado. Comparar temporalmente solo recorridos equivalentes disponibles en ambas fuentes. El harness actual de componentes con APIs interceptadas y el Playwright global con Nextdev no acreditan M0; la ficha de instrumentación debe usar build/start propio y sesión real hasta guard/DB/UI, con instrumentación equivalente en ambas fuentes.
+
 Separar navegación completa, transición interna con layout persistente, retorno, abrir catálogo/detalle, guardar, resolver QR, preparar cobro y cerrar. Definir marcadores listUsable/catalogInteractive/closeConfirmed: datos reales visibles y acciones autorizadas, no skeleton ni montaje. Medir TTFB, intervalos de navegador, waterfalls, bytes codificados/decodificados/RSC/JS/CSS, long tasks, SQL por request, guard/DB/tx/commit y trabajo aftercommit.
 
 Frío tiene dimensiones distintas: navegador/assets nuevos, proceso/pool nuevo, DB suspendida. No llamar DB fría a una DB que el wrapper ya despertó. No poner secrets/cookies/QR/scopeKey en informes versionados; HAR trazas privados saneados.

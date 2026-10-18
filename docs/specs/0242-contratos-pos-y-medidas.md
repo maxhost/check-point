@@ -27,6 +27,8 @@ type PosLineV2 = {
 
 Factor exacto hacia gramos: g=1, kg=1000, lb=45359237/100000. Fórmula bruta racional: quantity × factor(quantityUnit)/factor(priceUnit) × unitPrice. No Number/toFixed para decidir dinero o consumo. Usar decimal→BigInt racional y financial/rational existente, con parser tarifario hasta9dec; ExactAmount continúa representando centavos racionales con scale2 y el settlement normaliza a minorUnit y reparte líneas como hoy. No redondear tarifa/masa antes del total monetario; conservar originales/ajustes de normalización.
 
+El límite de9decimales corresponde a capturas y tarifas, no a resultados derivados. Una captura en lb de9decimales puede producir gramos exactos de14decimales; los totales físicos derivados conservan esa precisión y no pasan por el parser de captura. Cocientes no terminantes se representan como racional reducido `{numerator:string,denominator:string}` con denominador positivo; su presentación aproximada no sustituye el valor fuente.
+
 Cambiar unidad de captura sin editar la cantidad preserva la masa exacta original. Una conversión como g→lb puede ser no terminante: presentar aproximación con señal visible si hace falta y conservar el valor/unidad originales como fuente; no reenviar la aproximación como una medición nueva. Si se edita el número, pasa a ser una nueva captura válida en la unidad elegida. No imponer precisión fija de1g que el owner sustituyó por unidades configurables.
 
 Al agregar línea se congelan nombre, tarifa, medida y versión de conversión. Editar su cantidad no cambia tarifa. Una nueva adición del mismo producto solo se combina si snapshots/precio/unidades coinciden; si no, crea otra línea con lineId distinto. No fusionar por productId a ciegas.
@@ -62,11 +64,13 @@ La política de scope será metadato genérico en ModuleRoute consumido por disp
 | --- | --- |
 | GET orders | PosSummaryV2 en open/closedToday; filtros/orden/día actuales. quantityTotal legado no se suma entre medidas. |
 | GET orders?status=voided | Mismo histórico90d con medidas/saleType. |
-| GET orders/:id | PosOrderV2: shape actual más contractVersion2,saleType,orderLabel,lines V2. |
+| GET orders/:id | PosOrderV2: shape actual más contractVersion2,saleType,orderLabel,items V2. |
 | GET catalog?locationId | Productos/tarifas precisas, unidad, revisión; categories y frequentProductIds. |
 | GET tables/payment-methods/ticket/ticket-settings | Contrato actual protegido por scope; etiquetas tipo/peso en impresión. |
 
 PosSummaryV2: id,status,version,saleType,orderLabel,tableId,location,createdAt,closedAt,lineCount,total,saleTotal. lineCount cuenta líneas, no masa+piezas. Totales físicos opcionales se agrupan en `{unit:'unit'|'g',quantity:Decimal}`; no hacen falta para habilitar listado. Cada total financiero cerrado usa settlement neto; legacy sin settlement usa su snapshot explícito y no inventa coste/dinero.
+
+La colección pública se llama `PosOrderV2.items: PosLineV2[]`, conservando el nombre actual. Las menciones a líneas en este anexo describen sus elementos; no crean una segunda colección `lines` ni aliases simultáneos.
 
 Listado server agrega sin recuperar todas las líneas por orden; rango de día debe ser equivalente a timezone actual. Cambios a paginación/semántica por volumen requieren contrato adicional; no truncar abiertas para cumplir un benchmark.
 
@@ -114,6 +118,10 @@ FinancialInputV2 usa quantity/measure/tarifa exactas; calcular originales racion
 Nuevo `sale.closed` **eventVersion4** deriva de V3 (que ya existe con etiquetas/comisión). Cada línea tiene quantity Decimal y measure; conserva sourceLineId,productId,resourceVersions,position,money,discountOrigin,productLabel,commissionMinor. V1/V2/V3 se decodifican como unit sin cambiar payload histórico. Decoder no adivina forma por UUID ni por estar guardado un string. Writers V4 solo se activan cuando todos los subscribers requeridos lo aceptan.
 
 Recetas: revisión de composición añade basisQuantity/basisUnit de producto. Legacy basis1unit. La cantidad de ingrediente es cantidad vendida convertida a la base × composición × receta capturada. Operar racional exacto y consolidar por orden/línea/insumo; redondear solo a escala3 del ledger al final conforme ADR0148, conservando procedencia. Según ADR0148, consumo positivo que redondea a cero deja procedencia con estado redondeo_sin_consumo, sin movimiento de stock ficticio ni coste completo inventado. No mover resolución específica de recetas al core.
+
+La procedencia medida añade numerador/denominador exactos y captura la base de composición en revisión/resolución; `consumption_source.exact_quantity` numeric(20,6) y `recipe_quantity` numeric(30,3) actuales no son fuentes exactas suficientes para conversiones no terminantes. Se conservan como proyecciones de compatibilidad, sin reconstruir el racional desde un decimal redondeado. El expand y los lectores nuevos deben distinguir procedencia legacy de la racional aditiva antes de publicar V4; no reescribir procedencia histórica para inventar exactitud.
+
+Tanto cantidad exacta de insumo como cantidad de receta necesitan su racional. Las constraints de positividad deben validar la fuente racional cuando exista: una proyección decimal de un positivo diminuto puede ser0 y no debe impedir guardar su procedencia. Legacy mantiene sus validaciones anteriores; no aceptar numerador negativo/cero ni denominador no positivo para un consumo positivo. Ledger y estados de redondeo siguen ADR0148.
 
 Stock: no inventar salida directa de producto terminado; aplicar el modelo de consumo configurado hoy. Sin receta/proveedor no crear un movimiento ficticio. Evento/consumo/commission idempotentes por sus claves actuales, coste pendiente/completo explícito. Confirmación de orden no consume ni crea merma. Replay V1–V4 no duplica.
 
