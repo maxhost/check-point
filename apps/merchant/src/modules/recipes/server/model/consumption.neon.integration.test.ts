@@ -3,6 +3,9 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { getDb, withDbTransaction } from "@mi-pasaporte/db";
 import {
   moduleEvents,
+  moduleEventDeliveries,
+  businesses,
+  users,
   recipeConsumptionSources,
   stockMovements,
   stockItemLocations,
@@ -27,6 +30,7 @@ import { createRecipe, updateRecipe } from "../library";
 import { saveComposition } from "../compositions";
 import { readSaleConsumptionCost } from "../consumption-cost";
 import { eventSubscriptions } from "../consumption";
+import { publishConsumptionApplied } from "../consumption-event";
 import * as provenance from "./provenance";
 let world: ModuleWorld;
 beforeAll(async () => {
@@ -35,6 +39,18 @@ beforeAll(async () => {
 }, 120_000);
 afterAll(async () => {
   await dropModuleWorld(world);
+  expect(
+    await getDb()
+      .select({ id: businesses.id })
+      .from(businesses)
+      .where(eq(businesses.id, world.businessId)),
+  ).toEqual([]);
+  expect(
+    await getDb()
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.id, world.ownerId)),
+  ).toEqual([]);
 }, 120_000);
 const rows = (sourceOrderId: string) =>
   getDb()
@@ -81,6 +97,27 @@ const drain = (eventId: string) =>
     force: true,
     budgetMs: 20000,
   });
+async function expectBothDeliveries(eventId: string) {
+  expect(await drain(eventId)).toEqual({
+    claimed: 2,
+    applied: 2,
+    pending: 0,
+    failed: 0,
+  });
+  const deliveries = await getDb()
+    .select({
+      subscriberId: moduleEventDeliveries.subscriberId,
+      state: moduleEventDeliveries.state,
+    })
+    .from(moduleEventDeliveries)
+    .where(eq(moduleEventDeliveries.eventId, eventId));
+  expect(
+    deliveries.sort((a, b) => a.subscriberId.localeCompare(b.subscriberId)),
+  ).toEqual([
+    { subscriberId: "core.analytics", state: "applied" },
+    { subscriberId: "recipes", state: "applied" },
+  ]);
+}
 describe.skipIf(!modulesIntegrationEnabled)(
   "R1 captured composition consumption and frozen Stock costs",
   () => {
@@ -115,7 +152,7 @@ describe.skipIf(!modulesIntegrationEnabled)(
         expectedRevisionId: null,
       });
       const sale = await publish(productId);
-      expect((await drain(sale.eventId)).applied).toBe(1);
+      await expectBothDeliveries(sale.eventId);
       expect(await rows(sale.sourceOrderId)).toMatchObject([
         { quantity: "-2.000", consumptionUnitCost: "3.000000" },
       ]);
@@ -167,7 +204,7 @@ describe.skipIf(!modulesIntegrationEnabled)(
         lines: [{ itemId: item.id, quantity: "99.000" }],
         expectedRevisionId: a.revisionId,
       });
-      expect((await drain(sale.eventId)).applied).toBe(1);
+      await expectBothDeliveries(sale.eventId);
       expect(await rows(sale.sourceOrderId)).toMatchObject([
         { quantity: "-9.000", consumptionUnitCost: "2.000000" },
       ]);
@@ -197,6 +234,37 @@ describe.skipIf(!modulesIntegrationEnabled)(
         .select()
         .from(moduleEvents)
         .where(eq(moduleEvents.id, sale.eventId));
+      const derivedBefore = await getDb()
+        .select()
+        .from(moduleEvents)
+        .where(
+          and(
+            eq(moduleEvents.businessId, world.businessId),
+            eq(moduleEvents.sourceId, sale.sourceOrderId),
+            eq(moduleEvents.eventType, "recipes.consumption.applied"),
+          ),
+        );
+      expect(derivedBefore).toHaveLength(1);
+      const deliveriesBefore = await getDb()
+        .select()
+        .from(moduleEventDeliveries)
+        .where(eq(moduleEventDeliveries.eventId, derivedBefore[0].id));
+      await expect(
+        withDbTransaction((tx) =>
+          publishConsumptionApplied(
+            tx,
+            {
+              id: event.id,
+              businessId: world.businessId,
+              payload: {
+                ...(event.payload as SaleClosedEvent),
+                closedAt: new Date(0).toISOString(),
+              },
+            },
+            [],
+          ),
+        ),
+      ).rejects.toThrow("snapshot conflict");
       await withDbTransaction((tx) =>
         eventSubscriptions[0].handler(tx, {
           id: event.id,
@@ -204,6 +272,18 @@ describe.skipIf(!modulesIntegrationEnabled)(
           payload: event.payload as SaleClosedEvent,
         }),
       );
+      expect(
+        await getDb()
+          .select()
+          .from(moduleEvents)
+          .where(eq(moduleEvents.id, derivedBefore[0].id)),
+      ).toEqual(derivedBefore);
+      expect(
+        await getDb()
+          .select()
+          .from(moduleEventDeliveries)
+          .where(eq(moduleEventDeliveries.eventId, derivedBefore[0].id)),
+      ).toEqual(deliveriesBefore);
       expect(await sources(sale.sourceOrderId)).toEqual(before);
       expect((await rows(sale.sourceOrderId))[0].consumptionUnitCost).toBe(
         "2.000000",
@@ -266,7 +346,7 @@ describe.skipIf(!modulesIntegrationEnabled)(
         expectedRevisionId: null,
       });
       const sale = await publish(productId);
-      expect((await drain(sale.eventId)).applied).toBe(1);
+      await expectBothDeliveries(sale.eventId);
       expect(await rows(sale.sourceOrderId)).toEqual([]);
       expect(await sources(sale.sourceOrderId)).toMatchObject([
         { exactQuantity: "0.000100", allocatedQuantity: "0.000" },

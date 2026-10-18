@@ -1,12 +1,16 @@
 import type { DbTransaction } from "@mi-pasaporte/db";
 import { recipeConsumptionSources } from "@mi-pasaporte/db/schema";
 import { and, eq } from "drizzle-orm";
-import type { CapturedModuleEvent } from "../../../../server/module-events/types";
+import { fromRatio, ratioOf } from "@mi-pasaporte/domain/measures";
 import type { CapturedSource } from "./captured";
 
 export async function persistProvenance(
   tx: DbTransaction,
-  event: CapturedModuleEvent,
+  event: {
+    id: string;
+    businessId: string;
+    payload: { sourceOrderId: string; locationId: string };
+  },
   sources: CapturedSource[],
 ) {
   const rows = await tx
@@ -18,19 +22,57 @@ export async function persistProvenance(
         eq(recipeConsumptionSources.sourceOrderId, event.payload.sourceOrderId),
       ),
     );
-  const key = (s: CapturedSource) =>
-    `${s.sourceLineId}/${s.itemId}/${s.recipeRevisionId}`;
+  const key = (
+    s: Pick<CapturedSource, "sourceLineId" | "itemId" | "recipeRevisionId">,
+  ) => `${s.sourceLineId}/${s.itemId}/${s.recipeRevisionId}`;
   const existing = new Map(rows.map((r) => [key(r), r]));
-  const values = sources.map((s) => ({
-    ...s,
-    businessId: event.businessId,
-    eventId: event.id,
-    sourceOrderId: event.payload.sourceOrderId,
-    locationId: event.payload.locationId,
-  }));
+  const values = sources.map((s) => {
+    const ratios = {
+      recipeQuantityNumerator: s.recipeQuantityNumerator ?? null,
+      recipeQuantityDenominator: s.recipeQuantityDenominator ?? null,
+      exactQuantityNumerator: s.exactQuantityNumerator ?? null,
+      exactQuantityDenominator: s.exactQuantityDenominator ?? null,
+    };
+    const quantityVersion = s.quantityVersion ?? 1;
+    if (quantityVersion === 2) {
+      for (const [numerator, denominator] of [
+        [ratios.recipeQuantityNumerator, ratios.recipeQuantityDenominator],
+        [ratios.exactQuantityNumerator, ratios.exactQuantityDenominator],
+      ]) {
+        if (
+          !numerator ||
+          !denominator ||
+          !/^[1-9][0-9]*$/.test(numerator) ||
+          !/^[1-9][0-9]*$/.test(denominator)
+        )
+          throw new Error("Invalid measured provenance ratio");
+        const canonical = ratioOf(fromRatio({ numerator, denominator }));
+        if (
+          canonical.numerator !== numerator ||
+          canonical.denominator !== denominator
+        )
+          throw new Error("Invalid measured provenance ratio");
+      }
+    } else if (
+      quantityVersion !== 1 ||
+      Object.values(ratios).some((v) => v !== null)
+    ) {
+      throw new Error("Invalid provenance quantity version");
+    }
+    return {
+      ...s,
+      quantityVersion,
+      ...ratios,
+      businessId: event.businessId,
+      eventId: event.id,
+      sourceOrderId: event.payload.sourceOrderId,
+      locationId: event.payload.locationId,
+    };
+  });
   const expectedKeys = new Set(values.map(key));
   if (
     expectedKeys.size !== values.length ||
+    (rows.length > 0 && rows.length !== values.length) ||
     rows.some((r) => !expectedKeys.has(key(r)))
   )
     throw new Error("Consumption provenance snapshot conflict");
