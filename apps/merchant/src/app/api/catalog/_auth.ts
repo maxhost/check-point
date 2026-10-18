@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { validateResourceMeasurementChange } from "../../../server/resource-measurement";
 import {
   apiOwnerFailureResponse,
   requireApiOwnerSinGateDeEmail,
@@ -7,6 +8,7 @@ import { requireApiPermissionSinGateDeEmail } from "../../../server/api-permissi
 import {
   CatalogError,
   type OwnerBusiness,
+  type CatalogOptions,
 } from "@mi-pasaporte/domain/server/catalog";
 
 /**
@@ -86,7 +88,11 @@ export function catalogError(error: unknown, fallback: string): NextResponse {
   if (error instanceof CatalogError) {
     return NextResponse.json(
       error.code
-        ? { error: error.message, code: error.code }
+        ? {
+            error: error.message,
+            code: error.code,
+            ...(error.product ? { product: error.product } : {}),
+          }
         : { error: error.message },
       { status: error.status },
     );
@@ -100,4 +106,19 @@ export async function readJson(request: Request): Promise<unknown> {
   } catch {
     throw new CatalogError(400, "El cuerpo de la solicitud no es válido.");
   }
+}
+
+export function catalogOptions(request: Request): CatalogOptions {
+  return {
+    contract: request.headers.get("X-Catalog-Contract") === "2" ? 2 : 1,
+    validateMeasurementChange: validateResourceMeasurementChange,
+  };
+}
+export function catalogResponse(
+  request: Request,
+  response: NextResponse,
+): NextResponse {
+  if (request.headers.get("X-Catalog-Contract") === "2")
+    response.headers.set("Cache-Control", "private, no-store");
+  return response;
 }

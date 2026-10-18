@@ -13,6 +13,9 @@ export function ownId(raw: unknown, kind: "recipe" | "product" | "item") {
 }
 export async function lockRecipes(tx: DbTransaction, businessId: string) {
   await tx.execute(
+    sql`select pg_advisory_xact_lock(hashtextextended(${"business-config/" + businessId},0))`,
+  );
+  await tx.execute(
     sql`select pg_advisory_xact_lock(hashtextextended(${"recipes-r1/" + businessId},0))`,
   );
 }

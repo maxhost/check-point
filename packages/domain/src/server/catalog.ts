@@ -21,3 +21,5 @@ export {
   assertNoOpenImport,
   hasOpenImport,
 } from "./catalog/import-guard";
+
+export type { CatalogOptions } from "./catalog/measured-contract";
