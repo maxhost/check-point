@@ -322,9 +322,11 @@ export async function inspectFlows(m: Manifest, directory: string) {
     process.env.POS_MEASUREMENT_OPERATION === "flows-inspect-smoke"
       ? "smoke"
       : "campaign";
+  const run = process.env.POS_MEASUREMENT_FLOW_RUN ?? "01";
+  expect(run).toMatch(/^\d{2}$/);
   const raw = JSON.parse(
     await readFile(
-      `${directory}/${population === "smoke" ? "flow-smoke-01" : "m0-flows-01"}.json`,
+      `${directory}/${population === "smoke" ? "flow-smoke" : "m0-flows"}-${run}.json`,
       "utf8",
     ),
   );

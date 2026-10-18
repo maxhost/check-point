@@ -32,7 +32,9 @@ if (
 )
   throw Error("Frozen flow identity mismatch");
 const smoke = process.env.FLOW_SMOKE === "1",
-  out = `${dir}/${smoke ? "flow-smoke-01" : "m0-flows-01"}.json`;
+  run = process.env.FLOW_RUN ?? "01";
+if (!/^\d{2}$/.test(run)) throw Error("Two digit run required");
+const out = `${dir}/${smoke ? "flow-smoke" : "m0-flows"}-${run}.json`;
 if (existsSync(out)) throw Error("Exclusive output required");
 const report = {
   source: freeze.source,
@@ -66,7 +68,7 @@ try {
       role: c.role,
       variant: c.variant,
       label: c.label,
-      tag: `pos-flow-${smoke ? "smoke" : "m0"}-${c.role}-${c.variant}-${c.index}`,
+      tag: `pos-flow-${smoke ? "smoke" : "m0"}-${c.role}-${c.variant}-${c.index}-${run}`,
       stage: "setup",
       startedAt: new Date().toISOString(),
       requests: [],
@@ -214,6 +216,11 @@ try {
       });
       await expect(
         page.getByRole("button", { name: "Nueva orden", exact: true }),
+      ).toBeEnabled();
+      // The mobile primary action mounts before POS finishes session/list loading.
+      // Require a real list row and authorized action before starting the flow timer.
+      await expect(
+        page.getByRole("button", { name: /^Abrir M0 / }).first(),
       ).toBeEnabled();
       a.stage = "catalog";
       let start = await now();
