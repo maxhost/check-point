@@ -15,6 +15,11 @@ const world = vi.hoisted(() => ({
 
 vi.mock("./billing-gate", () => ({
   businessBillingFailure: async () => world.billing,
+  readBusinessBilling: async () => ({
+    access: world.billing ? "blocked" : "trial",
+    trialEndsAt: null,
+    failure: world.billing,
+  }),
 }));
 
 vi.mock("./auth", () => ({
