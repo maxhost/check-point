@@ -205,13 +205,11 @@ async function rawEvent(
     })
     .returning();
   // Raw dormant V4 fixture captures analytics eligibility without running a subscriber.
-  await getDb()
-    .insert(moduleEventDeliveries)
-    .values({
-      eventId: event.id,
-      subscriberId: "core.analytics",
-      state: "pending",
-    });
+  await getDb().insert(moduleEventDeliveries).values({
+    eventId: event.id,
+    subscriberId: "core.analytics",
+    state: "pending",
+  });
   return { ...event, payload };
 }
 
