@@ -729,6 +729,13 @@
       "when": 1792355283138,
       "tag": "0103_quantity_legacy_storage_expand",
       "breakpoints": true
+    },
+    {
+      "idx": 104,
+      "version": "7",
+      "when": 1792356040612,
+      "tag": "0104_recipes_measurement_storage_expand",
+      "breakpoints": true
     }
   ]
 }
