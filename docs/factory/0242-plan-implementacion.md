@@ -39,7 +39,7 @@ Congelar scope/cuerpo/UUID antes await, epochs y caché monotónica; 409scope an
 
 ### A: backend POS + cadena de efectos
 
-Crear/editar/listar/cerrar/anular sobre contratoV2, createRequestId idempotente y campos tipo/etiqueta. Reusar locks de POS/Mesas y transacción cierre. Respuesta canonical para caché; agregado de lista sin descargar todas líneas. QR mínimo mantiene efectos/eligibilidad. Adaptar cupones de masa a referencia tarifaria y mostrar bonificación concreta; reglas prose no se parsean.
+Crear/editar/listar/cerrar/anular sobre contratoV2, createRequestId idempotente y campos tipo/etiqueta. Reusar locks de POS/Mesas y transacción cierre. Respuesta canonical para caché; agregado de lista sin descargar todas líneas. QR mínimo mantiene efectos/eligibilidad. Rechazar gratis/2x1 sobre líneas mass, conservar unit elegible en órdenes mixtas y porcentaje/importe sobre peso; reglas prose no se parsean.
 
 Asignar y completar adapters financial/core.order, eventosV4, composición/consumo/Stock/metrics/ranking antes de habilitar peso. Idempotencia y errores aftercommit, pendientes de delivery/coste, neto0 y comisiones exactas. Reservar DB CI y migraciones solo por A.
 

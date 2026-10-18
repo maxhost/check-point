@@ -1,7 +1,7 @@
 ---
 spec: 0242
 fecha: 2026-10-18
-estado: borrador técnico; pendiente cantidad bonificada en cupones de masa, sin implementación
+estado: funcional cerrada; implementación y QA pendientes
 resumen: Rediseño integral del POS con Mostrador integrado, órdenes por tipo, medidas de catálogo, retiro de Mostrador legacy y mejora de carga/autorización basada en0238.
 disjunta: no; POS, catálogo/business, auth compartida, financial, eventos, Stock/Recetas y analíticas
 archivos: ámbitos y escritores definidos en docs/factory/0242-plan-implementacion.md
@@ -9,7 +9,7 @@ archivos: ámbitos y escritores definidos en docs/factory/0242-plan-implementaci
 
 # 0242 — POS unificado y venta por peso
 
-**L3**, por dinero, cantidades, auth/tenant, migraciones y consumidores de eventos. Owner pidió mapear con agentes, comparar laboratorio, escribir spec/plan y dejar handoff antes de implementar con agentes. Esta entrega es documental. Base producto `5f9cb2b2af49fa45850c059ef33f8bb69ea15172`; reserva local `ec454681`. Sin push ni operaciones PROD.
+**L3**, por dinero, cantidades, auth/tenant, migraciones y consumidores de eventos. Owner pidió mapear con agentes, comparar laboratorio, escribir spec/plan y dejar handoff antes de implementar con agentes. La fase inicial fue documental; el owner autorizó retomar implementación por checkpoints con dos implementadores y QA independiente. Base producto `5f9cb2b2af49fa45850c059ef33f8bb69ea15172`; reserva local `ec454681`. Sin push ni operaciones PROD.
 
 Fuentes: [decisiones D001–D019 y posteriores](../design-explorations/2026-10-18-mostrador/decisiones.html), [v004](../design-explorations/2026-10-18-mostrador/versiones/v004/index.html), [mapa actual](../factory/0242-mapa-actual.md), [rendimiento](../factory/0242-performance.md), [ADR0155](../adr/0155-pos-unificado-cantidades-y-cupones-de-premio.md), [contratos](0242-contratos-pos-y-medidas.md), [plan](../factory/0242-plan-implementacion.md).
 
@@ -55,7 +55,9 @@ Venta anónima válida. QR identifica cliente y cupón seleccionado en PWA, sin 
 
 Cupón: mostrar tipo, efecto económico y texto íntegro de reglas del merchant, con expansión accesible si largo. El operador revisa condiciones de texto; no se interpretan automáticamente. Mantener elegibilidad técnica/fechas/local/moneda/selección/límites diarios existentes. Quitar beneficio de una venta es exclusión local; no POST coupon-remove global salvo acción que diga expresamente devolver la selección.
 
-No añadir restricciones por contener peso ni configuración nueva de exclusiones. Porcentaje/importe se calculan sobre dinero exacto. Gratis/2x1 conservan referencia de **una unidad de precio**, expresada con medida de la línea: se muestra por ejemplo “bonifica hasta1kg”, no “1 pieza” ni “1000 productos”. 2x1 requiere al menos2 unidades tarifarias equivalentes; gratis bonifica hasta1 unidad y nunca más que importe/cantidad de la línea. No analizar el texto para inferir200g u otra cantidad. Si las reglas requieren otra interpretación, el operador puede excluir el beneficio; la aplicación no inventa un ajuste económico. **Este párrafo de cantidad bonificada es propuesta pendiente de respuesta del owner y no autoriza implementación.** QA documental rechazó fijar1unidadtarifaria sin ese acuerdo. La respuesta debe sustituir este párrafo antes de cerrar la spec.
+**Decisión explícita del owner al retomar0242:** «No aplican a productos por peso. Gratis ni 2x1». Gratis/2x1 solo bonifican líneas de unidades discretas y conservan su cálculo actual de una pieza (2x1 exige al menos2). No pedir peso bonificado ni usar una unidad tarifaria automática. Si la línea objetivo se vende por peso, mostrar “Gratis y 2×1 no aplican a productos por peso” y no aplicar/consumir el beneficio; el cierre servidor lo rechaza con409 coupon_measure_not_supported si se intenta incluirlo. El operador puede quitar el beneficio de esta venta y cobrarla normalmente.
+
+La restricción se aplica a la línea objetivo de gratis/2x1, no a toda venta mixta: una línea unit elegible puede recibir el beneficio aunque haya otras por peso. Sin selección explícita se elige la primera línea elegible del producto por orden estable; una selección mass explícita se rechaza sin cambiar de línea silenciosamente. Porcentaje/importe se calculan sobre dinero exacto y sí admiten productos por peso. No interpretar texto de reglas ni añadir configuración general de exclusiones. Esta decisión sustituye la propuesta pendiente de cantidad bonificada y la instrucción anterior de no añadir ninguna exclusión por peso.
 
 Confirmar cobro es el único comando de cierre, consumo de cupón y acreditación. Total0 con línea real usa payments=[], permite cerrar sin efectivo/medio ficticio y sigue generando stock/evento. Mostrar “Cerrar venta sin cobro”. Mantener reglas existentes de acreditación por programa/neto, sin crear otra política para premio. Pago es registro con medios existentes, no procesamiento PSP nuevo.
 
@@ -107,4 +109,4 @@ DoD de producto y seguridad:
 
 ## 7. Estado de esta etapa
 
-Especificación y plan, no implementación. El cierre funcional recoge las respuestas explícitas del owner del18oct2026: PWA fuera; suspensión del canje directo; reglas de cupón visibles sin exclusiones nuevas por peso. Las decisiones técnicas de cantidades/compatibilidad y su revisión documental se registran junto a este documento. Todo hallazgo bloqueante de QA documental debe corregirse antes del handoff; el cierre no certifica código inexistente.
+Spec funcional cerrada tras la respuesta monetaria del owner; implementación por checkpoints y QA de producto pendientes. El cierre funcional recoge las respuestas explícitas del owner del18oct2026: PWA fuera; suspensión del canje directo; reglas de cupón visibles y exclusión explícita de líneas por peso para gratis/2x1; porcentaje/importe permitidos. Las decisiones técnicas de cantidades/compatibilidad y su revisión documental se registran junto a este documento. Todo hallazgo bloqueante de QA documental debe corregirse antes del handoff; el cierre no certifica código inexistente.
