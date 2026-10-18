@@ -1,3 +1,10 @@
+import {
+  MeasureError,
+  trustedUnitLegacyPrice,
+  trustedUnitLineCents,
+  assertMoneyRange,
+} from "@mi-pasaporte/domain/measures";
+import { formatMinor, rational } from "@mi-pasaporte/domain/financial/rational";
 import { and, eq, inArray } from "drizzle-orm";
 import { getDb } from "@mi-pasaporte/db";
 import { products, programMemberships } from "@mi-pasaporte/db/schema";
@@ -116,7 +123,11 @@ export async function buildDetailed(
     const item = (raw ?? {}) as Record<string, unknown>;
     const productId = parseUuid(item.productId, "productId");
     const quantity = item.quantity;
-    if (!Number.isInteger(quantity) || (quantity as number) <= 0) {
+    if (
+      !Number.isInteger(quantity) ||
+      (quantity as number) <= 0 ||
+      (quantity as number) > 2147483647
+    ) {
       throw new CounterError(422, "invalid_input", "La cantidad no es válida.");
     }
     return {
@@ -143,39 +154,48 @@ export async function buildDetailed(
     );
   const byId = new Map(rows.map((r) => [r.id, r]));
 
-  let totalCents = 0;
-  const items: GrantItem[] = parsed.map((p) => {
-    const product = byId.get(p.productId);
-    if (!product) {
-      throw new CounterError(
-        422,
-        "unknown_product",
-        "Un producto no es válido.",
-      );
-    }
-    // Snapshot the DB price; when the catalog has no price the operator typed it.
-    const unitPrice =
-      product.unitPrice !== null
-        ? Number(product.unitPrice).toFixed(2)
-        : parseMoney(p.rawUnitPrice, "El importe de la línea");
-    const lineTotal = (Number(unitPrice) * p.quantity).toFixed(2);
-    totalCents += Math.round(Number(lineTotal) * 100);
-    return {
-      productId: p.productId,
-      nameSnapshot: product.name,
-      unitPrice,
-      quantity: p.quantity,
-      lineTotal,
-    };
-  });
+  let totalCents = 0n;
+  try {
+    const items: GrantItem[] = parsed.map((p) => {
+      const product = byId.get(p.productId);
+      if (!product) {
+        throw new CounterError(
+          422,
+          "unknown_product",
+          "Un producto no es válido.",
+        );
+      }
+      // Snapshot the DB price; when the catalog has no price the operator typed it.
+      const unitPrice =
+        product.unitPrice !== null
+          ? trustedUnitLegacyPrice(product.unitPrice)
+          : parseMoney(p.rawUnitPrice, "El importe de la línea");
+      const cents = trustedUnitLineCents(p.quantity, unitPrice);
+      const lineTotal = formatMinor(cents, 2);
+      totalCents += cents;
+      return {
+        productId: p.productId,
+        nameSnapshot: product.name,
+        unitPrice,
+        quantity: p.quantity,
+        lineTotal,
+      };
+    });
 
-  const total = (totalCents / 100).toFixed(2);
-  if (Number(total) > MAX_MONEY) {
+    assertMoneyRange(rational(totalCents));
+    return { total: formatMinor(totalCents, 2), items };
+  } catch (error) {
+    if (!(error instanceof MeasureError)) throw error;
+    if (error.code === "invalid_price")
+      throw new CounterError(
+        409,
+        "pos_client_upgrade_required",
+        "Actualiza la aplicación para usar este precio.",
+      );
     throw new CounterError(
       422,
       "invalid_amount",
       "El total es demasiado grande.",
     );
   }
-  return { total, items };
 }

@@ -1,3 +1,22 @@
+import {
+  trustedUnitQuantityNumber,
+  trustedUnitLegacyPrice,
+  MeasureError,
+} from "@mi-pasaporte/domain/measures";
+import { CounterError } from "@mi-pasaporte/domain/server/counter/core";
+
+function legacyValue<T>(read: () => T): T {
+  try {
+    return read();
+  } catch (error) {
+    if (!(error instanceof MeasureError)) throw error;
+    throw new CounterError(
+      409,
+      "pos_client_upgrade_required",
+      "Actualiza la aplicación para leer estos productos.",
+    );
+  }
+}
 import { and, asc, desc, eq, gte, inArray } from "drizzle-orm";
 import { getDb } from "@mi-pasaporte/db";
 import {
@@ -43,7 +62,10 @@ export async function businessCatalog(
       id: p.id,
       name: p.name,
       categoryId: p.categoryId,
-      unitPrice: p.unitPrice === null ? null : Number(p.unitPrice),
+      unitPrice:
+        p.unitPrice === null
+          ? null
+          : legacyValue(() => Number(trustedUnitLegacyPrice(p.unitPrice))),
       imagePath: p.imageObjectKey
         ? `/api/public/catalog/${p.id}/image?v=${p.imageVersion}`
         : null,
@@ -94,5 +116,12 @@ export async function purchaseShortcuts(
         recent.map((order) => order.id),
       ),
     );
-  return personalPicks(recent, lines, catalog.products);
+  return personalPicks(
+    recent,
+    lines.map((line) => ({
+      ...line,
+      quantity: legacyValue(() => trustedUnitQuantityNumber(line.quantity)),
+    })),
+    catalog.products,
+  );
 }

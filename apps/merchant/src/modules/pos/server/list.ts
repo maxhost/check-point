@@ -7,7 +7,7 @@ import {
   posOrderItems,
   posOrders,
 } from "@mi-pasaporte/db/schema";
-import { totalOf } from "./lines";
+import { totalOf, unitQuantityOf, unitPriceOf } from "./lines";
 
 /**
  * Spec 0169 §Contrato — `GET /api/modules/pos/orders`: el historial del POS (owner: «Abiertas» de
@@ -102,7 +102,11 @@ export async function listPosOrders(
   const byOrder = new Map<string, { unitPrice: string; quantity: number }[]>();
   for (const line of lines) {
     const list = byOrder.get(line.posOrderId) ?? [];
-    list.push(line);
+    list.push({
+      ...line,
+      quantity: unitQuantityOf(line.quantity),
+      unitPrice: unitPriceOf(line.unitPrice),
+    });
     byOrder.set(line.posOrderId, list);
   }
 
@@ -121,8 +125,7 @@ export async function listPosOrders(
       itemCount: own.reduce((sum, line) => sum + line.quantity, 0),
       createdAt: row.createdAt.toISOString(),
       closedAt: row.closedAt ? row.closedAt.toISOString() : null,
-      saleTotal:
-        row.saleTotal === null ? null : Number(row.saleTotal).toFixed(2),
+      saleTotal: row.saleTotal === null ? null : unitPriceOf(row.saleTotal),
     };
   };
   return { open: open.map(toSummary), closedToday: closedToday.map(toSummary) };

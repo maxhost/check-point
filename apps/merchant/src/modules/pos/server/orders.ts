@@ -1,6 +1,6 @@
 import { appendModuleEvent } from "../../../server/module-events/append";
 import { analyticsMoney } from "../../../server/counter/analytics-events";
-import { totalOf } from "./lines";
+import { totalOf, unitQuantityOf, unitPriceOf } from "./lines";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { type DbTransaction, withDbTransaction } from "@mi-pasaporte/db";
 import { posOrderItems, posOrders } from "@mi-pasaporte/db/schema";
@@ -200,13 +200,28 @@ export async function updatePosOrder(
         if (!bumped) throw await whyNotUpdated(tx, business.id, id);
 
         const existing = await tx
-          .select({ id: posOrderItems.id })
+          .select({
+            id: posOrderItems.id,
+            unitPrice: posOrderItems.unitPriceSnapshot,
+          })
           .from(posOrderItems)
           .where(eq(posOrderItems.posOrderId, id));
         const merge = mergeLines(
           existing.map((line) => line.id),
           incoming,
         );
+        // Validate the complete merged cart before any line write. A failure rolls
+        // back the optimistic header update in this same transaction.
+        const prices = new Map(
+          existing.map((line) => [line.id, line.unitPrice]),
+        );
+        totalOf([
+          ...merge.kept.map((line) => ({
+            quantity: line.quantity,
+            unitPrice: prices.get(line.id)!,
+          })),
+          ...snapshots,
+        ]);
         if (merge.removed.length > 0) {
           await tx
             .delete(posOrderItems)
@@ -296,7 +311,7 @@ export async function voidPosOrder(
 
 /** Exportado para el cierre: la misma lectura de lineas, en la transaccion del cierre. */
 export async function linesForClose(tx: DbTransaction, id: string) {
-  return tx
+  const lines = await tx
     .select({
       sourceLineId: posOrderItems.id,
       position: posOrderItems.position,
@@ -308,4 +323,9 @@ export async function linesForClose(tx: DbTransaction, id: string) {
     .from(posOrderItems)
     .where(eq(posOrderItems.posOrderId, id))
     .orderBy(posOrderItems.position, posOrderItems.id);
+  return lines.map((line) => ({
+    ...line,
+    quantity: unitQuantityOf(line.quantity),
+    unitPrice: unitPriceOf(line.unitPrice),
+  }));
 }

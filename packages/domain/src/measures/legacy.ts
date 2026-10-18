@@ -1,4 +1,4 @@
-import { multiply, rational, exact } from "../financial/rational";
+import { multiply, rational, exact, formatMinor } from "../financial/rational";
 import type { ExactAmount } from "../financial/types";
 import { decimalRational, parsePrice } from "./decimal";
 import { assertMoneyRange, exactLineGross, parseMeasure } from "./mass";
@@ -55,4 +55,33 @@ export function exactSnapshotLineGross(
   const cents = multiply(price, rational(count * 100n));
   assertMoneyRange(cents);
   return exact(cents);
+}
+
+/** Exact v1 projection of trusted DB unit data, separate from the measured snapshot parser. */
+export function trustedUnitQuantityNumber(value: unknown): number {
+  return Number(trustedUnitSnapshotQuantity(value));
+}
+
+export function trustedUnitLegacyPrice(value: unknown): string {
+  const raw =
+    typeof value === "number" && Number.isFinite(value) ? String(value) : value;
+  if (typeof raw !== "string" || !/^\d{1,10}(?:\.\d{1,9})?$/.test(raw))
+    throw new MeasureError("invalid_price", "price");
+  const [whole, fraction = ""] = raw.split(".");
+  if (/[^0]/.test(fraction.slice(2)))
+    throw new MeasureError("invalid_price", "price");
+  const cents =
+    BigInt(whole) * 100n + BigInt(fraction.slice(0, 2).padEnd(2, "0"));
+  assertMoneyRange(rational(cents));
+  return formatMinor(cents, 2);
+}
+
+export function trustedUnitLineCents(
+  quantity: unknown,
+  price: unknown,
+): bigint {
+  const count = BigInt(trustedUnitSnapshotQuantity(quantity));
+  const cents = BigInt(trustedUnitLegacyPrice(price).replace(".", "")) * count;
+  assertMoneyRange(rational(cents));
+  return cents;
 }
