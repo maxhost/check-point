@@ -105,7 +105,9 @@ Marca malformada/distinta:409 exactamente `BackofficeContextChanged`, sin eco de
 | GET checklist | owner sin gate email → scope → facts/tours |
 | POST tours/id | guard vigente → scope → recordTourProgress |
 
-Clientes sin cabecera conservan comportamiento/JSON/guards actuales; no adquieren garantía de vinculación con una pantalla previa. Reporter/auth exentos para descubrir/cerrar sesión. El protocolo se aplica en helpers comunes y adapters mínimos que necesiten headers/tipado, sin cambiar writers. No afirmar garantía para APIs no inventariadas. POST Inbox mantiene contrato2/operationId/versiones/idempotencia; SSR/prefetch/core no llama readInbox ni genera exposición/evaluación.
+Adaptación operativa S autorizada: en Inbox/módulos adoptados, auth/DB que arroja fuera del try anterior pasa del framework500 al503 codificado por el mapper de disponibilidad existente, ahora privado/no-store. No cambia denegaciones401/403/402 ni su precedencia, y no convierte ese fallo en409 o logout. Se prueba explícitamente.
+
+Clientes sin cabecera conservan comportamiento/JSON/guards actuales salvo esa disponibilidad operativa precisada; no adquieren garantía de vinculación con una pantalla previa. Reporter/auth exentos para descubrir/cerrar sesión. El protocolo se aplica en helpers comunes y adapters mínimos que necesiten headers/tipado, sin cambiar writers. No afirmar garantía para APIs no inventariadas. POST Inbox mantiene contrato2/operationId/versiones/idempotencia; SSR/prefetch/core no llama readInbox ni genera exposición/evaluación.
 
 ## Próximos checkpoints y evidencia A1
 
