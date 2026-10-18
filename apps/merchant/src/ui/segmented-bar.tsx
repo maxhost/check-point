@@ -6,12 +6,15 @@ export type SegmentedBarProps = {
   segments: readonly {
     id: string;
     value: number;
-    tone: "primary" | "info" | "accent" | "expense-variable";
+    tone:
+      "primary" | "info" | "accent" | "expense-variable" | "lavender" | "sky";
   }[];
   className?: string;
 };
 
 const tones = {
+  lavender: "bg-chart-lavender",
+  sky: "bg-chart-sky",
   primary: "bg-primary",
   info: "bg-info",
   accent: "bg-accent",
@@ -35,7 +38,7 @@ export function SegmentedBar({
     <div
       role="img"
       aria-label={label}
-      className={cx("flex h-8 overflow-hidden rounded-md", className)}
+      className={cx("flex h-8 gap-1 overflow-hidden rounded-md", className)}
     >
       {segments
         .filter(({ value }) => value > 0)
@@ -43,7 +46,7 @@ export function SegmentedBar({
           <div
             key={id}
             aria-hidden="true"
-            className={cx("h-full", tones[tone])}
+            className={cx("h-full rounded-sm", tones[tone])}
             style={{ width: `${(value / total) * 100}%` }}
           />
         ))}

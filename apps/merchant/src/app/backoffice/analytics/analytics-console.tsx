@@ -292,12 +292,12 @@ export default function AnalyticsConsole({
                   {
                     id: "fixed",
                     value: history.fixedExpensesMinor,
-                    tone: "accent",
+                    tone: "lavender",
                   },
                   {
                     id: "variable",
                     value: history.variableExpensesMinor,
-                    tone: "expense-variable",
+                    tone: "sky",
                   },
                 ]}
               />
@@ -306,12 +306,12 @@ export default function AnalyticsConsole({
                   {
                     label: "Gastos fijos",
                     value: history.fixedExpensesMinor,
-                    tone: "bg-accent",
+                    tone: "bg-chart-lavender",
                   },
                   {
                     label: "Gastos variables",
                     value: history.variableExpensesMinor,
-                    tone: "bg-expense-variable",
+                    tone: "bg-chart-sky",
                   },
                 ].map(({ label, value, tone }) => (
                   <div key={label} className="grid min-w-0 gap-1">
