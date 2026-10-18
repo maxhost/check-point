@@ -160,14 +160,18 @@
           const normalize = (text) => (text ?? "").replace(/\s+/g, " ").trim();
           const measurement = (window.__backofficeMeasurement = {
             readyAt: null,
+            sectionFirstSeenAt: null,
+            inboxFetchInvocationAt: [],
             domValidated: false,
             fcpAt: null,
             dclAt: null,
             loadAt: null,
             longTasks: [],
             resolutionMs: null,
+            clockProbeDurationMs: null,
           });
-          let previous = performance.now();
+          const clockProbeStartedAt = performance.now();
+          let previous = clockProbeStartedAt;
           let resolution = Infinity;
           for (let i = 0; i < 10000; i++) {
             const now = performance.now();
@@ -178,6 +182,31 @@
           measurement.resolutionMs = Number.isFinite(resolution)
             ? resolution
             : null;
+          measurement.clockProbeDurationMs =
+            performance.now() - clockProbeStartedAt;
+          const originalFetch = window.fetch;
+          window.fetch = function (...args) {
+            const invocationAt = performance.now();
+            try {
+              const input = args[0];
+              const raw =
+                typeof input === "string"
+                  ? input
+                  : input instanceof URL
+                    ? input.href
+                    : input instanceof Request
+                      ? input.url
+                      : null;
+              if (
+                raw !== null &&
+                new URL(raw, location.href).pathname === "/api/analytics/inbox"
+              )
+                measurement.inboxFetchInvocationAt.push(invocationAt);
+            } catch {
+              // Instrumentation must not change fetch validation/return behavior.
+            }
+            return Reflect.apply(originalFetch, this, args);
+          };
           try {
             new PerformanceObserver((list) => {
               for (const entry of list.getEntries())
@@ -209,6 +238,10 @@
             const heading = document.getElementById("analytics-inbox-title");
             const section = heading?.closest("section");
             if (!section) return;
+            // First observed DOM section, including skeleton; not React mount
+            // or completion of hydration elsewhere in the document.
+            if (measurement.sectionFirstSeenAt === null)
+              measurement.sectionFirstSeenAt = performance.now();
             const articles = [...section.querySelectorAll("article")];
             let matches = articles.length === cards.length;
             if (!cards.length) {
