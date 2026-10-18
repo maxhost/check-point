@@ -95,4 +95,35 @@ describe("catalog exact draft and reconciliation", () => {
     });
     expect(result.overlaps).toHaveLength(2);
   });
+  it("never reinterprets local tariffs under a remotely changed measure or vice versa", () => {
+    const remote = {
+      ...base,
+      soldByWeight: true,
+      pricingUnit: "lb" as const,
+      unitPrice: "8",
+      catalogRevision: "2",
+    };
+    const result = reconcileProduct(base, { ...draft, unitPrice: "5" }, remote);
+    expect(result.next).toMatchObject({
+      soldByWeight: false,
+      pricingUnit: "unit",
+      unitPrice: "5",
+      unitCost: null,
+    });
+    expect(result.overlaps).toEqual([
+      "Venta por peso / Unidad de venta / Precio de venta / Precio de costo",
+    ]);
+    const inverse = reconcileProduct(
+      base,
+      { ...draft, soldByWeight: true, pricingUnit: "g" },
+      { ...base, unitCost: "4" },
+    );
+    expect(inverse.next).toMatchObject({
+      soldByWeight: true,
+      pricingUnit: "g",
+      unitPrice: "2",
+      unitCost: null,
+    });
+    expect(inverse.overlaps).toHaveLength(1);
+  });
 });

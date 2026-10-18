@@ -164,11 +164,9 @@ describe.skipIf(!modulesIntegrationEnabled)(
       );
       expect(defaultUnits.salesMassUnits).toEqual(["kg"]);
       expect(await configurations()).toEqual([]);
-      const legacy = await response(
-        await GET(request("GET", undefined, staff, false)),
-        200,
-      );
-      expect(legacy).not.toHaveProperty("salesMassUnits");
+      const legacy = await GET(request("GET", undefined, staff, false));
+      expect(legacy.status).toBe(200);
+      expect(await legacy.json()).not.toHaveProperty("salesMassUnits");
       await getDb()
         .insert(businessConfiguration)
         .values({

@@ -46,12 +46,23 @@ export function reconcileProduct(
 ) {
   const next = { ...draft, expectedSalesRevision: remote.catalogRevision };
   const overlaps: string[] = [];
+  const measure = (source: Product | ProductPayload) => [
+    source.soldByWeight,
+    source.pricingUnit,
+  ];
+  const measureChanged =
+    !equal(measure(base), measure(draft)) ||
+    !equal(measure(base), measure(remote));
   const groups: Field[][] = [
     ["name"],
     ["categoryId"],
-    ["unitPrice"],
-    ["unitCost"],
-    ["soldByWeight", "pricingUnit"],
+    ...(measureChanged
+      ? [["soldByWeight", "pricingUnit", "unitPrice", "unitCost"] as Field[]]
+      : ([
+          ["soldByWeight", "pricingUnit"],
+          ["unitPrice"],
+          ["unitCost"],
+        ] as Field[][])),
     ["availableAllLocations", "locationIds"],
   ];
   for (const fields of groups) {

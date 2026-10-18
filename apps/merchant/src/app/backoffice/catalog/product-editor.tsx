@@ -6,7 +6,6 @@ import {
   Alert,
   Button,
   CheckboxField,
-  Link,
   SelectField,
   Text,
   TextField,
@@ -14,6 +13,7 @@ import {
 import { StaffFormModal } from "../staff/staff-form-modal";
 import {
   unitLabels,
+  formatMoney,
   type MassUnit,
   type MeasureUnit,
   type Category,
@@ -193,6 +193,34 @@ export function ProductEditor({
     } catch {
       /* Validation appears on save/review. */
     }
+  }
+  function remoteValue(field: keyof typeof commercialFields, remote: Product) {
+    if (field === "categoryId")
+      return (
+        categories.find((item) => item.id === remote.categoryId)?.name ??
+        "Sin categoría"
+      );
+    if (field === "locationIds")
+      return remote.availableAllLocations
+        ? "Todos los locales"
+        : remote.locationIds
+            .map(
+              (id) =>
+                locations.find((item) => item.id === id)?.name ??
+                "Local no disponible",
+            )
+            .join(", ");
+    if (field === "pricingUnit") return unitLabels[remote.pricingUnit];
+    if (field === "soldByWeight") return remote.soldByWeight ? "Sí" : "No";
+    if (field === "availableAllLocations")
+      return remote.availableAllLocations
+        ? "Todos los locales"
+        : "Locales específicos";
+    if (field === "unitPrice" || field === "unitCost")
+      return remote[field] === null
+        ? "Sin tarifa"
+        : formatMoney(remote[field], currencyCode);
+    return remote[field];
   }
   async function save() {
     if (savingRef.current || issue) return;
@@ -398,13 +426,10 @@ export function ProductEditor({
                 {Object.entries(commercialFields).map(([field, label]) => (
                   <Text key={field}>
                     {label}:{" "}
-                    {Array.isArray(issue.product![field as keyof Product])
-                      ? (
-                          issue.product![field as keyof Product] as string[]
-                        ).join(", ")
-                      : String(
-                          issue.product![field as keyof Product] ?? "Sin dato",
-                        )}
+                    {remoteValue(
+                      field as keyof typeof commercialFields,
+                      issue.product!,
+                    )}
                   </Text>
                 ))}
                 <Text>
@@ -418,9 +443,10 @@ export function ProductEditor({
               </>
             )}
             {issue.code === "measurement_basis_required" && (
-              <Link href="/backoffice/recipes/products">
-                Revisar la base en Recetas
-              </Link>
+              <Text>
+                Revisa la base de medida del producto en Recetas antes de
+                cambiar cómo se vende.
+              </Text>
             )}
             {!issue.product && baseline && issue.code !== "missing" && (
               <Button

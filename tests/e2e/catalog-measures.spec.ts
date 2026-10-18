@@ -223,3 +223,92 @@ test("confirmed write with failed GET retries only reading and blocks duplicate 
   ).toBeVisible();
   expect(api.writes).toHaveLength(1);
 });
+test("uncertain POST remains blocked after discarding until an authoritative catalog read", async ({
+  page,
+  catalogHarness,
+}) => {
+  const api = await catalogApiFixture(page);
+  await page.goto(catalogHarness);
+  await page.getByRole("button", { name: "Nuevo producto" }).click();
+  await name(page).fill("Alta confirmada sin respuesta");
+  api.writeError = {
+    status: 503,
+    code: "uncertain",
+    error: "Respuesta perdida",
+  };
+  // The authoritative server state contains the product even though its write response failed.
+  api.products.push({
+    ...api.products[0],
+    id: "confirmed-create",
+    name: "Alta confirmada sin respuesta",
+  });
+  await save(page).click();
+  await expect(save(page)).toBeDisabled();
+  await page.getByRole("button", { name: "Descartar borrador" }).click();
+  await expect(
+    page.getByRole("button", { name: "Nuevo producto" }),
+  ).toBeDisabled();
+  expect(api.writes).toHaveLength(1);
+  api.failRead = true;
+  await page.getByRole("button", { name: "Reintentar lectura" }).click();
+  await expect(
+    page.getByRole("button", { name: "Nuevo producto" }),
+  ).toBeDisabled();
+  api.failRead = false;
+  await page.getByRole("button", { name: "Reintentar lectura" }).click();
+  await expect(
+    page.getByText("Alta confirmada sin respuesta", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Nuevo producto" }),
+  ).toBeEnabled();
+  expect(api.writes).toHaveLength(1);
+});
+test("crossed price and measure changes require review of the whole commercial basis", async ({
+  page,
+  catalogHarness,
+}) => {
+  const api = await catalogApiFixture(page);
+  await page.goto(catalogHarness);
+  await edit(page);
+  await page
+    .getByRole("textbox", { name: "Precio de venta (opcional)" })
+    .fill("5");
+  const remote = {
+    ...api.products[0],
+    soldByWeight: true,
+    pricingUnit: "lb",
+    unitPrice: "8",
+    catalogRevision: "2",
+  };
+  api.writeError = {
+    status: 409,
+    code: "catalog_changed",
+    error: "El producto cambió.",
+    product: remote,
+  };
+  await save(page).click();
+  await expect(
+    page.getByText(
+      /Ambos cambiaron: Venta por peso \/ Unidad de venta \/ Precio de venta \/ Precio de costo/,
+    ),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Ya revisé: conservar mis cambios" })
+    .click();
+  await expect(
+    page.getByRole("checkbox", { name: "Este producto se vende por peso" }),
+  ).not.toBeChecked();
+  await expect(
+    page.getByRole("textbox", { name: "Precio de venta (opcional)" }),
+  ).toHaveValue("5");
+  api.writeError = null;
+  await save(page).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  expect(api.writes.at(-1)?.body).toMatchObject({
+    unitPrice: "5",
+    soldByWeight: false,
+    pricingUnit: "unit",
+    expectedSalesRevision: "2",
+  });
+});
