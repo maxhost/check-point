@@ -1,7 +1,7 @@
 ---
 spec: 0240
 fecha: 2026-10-18
-estado: especificada
+estado: implementada localmente
 nivel: L2
 resumen: Evolución de costos registrados por insumo/local en Analíticas, selector con valor por defecto y gráfico accesible del kit.
 disjunta: no; usa el GET history y la tarjeta Stock de0239.
@@ -39,3 +39,9 @@ Coordinador reserva spec/INDEX y contrato, crea dos WT/ref desde dev, reserva fa
 A: unidad de períodos/meses, baseline real, orden/default estable, cero/uno/plano/subcentavo, falta de labels, local/moneda/unidad/futuro y no mutación del input; wiring sin SQL nuevo. Negativos reales tenant/local vía wrapper NeonCI aislado reutilizando readHistory y fixtures acotadas, sin DDL nuevo ni datos localesDEMO.
 B: desktop/móvil en tanda, selección de otro par cambia serie/valores sin HTTP, teclado, defaults/remoción al cambiar filtro, empty/onepoint/plano/subcentavo y costos incompletos; lectura accesible de todos los puntos, sin overflow. Tipos/lint/guard/diff, checks decisivos de geometría si hace falta. No tests que sólo repitan implementación ni campañas globales/M1 por ceremonia.
 QA: revisar pureza/scopes/precisión/contrato y gráfico honesto; combinar A+B sobreSHA exacto y smoke local. No declarar PASS por skips/retries. Mainlocal trasQA; cleanupfactory limpio y evidencia fueraWT. Preservar QAmanual/CIrojo/guardias24PASS2FAIL/FAILfrío1817.621042ms/diferidos ciudades-weather-calendarios-crons-Marketingcupón11-realtimeinfra y demos existentes. Sin push/PROD.
+
+## Entrega local
+
+Datos `0f027cf8` y UI corregida `eec922c3`, aceptadas individualmente por QA independiente. Candidato combinado `298134ab`: tipos merchant y browser focal 3/3 PASS, sin skips/retries. QA detectó y se corrigió la comparación de extremos monetarios: etiquetas mínimo/máximo usan decimales exactos; sólo la geometría aproxima a Number. Dominio 8/8, NeonCI protegido 3/3, boundary 4/4 y UI/formato/geometría 6/6 PASS; tipos/lint/guard pertinentes conformes. Se mantienen las cinco consultas de history y ninguna petición adicional al seleccionar.
+
+Handoffs: [datos](../factory/0240-data-handoff.md), [UI](../factory/0240-ui-handoff.md) y [QA independiente](../factory/0240-qa.md). Evidencia externa `/private/tmp/checkpass-0240-evidence/`. Capturas 390/1440 revisadas. Lectura local protegida y de solo lectura confirmó el default demo Bolsa de empaque con tres puntos, incluida referencia del 30 de septiembre. Smoke app: health200 e history401 privado/no-store sin sesión; no certifica recorrido Next autenticado ni M1. Demos y diferidos conservados, sin push/PROD.
