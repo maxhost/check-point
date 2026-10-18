@@ -26,6 +26,7 @@ import { ANALYTICS_POLICY as policy } from "@mi-pasaporte/domain/analytics/polic
 import { localDay } from "@mi-pasaporte/domain/analytics/date";
 import type { InboxCard } from "@mi-pasaporte/domain/analytics/types";
 import { ONBOARDING_TOURS } from "./onboarding/tours";
+import { MODULES } from "../modules/registry";
 
 export type Fixture = {
   userId: string;
@@ -56,6 +57,7 @@ export type Manifest = {
   phase: string;
   observations?: unknown[];
   fixtures: Fixture[];
+  moduleIds: string[];
 };
 const hash = (value: string) =>
   createHash("sha256").update(value).digest("hex").slice(0, 12);
@@ -112,7 +114,20 @@ export async function guard() {
     endpoint: fingerprint,
   };
 }
+function validateModuleIds(ids: string[]) {
+  expect(Array.isArray(ids)).toBe(true);
+  expect(ids.length).toBeGreaterThan(0);
+  expect(new Set(ids).size).toBe(ids.length);
+  for (const id of ids) {
+    expect(typeof id).toBe("string");
+    const manifest = MODULES.find((module) => module.id === id);
+    expect(manifest).toBeDefined();
+    for (const dependency of manifest!.requires)
+      expect(ids).toContain(dependency);
+  }
+}
 export function validate(m: Manifest, endpoint: string) {
+  validateModuleIds(m.moduleIds);
   expect(m.kind).toBe("backoffice-measurement-v1");
   expect(m.runId).toMatch(uuid);
   expect(m.endpoint).toBe(endpoint);
@@ -173,7 +188,7 @@ export async function checkStored(m: Manifest) {
           eq(businessModules.enabled, true),
         ),
       );
-    expect(modules.map((r) => r.id).sort()).toEqual(["expenses", "stock"]);
+    expect(modules.map((r) => r.id).sort()).toEqual([...m.moduleIds].sort());
     const tours = await db
       .select({ id: businessOnboardingTours.tourId })
       .from(businessOnboardingTours)

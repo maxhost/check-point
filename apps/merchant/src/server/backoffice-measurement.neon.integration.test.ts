@@ -2,6 +2,7 @@
  * BACKOFFICE_MEASUREMENT_SETUP=true BACKOFFICE_MEASUREMENT_OPERATION=setup|inspect|stabilize|cleanup|login
  * BACKOFFICE_MEASUREMENT_MANIFEST=/private/tmp/<campaign>/fixture.json
  * BACKOFFICE_MEASUREMENT_ENDPOINT_SHA12=<reserved CI endpoint fingerprint>
+ * Setup also requires BACKOFFICE_MEASUREMENT_MODULE_IDS as an explicit JSON array.
  * Run ONLY via tools/neon-test.sh src/server/backoffice-measurement.neon.integration.test.ts
  * No cookie/session is fabricated: login through existing owner OTP flow after setup.
  */
@@ -83,6 +84,9 @@ describe.skipIf(!enabled)(
         expect(lifetimeMs).toBeGreaterThan(3_600_000);
         const m: Manifest = {
           kind: "backoffice-measurement-v1",
+          moduleIds: JSON.parse(
+            process.env.BACKOFFICE_MEASUREMENT_MODULE_IDS ?? "null",
+          ),
           runId,
           endpoint,
           day,
@@ -148,7 +152,7 @@ describe.skipIf(!enabled)(
               trialEndsAt: new Date(+now + 30 * 86_400_000),
             });
             await tx.insert(businessModules).values(
-              ["stock", "expenses"].map((moduleId) => ({
+              m.moduleIds.map((moduleId) => ({
                 businessId: f.businessId,
                 moduleId,
                 enabled: true,
