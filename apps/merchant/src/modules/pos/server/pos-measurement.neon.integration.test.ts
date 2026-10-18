@@ -2,7 +2,7 @@
 import { randomUUID, randomInt } from "node:crypto";
 import { writeFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { getDb, withDbTransaction } from "@mi-pasaporte/db";
 import {
   users,
@@ -43,7 +43,12 @@ describe.skipIf(process.env.POS_MEASUREMENT_SETUP !== "true")(
           kind: "pos-measurement-0242-v1",
           runId,
           endpoint,
-          day: now.toISOString().slice(0, 10),
+          day: new Intl.DateTimeFormat("en-CA", {
+            timeZone: "America/Guayaquil",
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+          }).format(now),
           phase: "allocating",
           fixtures: (["empty", "normal", "volume"] as const).map((c, i) => {
             const slug = `pos0242-${runId}-${c}`;
@@ -93,18 +98,16 @@ describe.skipIf(process.env.POS_MEASUREMENT_SETUP !== "true")(
                 updatedAt: now,
               },
             ]);
-            await tx
-              .insert(businesses)
-              .values({
-                id: f.businessId,
-                name: `POS sintético ${f.case}`,
-                slug: f.slug,
-                countryCode: "EC",
-                timezone: "America/Guayaquil",
-                currencyCode: "USD",
-                status: "active",
-                categoryGcid: "gcid:store",
-              });
+            await tx.insert(businesses).values({
+              id: f.businessId,
+              name: `POS sintético ${f.case}`,
+              slug: f.slug,
+              countryCode: "EC",
+              timezone: "America/Guayaquil",
+              currencyCode: "USD",
+              status: "active",
+              categoryGcid: "gcid:store",
+            });
             await tx.insert(memberships).values([
               {
                 businessId: f.businessId,
@@ -124,96 +127,76 @@ describe.skipIf(process.env.POS_MEASUREMENT_SETUP !== "true")(
                 permissions: ["pos"],
               },
             ]);
-            await tx
-              .insert(subscriptions)
-              .values({
+            await tx.insert(subscriptions).values({
+              businessId: f.businessId,
+              plan: "trial",
+              status: "active",
+              trialEndsAt: new Date(+now + 30 * 86400000),
+            });
+            await tx.insert(businessModules).values({
+              businessId: f.businessId,
+              moduleId: "pos",
+              enabled: true,
+            });
+            await tx.insert(businessOnboardingTours).values(
+              ONBOARDING_TOURS.map((tourId) => ({
                 businessId: f.businessId,
-                plan: "trial",
-                status: "active",
-                trialEndsAt: new Date(+now + 30 * 86400000),
-              });
-            await tx
-              .insert(businessModules)
-              .values({
+                tourId,
+                status: "completed",
+              })),
+            );
+            await tx.insert(locations).values(
+              f.locations.map((id, i) => ({
+                id,
                 businessId: f.businessId,
-                moduleId: "pos",
-                enabled: true,
-              });
-            await tx
-              .insert(businessOnboardingTours)
-              .values(
-                ONBOARDING_TOURS.map((tourId) => ({
-                  businessId: f.businessId,
-                  tourId,
-                  status: "completed",
-                })),
-              );
-            await tx
-              .insert(locations)
-              .values(
-                f.locations.map((id, i) => ({
-                  id,
-                  businessId: f.businessId,
-                  name: i ? "Norte" : "Centro",
-                  countryCode: "EC",
-                  addressLabel: "Fixture sintética",
-                  addressSnapshot: {},
-                })),
-              );
-            await tx
-              .insert(productCategories)
-              .values(
-                f.categories.map((id, i) => ({
-                  id,
-                  businessId: f.businessId,
-                  name: `Categoría ${i}`,
-                })),
-              );
+                name: i ? "Norte" : "Centro",
+                countryCode: "EC",
+                addressLabel: "Fixture sintética",
+                addressSnapshot: {},
+              })),
+            );
+            await tx.insert(productCategories).values(
+              f.categories.map((id, i) => ({
+                id,
+                businessId: f.businessId,
+                name: `Categoría ${i}`,
+              })),
+            );
             for (let offset = 0; offset < f.products.length; offset += 100)
-              await tx
-                .insert(products)
-                .values(
-                  f.products
-                    .slice(offset, offset + 100)
-                    .map((id, i) => ({
-                      id,
-                      businessId: f.businessId,
-                      categoryId: f.categories[(offset + i) % 8],
-                      name: `Producto ${String(offset + i).padStart(4, "0")}`,
-                      unitPrice: "2.00",
-                      availableAllLocations: true,
-                    })),
-                );
+              await tx.insert(products).values(
+                f.products.slice(offset, offset + 100).map((id, i) => ({
+                  id,
+                  businessId: f.businessId,
+                  categoryId: f.categories[(offset + i) % 8],
+                  name: `Producto ${String(offset + i).padStart(4, "0")}`,
+                  unitPrice: "2.00",
+                  availableAllLocations: true,
+                })),
+              );
             if (f.orders.length)
-              await tx
-                .insert(posOrders)
-                .values(
-                  f.orders.map((id, i) => ({
-                    id,
-                    businessId: f.businessId,
-                    locationId: f.locations[i % 2],
-                    tableLabel: `M0 ${String(i).padStart(3, "0")}`,
-                    createdByUserId: f.ownerId,
-                    createdAt: new Date(+now - (f.orders.length - i) * 60000),
-                  })),
-                );
+              await tx.insert(posOrders).values(
+                f.orders.map((id, i) => ({
+                  id,
+                  businessId: f.businessId,
+                  locationId: f.locations[i % 2],
+                  tableLabel: `M0 ${String(i).padStart(3, "0")}`,
+                  createdByUserId: f.ownerId,
+                  createdAt: new Date(+now - (f.orders.length - i) * 60000),
+                })),
+              );
             for (let offset = 0; offset < f.orders.length; offset += 10)
-              await tx
-                .insert(posOrderItems)
-                .values(
-                  f.orders
-                    .slice(offset, offset + 10)
-                    .flatMap((posOrderId) =>
-                      Array.from({ length: f.linesPerOrder }, (_, i) => ({
-                        posOrderId,
-                        productId: f.products[i],
-                        nameSnapshot: `Producto ${String(i).padStart(4, "0")}`,
-                        unitPriceSnapshot: "2.00",
-                        quantity: 1,
-                        position: i,
-                      })),
-                    ),
-                );
+              await tx.insert(posOrderItems).values(
+                f.orders.slice(offset, offset + 10).flatMap((posOrderId) =>
+                  Array.from({ length: f.linesPerOrder }, (_, i) => ({
+                    posOrderId,
+                    productId: f.products[i],
+                    nameSnapshot: `Producto ${String(i).padStart(4, "0")}`,
+                    unitPriceSnapshot: "2.00",
+                    quantity: 1,
+                    position: i,
+                  })),
+                ),
+              );
             await initializePaymentMethods(tx, { businessId: f.businessId });
           });
         }
@@ -222,8 +205,28 @@ describe.skipIf(process.env.POS_MEASUREMENT_SETUP !== "true")(
         await inspect(m);
       } else {
         const m = await load(file, endpoint);
-        if (op === "inspect") await inspect(m);
-        else if (op === "login") {
+        if (op === "inspect") {
+          await inspect(m);
+          const ledger = await getDb().execute(
+            sql`select id,hash,created_at from drizzle.__drizzle_migrations order by id`,
+          );
+          const columns = await getDb().execute(
+            sql`select table_schema,table_name,column_name,data_type,numeric_precision,numeric_scale from information_schema.columns where table_schema in ('pos','core','merchant_auth') order by table_schema,table_name,ordinal_position`,
+          );
+          await writeFile(
+            `${directory}/schema-preflight.json`,
+            JSON.stringify(
+              {
+                at: new Date().toISOString(),
+                ledger: ledger.rows,
+                columns: columns.rows,
+              },
+              null,
+              2,
+            ),
+            { mode: 0o600 },
+          );
+        } else if (op === "login") {
           await inspect(m);
           await login(m, directory);
         } else {

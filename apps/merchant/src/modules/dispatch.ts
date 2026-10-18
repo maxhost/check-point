@@ -1,3 +1,4 @@
+import { measureRequestPhase } from "../server/request-measurement";
 import {
   backofficeScopeFailure,
   privateBackofficeResponse,
@@ -99,9 +100,11 @@ export async function dispatchModuleRequest(
   if (match.kind === "method_not_allowed") {
     return methodNotAllowed(match.allow);
   }
-  const access = match.route.owner
-    ? await requireModuleOwnerAccess(request, manifest.id)
-    : await permissionAccess(request, manifest, match.route);
+  const access = await measureRequestPhase("module-guard", () =>
+    match.route.owner
+      ? requireModuleOwnerAccess(request, manifest.id)
+      : permissionAccess(request, manifest, match.route),
+  );
   if ("response" in access) return access.response;
   try {
     return await match.route.handler({

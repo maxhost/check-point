@@ -85,6 +85,30 @@ function queryStart(text, transport) {
   };
 }
 globalThis.__posMeasurement = { record, queryStart };
+globalThis.__requestMeasurement = {
+  beginPhase(name) {
+    const allowed = [
+      "module-guard",
+      "transaction",
+      "after-grant-schedule",
+      "module-events-aftercommit",
+    ];
+    if (!allowed.includes(name)) return () => {};
+    const start = performance.now();
+    record({ kind: "phase-start", phase: name });
+    let done = false;
+    return () => {
+      if (!done) {
+        done = true;
+        record({
+          kind: "phase-end",
+          phase: name,
+          ms: performance.now() - start,
+        });
+      }
+    };
+  },
+};
 const emit = http.Server.prototype.emit;
 http.Server.prototype.emit = function (event, ...args) {
   if (event !== "request") return emit.call(this, event, ...args);

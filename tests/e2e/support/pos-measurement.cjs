@@ -40,10 +40,22 @@
   const out = path.resolve(process.env.OUT ?? "");
   if (!out.startsWith(directory + "/") || fs.existsSync(out))
     throw Error("Exclusive private output required");
-  const reloads = Number(process.env.RELOADS ?? 30);
+  const reloads = Number(process.env.RELOADS ?? 5);
   if (!Number.isInteger(reloads) || reloads < 0 || reloads > 60)
     throw Error("Invalid reload count");
+  const freezeRaw = fs.readFileSync(
+    path.join(directory, "freeze.json"),
+    "utf8",
+  );
+  const freeze = JSON.parse(freezeRaw);
+  if (
+    freeze.source !==
+    execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim()
+  )
+    throw Error("Frozen source mismatch");
   const report = {
+    freeze,
+    freezeSha256: hash(freezeRaw),
     version: 1,
     createdAt: new Date().toISOString(),
     source: execFileSync("git", ["rev-parse", "HEAD"], {
@@ -73,21 +85,19 @@
   save();
   let browser;
   try {
-    browser = await chromium.launch({ headless: true });
+    browser = await chromium.launch({
+      headless: true,
+      proxy: {
+        server: "http://127.0.0.1:43243",
+        bypass: "localhost,127.0.0.1",
+      },
+    });
     report.browser = browser.version();
     const context = await browser.newContext({
       viewport: report.config.viewport,
       serviceWorkers: "block",
     });
     await context.addCookies(cookies);
-    await context.route("**/*", (route) => {
-      let u = new URL(route.request().url());
-      if (u.origin !== "http://localhost:43242") {
-        if (current) current.externalBlocked++;
-        return route.abort();
-      }
-      return route.continue();
-    });
     await context.addInitScript(
       ({ count, labels }) => {
         const state = (window.__posMeasurement = {
@@ -178,7 +188,10 @@
     cdp.on("Network.requestWillBeSent", (e) => {
       if (!current) return;
       const u = new URL(e.request.url);
-      if (u.origin !== "http://localhost:43242") return;
+      if (u.origin !== "http://localhost:43242") {
+        current.externalBlocked++;
+        return;
+      }
       const row = {
         path: u.pathname,
         type: e.type,
@@ -193,10 +206,16 @@
       current.network.push(row);
       network.set(e.requestId, { row, attempt: current });
     });
+    cdp.on("Network.requestServedFromCache", (e) => {
+      const x = network.get(e.requestId);
+      if (x) x.row.servedFromCache = true;
+    });
     cdp.on("Network.responseReceived", (e) => {
       const x = network.get(e.requestId);
       if (x) {
         x.row.status = e.response.status;
+        x.row.fromDiskCache = e.response.fromDiskCache === true;
+        x.row.fromServiceWorker = e.response.fromServiceWorker === true;
         x.row.response = e.timestamp;
         x.row.mime = e.response.mimeType;
       }
@@ -238,6 +257,8 @@
             response.status() === 200 &&
             Array.isArray(data.open) &&
             data.open.length === fixture.orders.length &&
+            new Set(data.open.map((o) => o.id)).size ===
+              fixture.orders.length &&
             data.open.every(
               (o) =>
                 fixture.orders.includes(o.id) &&
