@@ -24,7 +24,38 @@ for (const viewport of [
     await expect(
       page.getByRole("heading", { name: "Clientes del período" }),
     ).toBeVisible();
-    await expect(page.getByText(/1 cliente registró 4 visitas/)).toBeVisible();
+    const customers = page.getByRole("region", {
+      name: "Clientes del período",
+      exact: true,
+    });
+    await expect(
+      customers.getByRole("region", { name: "Clientes", exact: true }),
+    ).toContainText("1");
+    await expect(
+      customers.getByRole("region", { name: "Visitas", exact: true }),
+    ).toContainText("4");
+    const products = page
+      .locator("section")
+      .filter({
+        has: page.getByRole("heading", {
+          name: "Los productos que más vendieron",
+          exact: true,
+        }),
+      })
+      .last();
+    const productBox = await products.boundingBox();
+    const boxes = await Promise.all(
+      ["Clientes", "Visitas", "Clientes que regresaron"].map((name) =>
+        customers.getByRole("region", { name, exact: true }).boundingBox(),
+      ),
+    );
+    expect(boxes[0]!.y).toBeGreaterThanOrEqual(
+      productBox!.y + productBox!.height,
+    );
+    if (viewport.width >= 1024) {
+      expect(Math.abs(boxes[0]!.y - boxes[2]!.y)).toBeLessThan(2);
+      expect(boxes[1]!.x).toBeGreaterThan(boxes[0]!.x);
+    }
     await expect(page.getByText(/Café de la tarde:/)).toContainText("30,00");
     await expect(page.getByText(/Café de la tarde:/)).toContainText("140,00");
     await expect(
@@ -32,7 +63,9 @@ for (const viewport of [
     ).toBeVisible();
     await page.getByRole("button", { name: /Período/ }).click();
     await page.getByRole("option", { name: "6 meses", exact: true }).click();
-    await expect(page.getByText(/1 cliente registró 5 visitas/)).toBeVisible();
+    await expect(
+      customers.getByRole("region", { name: "Visitas", exact: true }),
+    ).toContainText("5");
     await page.getByRole("button", { name: /Local/ }).click();
     await page.getByRole("option", { name: "Norte", exact: true }).click();
     await expect(
@@ -52,7 +85,7 @@ for (const viewport of [
       ),
     ).toBe(true);
     await page.screenshot({
-      path: `test-results/analytics-an3/history-${viewport.width}.png`,
+      path: `/private/tmp/checkpass-customers-layout/history-${viewport.width}.png`,
       fullPage: true,
     });
   });

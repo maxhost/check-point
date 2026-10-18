@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { Coins, Cart, StatsReport, Wallet, Archery } from "iconoir-react";
 import type {
   buildDay,
@@ -37,50 +37,6 @@ const periods = [
   { id: "9m", label: "9 meses" },
   { id: "12m", label: "12 meses" },
 ];
-function Metric({
-  label,
-  value,
-  detail,
-  tone,
-}: {
-  label: string;
-  value: ReactNode;
-  detail?: ReactNode;
-  tone?: "success" | "danger";
-}) {
-  return (
-    <div className="grid min-w-0 grid-cols-2 content-start gap-2 rounded-lg bg-surface-subtle p-4 sm:grid-cols-1">
-      <dt>
-        <Text as="span" variant="small">
-          {label}
-        </Text>
-      </dt>
-      <dd className="m-0 break-words text-right tabular-nums sm:text-left">
-        <Text
-          as="span"
-          variant="label"
-          className={
-            tone === "danger"
-              ? "text-danger"
-              : tone === "success"
-                ? "text-success"
-                : undefined
-          }
-        >
-          {value}
-        </Text>
-      </dd>
-      {detail && (
-        <dd className="col-span-2 m-0 sm:col-span-1">
-          <Text as="span" variant="small">
-            {detail}
-          </Text>
-        </dd>
-      )}
-    </div>
-  );
-}
-
 export default function AnalyticsConsole({
   initialDate = "",
   initialPeriod = "month",
@@ -481,6 +437,55 @@ export default function AnalyticsConsole({
                   </Text>
                 )}
               </Card>
+              {history.customers && (
+                <section
+                  aria-labelledby="analytics-customers-title"
+                  className="grid min-w-0 gap-3 sm:grid-cols-3"
+                >
+                  <Heading
+                    level={2}
+                    id="analytics-customers-title"
+                    className="sr-only"
+                  >
+                    Clientes del período
+                  </Heading>
+                  {[
+                    {
+                      id: "count",
+                      label: "Clientes",
+                      value: history.customers.count,
+                    },
+                    {
+                      id: "visits",
+                      label: "Visitas",
+                      value: history.customers.visits,
+                    },
+                    {
+                      id: "returning",
+                      label: "Clientes que regresaron",
+                      value: history.customers.returning,
+                    },
+                  ].map(({ id, label, value }) => (
+                    <Card
+                      key={id}
+                      aria-labelledby={`analytics-customers-${id}`}
+                      className="grid min-w-0 content-between gap-3 px-4 py-4 sm:px-4 sm:py-4"
+                    >
+                      <Text id={`analytics-customers-${id}`} variant="small">
+                        {label}
+                      </Text>
+                      <Text variant="metric" className="break-words">
+                        {new Intl.NumberFormat("es-EC").format(value)}
+                      </Text>
+                    </Card>
+                  ))}
+                  {history.customers.visits === 0 && (
+                    <Text variant="small" className="sm:col-span-3">
+                      No hay visitas registradas en este período y local.
+                    </Text>
+                  )}
+                </section>
+              )}
             </div>
             <div className="grid min-w-0 content-start gap-6">
               <section id="calculo" className="min-w-0">
@@ -711,33 +716,6 @@ export default function AnalyticsConsole({
               </Card>
             </div>
           </div>
-          {history.customers && (
-            <Card className="grid min-w-0 gap-4 lg:col-span-5">
-              <Heading level={2}>Clientes del período</Heading>
-              <dl className="grid gap-3 sm:grid-cols-3">
-                <Metric label="Clientes" value={history.customers.count} />
-                <Metric label="Visitas" value={history.customers.visits} />
-                <Metric
-                  label="Clientes que regresaron"
-                  value={history.customers.returning}
-                />
-              </dl>
-              <Text>
-                {history.customers.count}{" "}
-                {history.customers.count === 1
-                  ? "cliente registró"
-                  : "clientes registraron"}{" "}
-                {history.customers.visits} visitas. De ellos,{" "}
-                {history.customers.returning} ya habían venido antes del
-                período.
-              </Text>
-              {history.customers.visits === 0 && (
-                <Text variant="muted">
-                  No hay visitas registradas en este período y local.
-                </Text>
-              )}
-            </Card>
-          )}
           {history.promos && (
             <Card className="grid min-w-0 gap-4 lg:col-span-7">
               <Heading level={2}>Promos del período</Heading>
