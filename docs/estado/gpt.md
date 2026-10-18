@@ -5,6 +5,8 @@
 
 ## ESTADO — 0239 CÁLCULO SIN MARGEN VISIBLE Y MOVIMIENTOS; LISTO PARA OWNER EN DEV (2026-10-18 UTC)
 
+L0 layout ranking pedido owner: tabla semántica (roles table/row/columnheader/cell) Producto/Unidades/Ventas, sin fotos ni filtros/botones nuevos, importes alineados y nombres completos. Ranking vive directamente bajo Ganancia/gastos en columna izquierda independiente; cálculo/stock columna derecha, eliminando espera de altura de cálculo para posicionar ranking. Móvil ordenDOM:ganancia→ranking→cálculo→stock. Sin números/cálculos/HTTP/DB nuevos; tiposUI/lint/guard/diffPASS,2browserexistentes390/1440PASSsinretries/skips y capturas abiertas. Demos/diferidos intactos; sin push/PROD.
+
 L0 posterior owner: boxes Para cubrir el mes/Ventas del mes con borde y fondo surface, iconosIconoir Archery/Coins junto a etiqueta, importe Textmetric grande abajo; sin badges/variaciones inventadas. Sólo presentación local en analytics-console, móvil apilado/desktop2columnas, datos/estados intactos. TiposUI/lint/guard/diff-checkPASS y2browserexistentes390/1440sinretries/skips, capturas abiertas en tanda. Ganancia/gastos mantiene altura natural. Sin push/PROD; demos/diferidos intactos.
 
 L0 posterior solicitado por owner: Ganancia/gastos usa self-start para tomar altura natural y no estirarse con la tarjeta de movimientos contigua; owner acepta alturas distintas. Sólo una clase, sin cambiar datos/layout restantes. Diff/ESLint/ui-guard focales, sin nueva campaña browser ni DB. Diferidos intactos; sin push/PROD.

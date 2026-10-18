@@ -267,362 +267,413 @@ export default function AnalyticsConsole({
               </Text>
             )}
           </Card>
-          <div className="grid min-w-0 items-stretch gap-6 lg:col-span-12 lg:grid-cols-2">
-            <Card className="grid min-w-0 content-start gap-4 self-start">
-              <Heading level={2}>Ganancia y gastos</Heading>
-              <dl>
-                <dt>
-                  <Text as="span" variant="small">
-                    Gastos del período
-                  </Text>
-                </dt>
-                <dd className="m-0 mt-2 break-words">
-                  <Text as="span" variant="metric">
-                    {money(
-                      sumIntegers([
-                        history.fixedExpensesMinor,
-                        history.variableExpensesMinor,
-                      ]),
-                    )}
-                  </Text>
-                </dd>
-              </dl>
-              <SegmentedBar
-                label={`Distribución de gastos: fijos ${money(history.fixedExpensesMinor)}; variables ${money(history.variableExpensesMinor)}`}
-                segments={[
-                  {
-                    id: "fixed",
-                    value: history.fixedExpensesMinor,
-                    tone: "lavender",
-                  },
-                  {
-                    id: "variable",
-                    value: history.variableExpensesMinor,
-                    tone: "sky",
-                  },
-                ]}
-              />
-              <dl className="grid grid-cols-2 gap-4">
-                {[
-                  {
-                    label: "Gastos fijos",
-                    value: history.fixedExpensesMinor,
-                    tone: "bg-chart-lavender",
-                  },
-                  {
-                    label: "Gastos variables",
-                    value: history.variableExpensesMinor,
-                    tone: "bg-chart-sky",
-                  },
-                ].map(({ label, value, tone }) => (
-                  <div key={label} className="grid min-w-0 gap-1">
-                    <dt className="flex items-center gap-2">
-                      <span
-                        aria-hidden="true"
-                        className={`size-3 shrink-0 rounded-full ${tone}`}
-                      />
+          <div className="grid min-w-0 items-start gap-6 lg:col-span-12 lg:grid-cols-2">
+            <div className="grid min-w-0 content-start gap-6">
+              <Card className="grid min-w-0 content-start gap-4 self-start">
+                <Heading level={2}>Ganancia y gastos</Heading>
+                <dl>
+                  <dt>
+                    <Text as="span" variant="small">
+                      Gastos del período
+                    </Text>
+                  </dt>
+                  <dd className="m-0 mt-2 break-words">
+                    <Text as="span" variant="metric">
+                      {money(
+                        sumIntegers([
+                          history.fixedExpensesMinor,
+                          history.variableExpensesMinor,
+                        ]),
+                      )}
+                    </Text>
+                  </dd>
+                </dl>
+                <SegmentedBar
+                  label={`Distribución de gastos: fijos ${money(history.fixedExpensesMinor)}; variables ${money(history.variableExpensesMinor)}`}
+                  segments={[
+                    {
+                      id: "fixed",
+                      value: history.fixedExpensesMinor,
+                      tone: "lavender",
+                    },
+                    {
+                      id: "variable",
+                      value: history.variableExpensesMinor,
+                      tone: "sky",
+                    },
+                  ]}
+                />
+                <dl className="grid grid-cols-2 gap-4">
+                  {[
+                    {
+                      label: "Gastos fijos",
+                      value: history.fixedExpensesMinor,
+                      tone: "bg-chart-lavender",
+                    },
+                    {
+                      label: "Gastos variables",
+                      value: history.variableExpensesMinor,
+                      tone: "bg-chart-sky",
+                    },
+                  ].map(({ label, value, tone }) => (
+                    <div key={label} className="grid min-w-0 gap-1">
+                      <dt className="flex items-center gap-2">
+                        <span
+                          aria-hidden="true"
+                          className={`size-3 shrink-0 rounded-full ${tone}`}
+                        />
+                        <Text as="span" variant="small">
+                          {label}
+                        </Text>
+                      </dt>
+                      <dd className="m-0 break-words tabular-nums">
+                        <Text as="span" variant="label">
+                          {money(value)}
+                        </Text>
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+                <dl className="grid gap-3 border-t border-border pt-4 sm:grid-cols-2">
+                  <div className="grid min-w-0 gap-1">
+                    <dt>
                       <Text as="span" variant="small">
-                        {label}
+                        Ganancia bruta
                       </Text>
                     </dt>
                     <dd className="m-0 break-words tabular-nums">
                       <Text as="span" variant="label">
-                        {money(value)}
+                        {history.soldUnits === 0 || history.coverage === 0
+                          ? "Pendiente"
+                          : history.coverage < 1
+                            ? "Cálculo incompleto"
+                            : money(history.grossProfitMinor)}
                       </Text>
                     </dd>
                   </div>
-                ))}
-              </dl>
-              <dl className="grid gap-3 border-t border-border pt-4 sm:grid-cols-2">
-                <div className="grid min-w-0 gap-1">
-                  <dt>
-                    <Text as="span" variant="small">
-                      Ganancia bruta
+                  <div className="grid min-w-0 gap-1">
+                    <dt>
+                      <Text as="span" variant="small">
+                        Resultado después de gastos
+                      </Text>
+                    </dt>
+                    <dd className="m-0 break-words tabular-nums">
+                      <Text
+                        as="span"
+                        variant="label"
+                        className={
+                          history.resultMinor === null
+                            ? undefined
+                            : "text-expense-variable"
+                        }
+                      >
+                        {history.resultMinor === null
+                          ? "Pendiente"
+                          : money(history.resultMinor)}
+                      </Text>
+                    </dd>
+                  </div>
+                </dl>
+                {history.soldUnits === 0 ? (
+                  <Text>No hay unidades vendidas en este período.</Text>
+                ) : history.coverage === 0 ? (
+                  <>
+                    <Text>Ventas: {money(history.revenueMinor)}.</Text>
+                    <Text variant="muted">
+                      Los costos de estas ventas todavía no están incluidos.
                     </Text>
-                  </dt>
-                  <dd className="m-0 break-words tabular-nums">
-                    <Text as="span" variant="label">
-                      {history.soldUnits === 0 || history.coverage === 0
-                        ? "Pendiente"
-                        : history.coverage < 1
-                          ? "Cálculo incompleto"
-                          : money(history.grossProfitMinor)}
+                  </>
+                ) : history.coverage < 1 ? (
+                  <>
+                    <Text>Ventas: {money(history.revenueMinor)}.</Text>
+                    <Text variant="muted">
+                      Falta conocer el costo de {history.unitsWithoutCost} de
+                      las {history.soldUnits} unidades vendidas.
                     </Text>
-                  </dd>
-                </div>
-                <div className="grid min-w-0 gap-1">
-                  <dt>
-                    <Text as="span" variant="small">
-                      Resultado después de gastos
-                    </Text>
-                  </dt>
-                  <dd className="m-0 break-words tabular-nums">
-                    <Text
-                      as="span"
-                      variant="label"
-                      className={
-                        history.resultMinor === null
-                          ? undefined
-                          : "text-expense-variable"
-                      }
-                    >
-                      {history.resultMinor === null
-                        ? "Pendiente"
-                        : money(history.resultMinor)}
-                    </Text>
-                  </dd>
-                </div>
-              </dl>
-              {history.soldUnits === 0 ? (
-                <Text>No hay unidades vendidas en este período.</Text>
-              ) : history.coverage === 0 ? (
-                <>
-                  <Text>Ventas: {money(history.revenueMinor)}.</Text>
-                  <Text variant="muted">
-                    Los costos de estas ventas todavía no están incluidos.
-                  </Text>
-                </>
-              ) : history.coverage < 1 ? (
-                <>
-                  <Text>Ventas: {money(history.revenueMinor)}.</Text>
-                  <Text variant="muted">
-                    Falta conocer el costo de {history.unitsWithoutCost} de las{" "}
-                    {history.soldUnits} unidades vendidas.
-                  </Text>
-                </>
-              ) : (
-                <>
-                  <Text variant="muted">
-                    Vendiste {money(history.revenueMinor)} y el costo de esos
-                    productos fue {money(history.costOfGoodsMinor)}.
-                    {history.paymentCommissionMinor !== 0 &&
-                      ` También se descontaron ${money(history.paymentCommissionMinor)} de comisiones.`}
-                  </Text>
-                </>
-              )}
-              {history.resultMinor === null ? (
-                <Text variant="muted">
-                  Con el costo de al menos el 80% de lo vendido podrás ver el
-                  resultado después de gastos.
-                </Text>
-              ) : null}
-            </Card>
-            <section id="calculo" className="min-w-0">
-              <Card className="grid h-full min-w-0 content-start gap-4">
-                <Heading level={2}>El cálculo de este mes</Heading>
-                {history.goal.breakEvenMinor === null ? (
-                  <Text variant="muted">
-                    {!history.goal.closedMonth
-                      ? "La meta se calcula al cerrar tu primer mes con gastos."
-                      : history.goal.coverage < 0.8
-                        ? "Falta conocer el costo de al menos el 80% de lo vendido para calcular tu meta."
-                        : "Tus ventas con costo conocido todavía no dejan un margen positivo para calcular una meta."}
-                  </Text>
+                  </>
                 ) : (
                   <>
-                    <dl className="grid gap-3 sm:grid-cols-2">
-                      {[
-                        {
-                          label: "Para cubrir el mes",
-                          value: money(history.goal.breakEvenMinor),
-                          icon: (
-                            <Archery className="size-6" aria-hidden="true" />
-                          ),
-                          tone: "bg-primary-soft text-primary",
-                        },
-                        {
-                          label: "Ventas del mes",
-                          value: money(history.goal.monthRevenueMinor),
-                          icon: <Coins className="size-6" aria-hidden="true" />,
-                          tone: "bg-info-soft text-info",
-                        },
-                      ].map(({ label, value, icon, tone }) => (
-                        <div
-                          key={label}
-                          className="grid min-w-0 content-between gap-5 rounded-lg border border-border bg-surface p-4"
-                        >
-                          <dt className="flex items-center gap-3">
-                            <span
-                              className={`flex size-10 shrink-0 items-center justify-center rounded-full ${tone}`}
-                            >
-                              {icon}
-                            </span>
-                            <Text as="span" variant="label">
-                              {label}
-                            </Text>
-                          </dt>
-                          <dd className="m-0 min-w-0 break-words">
-                            <Text as="span" variant="metric">
-                              {value}
-                            </Text>
-                          </dd>
-                        </div>
-                      ))}
-                    </dl>
-                    <dl className="grid grid-cols-2 gap-3 border-y border-border py-3">
-                      {[
-                        [
-                          history.goal.estimated
-                            ? "Gastos estimados"
-                            : "Gastos del mes",
-                          money(history.goal.expensesMinor),
-                        ],
-                        ...(history.goal.targetMinor === null
-                          ? []
-                          : [["Meta de hoy", money(history.goal.targetMinor)]]),
-                      ].map(([label, value]) => (
-                        <div
-                          key={label}
-                          className="grid min-w-0 content-start gap-1"
-                        >
-                          <dt>
-                            <Text as="span" variant="small">
-                              {label}
-                            </Text>
-                          </dt>
-                          <dd className="m-0 break-words tabular-nums">
-                            <Text as="span" variant="label">
-                              {value}
-                            </Text>
-                          </dd>
-                        </div>
-                      ))}
-                    </dl>
-                    {history.goal.targetMinor !== null && (
-                      <Text variant="small">
-                        {history.goal.remainingDays} días de venta restantes
-                        para cubrir el mes.
-                      </Text>
-                    )}
+                    <Text variant="muted">
+                      Vendiste {money(history.revenueMinor)} y el costo de esos
+                      productos fue {money(history.costOfGoodsMinor)}.
+                      {history.paymentCommissionMinor !== 0 &&
+                        ` También se descontaron ${money(history.paymentCommissionMinor)} de comisiones.`}
+                    </Text>
                   </>
                 )}
-                <div className="grid gap-2 border-t border-border pt-4">
-                  <Heading level={3}>Movimientos recientes de este mes</Heading>
-                  {history.recentMovements?.length ? (
-                    <ul className="grid divide-y divide-border">
-                      {history.recentMovements.map((movement) => (
-                        <li
-                          key={movement.id}
-                          className="flex min-w-0 items-center gap-3 py-3"
-                        >
-                          <span
-                            aria-hidden="true"
-                            className={
-                              movement.kind === "sale"
-                                ? "flex size-10 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary"
-                                : "flex size-10 shrink-0 items-center justify-center rounded-full bg-info-soft text-info"
-                            }
-                          >
-                            {movement.kind === "sale" ? (
-                              <Cart className="size-5" />
-                            ) : (
-                              <Wallet className="size-5" />
-                            )}
-                          </span>
-                          <div className="grid min-w-0 flex-1 gap-1">
-                            <Text variant="label" className="break-words">
-                              {movement.label}
-                            </Text>
-                            <Text variant="small">
-                              {movement.kind === "sale" ? "Venta" : "Gasto"} ·{" "}
-                              {new Intl.DateTimeFormat("es-419", {
-                                day: "numeric",
-                                month: "short",
-                                timeZone: "UTC",
-                              }).format(new Date(`${movement.date}T12:00:00Z`))}
-                            </Text>
-                          </div>
-                          <Text
-                            as="span"
-                            variant="label"
-                            className="max-w-40 break-words text-right tabular-nums"
-                          >
-                            {money(movement.amountMinor)}
-                          </Text>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <Text variant="small">
-                      No hay movimientos recientes disponibles de este mes.
-                    </Text>
-                  )}
-                </div>
+                {history.resultMinor === null ? (
+                  <Text variant="muted">
+                    Con el costo de al menos el 80% de lo vendido podrás ver el
+                    resultado después de gastos.
+                  </Text>
+                ) : null}
               </Card>
-            </section>
-          </div>
-          <Card className="grid min-w-0 gap-4 lg:col-span-7">
-            <Heading level={2}>Los productos que más vendieron</Heading>
-            {history.topProducts.length ? (
-              <ul className="grid divide-y divide-border">
-                {history.topProducts.map((p) => (
-                  <li
-                    key={p.id}
-                    className="grid min-w-0 grid-cols-1 gap-2 py-3 sm:grid-cols-3"
+              <Card className="grid min-w-0 gap-4">
+                <Heading level={2}>Los productos que más vendieron</Heading>
+                {history.topProducts.length ? (
+                  <div
+                    role="table"
+                    aria-label="Productos más vendidos"
+                    className="min-w-0"
                   >
-                    <Text as="span" className="break-words sm:col-span-2">
-                      {p.label} · {p.units} unidades
-                    </Text>
-                    <Text
-                      as="span"
-                      variant="label"
-                      className="tabular-nums sm:text-right"
+                    <div
+                      role="row"
+                      className="grid grid-cols-4 gap-2 border-y border-border py-3 sm:grid-cols-6"
                     >
-                      {money(p.revenueMinor)}
+                      <div
+                        role="columnheader"
+                        className="col-span-2 sm:col-span-3"
+                      >
+                        <Text variant="small">Producto</Text>
+                      </div>
+                      <div role="columnheader" className="text-right">
+                        <Text variant="small">Unidades</Text>
+                      </div>
+                      <div
+                        role="columnheader"
+                        className="text-right sm:col-span-2"
+                      >
+                        <Text variant="small">Ventas</Text>
+                      </div>
+                    </div>
+                    {history.topProducts.map((product) => (
+                      <div
+                        key={product.id}
+                        role="row"
+                        className="grid min-w-0 grid-cols-4 items-center gap-2 border-b border-border py-4 last:border-b-0 sm:grid-cols-6"
+                      >
+                        <div
+                          role="cell"
+                          className="col-span-2 min-w-0 break-words sm:col-span-3"
+                        >
+                          <Text variant="label">{product.label}</Text>
+                        </div>
+                        <div
+                          role="cell"
+                          className="min-w-0 break-words text-right tabular-nums"
+                        >
+                          <Text>{product.units}</Text>
+                        </div>
+                        <div
+                          role="cell"
+                          className="min-w-0 break-words text-right tabular-nums sm:col-span-2"
+                        >
+                          <Text variant="label">
+                            {money(product.revenueMinor)}
+                          </Text>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <Text variant="muted">
+                    No hay ventas de productos en este período.
+                  </Text>
+                )}
+              </Card>
+            </div>
+            <div className="grid min-w-0 content-start gap-6">
+              <section id="calculo" className="min-w-0">
+                <Card className="grid h-full min-w-0 content-start gap-4">
+                  <Heading level={2}>El cálculo de este mes</Heading>
+                  {history.goal.breakEvenMinor === null ? (
+                    <Text variant="muted">
+                      {!history.goal.closedMonth
+                        ? "La meta se calcula al cerrar tu primer mes con gastos."
+                        : history.goal.coverage < 0.8
+                          ? "Falta conocer el costo de al menos el 80% de lo vendido para calcular tu meta."
+                          : "Tus ventas con costo conocido todavía no dejan un margen positivo para calcular una meta."}
                     </Text>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <Text variant="muted">
-                No hay ventas de productos en este período.
-              </Text>
-            )}
-          </Card>
-          <Card className="grid min-w-0 gap-4 lg:col-span-5">
-            <Heading level={2}>Stock e insumos</Heading>
-            {history.stock.valueMinor !== null ? (
-              <Text>
-                Valor del stock al {history.to}:{" "}
-                {money(history.stock.valueMinor)}.
-              </Text>
-            ) : history.stock.valuedItems > 0 ? (
-              <Text>
-                Valor conocido del stock: {money(history.stock.knownValueMinor)}
-                . Falta conocer el costo de {history.stock.unvaluedItems}{" "}
-                {history.stock.unvaluedItems === 1 ? "insumo" : "insumos"} para
-                completar el total.
-              </Text>
-            ) : (
-              <Text variant="muted">
-                Todavía no hay existencias con costo registrado para valorar tu
-                stock.
-              </Text>
-            )}
-            {history.stock.averageIncrease === null ? (
-              <Text variant="muted">
-                Necesitas al menos dos costos registrados de un mismo insumo y
-                local para comparar sus subas.
-              </Text>
-            ) : history.stock.increaseDays === 0 ? (
-              <Text>
-                No se registraron subas de los insumos comparables en este
-                período.
-              </Text>
-            ) : (
-              <Text>
-                En este período el costo de tus insumos varió en promedio{" "}
-                {new Intl.NumberFormat("es-EC", {
-                  style: "percent",
-                  maximumFractionDigits: 1,
-                }).format(history.stock.averageIncrease)}
-                , comparando el primer y el último costo conocidos.
-                {history.stock.averageDaysBetweenIncreases !== null
-                  ? ` Pasaron unos ${Math.round(history.stock.averageDaysBetweenIncreases)} días entre subas de un mismo insumo.`
-                  : " Todavía no hay subas repetidas de un mismo insumo para comparar su frecuencia."}
-              </Text>
-            )}
-          </Card>
+                  ) : (
+                    <>
+                      <dl className="grid gap-3 sm:grid-cols-2">
+                        {[
+                          {
+                            label: "Para cubrir el mes",
+                            value: money(history.goal.breakEvenMinor),
+                            icon: (
+                              <Archery className="size-6" aria-hidden="true" />
+                            ),
+                            tone: "bg-primary-soft text-primary",
+                          },
+                          {
+                            label: "Ventas del mes",
+                            value: money(history.goal.monthRevenueMinor),
+                            icon: (
+                              <Coins className="size-6" aria-hidden="true" />
+                            ),
+                            tone: "bg-info-soft text-info",
+                          },
+                        ].map(({ label, value, icon, tone }) => (
+                          <div
+                            key={label}
+                            className="grid min-w-0 content-between gap-5 rounded-lg border border-border bg-surface p-4"
+                          >
+                            <dt className="flex items-center gap-3">
+                              <span
+                                className={`flex size-10 shrink-0 items-center justify-center rounded-full ${tone}`}
+                              >
+                                {icon}
+                              </span>
+                              <Text as="span" variant="label">
+                                {label}
+                              </Text>
+                            </dt>
+                            <dd className="m-0 min-w-0 break-words">
+                              <Text as="span" variant="metric">
+                                {value}
+                              </Text>
+                            </dd>
+                          </div>
+                        ))}
+                      </dl>
+                      <dl className="grid grid-cols-2 gap-3 border-y border-border py-3">
+                        {[
+                          [
+                            history.goal.estimated
+                              ? "Gastos estimados"
+                              : "Gastos del mes",
+                            money(history.goal.expensesMinor),
+                          ],
+                          ...(history.goal.targetMinor === null
+                            ? []
+                            : [
+                                [
+                                  "Meta de hoy",
+                                  money(history.goal.targetMinor),
+                                ],
+                              ]),
+                        ].map(([label, value]) => (
+                          <div
+                            key={label}
+                            className="grid min-w-0 content-start gap-1"
+                          >
+                            <dt>
+                              <Text as="span" variant="small">
+                                {label}
+                              </Text>
+                            </dt>
+                            <dd className="m-0 break-words tabular-nums">
+                              <Text as="span" variant="label">
+                                {value}
+                              </Text>
+                            </dd>
+                          </div>
+                        ))}
+                      </dl>
+                      {history.goal.targetMinor !== null && (
+                        <Text variant="small">
+                          {history.goal.remainingDays} días de venta restantes
+                          para cubrir el mes.
+                        </Text>
+                      )}
+                    </>
+                  )}
+                  <div className="grid gap-2 border-t border-border pt-4">
+                    <Heading level={3}>
+                      Movimientos recientes de este mes
+                    </Heading>
+                    {history.recentMovements?.length ? (
+                      <ul className="grid divide-y divide-border">
+                        {history.recentMovements.map((movement) => (
+                          <li
+                            key={movement.id}
+                            className="flex min-w-0 items-center gap-3 py-3"
+                          >
+                            <span
+                              aria-hidden="true"
+                              className={
+                                movement.kind === "sale"
+                                  ? "flex size-10 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary"
+                                  : "flex size-10 shrink-0 items-center justify-center rounded-full bg-info-soft text-info"
+                              }
+                            >
+                              {movement.kind === "sale" ? (
+                                <Cart className="size-5" />
+                              ) : (
+                                <Wallet className="size-5" />
+                              )}
+                            </span>
+                            <div className="grid min-w-0 flex-1 gap-1">
+                              <Text variant="label" className="break-words">
+                                {movement.label}
+                              </Text>
+                              <Text variant="small">
+                                {movement.kind === "sale" ? "Venta" : "Gasto"} ·{" "}
+                                {new Intl.DateTimeFormat("es-419", {
+                                  day: "numeric",
+                                  month: "short",
+                                  timeZone: "UTC",
+                                }).format(
+                                  new Date(`${movement.date}T12:00:00Z`),
+                                )}
+                              </Text>
+                            </div>
+                            <Text
+                              as="span"
+                              variant="label"
+                              className="max-w-40 break-words text-right tabular-nums"
+                            >
+                              {money(movement.amountMinor)}
+                            </Text>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <Text variant="small">
+                        No hay movimientos recientes disponibles de este mes.
+                      </Text>
+                    )}
+                  </div>
+                </Card>
+              </section>
+              <Card className="grid min-w-0 gap-4">
+                <Heading level={2}>Stock e insumos</Heading>
+                {history.stock.valueMinor !== null ? (
+                  <Text>
+                    Valor del stock al {history.to}:{" "}
+                    {money(history.stock.valueMinor)}.
+                  </Text>
+                ) : history.stock.valuedItems > 0 ? (
+                  <Text>
+                    Valor conocido del stock:{" "}
+                    {money(history.stock.knownValueMinor)}. Falta conocer el
+                    costo de {history.stock.unvaluedItems}{" "}
+                    {history.stock.unvaluedItems === 1 ? "insumo" : "insumos"}{" "}
+                    para completar el total.
+                  </Text>
+                ) : (
+                  <Text variant="muted">
+                    Todavía no hay existencias con costo registrado para valorar
+                    tu stock.
+                  </Text>
+                )}
+                {history.stock.averageIncrease === null ? (
+                  <Text variant="muted">
+                    Necesitas al menos dos costos registrados de un mismo insumo
+                    y local para comparar sus subas.
+                  </Text>
+                ) : history.stock.increaseDays === 0 ? (
+                  <Text>
+                    No se registraron subas de los insumos comparables en este
+                    período.
+                  </Text>
+                ) : (
+                  <Text>
+                    En este período el costo de tus insumos varió en promedio{" "}
+                    {new Intl.NumberFormat("es-EC", {
+                      style: "percent",
+                      maximumFractionDigits: 1,
+                    }).format(history.stock.averageIncrease)}
+                    , comparando el primer y el último costo conocidos.
+                    {history.stock.averageDaysBetweenIncreases !== null
+                      ? ` Pasaron unos ${Math.round(history.stock.averageDaysBetweenIncreases)} días entre subas de un mismo insumo.`
+                      : " Todavía no hay subas repetidas de un mismo insumo para comparar su frecuencia."}
+                  </Text>
+                )}
+              </Card>
+            </div>
+          </div>
           {history.customers && (
             <Card className="grid min-w-0 gap-4 lg:col-span-5">
               <Heading level={2}>Clientes del período</Heading>
