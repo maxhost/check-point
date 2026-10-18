@@ -2,7 +2,7 @@
 
 ## Reanudación del18oct: preparación CP0 en curso
 
-Owner reiteró dos implementadores y QA independiente. Se crearon tres WT propios desde dev621951fc. Leer primero [fichas CP0](0242-cp0-launch.md) y bloque vigente de estado: ya hay reservas ampliadas de código/harness/M0. Owner resolvió gratis/2x1: no aplican a productos por peso. Spec/anexo cerrados0e413c94 y QA focal conforme; no volver a preguntar. A/B documentales aceptados e integrados89dc1707, QA42bf3422 incorporado. A implementa contratos puros; B instrumentación/baseline real con CI exclusiva y puerto43242; QA independiente espera entregas congeladas. M0 y salidaCP0 siguen pendientes. El resto de este handoff conserva contexto del mapeo anterior, incluida la pregunta histórica ya resuelta.
+Owner reiteró dos implementadores y QA independiente y después exigió entregables manejables con **agentes nuevos/contexto vacío por bloque**. Leer primero [fichas CP0](0242-cp0-launch.md), [flows actuales](0242-cp0-flows.md) y bloque vigente de estado. Owner resolvió gratis/2x1: no aplican a productos por peso; spec/anexo cerrados y QA focal conforme, no volver a preguntar. Contratos puros A329c7917/QA7fc88bad y listado M0 Bc379c9a8/QA80b32497 aceptados/integrados dev1f40112e. Nuevos implementador/QA m0_flows/qa_m0_flows terminan solo18flujos guardar/QR/cierre con CI exclusiva y control6f8e archivado;3smokes ya cerrados y verificados read-only, campaña18 en curso. CP0 global sigue pendiente; CP1 no inicia antes de su aceptación. Después financial puro y scope servidor serán entregas separadas/frescas. El resto de este handoff conserva contexto histórico del mapeo anterior, incluida la pregunta ya resuelta.
 
 ## Objetivo actual
 
