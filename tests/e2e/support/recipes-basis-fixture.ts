@@ -88,6 +88,20 @@ export async function setupRecipes(
             ...libraryRecipe,
             revisionId: "library-2",
             name: route.request().postDataJSON().name,
+            lines: (
+              route.request().postDataJSON().lines as {
+                itemId?: string;
+                newItem?: { name: string };
+                quantity: string;
+                unit: string;
+              }[]
+            ).map((line, index) => ({
+              itemId: line.itemId ?? `new-${index}`,
+              itemName: line.newItem?.name ?? "Harina",
+              itemStatus: "active",
+              quantity: line.quantity,
+              unit: line.unit,
+            })),
           },
         },
       });
