@@ -26,6 +26,7 @@ Mass/precisión siguen bloqueados por constraints temporales hasta CP2c. Esta UI
 - apps/merchant/src/app/backoffice/catalog/catalog-page.tsx
 - apps/merchant/src/app/backoffice/catalog/catalog-product-draft.ts y catalog-product-draft.test.ts, nuevos si separan reconciliación/parseo
 - packages/domain/src/server/catalog/core.ts, solo proyección salesMassUnits V2
+- apps/merchant/src/modules/pos/contracts.ts, solo corregir CatalogUpdateV2.expectedSalesRevision a string acorde al HTTP ya aceptado
 - apps/merchant/src/modules/pos/server/catalog-v2.neon.integration.test.ts, solo metadata/default/guard/tenant/V1 y regresión de barreras
 - tests/e2e/catalog-measures.spec.ts, nuevo
 - tests/e2e/support/catalog-api-fixture.ts
