@@ -27,3 +27,4 @@ export * from "./search-field";
 export * from "./color-field";
 export * from "./slider";
 export * from "./file-button";
+export * from "./segmented-bar";

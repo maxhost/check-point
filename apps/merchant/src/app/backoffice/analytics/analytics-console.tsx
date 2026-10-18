@@ -6,6 +6,7 @@ import type {
   buildHistory,
   HistoryPeriod,
 } from "@mi-pasaporte/domain/analytics/history";
+import { sumIntegers } from "@mi-pasaporte/domain/analytics/money";
 import { formatMoney } from "@mi-pasaporte/domain/analytics/date";
 import {
   Alert,
@@ -16,6 +17,7 @@ import {
   Link,
   PageHeader,
   SelectField,
+  SegmentedBar,
   Text,
 } from "../../../ui";
 import { panelRequest } from "../panel-request";
@@ -267,51 +269,111 @@ export default function AnalyticsConsole({
           <div className="grid min-w-0 items-stretch gap-6 lg:col-span-12 lg:grid-cols-2">
             <Card className="grid min-w-0 content-start gap-4">
               <Heading level={2}>Ganancia y gastos</Heading>
-              <dl className="grid gap-3 sm:grid-cols-2">
-                <Metric
-                  label="Ganancia bruta"
-                  value={
-                    history.soldUnits === 0 || history.coverage === 0
-                      ? "Pendiente"
-                      : history.coverage < 1
-                        ? "Cálculo incompleto"
-                        : money(history.grossProfitMinor)
-                  }
-                />
-                <Metric
-                  label="Resultado después de gastos"
-                  tone={
-                    history.resultMinor === null || history.resultMinor === 0
-                      ? undefined
-                      : history.resultMinor < 0
-                        ? "danger"
-                        : "success"
-                  }
-                  value={
-                    history.resultMinor === null
-                      ? "Pendiente"
-                      : money(history.resultMinor)
-                  }
-                />
+              <dl>
+                <dt>
+                  <Text as="span" variant="small">
+                    Gastos del período
+                  </Text>
+                </dt>
+                <dd className="m-0 mt-2 break-words">
+                  <Text as="span" variant="metric">
+                    {money(
+                      sumIntegers([
+                        history.fixedExpensesMinor,
+                        history.variableExpensesMinor,
+                      ]),
+                    )}
+                  </Text>
+                </dd>
               </dl>
-              <dl className="grid grid-cols-2 gap-3 border-y border-border py-3 sm:grid-cols-3">
+              <SegmentedBar
+                label={`Distribución de gastos: fijos ${money(history.fixedExpensesMinor)}; variables ${money(history.variableExpensesMinor)}`}
+                segments={[
+                  {
+                    id: "fixed",
+                    value: history.fixedExpensesMinor,
+                    tone: "primary",
+                  },
+                  {
+                    id: "variable",
+                    value: history.variableExpensesMinor,
+                    tone: "info",
+                  },
+                ]}
+              />
+              <dl className="grid grid-cols-2 gap-4">
                 {[
-                  ["Gastos fijos", money(history.fixedExpensesMinor)],
-                  ["Gastos variables", money(history.variableExpensesMinor)],
-                ].map(([label, value]) => (
-                  <div key={label} className="grid min-w-0 content-start gap-1">
-                    <dt>
+                  {
+                    label: "Gastos fijos",
+                    value: history.fixedExpensesMinor,
+                    tone: "bg-primary",
+                  },
+                  {
+                    label: "Gastos variables",
+                    value: history.variableExpensesMinor,
+                    tone: "bg-info",
+                  },
+                ].map(({ label, value, tone }) => (
+                  <div key={label} className="grid min-w-0 gap-1">
+                    <dt className="flex items-center gap-2">
+                      <span
+                        aria-hidden="true"
+                        className={`size-3 shrink-0 rounded-full ${tone}`}
+                      />
                       <Text as="span" variant="small">
                         {label}
                       </Text>
                     </dt>
                     <dd className="m-0 break-words tabular-nums">
                       <Text as="span" variant="label">
-                        {value}
+                        {money(value)}
                       </Text>
                     </dd>
                   </div>
                 ))}
+              </dl>
+              <dl className="grid gap-3 border-t border-border pt-4 sm:grid-cols-2">
+                <div className="grid min-w-0 gap-1">
+                  <dt>
+                    <Text as="span" variant="small">
+                      Ganancia bruta
+                    </Text>
+                  </dt>
+                  <dd className="m-0 break-words tabular-nums">
+                    <Text as="span" variant="label">
+                      {history.soldUnits === 0 || history.coverage === 0
+                        ? "Pendiente"
+                        : history.coverage < 1
+                          ? "Cálculo incompleto"
+                          : money(history.grossProfitMinor)}
+                    </Text>
+                  </dd>
+                </div>
+                <div className="grid min-w-0 gap-1">
+                  <dt>
+                    <Text as="span" variant="small">
+                      Resultado después de gastos
+                    </Text>
+                  </dt>
+                  <dd className="m-0 break-words tabular-nums">
+                    <Text
+                      as="span"
+                      variant="label"
+                      className={
+                        history.resultMinor === null ||
+                        history.resultMinor === 0
+                          ? undefined
+                          : history.resultMinor < 0
+                            ? "text-danger"
+                            : "text-success"
+                      }
+                    >
+                      {history.resultMinor === null
+                        ? "Pendiente"
+                        : money(history.resultMinor)}
+                    </Text>
+                  </dd>
+                </div>
               </dl>
               {history.soldUnits === 0 ? (
                 <Text>No hay unidades vendidas en este período.</Text>
