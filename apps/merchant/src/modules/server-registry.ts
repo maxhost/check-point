@@ -1,3 +1,4 @@
+import { validateProductMeasurementChange } from "./recipes/server/measurement-validator";
 import { metricTranslators as stockMetrics } from "./stock/server/metrics";
 import { metricTranslators as recipeMetrics } from "./recipes/server/metrics";
 import type { ModuleServer } from "./route-table";
@@ -25,6 +26,9 @@ export const SERVER_MODULES: Readonly<Record<string, ModuleServer>> = {
     routes: recipes,
     eventSubscriptions: recipeEvents,
     metricTranslators: recipeMetrics,
+    resourceMeasurementValidators: [
+      { resourceType: "product", validate: validateProductMeasurementChange },
+    ],
   },
   pos,
   tables,

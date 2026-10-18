@@ -2,6 +2,7 @@
  * Spec 0216 / ADR 0139 §3 — LA TABLA DE RUTAS DE API DE UN MODULO y como se busca una ruta en ella.
  * Puro: lo usan `modules/<id>/server/routes.ts` (que declaran la tabla), el despachador y los tests.
  */
+import type { ResourceMeasurementValidator } from "@mi-pasaporte/domain/resource-measurement";
 import type { MetricTranslator } from "@mi-pasaporte/domain/analytics/metrics";
 import type { DbTransaction } from "@mi-pasaporte/db";
 import type { EventSubscription } from "../server/module-events/types";
@@ -52,6 +53,10 @@ export type ModuleServer = {
     context: { businessId: string },
   ) => Promise<void>;
   resourceProviders?: readonly ModuleResourceProvider[];
+  resourceMeasurementValidators?: readonly {
+    resourceType: string;
+    validate: ResourceMeasurementValidator<DbTransaction>;
+  }[];
   beforeDisable?: BeforeDisable;
   eventSubscriptions?: readonly EventSubscription[];
 };
