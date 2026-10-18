@@ -177,6 +177,9 @@ test("partialSave reintenta solo composición y bloquea doble envío", async ({
       "La receta ya se guardó. Falta confirmar su composición en el producto.",
     ),
   ).toBeVisible();
+  await expect(
+    page.getByText("Revisa el guardado", { exact: true }),
+  ).toBeVisible();
   api.fail(null);
   await page
     .getByRole("button", { name: "Confirmar receta", exact: true })
@@ -196,8 +199,8 @@ for (const status of [
     await setupRecipes(
       page,
       {
-        basisQuantity: status === "complete" ? "2" : "100",
-        basisUnit: status === "complete" ? "unit" : "g",
+        basisQuantity: status === "incompatible_basis" ? "100" : "2",
+        basisUnit: status === "incompatible_basis" ? "g" : "unit",
         conversionVersion: "mass-si-1",
       },
       status,
@@ -218,7 +221,9 @@ for (const status of [
       await expect(page.getByText("Falta costo en este local")).toBeVisible();
     if (status === "complete") {
       await expect(page.getByText(/USD.*0,00/)).toBeVisible();
-      for (const width of [390, 1280]) {
+      for (const width of process.env.RECIPES_BASIS_VISUAL === "0"
+        ? []
+        : [390, 1280]) {
         await page.setViewportSize({ width, height: 950 });
         await page.screenshot({
           path: `/private/tmp/checkpass-pos-0242/recipes-list-${width}.png`,
@@ -226,7 +231,9 @@ for (const status of [
         });
       }
       await page.getByRole("button", { name: "Editar receta de Pan" }).click();
-      for (const width of [390, 1280]) {
+      for (const width of process.env.RECIPES_BASIS_VISUAL === "0"
+        ? []
+        : [390, 1280]) {
         await page.setViewportSize({ width, height: 1100 });
         await page
           .getByRole("textbox", { name: "Cantidad de producto obtenido" })
