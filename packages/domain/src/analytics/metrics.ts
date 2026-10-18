@@ -27,6 +27,8 @@ export const METRICS = {
     dimension: "product",
   },
   units_with_cost: { type: "sum", unit: "quantity", dimension: "product" },
+  mass_sold_g: { type: "sum", unit: "quantity", dimension: "product" },
+  mass_with_cost_g: { type: "sum", unit: "quantity", dimension: "product" },
   expense_fixed: { type: "sum", unit: "money", dimension: "concept" },
   expense_variable: { type: "sum", unit: "money", dimension: "concept" },
 } as const;
