@@ -223,3 +223,44 @@ test("confirmed write with failed GET retries only reading and blocks duplicate 
   ).toBeVisible();
   expect(api.writes).toHaveLength(1);
 });
+test("uncertain POST remains blocked after discarding until an authoritative catalog read", async ({
+  page,
+  catalogHarness,
+}) => {
+  const api = await catalogApiFixture(page);
+  await page.goto(catalogHarness);
+  await page.getByRole("button", { name: "Nuevo producto" }).click();
+  await name(page).fill("Alta confirmada sin respuesta");
+  api.writeError = {
+    status: 503,
+    code: "uncertain",
+    error: "Respuesta perdida",
+  };
+  // The authoritative server state contains the product even though its write response failed.
+  api.products.push({
+    ...api.products[0],
+    id: "confirmed-create",
+    name: "Alta confirmada sin respuesta",
+  });
+  await save(page).click();
+  await expect(save(page)).toBeDisabled();
+  await page.getByRole("button", { name: "Descartar borrador" }).click();
+  await expect(
+    page.getByRole("button", { name: "Nuevo producto" }),
+  ).toBeDisabled();
+  expect(api.writes).toHaveLength(1);
+  api.failRead = true;
+  await page.getByRole("button", { name: "Reintentar lectura" }).click();
+  await expect(
+    page.getByRole("button", { name: "Nuevo producto" }),
+  ).toBeDisabled();
+  api.failRead = false;
+  await page.getByRole("button", { name: "Reintentar lectura" }).click();
+  await expect(
+    page.getByText("Alta confirmada sin respuesta", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Nuevo producto" }),
+  ).toBeEnabled();
+  expect(api.writes).toHaveLength(1);
+});

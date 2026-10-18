@@ -65,6 +65,7 @@ function CatalogContent({
     closeImport,
     prepareHelp,
     refreshFailed,
+    uncertainWrite,
     writing,
   } = useCatalogActions();
 
@@ -135,9 +136,13 @@ function CatalogContent({
           onPrepare={prepareHelp}
           onNotice={setNotice}
         />
-        {refreshFailed && (
+        {(refreshFailed || uncertainWrite) && (
           <div className="catalog-tour-notice" role="alert">
-            <span>Los cambios ya se guardaron. Falta actualizar la lista.</span>
+            <span>
+              {uncertainWrite
+                ? "No sabemos si se guardó. Revisa la lista antes de volver a guardar."
+                : "Los cambios ya se guardaron. Falta actualizar la lista."}
+            </span>
             <button
               data-tour="catalog-refresh"
               className="small-button"

@@ -4,7 +4,7 @@ import { catalogHeaders, jsonInit, useCatalog } from "./use-catalog";
 import { useCatalogTour } from "./catalog-tour-context";
 import type { CatalogHelpTour } from "./catalog-tour-state";
 import { CatalogWriteError, type SaveResult } from "./catalog-product-draft";
-import type { Catalog, Category, Product, ProductPayload } from "./types";
+import type { Category, Product, ProductPayload } from "./types";
 
 export type CatalogConfirm =
   | { kind: "product"; product: Product }
@@ -71,17 +71,9 @@ export function useCatalogActions() {
     }
   }
   async function reviewProduct(id: string): Promise<Product | null> {
-    const res = await fetch("/api/catalog", {
-      headers: catalogHeaders,
-      cache: "no-store",
-    });
-    if (res.status === 401 || res.status === 403) {
-      await data.reload();
-      throw new Error("Ya no tienes acceso al catálogo.");
-    }
-    if (!res.ok)
+    const latest = await data.reload();
+    if (!latest)
       throw new Error("No pudimos revisar el catálogo. Reintenta la lectura.");
-    const latest = (await res.json()) as Catalog;
     return latest.products.find((item) => item.id === id) ?? null;
   }
   async function createCategory(name: string) {
