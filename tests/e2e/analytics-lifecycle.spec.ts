@@ -27,7 +27,7 @@ for (const width of [390, 1280]) {
     await page.goto(harness.url);
     await expect(page.getByRole("article")).toHaveCount(5);
     await expect(
-      page.getByText("Punto de equilibrio mensual", { exact: true }),
+      page.getByText("Objetivo total estimado del mes", { exact: true }),
     ).toBeVisible();
     await expect(page.getByText("$456,00", { exact: true })).toBeVisible();
     const rows = page

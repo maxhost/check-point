@@ -25,17 +25,23 @@ for (const viewport of [
     ).toBeVisible();
     await expect(page.getByRole("article")).toHaveCount(5);
     await expect(page.getByText(/Ayer vendiste/)).toHaveCount(1);
-    await page
-      .getByRole("article")
-      .filter({
-        has: page.getByRole("heading", { name: "Falta conocer tus costos" }),
-      })
-      .getByRole("button", { name: "Ignorar", exact: true })
+    const costs = page.getByRole("article").filter({
+      has: page.getByRole("button", {
+        name: "Falta conocer tus costos",
+        exact: true,
+      }),
+    });
+    await costs
+      .getByRole("button", { name: "Falta conocer tus costos", exact: true })
       .click();
+    await costs.getByRole("button", { name: "Ignorar", exact: true }).click();
     await expect(
-      page.getByRole("heading", { name: "Aviso adicional 2" }),
+      page.getByRole("button", { name: "Aviso adicional 2", exact: true }),
     ).toBeVisible();
     expect(fixture.writes).toHaveLength(1);
+    await page
+      .getByRole("button", { name: "Tu resumen de ayer", exact: true })
+      .click();
     await page
       .getByRole("link", { name: "Ver el día", exact: true })
       .first()
@@ -52,7 +58,7 @@ for (const viewport of [
       ),
     ).toBe(true);
     await page.screenshot({
-      path: `test-results/analytics/history-${viewport.width}.png`,
+      path: `/private/tmp/checkpass-0241-evidence/ui/history-${viewport.width}.png`,
       fullPage: true,
     });
   });
@@ -93,9 +99,12 @@ test("after ignoring every card, historical business has no new-business invitat
   const fixture = await setupAnalytics(page);
   await page.goto(harness.url);
   await expect(page.getByRole("article")).toHaveCount(5);
-  while (
-    await page.getByRole("button", { name: "Ignorar", exact: true }).count()
-  ) {
+  while (await page.getByRole("article").count()) {
+    await page
+      .getByRole("article")
+      .first()
+      .locator("button[aria-expanded]")
+      .click();
     const writes = fixture.writes.length;
     await page
       .getByRole("button", { name: "Ignorar", exact: true })

@@ -93,7 +93,7 @@ for (const width of [390, 1440]) {
     await page.getByRole("option", { name: /Harina de trigo/ }).click();
     await card.scrollIntoViewIfNeeded();
     await page.screenshot({
-      path: `/private/tmp/checkpass-0240-evidence/nodes/stock-${width}.png`,
+      path: `/private/tmp/checkpass-0241-evidence/ui/stock/stock-${width}.png`,
       fullPage: true,
     });
     const overflow = await page.evaluate(() => ({

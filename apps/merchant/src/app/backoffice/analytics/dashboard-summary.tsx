@@ -6,7 +6,9 @@ import { useBackofficeContext } from "../backoffice-context";
 
 const reasons = {
   closed_month:
-    "El equilibrio estará disponible al cerrar tu primer mes con gastos.",
+    "Faltan ventas con costos completos como referencia para estimar el mes.",
+  expense_history:
+    "Faltan referencias de gastos para completar la estimación mensual.",
   cost_coverage:
     "Falta completar los costos de tus ventas para calcular el equilibrio.",
   positive_margin:
@@ -58,8 +60,8 @@ export function DashboardSummary() {
       </div>
       <dl className="grid min-w-0 gap-3 border-y border-border py-3 sm:grid-cols-3">
         {[
-          ["Punto de equilibrio mensual", data?.monthBreakEvenMinor],
-          ["Equilibrio diario", data?.dailyBreakEvenMinor],
+          ["Objetivo total estimado del mes", data?.monthBreakEvenMinor],
+          ["Promedio diario del objetivo", data?.dailyBreakEvenMinor],
           ["Cuánto vas hoy", data?.todayRevenueMinor],
         ].map(([label, amount]) => (
           <div
@@ -82,12 +84,15 @@ export function DashboardSummary() {
       {data && (
         <>
           <Text variant="small">
-            Diario: promedio mensual entre los{" "}
-            {Number(monthEnd(data.date).slice(8))} días calendario del mes.
+            Promedio del objetivo total entre los{" "}
+            {Number(monthEnd(data.date).slice(8))} días calendario del mes; no
+            es una meta para hoy.
             {data.estimated ? " Equilibrio estimado." : ""}
           </Text>
           {data.unavailableReason && (
-            <Text variant="small">{reasons[data.unavailableReason]}</Text>
+            <Text variant="small">
+              Aún no podemos estimarlo. {reasons[data.unavailableReason]}
+            </Text>
           )}
           <Text variant="small">
             Ventas netas de todos tus locales. Consulta:{" "}

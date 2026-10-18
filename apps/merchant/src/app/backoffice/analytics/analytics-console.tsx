@@ -1,12 +1,14 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Coins, Cart, StatsReport, Wallet, Archery } from "iconoir-react";
+import { Coins, Cart, StatsReport, Wallet } from "iconoir-react";
 import type {
   buildDay,
   buildHistory,
   HistoryPeriod,
   RecentMovement,
 } from "@mi-pasaporte/domain/analytics/history";
+import type { MonthlyFinance } from "@mi-pasaporte/domain/analytics/monthly-finance-contract";
+import { FinancePlan } from "./finance-plan";
 import type { StockCostHistory } from "@mi-pasaporte/domain/analytics/stock-cost-contract";
 import { StockCostCard } from "./stock-cost-card";
 import { stockCostDate } from "./stock-cost-format";
@@ -25,7 +27,8 @@ import {
   Text,
 } from "../../../ui";
 import { panelRequest } from "../panel-request";
-type History = ReturnType<typeof buildHistory> & {
+type History = Omit<ReturnType<typeof buildHistory>, "goal"> & {
+  goal: ReturnType<typeof buildHistory>["goal"] & { finance?: MonthlyFinance };
   recentMovements?: RecentMovement[];
   stockCosts?: StockCostHistory;
 };
@@ -240,7 +243,7 @@ export default function AnalyticsConsole({
                 <dl>
                   <dt className="flex flex-wrap items-baseline justify-between gap-2">
                     <Text as="span" variant="small">
-                      Gastos del período
+                      Gastos pagados
                     </Text>
                     <Text as="span" variant="small">
                       {stockCostDate(history.from)} –{" "}
@@ -573,101 +576,12 @@ export default function AnalyticsConsole({
             </div>
             <div className="grid min-w-0 content-start gap-6">
               <section id="calculo" className="min-w-0">
-                <Card className="grid h-full min-w-0 content-start gap-4">
-                  <Heading level={2}>El cálculo de este mes</Heading>
-                  {history.goal.breakEvenMinor === null ? (
-                    <Text variant="muted">
-                      {!history.goal.closedMonth
-                        ? "La meta se calcula al cerrar tu primer mes con gastos."
-                        : history.goal.coverage < 0.8
-                          ? "Falta conocer el costo de al menos el 80% de lo vendido para calcular tu meta."
-                          : "Tus ventas con costo conocido todavía no dejan un margen positivo para calcular una meta."}
-                    </Text>
-                  ) : (
-                    <>
-                      <dl className="grid gap-3 sm:grid-cols-2">
-                        {[
-                          {
-                            label: "Para cubrir el mes",
-                            value: money(history.goal.breakEvenMinor),
-                            icon: (
-                              <Archery className="size-6" aria-hidden="true" />
-                            ),
-                            tone: "bg-primary-soft text-primary",
-                          },
-                          {
-                            label: "Ventas del mes",
-                            value: money(history.goal.monthRevenueMinor),
-                            icon: (
-                              <Coins className="size-6" aria-hidden="true" />
-                            ),
-                            tone: "bg-info-soft text-info",
-                          },
-                        ].map(({ label, value, icon, tone }) => (
-                          <div
-                            key={label}
-                            className="grid min-w-0 content-between gap-5 rounded-lg border border-border bg-surface p-4"
-                          >
-                            <dt className="flex items-center gap-3">
-                              <span
-                                className={`flex size-10 shrink-0 items-center justify-center rounded-full ${tone}`}
-                              >
-                                {icon}
-                              </span>
-                              <Text as="span" variant="label">
-                                {label}
-                              </Text>
-                            </dt>
-                            <dd className="m-0 min-w-0 break-words">
-                              <Text as="span" variant="metric">
-                                {value}
-                              </Text>
-                            </dd>
-                          </div>
-                        ))}
-                      </dl>
-                      <dl className="grid grid-cols-2 gap-3 border-y border-border py-3">
-                        {[
-                          [
-                            history.goal.estimated
-                              ? "Gastos estimados"
-                              : "Gastos del mes",
-                            money(history.goal.expensesMinor),
-                          ],
-                          ...(history.goal.targetMinor === null
-                            ? []
-                            : [
-                                [
-                                  "Meta de hoy",
-                                  money(history.goal.targetMinor),
-                                ],
-                              ]),
-                        ].map(([label, value]) => (
-                          <div
-                            key={label}
-                            className="grid min-w-0 content-start gap-1"
-                          >
-                            <dt>
-                              <Text as="span" variant="small">
-                                {label}
-                              </Text>
-                            </dt>
-                            <dd className="m-0 break-words tabular-nums">
-                              <Text as="span" variant="label">
-                                {value}
-                              </Text>
-                            </dd>
-                          </div>
-                        ))}
-                      </dl>
-                      {history.goal.targetMinor !== null && (
-                        <Text variant="small">
-                          {history.goal.remainingDays} días de venta restantes
-                          para cubrir el mes.
-                        </Text>
-                      )}
-                    </>
-                  )}
+                <Card className="grid min-w-0 content-start gap-4">
+                  <FinancePlan
+                    finance={history.goal.finance}
+                    currencyCode={history.currencyCode}
+                    minorUnit={history.minorUnit}
+                  />
                   <div className="grid gap-2 border-t border-border pt-4">
                     <Heading level={3}>
                       Movimientos recientes de este mes
