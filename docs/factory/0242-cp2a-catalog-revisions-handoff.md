@@ -29,4 +29,21 @@ Root transfirió reserva exclusiva; selección propia únicamente por `tools/neo
 
 ## Ampliación root para expectativas legacy
 
-Root amplió reserva a `apps/merchant/src/server/catalog-import-write.neon.integration.test.ts` y `apps/merchant/src/server/catalog-import-write-races.neon.integration.test.ts` después de la primera corrida. Único cambio autorizado: seis expectativas SQL unitPrice exactas pasan de escala2 a escala9 de0102 (3.25,1250.00,1.00,3.00,5.00,9.99 conservan exactamente su valor). Sin cambiar inputs ni assertions tenant/concurrencia ni usar Number/comparación relajada. Se ejecutarán solo esas dos suites afectadas sobre commit congelado; no se repiten suites compatibles.
+Root amplió reserva a `apps/merchant/src/server/catalog-import-write.neon.integration.test.ts` y `apps/merchant/src/server/catalog-import-write-races.neon.integration.test.ts` después de la primera corrida. Único cambio autorizado: seis expectativas SQL unitPrice exactas pasan de escala2 a escala9 de0102 (3.25,1250.00,1.00,3.00,5.00,9.99 conservan exactamente su valor). Sin cambiar inputs ni assertions tenant/concurrencia ni usar Number/comparación relajada. Sobre `620431e14b68ce97adbf0e58480291bd346046f7`, wrapper de solo esas dos suites:10PASS/0FAIL/0SKIP, EXIT0, sin errores de teardown. No se repitieron suites compatibles.
+
+
+## Entrega final y reproducción
+
+Identidades: producto en `90e491d0`; test propio corregido y6PASS en `0e0d7d6c`; expectativas legacy corregidas y10PASS en `620431e1`. El commit final posterior solo completa este handoff. Fuentes/runtime/config iguales en las comprobaciones reutilizadas; no hubo cambios de producto tras90e491d0. Los seis archivos TypeScript no incluyen cambios de schema/tooling/kit: tres fuentes (`packages/domain/src/server/catalog/products.ts`, `packages/domain/src/server/catalog/import-guard.ts`, `apps/merchant/src/server/catalog-import/write.ts`), nuevo test (`apps/merchant/src/modules/pos/server/catalog-revisions.neon.integration.test.ts`) más los dos tests legacy autorizados. Séptimo path: este handoff.
+
+Comandos de DB, siempre Node24, env privado y reserva exclusiva:
+
+```sh
+source ~/.nvm/nvm.sh && nvm use
+NEON_TEST_ENV_FILE=/private/tmp/checkpass-pos-0242/private/ci.env tools/neon-test.sh src/modules/pos/server/catalog-revisions.neon.integration.test.ts --no-file-parallelism
+NEON_TEST_ENV_FILE=/private/tmp/checkpass-pos-0242/private/ci.env tools/neon-test.sh src/server/catalog-import-write.neon.integration.test.ts src/server/catalog-import-write-races.neon.integration.test.ts --no-file-parallelism
+```
+
+Se preservan primera corrida25PASS/4FAIL y skips offline12; no se presentan como una corrida integral verde. Evidencia compatible final: propia6PASS, catálogo7PASS, importguard6PASS, write/races10PASS. Estáticos y puros descritos arriba; guardias24PASS/2FAIL exactamente backlog declarado, sin nuevos offenders. Advertencia del wrapper: env sin rol consumer (no se seleccionó su suite; no se certifica ese rol). R2/proveedor sustituidos en tests, sin llamadas externas reales.
+
+Tres wrappers terminados. Cero procesos con CWD en este worktree comprobado con ps/lsof, excluyendo únicamente inspectores y sus ancestros; ps requirió escalación de solo lectura por sandbox. No servidores/túneles propios ni sesiones creadas por estas fixtures. DDL transitoria/owners/negocios propios retirados; sin procesos/pools de pruebas vivos. No hubo push ni operaciónPROD. Retengo fixes y WT hasta aceptación; coordinador gestiona factory/QA/integración/retirada.
