@@ -13,7 +13,7 @@ Lecturas pertinentes: AGENTS/protocolos, anexo0242 §1/§4 compatibilidad, esta 
 - `packages/domain/src/measures/legacy.ts` y `packages/domain/src/measures.ts`, solo adaptadores confiables unit adicionales/reexport si necesarios
 - `apps/merchant/src/modules/pos/server/read.ts`
 - `apps/merchant/src/modules/pos/server/list.ts`
-- `apps/merchant/src/modules/pos/server/orders.ts`, solo adaptación de filas en `linesForClose`; no cambiar writers integer todavía
+- `apps/merchant/src/modules/pos/server/orders.ts`, adaptación de filas en `linesForClose` y validación del total exacto del merge en `updatePosOrder` dentro de su transacción antes de persistir líneas; no cambiar writers integer todavía
 - `apps/merchant/src/modules/pos/server/lines.ts`
 - `apps/merchant/src/server/counter/resolve-catalog.ts`, solo cantidades históricas para personalPicks y formato legacy de precio si requiere el mismo adaptador
 - `apps/merchant/src/server/counter/grant-input.ts`, snapshots/precios DB y suma/multiplicación exactas del carrito unit; preservar parseMoney HTTP legacy público
@@ -35,6 +35,8 @@ Eliminar Number/toFixed de la aritmética de `buildDetailed` y del formateo de s
 Pruebas puras: formatos antiguos/padding9 equivalentes; INT32 máximo a precio0; tarifa9999999999.99×1 exacta; fracción/no entero/exponente/overflow rechazados; ceros/null; suma y multiplicación exactas; ninguna ampliación de parserHTTP. Con schema actual, probar representación futura mediante valores SQL numeric(24,9) pasados por los mismos adaptadores, sin ALTER temporal. El cambio Drizzle real y prueba antes/después del DDL se hacen en el corte posterior.
 
 CI protegida: fixture propia, lectura/listado/edición de nota conserva snapshots, nueva adición desde catálogo legacy extremo y cierre con/sin pase/reintento sin duplicación sobre importes legales. No exigir cerrar simultáneamente tarifa máxima×cantidad máxima: ese total debe rechazar overflow. Reutilizar suites actuales compatibles para cupones/cierre si aportan señal; no copiar todos los tests ni alterar sus oráculos para esconder regresión. Fixtures imposibles no acreditan negativos.
+
+Ampliación concreta autorizada durante implementación: `updatePosOrder` antes hacía commit y solo después calculaba el total al releer DTO. El overflow de un merge de líneas existentes debe rechazarse antes de persistir; validar usando snapshots actuales/añadidos dentro de la misma transacción, preservando locks/version/conflictos. Negativo CI exige422 y cabecera/version/líneas idénticas al snapshot previo. Una actualización de cabecera ya realizada dentro de esa transacción debe revertirse junto al error; no añadir otra transacción ni cálculo después del commit.
 
 ## Checks y continuación
 
