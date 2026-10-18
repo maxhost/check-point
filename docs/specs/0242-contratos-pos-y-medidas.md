@@ -78,7 +78,7 @@ En CP1 el metadato se llama `backofficeScope?: 'optional'|'required'`: ausente c
 | GET orders | PosSummaryV2 en open/closedToday; filtros/orden/día actuales. quantityTotal legado no se suma entre medidas. |
 | GET orders?status=voided | Mismo histórico90d con medidas/saleType. |
 | GET orders/:id | PosOrderV2: shape actual más contractVersion2,saleType,orderLabel,items V2. |
-| GET catalog?locationId | Productos/tarifas precisas, unidad, revisión; categories y frequentProductIds. |
+| GET catalog?locationId | Productos/tarifas precisas, unidad, revisión; categories, frequentProductIds y salesMassUnits habilitadas del negocio (defaultkg solo ausencia), bajo el mismo guard POS. |
 | GET tables/payment-methods/ticket/ticket-settings | Contrato actual protegido por scope; etiquetas tipo/peso en impresión. |
 
 PosSummaryV2: id,status,version,saleType,orderLabel,tableId,location,createdAt,closedAt,lineCount,total,saleTotal. lineCount cuenta líneas, no masa+piezas. Totales físicos opcionales se agrupan en `{unit:'unit'|'g',quantity:Decimal}`; no hacen falta para habilitar listado. Cada total financiero cerrado usa settlement neto; legacy sin settlement usa su snapshot explícito y no inventa coste/dinero.
