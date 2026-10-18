@@ -3,7 +3,13 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — PLAN OPERATIVO 0238 PARA DOS IMPLEMENTADORES; SIN ARRANQUE (2026-10-17/18 UTC)
+## ESTADO — DOS IMPLEMENTADORES 0238 INICIADOS EN PREPARACIÓN; D0/M0 PENDIENTES (2026-10-17/18 UTC)
+
+Owner autorizó poner en marcha agentes por piezas pequeñas. [Registro](../factory/0238-launch.md): A `/root/backoffice_0238_server` en `/private/tmp/checkpass-0238/backoffice-0238-server`; B `/root/backoffice_0238_client` en `/private/tmp/checkpass-0238/backoffice-0238-client`; basee93d0487, dependencias propias y reservasfactory con susIDs. Encargo actual SOLO inventario/handoff, sin producto/tests/DB/server. Pregunta async pendiente: aceptar/rechazar scopeKey§4.3 antes del cierre D0; no inferir respuesta de autorización de lanzamiento. M0 aún no ejecutado; no habilitar A1/B1a antes de sus dependencias. Tras cierre/M0 despachar solo checkpoint habilitado, extender paths y coordinar contrato común.
+
+Preparación detecta reporter no distingue sesión nueva mismo user/business: mantenerJSON; si U1aceptado señal409 de siguienteAPI adoptada, no detección inmediata. B identifica consumidores adicionales a inventariar/reservar antes de adaptación, sin ampliar dominio/UI. Tercera reservaoperativa es medición0237 preservada; no cuartoWT ni cleanupforzado, reconciliar/reutilizar para M0/QA. CI remoto90ebe18 observadoROJO unit+Neon (detalle enregistro), no verde prestado ni corrección fuera de scope. QA manual, FAIL histórico,102migraciones como dato previo y diferidos intactos; sin push/PROD ni implementación comenzada.
+
+## HISTÓRICO — PLAN OPERATIVO 0238 PARA DOS IMPLEMENTADORES; SIN ARRANQUE (2026-10-17/18 UTC)
 
 Owner cuestionó tamaño/capacidad de encargos. Plan refinado en checkpoints A1, A2a contexto conservando consultas separadas, A2b JOIN/fallback, A2c constructores/reporters, B1a provider aislado, B1b shell/streaming, B2a transporte compartido, B2b revalidación y S condicional de ámbito. Solo despachar siguiente tramo habilitado con commit/evidencia; no tratar A/B como dos prompts monolíticos ni prometer paralelismo total: B1b requiere A2c. Mantener dos implementadores y QA independiente; sin nuevos agentes ni implementación. Checkpoints no son entregas parciales a main ni nuevos benchmarks/gates.
 
