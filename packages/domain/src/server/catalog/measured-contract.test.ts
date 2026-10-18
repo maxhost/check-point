@@ -113,6 +113,8 @@ describe("catalog measured contracts", () => {
       [false, "kg"],
       [true, "unit"],
       [true, "oz"],
+      [true, ["kg"]],
+      [true, {}],
       [undefined, "unit"],
     ])
       expect(() => parseCatalogMeasure(weight, unit)).toThrow();
