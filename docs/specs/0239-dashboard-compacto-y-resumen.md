@@ -51,3 +51,13 @@ Aceptación: requisitos anteriores, evidencia ligada a SHA/entorno, revisión de
 ## Entrega
 
 Implementada y aceptada localmente: entrega `aac013da`, integración dev `f27bce11`. [Handoff](../factory/0239-dashboard-handoff.md) y [QA independiente](../factory/0239-qa.md). Demo habilitada en dev; QA manual del owner pendiente. Sin push ni PROD.
+
+## Ajuste de Analíticas — movimientos del mes (2026-10-18)
+
+Owner pide retirar el margen visible (continúa en el cálculo) y reemplazar el desglose desplegable por hasta cuatro ventas y gastos recientes, visibles bajo los indicadores y sin «Ver todos». Gastos estimados/meta diaria y disponibilidad del equilibrio se conservan. No inventar transacciones a partir de conceptos agregados.
+
+Contrato: `GET /api/analytics/history` añade `recentMovements: { id, date, kind: 'sale'|'expense', label, amountMinor }[]`, moneda/unidad del histórico. Son movimientos del mes calendario local actual (igual que goal), del local seleccionado o todos, leídos de `analytics.metric_contribution` por fuente vigente; nunca de tablas de módulos desde core. Agrupar por fuente/día/local/tipo para no duplicar productos/costos, sólo revenue y expense_fixed/variable, moneda/unidad del negocio. Revisión vigente sustituye/anula contribuciones conforme a la ingestión existente. Fecha descendente y desempate estable por fuente: el snapshot no conserva hora intradía, no prometer orden por hora. Límite4 en SQL. Sin datos de clientes/personal ni claves de origen en respuesta.
+
+El permiso analytics ya permite importes/conceptos financieros; se mantienen guards de negocio antes de datos y se añade validación del X-Backoffice-Scope y private/no-store en este GET. Sin APIs/tablas/nombres de módulos, migraciones, escrituras DB ni nueva caché/polling. Un SELECT acotado adicional por histórico, cero GET adicionales; no extrapolar M1 anterior a este cambio. No cambiar dayGET/Inbox/summary.
+
+Checks: unidad SQL y mapeo/moneda/cero/overflow; HTTP sin permiso/scope409/negativos/privado antes de consulta; browser layout390/1440, margen/desglose fuera de vista, lista y vacío aunque equilibrio pendiente, sin enlaces/actions nuevos. Tipos/lint/guard/diff y QA independiente focal. DBtests sólo wrapper; comprobación local de lectura separada de certificación CI. Diferidos/push/PROD intactos.
