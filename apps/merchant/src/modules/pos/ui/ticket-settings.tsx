@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Alert, Button, Card, Heading, Switch, Text } from "../../../ui";
 import type { TicketSettings as Settings } from "./ticket-settings-types";
 import { ConfirmationToast } from "../../../app/components/confirmation-toast";
-import { posRequest } from "./pos-types";
+import { DiscardedPosIntent, usePosContext } from "./pos-context";
 
 function validate(settings: Settings) {
   if (
@@ -17,6 +17,8 @@ function validate(settings: Settings) {
 }
 
 export function TicketSettings() {
+  const scope = usePosContext();
+  const posRequest = scope.client.request;
   const [settings, setSettings] = useState<Settings | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -34,13 +36,16 @@ export function TicketSettings() {
   useEffect(() => {
     let active = true;
     setError(null);
+    setSettings(null);
+    setNotice(null);
+    if (scope.present && (!scope.identity || scope.loading)) return;
     void posRequest<Settings>("/api/modules/pos/ticket-settings")
       .then(validate)
       .then((data) => {
         if (active) setSettings(data);
       })
       .catch((cause: unknown) => {
-        if (active)
+        if (active && !(cause instanceof DiscardedPosIntent))
           setError(
             cause instanceof Error
               ? cause.message
@@ -50,7 +55,7 @@ export function TicketSettings() {
     return () => {
       active = false;
     };
-  }, [attempt]);
+  }, [attempt, scope.identity, scope.loading, scope.present, posRequest]);
 
   async function save(key: keyof Settings, value: boolean) {
     if (!settings || lock.current) return;
@@ -72,7 +77,7 @@ export function TicketSettings() {
         setNotice("Opciones del ticket guardadas");
       }
     } catch (cause) {
-      if (mounted.current)
+      if (mounted.current && !(cause instanceof DiscardedPosIntent))
         setError(
           cause instanceof Error
             ? cause.message

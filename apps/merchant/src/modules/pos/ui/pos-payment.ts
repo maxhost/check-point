@@ -1,4 +1,5 @@
 "use client";
+import type { PosClient, PosRequest } from "./pos-context";
 import { initial, type PaymentState } from "./pos-payment-state";
 import { createPaymentActions } from "./pos-payment-actions";
 import { usePosCloseNavigation } from "./use-pos-close-navigation";
@@ -8,6 +9,7 @@ import { PosError, type PosOrder } from "./pos-types";
 
 export function usePosPayment({
   order,
+  client,
   context,
   onError,
   onClosed,
@@ -15,6 +17,7 @@ export function usePosPayment({
   onBeginClose,
 }: {
   order: PosOrder | null;
+  client?: PosClient;
   context: string | null;
   onError: (error: unknown) => void;
   onClosed: (order: PosOrder) => void;
@@ -33,6 +36,7 @@ export function usePosPayment({
   const locked = useRef(false);
   const recoveryRequired = useRef<string | null>(null);
   const attempt = useRef<{
+    request?: PosRequest;
     orderId: string;
     body: Readonly<Record<string, unknown>>;
   } | null>(null);
@@ -150,7 +154,11 @@ export function usePosPayment({
       });
       return;
     }
-    if (error.status === 401 || error.status === 403) {
+    if (
+      error.status === 401 ||
+      error.status === 403 ||
+      error.code === "backoffice_context_changed"
+    ) {
       generation.current += 1;
       attempt.current = null;
       locked.current = false;
@@ -167,6 +175,7 @@ export function usePosPayment({
     update({ error: message });
   }
   const { resolve, prepare, confirm } = createPaymentActions({
+    client,
     current,
     selected,
     locked,

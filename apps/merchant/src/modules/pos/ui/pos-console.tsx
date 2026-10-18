@@ -27,19 +27,30 @@ import { PosResult, PosTicket } from "./pos-ticket";
 import {
   orderUrl,
   PosError,
-  posRequest,
   type PosHistory,
   type PosLocation,
   type PosOrder,
   type PosSession,
 } from "./pos-types";
+import { DiscardedPosIntent, usePosContext } from "./pos-context";
 export function PosConsole({ locations }: { locations: PosLocation[] }) {
+  const scope = usePosContext();
+  return (
+    <PosConsoleContent
+      key={scope.identity ?? "retired"}
+      locations={locations}
+    />
+  );
+}
+function PosConsoleContent({ locations }: { locations: PosLocation[] }) {
+  const scope = usePosContext();
+  const posRequest = scope.client.request;
   const [session, setSession] = useState<PosSession | null>(null);
   const [history, setHistory] = useState<PosHistory | null>(null);
   const voidedOnly = useSearchParams().get("status") === "voided";
   const cache = useMemo(
-    () => new PosCache(voidedOnly ? "voided" : undefined),
-    [voidedOnly],
+    () => new PosCache(voidedOnly ? "voided" : undefined, posRequest),
+    [voidedOnly, posRequest],
   );
   const selected = useRef<PosOrder | null>(null);
   const [order, setOrderState] = useState<PosOrder | null>(null);
@@ -73,14 +84,22 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
   const locked = useRef(false);
   const handleError = useCallback(
     (cause: unknown, id?: string) => {
-      if (cause instanceof DiscardedPosRead) return;
+      if (
+        cause instanceof DiscardedPosRead ||
+        cause instanceof DiscardedPosIntent
+      )
+        return;
       setError(
         cause instanceof Error
           ? cause.message
           : "No pudimos completar la acción.",
       );
       if (!(cause instanceof PosError)) return;
-      if (cause.status === 401 || cause.status === 403) {
+      if (
+        cause.status === 401 ||
+        cause.status === 403 ||
+        cause.code === "backoffice_context_changed"
+      ) {
         cache.clear();
         setLastLocationId("");
         navigation.current += 1;
@@ -135,9 +154,10 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
   );
   const payment = usePosPayment({
     order,
+    client: scope.client,
     context:
       !unavailable && session?.user?.id && session.business?.id
-        ? `${session.user.id}:${session.business.id}`
+        ? `${scope.identity}:${session.user.id}:${session.business.id}`
         : null,
     onError: handleError,
     onClosed: (result) => {
@@ -153,9 +173,10 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
   const paymentBusy = payment.blocked || payment.active;
   const printing = usePosPrinting({
     order,
+    client: scope.client,
     context:
       !unavailable && session?.user?.id && session.business?.id
-        ? `${session.user.id}:${session.business.id}`
+        ? `${scope.identity}:${session.user.id}:${session.business.id}`
         : null,
     onError: handleError,
   });
@@ -166,7 +187,10 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
         !(cause instanceof DiscardedPosRead) &&
         !(
           cause instanceof PosError &&
-          (cause.status === 401 || cause.status === 403 || cause.status === 404)
+          (cause.status === 401 ||
+            cause.status === 403 ||
+            cause.code === "backoffice_context_changed" ||
+            cause.status === 404)
         )
       )
         setError(
@@ -191,13 +215,17 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
       const ticket = ++loading.current;
       const epoch = cache.epoch;
       try {
-        const context = await cache.read(
-          "session",
-          () => posRequest<PosSession>("/api/merchant/session"),
-          force,
-        );
+        if (scope.present && scope.loading) return;
+        const context = scope.present
+          ? scope.session
+          : await cache.read(
+              "session",
+              () => posRequest<PosSession>("/api/merchant/session"),
+              force,
+            );
         if (cache.epoch !== epoch) return;
         if (
+          !context ||
           !context.authenticated ||
           !context.user?.id ||
           !context.business?.id ||
@@ -218,7 +246,9 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
           setUnavailable(true);
           return;
         }
-        const changed = cache.bind(`${context.user.id}:${context.business.id}`);
+        const changed = cache.bind(
+          `${scope.identity}:${context.user.id}:${context.business.id}`,
+        );
         cache.put("session", context);
         if (changed) {
           setLastLocationId("");
@@ -227,9 +257,12 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
           setOrder(null);
           setOpening(null);
           setView("list");
+          locked.current = false;
+          setBusy(false);
+          setRecovering(false);
         }
         if (force) cache.invalidateResources();
-        setCatalogRevision((current) => current + 1);
+        if (changed || force) setCatalogRevision((current) => current + 1);
         setSession(context);
         setUnavailable(false);
         await refreshHistory();
@@ -239,16 +272,29 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
         if (loading.current === ticket) setRefreshing(false);
       }
     },
-    [cache, readError, refreshHistory, setOrder, setView],
+    [
+      cache,
+      readError,
+      refreshHistory,
+      setOrder,
+      setView,
+      scope.present,
+      scope.loading,
+      scope.session,
+      scope.identity,
+      posRequest,
+    ],
   );
   useEffect(() => {
     void load();
+  }, [load]);
+  useEffect(() => {
     return () => {
       cache.clear();
       navigation.current += 1;
       loading.current += 1;
     };
-  }, [cache, load]);
+  }, [cache]);
   const startNewOrder = useCallback(() => {
     if (
       busy ||
@@ -333,8 +379,10 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
       }
       return null;
     } finally {
-      locked.current = false;
-      setBusy(false);
+      if (cache.epoch === epoch) {
+        locked.current = false;
+        setBusy(false);
+      }
     }
   }
   async function openOrder(id: string) {

@@ -98,9 +98,10 @@ export async function posRequest<T>(
   url: string,
   method = "GET",
   body?: unknown,
+  options?: { scopeKey?: string },
 ): Promise<T> {
   try {
-    return await panelRequest<T>(url, method, body);
+    return await panelRequest<T>(url, method, body, options);
   } catch (cause) {
     if (cause instanceof PanelRequestError)
       throw new PosError(

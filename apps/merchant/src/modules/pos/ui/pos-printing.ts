@@ -12,7 +12,9 @@ import {
   type TicketDoc,
 } from "./printing/index";
 import type { TicketSettings } from "./ticket-settings-types";
-import { PosError, posRequest, type PosOrder } from "./pos-types";
+import { PosError, type PosOrder } from "./pos-types";
+
+import { usePosContext, type PosClient } from "./pos-context";
 
 type Failure = Extract<PrintResult, { ok: false }>;
 type PrintState = {
@@ -32,13 +34,18 @@ const initial = (identity: string): PrintState => ({
 
 export function usePosPrinting({
   order,
+  client: suppliedClient,
   context,
   onError,
 }: {
   order: PosOrder | null;
+  client?: PosClient;
   context: string | null;
   onError: (error: unknown) => void;
 }) {
+  const local = usePosContext();
+  const client = suppliedClient ?? local.client;
+  const posRequest = client.request;
   const [configuration, setConfiguration] = useState<{
     context: string | null;
     settings: TicketSettings | null;
@@ -72,13 +79,17 @@ export function usePosPrinting({
               ? error.message
               : "No pudimos cargar la configuración del ticket.",
         });
-        if (error instanceof PosError && [401, 403].includes(error.status ?? 0))
+        if (
+          error instanceof PosError &&
+          ([401, 403].includes(error.status ?? 0) ||
+            error.code === "backoffice_context_changed")
+        )
           onError(error);
       });
     return () => {
       active = false;
     };
-  }, [context, onError, settingsAttempt]);
+  }, [context, onError, settingsAttempt, posRequest]);
 
   const identity = `${context ?? ""}:${order?.id ?? ""}:${order?.version ?? ""}:${order?.status ?? ""}`;
   const identityRef = useRef(identity);
