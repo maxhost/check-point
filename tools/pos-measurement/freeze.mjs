@@ -1,9 +1,12 @@
 // Emits only source/config hashes and public tool/schema identity, never configuration values.
-import { readFileSync, writeFileSync, readdirSync } from "node:fs";
+import { readFileSync, writeFileSync, readdirSync, existsSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
 const directory = "/private/tmp/checkpass-pos-0242/private";
+const flowsMode = process.argv.includes("--flows");
+if (flowsMode && !existsSync(resolve(directory, "flow-fixture.json")))
+  throw Error("Flows freeze requires manifest");
 const hash = (v) => createHash("sha256").update(v).digest("hex");
 const run = (...args) =>
   execFileSync(args[0], args.slice(1), { encoding: "utf8" }).trim();
@@ -37,12 +40,16 @@ const report = {
   pnpm: run("pnpm", "--version"),
   next: JSON.parse(readFileSync("apps/merchant/node_modules/next/package.json"))
     .version,
-  flowFixtureSha256: hash(
-    readFileSync(resolve(directory, "flow-fixture.json")),
-  ),
-  controlArchiveSha256: hash(
-    readFileSync(resolve(directory, "control-build-6f.tar.gz")),
-  ),
+  ...(flowsMode
+    ? {
+        flowFixtureSha256: hash(
+          readFileSync(resolve(directory, "flow-fixture.json")),
+        ),
+        controlArchiveSha256: hash(
+          readFileSync(resolve(directory, "control-build-6f.tar.gz")),
+        ),
+      }
+    : {}),
   buildId: readFileSync("apps/merchant/.next/BUILD_ID", "utf8").trim(),
   lockSha256: hash(readFileSync("pnpm-lock.yaml")),
   privateConfigSha256: hash(readFileSync(resolve(directory, "selected.json"))),
@@ -106,8 +113,9 @@ if (process.argv[2] === "--reuse-build") {
   if (changedBuildFiles.some((file) => !uncompiledFixtures.has(file)))
     throw Error("Compiled source differs from attributed build source");
   if (
+    flowsMode &&
     report.controlArchiveSha256 !==
-    "54cbc567143f7d3e2af43309810c14da6bea647ab50926534ecb4b78109ec5fe"
+      "54cbc567143f7d3e2af43309810c14da6bea647ab50926534ecb4b78109ec5fe"
   )
     throw Error("Original archived control changed");
   report.uncompiledFixtureChanges = [];

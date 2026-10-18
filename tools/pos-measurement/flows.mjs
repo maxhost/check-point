@@ -144,6 +144,7 @@ try {
           `/api/modules/pos/orders/${received.created?.id}/close`;
         row.frozenCommand = body.clientRequestId === c.closeRequestId;
         row.paymentCount = body.payments?.length;
+        row.paymentsArray = Array.isArray(body.payments);
         row.membershipMatches = body.membershipId === c.membershipId;
         row.couponMatches = (body.coupon?.couponId ?? null) === c.couponId;
       }
@@ -250,10 +251,18 @@ try {
       await expect(
         page.getByRole("button", { name: "Cobrar", exact: true }),
       ).toBeVisible();
-      a.saveConfirmedMs = (await now()) - start;
       await expect(
         page.getByText(c.label, { exact: true }).first(),
       ).toBeVisible();
+      const money = (amount) =>
+        new Intl.NumberFormat("es-EC", {
+          style: "currency",
+          currency: "USD",
+        }).format(amount);
+      await expect(
+        page.getByRole("heading", { name: money(16), exact: true }),
+      ).toBeVisible();
+      a.saveConfirmedMs = (await now()) - start;
       await page.getByRole("button", { name: /^Acciones de la orden/ }).click();
       a.stage = "qr";
       start = await now();
@@ -288,6 +297,12 @@ try {
       await expect(
         dialog.getByRole("button", { name: "Confirmar cobro", exact: true }),
       ).toBeEnabled();
+      await expect(
+        dialog.getByRole("heading", {
+          name: `Importe: ${money(c.variant === "zero" ? 0 : c.variant === "discount" ? 14.4 : 16)}`,
+          exact: true,
+        }),
+      ).toBeVisible();
       a.paymentReadyMs = (await now()) - start;
       await page.evaluate((id) => {
         const original = crypto.randomUUID.bind(crypto);
@@ -329,31 +344,28 @@ try {
         await new Promise((r) => setTimeout(r, 25));
       }
       a.browserMetrics = await page.evaluate(() => ({
-        navigation: performance
-          .getEntriesByType("navigation")
-          .map((e) => ({
-            ttfb: e.responseStart - e.requestStart,
-            domContentLoaded: e.domContentLoadedEventEnd,
-            load: e.loadEventEnd,
-          })),
+        navigation: performance.getEntriesByType("navigation").map((e) => ({
+          ttfb: e.responseStart - e.requestStart,
+          domContentLoaded: e.domContentLoadedEventEnd,
+          load: e.loadEventEnd,
+        })),
         longTasks: window.__flowLongTasks,
-        resources: performance
-          .getEntriesByType("resource")
-          .map((e) => ({
-            path: new URL(e.name).pathname,
-            initiator: e.initiatorType,
-            start: e.startTime,
-            duration: e.duration,
-            transfer: e.transferSize,
-            encoded: e.encodedBodySize,
-            decoded: e.decodedBodySize,
-          })),
+        resources: performance.getEntriesByType("resource").map((e) => ({
+          path: new URL(e.name).pathname,
+          initiator: e.initiatorType,
+          start: e.startTime,
+          duration: e.duration,
+          transfer: e.transferSize,
+          encoded: e.encodedBodySize,
+          decoded: e.decodedBodySize,
+        })),
       }));
       a.responses = received;
       a.valid =
         received.created?.valid &&
         received.resolved?.valid &&
         received.closed?.valid &&
+        received.closed.id === received.created.id &&
         a.errors === 0 &&
         a.external === 0 &&
         a.requests.filter((r) => r.path.endsWith("/close")).length === 1 &&
@@ -365,6 +377,7 @@ try {
               r.frozenCommand &&
               r.membershipMatches &&
               r.couponMatches &&
+              r.paymentsArray &&
               r.paymentCount === (c.variant === "zero" ? 0 : 1),
           );
       a.stage = "complete";
