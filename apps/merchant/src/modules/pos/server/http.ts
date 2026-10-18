@@ -29,6 +29,7 @@ export function posErrorResponse(error: unknown): NextResponse | null {
 export function posRoute(route: ModuleRoute): ModuleRoute {
   return {
     ...route,
+    backofficeScope: "optional",
     handler: async (context) => {
       try {
         return await route.handler(context);
