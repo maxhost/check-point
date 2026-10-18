@@ -16,6 +16,7 @@ import {
   productLocations,
   locations,
 } from "@mi-pasaporte/db/schema";
+import type { MassUnit } from "../../measures";
 import { ACCEPTED_IMAGE_CONTENT_TYPE_SET } from "../../lib/image-formats";
 
 /**
@@ -173,7 +174,7 @@ export async function listCatalog(
 
   return {
     ...(configuration
-      ? { salesMassUnits: configuration[0]?.units ?? ["kg"] }
+      ? { salesMassUnits: (configuration[0]?.units ?? ["kg"]) as MassUnit[] }
       : {}),
     products: rows.map((row) =>
       catalogProductDTO(

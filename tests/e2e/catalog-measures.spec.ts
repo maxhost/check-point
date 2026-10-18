@@ -18,6 +18,7 @@ test("V2 exact payload, enabled units and paired mobile/desktop editor capture (
   const api = await catalogApiFixture(page);
   api.salesMassUnits = ["lb", "g"];
   await page.goto(catalogHarness);
+  await page.getByRole("button", { name: "Cerrar la guía de inicio" }).click();
   await page.getByRole("button", { name: "Nuevo producto" }).click();
   await name(page).fill("Café por peso");
   await expect(
@@ -229,6 +230,7 @@ test("uncertain POST remains blocked after discarding until an authoritative cat
 }) => {
   const api = await catalogApiFixture(page);
   await page.goto(catalogHarness);
+  await page.getByRole("button", { name: "Cerrar la guía de inicio" }).click();
   await page.getByRole("button", { name: "Nuevo producto" }).click();
   await name(page).fill("Alta confirmada sin respuesta");
   api.writeError = {
