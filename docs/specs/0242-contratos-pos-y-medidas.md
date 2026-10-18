@@ -135,6 +135,8 @@ Stock: no inventar salida directa de producto terminado; aplicar el modelo de co
 
 Analytics: unidades discretas separadas de masa normalizada en gramos exactos; métricas de ingresos/neto/costos no se recalculan desde catálogo actual. Traductores POS/Recetas/Stock y lectores de ranking/ticket se actualizan en el mismo checkpoint de contrato. Frecuencia de órdenes por producto sustituye ranking incompatible de cantidades, campo frecuente y label explícitos.
 
+Para esa separación se conservan `units_sold`/`units_with_cost` exclusivamente discretas y se añaden `mass_sold_g`/`mass_with_cost_g` para gramos exactos. No sumar ambas dimensiones para ranking/cobertura. El almacenamiento numeric sin escala actual de analytics admite gramos derivados; el reader conserva además `quantityExact:string` (compatibilidad: opcional en fixtures legacy, donde quantity ya era entero seguro). Cálculos financieros/completitud usan la cadena exacta; `quantity:number` anterior solo puede permanecer como proyección para lectores de presentación compatibles. No reconstruir precisión desde Number en un evento medido. La completitud de costos requiere igualdad vendido/conocido por separado para unidades y masa en cada segmento producto/día/local y moneda propia; ningún excedente de gramos cubre piezas sin costo. Ingresos/comisiones siguen su contrato monetario. Las comparaciones/coberturas que antes suponían solo units se adaptan en la misma entrega antes de habilitar V4, preservando las cifras históricas discretas.
+
 ## 5. Retiro y compatibilidad
 
 Fases expand→migrate→cutover; no borrar columnas/tablas al primer deploy.
