@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { getDb, withDbTransaction } from "@mi-pasaporte/db";
 import {
   moduleEvents,
+  moduleEventDeliveries,
   businesses,
   users,
   compositionRevisions,
@@ -613,15 +614,27 @@ async function legacyFixture() {
     }),
   );
   expect(
-    (
-      await retryModuleEvents({
-        businessId: owner.businessId,
-        eventIds: [event!.eventId],
-        force: true,
-        budgetMs: 20000,
+    await retryModuleEvents({
+      businessId: owner.businessId,
+      eventIds: [event!.eventId],
+      force: true,
+      budgetMs: 20000,
+    }),
+  ).toEqual({ claimed: 2, applied: 2, pending: 0, failed: 0 });
+  expect(
+    await getDb()
+      .select({
+        subscriberId: moduleEventDeliveries.subscriberId,
+        state: moduleEventDeliveries.state,
       })
-    ).applied,
-  ).toBe(1);
+      .from(moduleEventDeliveries)
+      .where(eq(moduleEventDeliveries.eventId, event!.eventId)),
+  ).toEqual(
+    expect.arrayContaining([
+      { subscriberId: "recipes", state: "applied" },
+      { subscriberId: "core.analytics", state: "applied" },
+    ]),
+  );
   const [source] = await getDb()
     .select()
     .from(recipeConsumptionSources)
