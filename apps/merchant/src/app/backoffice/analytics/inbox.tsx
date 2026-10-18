@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { NavArrowDown, NavArrowUp } from "iconoir-react";
 import { formatMoney } from "@mi-pasaporte/domain/analytics/date";
 import {
@@ -15,6 +15,7 @@ import {
 } from "../../../ui";
 import { useAnalyticsInbox } from "./inbox-state";
 export function AnalyticsInbox() {
+  const instanceId = useId();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const {
     inbox,
@@ -35,11 +36,11 @@ export function AnalyticsInbox() {
   } = useAnalyticsInbox();
   return (
     <section
-      aria-labelledby="analytics-inbox-title"
+      aria-labelledby={`${instanceId}-title`}
       className="grid min-w-0 grid-cols-1 gap-4"
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Heading level={2} id="analytics-inbox-title">
+        <Heading level={2} id={`${instanceId}-title`}>
           Hoy en tu negocio
         </Heading>
         <Link href="/backoffice/analytics">Ver Analíticas</Link>
@@ -65,7 +66,7 @@ export function AnalyticsInbox() {
       <div className="min-w-0 divide-y divide-border border-y border-border">
         {inbox?.cards.map((card) => {
           const expanded = expandedId === card.id;
-          const panelId = `inbox-panel-${card.id}`;
+          const panelId = `${instanceId}-panel-${card.id}`;
           return (
             <article key={card.id} className="min-w-0">
               <Button

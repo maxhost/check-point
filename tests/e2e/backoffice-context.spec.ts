@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { startCatalogHarness } from "./support/catalog-harness-server";
 import type { BackofficeFixtureApi } from "./support/backoffice-context-fixture";
 import type { AnalyticsInboxResponse } from "../../packages/domain/src/analytics/types";
@@ -356,6 +356,12 @@ const inboxEnvelope = (cards = [inboxCard]): AnalyticsInboxResponse => ({
   cards,
 });
 
+async function openInboxCard(page: Page) {
+  const row = page.getByRole("button", { name: inboxCard.title, exact: true });
+  await expect(row).toBeVisible();
+  if ((await row.getAttribute("aria-expanded")) === "false") await row.click();
+}
+
 test("0238 StrictMode y dos lectores comparten un GET Inbox scoped", async ({
   page,
 }) => {
@@ -367,18 +373,55 @@ test("0238 StrictMode y dos lectores comparten un GET Inbox scoped", async ({
   await page.goto(
     `${harness.url}?modules=ready&readers=2&strict&fixturePath=/backoffice`,
   );
-  await expect(
-    page.getByRole("heading", { name: inboxCard.title }),
-  ).toHaveCount(2);
+  await expect(page.getByRole("button", { name: inboxCard.title })).toHaveCount(
+    2,
+  );
   expect(reads).toEqual(["a".repeat(64)]);
+  const ids = await page
+    .getByRole("button", { name: inboxCard.title })
+    .evaluateAll((rows) =>
+      rows.map((row) => row.getAttribute("aria-controls")),
+    );
+  expect(new Set(ids).size).toBe(2);
+  expect(
+    await page.evaluate(
+      (controls) =>
+        controls.every(
+          (id) =>
+            id &&
+            [...document.querySelectorAll("[id]")].filter((el) => el.id === id)
+              .length === 1,
+        ),
+      ids,
+    ),
+  ).toBe(true);
+  const headingIds = await page
+    .getByRole("region", { name: "Hoy en tu negocio" })
+    .evaluateAll((regions) =>
+      regions.map((r) => r.getAttribute("aria-labelledby")),
+    );
+  expect(new Set(headingIds).size).toBe(2);
+  expect(
+    await page.evaluate(
+      (ids) =>
+        ids.every(
+          (id) =>
+            id &&
+            [...document.querySelectorAll("[id]")].filter((el) => el.id === id)
+              .length === 1,
+        ),
+      headingIds,
+    ),
+  ).toBe(true);
+
   await page.evaluate(() =>
     (
       window as unknown as { backofficeFixture: BackofficeFixtureApi }
     ).backofficeFixture.setInboxReaders(1),
   );
-  await expect(
-    page.getByRole("heading", { name: inboxCard.title }),
-  ).toHaveCount(1);
+  await expect(page.getByRole("button", { name: inboxCard.title })).toHaveCount(
+    1,
+  );
   expect(reads).toHaveLength(1);
 });
 
@@ -414,6 +457,7 @@ test("0238 POST Inbox scoped + foco/remount conserva una cola y recupera módulo
     },
   );
   await page.goto(`${harness.url}?fixturePath=/backoffice`);
+  await openInboxCard(page);
   await page.getByRole("button", { name: "Entendido", exact: true }).click();
   await expect.poll(() => writes.length).toBe(1);
   await expect.poll(() => moduleReads.length).toBe(1);
@@ -433,6 +477,7 @@ test("0238 POST Inbox scoped + foco/remount conserva una cola y recupera módulo
       window as unknown as { backofficeFixture: BackofficeFixtureApi }
     ).backofficeFixture.setInboxReaders(1),
   );
+  await openInboxCard(page);
   await expect(
     page.getByRole("button", { name: "Entendido", exact: true }),
   ).toBeDisabled();
@@ -482,11 +527,12 @@ test("0238 scope409 de decisión retira todos los privados y no reenvía POST", 
     });
   });
   await page.goto(`${harness.url}?modules=ready&fixturePath=/backoffice`);
+  await openInboxCard(page);
   await page.getByRole("button", { name: "Entendido", exact: true }).click();
   await expect(page.getByText("Contenido privado sintético")).toHaveCount(0);
-  await expect(
-    page.getByRole("heading", { name: inboxCard.title }),
-  ).toHaveCount(0);
+  await expect(page.getByRole("button", { name: inboxCard.title })).toHaveCount(
+    0,
+  );
   await page.evaluate(() => {
     window.dispatchEvent(new Event("focus"));
     (
@@ -520,11 +566,13 @@ test("0238 fallo ambiguo conserva operationId/version sólo para reintento expl�
       : route.fulfill({ json: { cards: [], nextReminderAt: null } });
   });
   await page.goto(`${harness.url}?modules=ready&fixturePath=/backoffice`);
+  await openInboxCard(page);
   await page.getByRole("button", { name: "Entendido", exact: true }).click();
   await expect(
     page.getByText("No pudimos guardar la acción. Intenta otra vez."),
   ).toBeVisible();
   expect(commands).toHaveLength(1);
+  await openInboxCard(page);
   await page.getByRole("button", { name: "Entendido", exact: true }).click();
   await expect(
     page.getByText("Hoy no tengo nada para avisarte."),
@@ -550,14 +598,14 @@ test("0238 Inbox restringido oculta tarjetas sin bucle de navegación y un reint
   });
   await page.goto(`${harness.url}?modules=ready&fixturePath=/backoffice`);
   await expect(
-    page.getByRole("heading", { name: inboxCard.title }),
+    page.getByRole("button", { name: inboxCard.title }),
   ).toBeVisible();
   denied = true;
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await expect(page.getByText("Acceso restringido")).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: inboxCard.title }),
-  ).toHaveCount(0);
+  await expect(page.getByRole("button", { name: inboxCard.title })).toHaveCount(
+    0,
+  );
   await expect(page.getByText("Contenido privado sintético")).toBeVisible();
   expect(
     await page.evaluate(
@@ -570,7 +618,7 @@ test("0238 Inbox restringido oculta tarjetas sin bucle de navegación y un reint
   denied = false;
   await page.getByRole("button", { name: "Volver a intentar" }).click();
   await expect(
-    page.getByRole("heading", { name: inboxCard.title }),
+    page.getByRole("button", { name: inboxCard.title }),
   ).toBeVisible();
   await expect(page.getByText("Acceso restringido")).toHaveCount(0);
   expect(reads).toBe(3);
