@@ -177,6 +177,8 @@ El FAIL anterior `evaluateBusiness`1817,621042 ms>1000 ms mide otro contrato. Es
 
 El observador se instala antes de la navegación y marca Inbox utilizable mientras el stream puede seguir abierto; `load`, DOMContentLoaded, networkidle y EOF son métricas separadas y no condiciones para empezar a observar. La revalidación adversarial de `20e81dfb` cerró B1/B2 y comprobó R1–R4; el [informe](../factory/0238-adversarial-review.md) distingue ese cierre documental de cualquier futura aceptación de producto/rendimiento.
 
+La comparación con prácticas publicadas añade precisiones I1–I4 en la [receta](../factory/0238-plan-carga-backoffice.md): bytes y CPU observables, caché del navegador frente a servidor/DB, recorridos diagnósticos con layout persistente y evidencia focal de proyección/plan del JOIN y cardinalidades. No cambia los gates anteriores ni exige infraestructura, optimización de bundles o nuevas migraciones. El [informe de industria](../factory/0238-industry-review.md) revisa el diseño documental; no certifica implementación, rendimiento PROD ni resuelve la propuesta pendiente de §4.3.
+
 ## 7. Archivos, dependencias y checks
 
 Servidor: nuevos helpers de contexto y proyección en `apps/merchant/src/server/`; wrappers de `auth-guards`, `api-owner`, `api-permission`, `billing-gate`, contexto de staff y checklist; reporter GET sesión y GET módulos solo si necesitan compartir constructores conservando contratos. Excluir operaciones de escritura de staff y resto de flujos salvo regresiones comprobadas del helper.

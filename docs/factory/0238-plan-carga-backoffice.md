@@ -70,6 +70,19 @@ Preferir un observador externo a la app para el tiempo principal y conteos. Si h
 
 Mediana/p95 de ambos ready deben mejorar y no empeorar TTFB/pintura según §6 de la spec. Adjuntar valores individuales, waterfall y conteos al informe; no solo porcentajes. Un incumplimiento vuelve a corrección, no a ampliar tablas/caché/DDL por cuenta propia. No repetir el benchmark anterior de evaluación fría como si fuera este experimento.
 
+### Precisiones de recursos y recorridos (I1–I4)
+
+La [comparación independiente con prácticas publicadas](0238-industry-review.md) propone estas precisiones de evidencia, sin añadir infraestructura ni modificar los gates temporales:
+
+- **I1, recursos y CPU:** separar JS/CSS transferidos y decodificados hasta Inbox utilizable, documento/RSC y tamaño del seed; evitar doble conteo del RSC embebido. Registrar montaje/inicio del GET y caché por recurso. Una traza focal del hilo principal permite investigar análisis/ejecución, render y tareas largas; si altera el tiempo, hacerla fuera de la campaña cuantitativa y con el mismo método en A/B. No atribuir costo de bundles a imports sin comprobar chunks/Network del build.
+- **I2, temperatura y topología:** congelar perfil/contexto, política de caché HTTP, reutilización de assets y prefetch iguales por fuente. Primera entrada en contexto limpio y recargas con assets reutilizados se distinguen del estado del servidor y DB. Registrar proxy local/Neon, transporte, TLS y ubicación; comparación local no demuestra cold starts ni latencia PROD. El pool WS ya existe; construir drizzle por llamada no demuestra una conexión nueva.
+- **I3, transición:** añadir un recorrido diagnóstico A/B fijo de navegación interna con layout persistente y otro de cambio permitido del mismo ámbito con refresh, en fixtures propias. Registrar solicitudes/waterfall y estado final, conservación de formularios autorizados y ausencia de bucles/fan-out. No exige treinta repeticiones adicionales ni un nuevo gate de percentiles; comprueba que el costo no se desplazó fuera de la entrada.
+- **I4, trabajo SQL:** durante A2/QA adjuntar SQL/proyección y plan del JOIN, con varias membresías, suscripción ausente y cardinalidades sintéticas declaradas. Reutilizar comprobación focal, wrapper y DB protegida reservada; ANALYZE ejecuta la consulta y solo se usa si es necesario. No exigir IndexScan universal ni añadir DDL. Manifiesto distingue volumen total, candidatas/controles del negocio y tarjetas visibles: cinco tarjetas no equivalen a cinco filas leídas.
+
+Estas precisiones no autorizan instalar APM/RUM, operar PROD, rehacer bundles, optimizar lifecycle ni reabrir el FAIL histórico. Las muestras describen esta campaña, no capacidad, p99 poblacional o un SLO de producción.
+
+El [segundo contraste independiente con código/backend](0238-applicability-review.md), sobre `c642af5a`, confirma pertinencia de 1+2+3 y de estas precisiones; no valida el delta documental posterior ni una implementación. Mantener pequeño el provider y reutilizar la máquina de Inbox. Si se acepta `scopeKey`, distinguir `backoffice_context_changed` del 409 genérico de conflicto de tarjeta antes de reintentar/releer. La decisión de ámbito sigue pendiente; ninguna de estas revisiones la sustituye.
+
 ### Control de deriva y estimadores, a congelar antes de M0 (R1)
 
 M0 congela el código base sin optimizar, su build reproducible y las observaciones originales. En M1 ejecutar ese mismo código base como control contemporáneo del candidato, usando el mismo harness revisado en ambos. Si se corrige el harness, conservar M0 y sus límites y medir las dos fuentes con la corrección; no reparar solo el resultado desfavorable. La comparación cuantitativa de aceptación usa este control contemporáneo y el candidato, conservando M0 como referencia histórica.

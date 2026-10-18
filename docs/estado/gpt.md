@@ -3,7 +3,13 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — ADVERSARIAL Y REVISIÓN DEL AUTOR DE0238; CONTRATO ADICIONAL PENDIENTE (2026-10-17)
+## ESTADO — 0238 CONTRASTADA CON INDUSTRIA Y CÓDIGO; SOLO DOCUMENTACIÓN (2026-10-17/18 UTC)
+
+Owner pidió dos agentes separados y secuenciales: comparación con prácticas publicadas y contraste posterior con código/backend para evitar sobreingeniería. [Industria](../factory/0238-industry-review.md), `/root/backoffice_industry_review`, y [aplicabilidad](../factory/0238-applicability-review.md), `/root/backoffice_applicability_review`, revisaron base congelada `c642af5a`; ninguno autor del plan ni reviewer adversarial anterior. Confirman pertinencia de1+2+3 frente a duplicaciones concretas, sin nuevos bloqueantes demostrados. No certifican implementación/latencia PROD ni sustituyen aceptación pendiente de scopeKey. Fuentes primarias y límites históricos en informe de industria.
+
+Coordinador incorporó después precisiones I1–I4 a spec/receta: bytes JS/CSS/documento/RSC/seed y CPU focal sin doble conteo; caché/perfil/prefetch y topología proxy local/Neon explícitos; recorrido diagnóstico de navegación persistente/refresh; proyección/plan JOIN y cardinalidad real de candidatas frente a5visibles. Sin nuevos gates temporales, DDL, plataforma APM/RUM, Redis, cambio de pooling o refactor de bundles por conjetura. Provider acotado; si se acepta scopeKey, priorizar su409 por code frente al conflicto genérico de tarjeta. Agentes no validaron este delta documental posterior. Spec borrador/ADR propuesto; sin código, M0, DB, servidores, push/PROD ni nueva comprobación de102migraciones. Diferidos, QA manual y FAIL histórico conservados. Checks documentales proporcionales; informes y actualización solo locales.
+
+## HISTÓRICO — ADVERSARIAL Y REVISIÓN DEL AUTOR DE0238; CONTRATO ADICIONAL PENDIENTE (2026-10-17)
 
 Owner pidió agente adversarial y luego revisión propia del coordinador por riesgo de sesgo. Aclaración: yo redacté el plan; el agente independiente `/root/backoffice_adversarial` no lo creó. [Informe independiente](../factory/0238-adversarial-review.md) revisó03949d2e:2bloqueantes(B1JOIN/falloBillingyorden, B2seed/layout/membresía nula) y4mejoras(R1controlA/Bcontemporáneo/intervalos, R2estado temporal/efectos fixtures, R3streamingmódulos/paths, R4propietario/generaciones/abortos). Corregidos en20e81dfb; mismo agente revalidó ese delta y cerró sus6hallazgos documentalmente, sin PASS de producto. Precisión DOMutilizable observado antes de load/EOF incorporada después. Ningún código/DB/API/medición nueva ni PROD/push.
 
