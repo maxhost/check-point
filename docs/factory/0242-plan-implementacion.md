@@ -21,6 +21,21 @@ Cada tarea antes de código tiene ficha con objetivo, spec cerrada, baseSHA, pat
 
 ## CP1 — Fundamentos exactos y adopción de contexto
 
+### Entregas pequeñas y gates de continuación
+
+Al retomar, owner expresó preocupación por el tamaño para dos implementadores. Se conserva el equipo de dos implementadores y QA independiente, y se descompone CP1/CP2 antes de despachar código. Las descripciones por rol de abajo son ámbitos globales, no una autorización para entregar todo en un único commit/candidato. Cada subentrega tendrá ficha y reserva concreta; QA focal verifica su invariante, y solo se repiten checks afectados por correcciones. No se añade fullverify por cada corte.
+
+| Corte | Entrega acotada | Gate antes de continuar |
+| --- | --- | --- |
+| CP1a | Financial puro medido y adaptadores legacy; en paralelo, política genérica de scope y transporte POS conservando DTO unit actual. | Equivalencia monetaria legacy y factores exactos; intenciónA/cookieB rechazada antes de dominio; circuito unit preservado. Sin schema ni V4 publicado. |
+| CP1b | Expand aditivo y compatibilidad unit de catálogo/órdenes/core; un writer serial de esquema/journal y adaptadores necesarios para numeric:string. | Migración CI protegida, lectura/edición/cierre histórico sin truncar ni nuevos efectos. Peso y productorV4 siguen inactivos. Paths de compatibilidad enumerados antes del código. |
+| CP1c | Decoders V1–V4, base/procedencia racional de Recetas y consumidores Stock/analytics exactos, en entregas sucesivas por cadena si el diff lo requiere. | Replay sin duplicación; redondeo ledger3; gramos y piezas separados por segmento. ProductorV4 permanece apagado hasta compatibilidad de todos los consumidores. |
+| CP2a | Configuración business/catalog y base de composición: endpoints y UI de unidades/tarifas. | Concurrencia/revisiones, unidad en uso, cambio de modo con base explícita y formularios sin perder borrador. |
+| CP2b | Listado, tipos de venta, creación/editor y guardado POSv2. | Cuatro tipos/identificadores/locales, medidas/snapshots, create idempotente, conflicto y caché; recorrido unit anterior sigue operativo. |
+| CP2c | QR/cupón/pago/cierre/recuperación e impresión v2, con cadena de efectos completa. | Neto0, gratis/2x1 solo unit, carreras/reintento congelado, efectos exactos y tickets reales. Activar mass/V4 solo en candidato con todos los consumidores compatibles. |
+
+El coordinador puede reasignar al implementador disponible un bloque independiente de backend o UI mediante nueva ficha; los roles A/B no inmovilizan capacidad en una sola capa. Un contrato aceptado y escritor exclusivo preceden cualquier reasignación. M0 sigue siendo entrada de CP1, y cada subentrega debe dejar operativa la venta unit; no se acumulan migración, toda la contabilidad y toda la UI para una única QA final. CP3/CP4 conservan sus gates de acceso/retiro y combinación/rendimiento.
+
 ### Implementador A: esquema y dominio de cantidades
 
 Writer único de `packages/db/src/schema/{business,catalog,order}.ts`, schema modules/pos, migrations/journal; tipos/financial; eventos types/decode/publish. Puede extender paths concretos de `packages/domain/src/financial`, tipos puros de medida, core orders/acreditación, POS line/settlement, Recetas/Stock/analytics cuando les toque. Reservas enumeran archivos reales, no la notación abreviada de esta página.
