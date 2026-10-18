@@ -211,8 +211,9 @@ describe.runIf(enabled)("AN1 atomic real producers", { timeout: 30000 }, () => {
     const parent = await parentEvent(payload);
     await expect(
       withDbTransaction(async (tx) => {
-        await recipeSubscriptions[0].handler(tx, {
+        await recipeSubscriptions[0].dispatch(tx, {
           id: parent.eventId,
+          eventVersion: payload.eventVersion,
           businessId: world.businessId,
           payload,
         });
@@ -256,8 +257,9 @@ describe.runIf(enabled)("AN1 atomic real producers", { timeout: 30000 }, () => {
     };
     const missingParent = await parentEvent(missing);
     await withDbTransaction((tx) =>
-      recipeSubscriptions[0].handler(tx, {
+      recipeSubscriptions[0].dispatch(tx, {
         id: missingParent.eventId,
+        eventVersion: missing.eventVersion,
         businessId: world.businessId,
         payload: missing,
       }),
