@@ -16,14 +16,14 @@ export async function catalogApiFixture(page: Page, empty = false) {
     pricingUnit: "unit",
     catalogRevision: "1",
     unitCost: null,
-    imagePath: null,
+    imagePath: null as string | null,
     imageVersion: 0,
     imageSource: null,
     imageAuthor: null,
     imageAuthorUrl: null,
     imageSourceUrl: null,
     availableAllLocations: true,
-    locationIds: [],
+    locationIds: [] as string[],
   });
   const products = empty
     ? []
