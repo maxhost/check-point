@@ -110,10 +110,10 @@ describe.skipIf(!enabled)("el writer contra Neon (spec 0091 §6)", () => {
     const productos = await productosDe(a.businessId);
     expect(productos).toHaveLength(3);
     const cappu = productos.find((p) => p.name === "Cappuccino");
-    expect(cappu?.unitPrice).toBe("3.25");
+    expect(cappu?.unitPrice).toBe("3.250000000");
     expect(cappu?.unitCost).toBeNull();
     expect(productos.find((p) => p.name === "Tabla")?.unitPrice).toBe(
-      "1250.00",
+      "1250.000000000",
     );
     /** §4 — el `priceText` que NO parsea nace **NULL**, nunca `0.00`. Leído por SQL. */
     expect(productos.find((p) => p.name === "Té")?.unitPrice).toBeNull();
@@ -183,13 +183,15 @@ describe.skipIf(!enabled)("el writer contra Neon (spec 0091 §6)", () => {
     /** §1 — **un precio distinto NO actualiza nada**: la fila vieja queda como estaba. */
     const aguas = productos.filter((p) => p.name.toLowerCase() === "agua");
     expect(aguas).toHaveLength(2);
-    expect(aguas.find((p) => p.categoryId === bebidas)?.unitPrice).toBe("1.00");
+    expect(aguas.find((p) => p.categoryId === bebidas)?.unitPrice).toBe(
+      "1.000000000",
+    );
     expect(aguas.find((p) => p.categoryId === bebidas)?.name).toBe("Agua");
     const postres = (await categoriasDe(a.businessId)).find(
       (c) => c.name === "Postres",
     );
     expect(aguas.find((p) => p.categoryId === postres?.id)?.unitPrice).toBe(
-      "3.00",
+      "3.000000000",
     );
   });
 
@@ -240,7 +242,7 @@ describe.skipIf(!enabled)("el writer contra Neon (spec 0091 §6)", () => {
     const cortado = (await productosDe(a.businessId)).find(
       (p) => p.name === "Cortado",
     );
-    expect(cortado?.unitPrice).toBe("5.00");
+    expect(cortado?.unitPrice).toBe("5.000000000");
     expect(propias.some((c) => c.id === cortado?.categoryId)).toBe(true);
     expect(cortado?.categoryId).not.toBe(ajena);
   });
