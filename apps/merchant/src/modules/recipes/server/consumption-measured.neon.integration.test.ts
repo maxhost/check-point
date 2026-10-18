@@ -204,6 +204,14 @@ async function rawEvent(
       payload,
     })
     .returning();
+  // Raw dormant V4 fixture captures analytics eligibility without running a subscriber.
+  await getDb()
+    .insert(moduleEventDeliveries)
+    .values({
+      eventId: event.id,
+      subscriberId: "core.analytics",
+      state: "pending",
+    });
   return { ...event, payload };
 }
 
@@ -311,6 +319,13 @@ describe.skipIf(!modulesIntegrationEnabled)(
         p.items.map((i) => i.itemUnit),
       );
       const ds = await deliveries(stored.id);
+      expect(ds).toHaveLength(1);
+      expect(ds[0]).toMatchObject({
+        eventId: stored.id,
+        subscriberId: "core.analytics",
+        state: "pending",
+        attempts: 0,
+      });
       await recordPurchase(world.businessId, world.ownerId, f.item.id, {
         locationId: world.locationId,
         quantity: "20",
@@ -393,6 +408,13 @@ describe.skipIf(!modulesIntegrationEnabled)(
       await publish(event);
       const [stored] = await derived(event.payload.sourceOrderId);
       const ds = await deliveries(stored.id);
+      expect(ds).toHaveLength(1);
+      expect(ds[0]).toMatchObject({
+        eventId: stored.id,
+        subscriberId: "core.analytics",
+        state: "pending",
+        attempts: 0,
+      });
       const altered = reprice("0.002");
       decodeMeasuredSaleClosedEvent(altered, 4);
       expect(altered.money.gross).toBe(event.payload.money.gross);
