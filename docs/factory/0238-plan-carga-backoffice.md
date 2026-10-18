@@ -149,6 +149,8 @@ El [segundo contraste independiente con código/backend](0238-applicability-revi
 
 ### Control de deriva y estimadores, a congelar antes de M0 (R1)
 
+Preparación operativa M1 (sin ejecutarla): artefactos privados `preload-m1.mjs` y `runner-m1.cjs` separan trace/logs/PIDs de M0 para no anexar resultados posteriores al baseline histórico. Solo cambia el destino de salida del preload; control A y candidato B usarán el mismo archivo M1. Runner exige `ci-preflight-m1.json` fresco antes de arrancar y build requiere raíz explícita. Sintaxis Node24 comprobada, no representa medición nueva.
+
 M0 congela el código base sin optimizar, su build reproducible y las observaciones originales. En M1 ejecutar ese mismo código base como control contemporáneo del candidato, usando el mismo harness revisado en ambos. Si se corrige el harness, conservar M0 y sus límites y medir las dos fuentes con la corrección; no reparar solo el resultado desfavorable. La comparación cuantitativa de aceptación usa este control contemporáneo y el candidato, conservando M0 como referencia histórica.
 
 Por caso ready, hacer seis pares de bloques, cinco recargas por fuente en cada par: orden `A-B, B-A, A-B, B-A, A-B, B-A`, donde A es base y B candidato. Total treinta recargas por fuente/caso. Las primeras entradas tras arranque se registran separadas antes de esos bloques; no seleccionar temperatura o condiciones distintas para una fuente. Solo una instancia de medición genera tráfico a la vez; configurar igual los servidores y registrar otros procesos/carga. Reservar el recurso DB durante los bloques para que no coincidan fixtures o suites ajenas.
