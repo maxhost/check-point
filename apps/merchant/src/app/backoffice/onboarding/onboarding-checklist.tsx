@@ -12,7 +12,7 @@ import {
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "../../../ui";
-import { getOnboardingChecklist, type OnboardingItem } from "./onboarding-api";
+import { useBackofficeContext } from "../backoffice-context";
 import {
   AVAILABLE_ONBOARDING_ANCHORS,
   ONBOARDING_TOUR_HREFS,
@@ -33,11 +33,14 @@ type SendState = "idle" | "sending" | "sent" | "error";
 export function OnboardingChecklist() {
   const router = useRouter();
   const isCounter = usePathname() === "/backoffice/counter";
-  const [items, setItems] = useState<OnboardingItem[] | null>(null);
+  const { state, acquireChecklist, refreshChecklist, verifyChecklistEmail } =
+    useBackofficeContext();
+  const items = state.checklist.data?.items ?? null;
+  const loadFailed = ["unavailable", "restricted"].includes(
+    state.checklist.status,
+  );
   const [expanded, setExpanded] = useState(true);
   const [sendState, setSendState] = useState<SendState>("idle");
-  const [loadFailed, setLoadFailed] = useState(false);
-  const [reloadKey, setReloadKey] = useState(0);
   const [hiddenForTour, setHiddenForTour] = useState(false);
   const [closed, setClosed] = useState(false);
 
@@ -63,7 +66,6 @@ export function OnboardingChecklist() {
     const hide = () => setHiddenForTour(true);
     const restore = () => {
       setHiddenForTour(false);
-      setReloadKey((key) => key + 1);
     };
     window.addEventListener(ONBOARDING_TOUR_STARTED_EVENT, hide);
     window.addEventListener(ONBOARDING_TOUR_ENDED_EVENT, restore);
@@ -74,46 +76,14 @@ export function OnboardingChecklist() {
   }, []);
 
   useEffect(() => {
-    if (isCounter) return;
-    const controller = new AbortController();
-    setLoadFailed(false);
-    void getOnboardingChecklist(controller.signal)
-      .then((checklist) => {
-        setItems(checklist.items);
-      })
-      .catch((error: unknown) => {
-        if (!(error instanceof DOMException && error.name === "AbortError"))
-          setLoadFailed(true);
-      });
-    return () => controller.abort();
-  }, [reloadKey, isCounter]);
+    if (!isCounter) return acquireChecklist();
+  }, [isCounter, acquireChecklist]);
 
   async function sendVerification() {
     setSendState("sending");
-    try {
-      const response = await fetch("/api/merchant/auth/verify-email", {
-        method: "POST",
-        credentials: "same-origin",
-      });
-      if (!response.ok) throw new Error("verify-email-failed");
-      const result = (await response.json()) as {
-        sent?: boolean;
-        verified?: boolean;
-      };
-      if (result.verified) {
-        setItems(
-          (current) =>
-            current?.map((item) =>
-              item.anchor === "verify-email" ? { ...item, done: true } : item,
-            ) ?? null,
-        );
-        return;
-      }
-      if (!result.sent) throw new Error("verify-email-invalid-response");
-      setSendState("sent");
-    } catch {
-      setSendState("error");
-    }
+    const result = await verifyChecklistEmail();
+    if (result === "obsolete") return;
+    setSendState(result === "verified" ? "idle" : result);
   }
 
   if (isCounter) return null;
@@ -131,7 +101,7 @@ export function OnboardingChecklist() {
         </div>
         <button
           className="onboarding-primary-action"
-          onClick={() => setReloadKey((current) => current + 1)}
+          onClick={refreshChecklist}
           type="button"
         >
           Reintentar

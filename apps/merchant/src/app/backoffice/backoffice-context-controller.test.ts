@@ -73,7 +73,11 @@ function deferred<T>() {
 function adapters() {
   return {
     readSession: vi.fn(async (): Promise<unknown> => reporter()),
-    readModules: vi.fn(async (): Promise<ModuleDTO[]> => [module]),
+    readModules: vi.fn<
+      Parameters<typeof createBackofficeContextController>[1]["readModules"]
+    >(async () => [module]),
+    readChecklist: vi.fn(),
+    verifyEmail: vi.fn(),
     readInbox: vi.fn(),
     decideInbox: vi.fn(),
     navigate: vi.fn(),
@@ -374,5 +378,131 @@ describe("0238 atomic document context controller", () => {
     work.resolve([module]);
     await flush();
     expect(controller.getSnapshot().core).toBeNull();
+  });
+});
+
+describe("0238 confirmed module transport seam", () => {
+  it("invalidates prior GET before applying a confirmed module; late read cannot overwrite it or unrelated modules", async () => {
+    const io = adapters();
+    const old = deferred<ModuleDTO[]>();
+    io.readModules.mockReturnValueOnce(old.promise);
+    const controller = createBackofficeContextController(core, io);
+    const other = { ...module, id: "other" };
+    controller.applyModulesSeed(
+      seed({ state: "ready", modules: [module, other] }),
+    );
+    controller.revalidateModules();
+    await flush();
+    const ticket = controller.captureTicket("modules")!;
+    const before = controller.getSnapshot().generations;
+    expect(
+      controller.applyConfirmedModule(ticket, { ...module, enabled: false }),
+    ).toBe(true);
+    expect(controller.getSnapshot().generations).toMatchObject({
+      modules: before.modules + 1,
+      inbox: before.inbox + 1,
+      checklist: before.checklist + 1,
+    });
+    expect(controller.getSnapshot().modules).toEqual({
+      state: "ready",
+      modules: [{ ...module, enabled: false }, other],
+    });
+    old.resolve([module]);
+    await flush();
+    expect(controller.getSnapshot().modules).toEqual({
+      state: "ready",
+      modules: [{ ...module, enabled: false }, other],
+    });
+    expect(io.readSession).not.toHaveBeenCalled();
+    expect(io.readModules.mock.calls[0][1].scopeKey).toBe(core.scopeKey);
+  });
+  it("rejects stale/wrong resource/malformed/unknown module without changing state", () => {
+    const io = adapters();
+    const controller = createBackofficeContextController(core, io);
+    controller.applyModulesSeed(seed({ state: "ready", modules: [module] }));
+    const stale = controller.captureTicket("modules")!;
+    controller.invalidate(["modules"]);
+    const current = controller.captureTicket("modules")!;
+    const before = controller.getSnapshot();
+    expect(controller.applyConfirmedModule(stale, module)).toBe(false);
+    expect(
+      controller.applyConfirmedModule(
+        controller.captureTicket("inbox")!,
+        module,
+      ),
+    ).toBe(false);
+    expect(
+      controller.applyConfirmedModule(current, { ...module, id: "unknown" }),
+    ).toBe(false);
+    expect(
+      controller.applyConfirmedModule(current, {
+        ...module,
+        navigation: [null],
+      } as unknown as ModuleDTO),
+    ).toBe(false);
+    expect(
+      controller.applyConfirmedModule(current, {
+        ...module,
+        permissions: [{ id: "bad" }],
+      } as ModuleDTO),
+    ).toBe(false);
+    expect(
+      controller.applyConfirmedModule(current, null as unknown as ModuleDTO),
+    ).toBe(false);
+    expect(controller.getSnapshot()).toBe(before);
+  });
+  it("needs a ready base and deep copies confirmed public fields without retaining caller aliases", () => {
+    const io = adapters();
+    const controller = createBackofficeContextController(core, io);
+    expect(
+      controller.applyConfirmedModule(
+        controller.captureTicket("modules")!,
+        module,
+      ),
+    ).toBe(false);
+    controller.applyModulesSeed(seed({ state: "ready", modules: [module] }));
+    const confirmed: ModuleDTO = {
+      ...module,
+      enabled: false,
+      requires: ["other"],
+      navigation: [
+        { path: "", label: "Confirmed", icon: "Box", permission: "stock" },
+      ],
+      permissions: [{ id: "stock", label: "Stock", description: "Fixture" }],
+    };
+    expect(
+      controller.applyConfirmedModule(
+        controller.captureTicket("modules")!,
+        confirmed,
+      ),
+    ).toBe(true);
+    confirmed.enabled = true;
+    confirmed.requires.push("mutated");
+    confirmed.navigation[0].label = "mutated";
+    confirmed.permissions[0].label = "mutated";
+    const state = controller.getSnapshot().modules;
+    expect(state.state).toBe("ready");
+    if (state.state !== "ready") throw new Error("expected ready");
+    expect(state.modules[0]).toMatchObject({
+      enabled: false,
+      requires: ["other"],
+      navigation: [{ label: "Confirmed" }],
+      permissions: [{ label: "Stock" }],
+    });
+  });
+  it("module-only revalidation coalesces and does not automatically request the reporter", async () => {
+    const io = adapters();
+    const controller = createBackofficeContextController(core, io);
+    controller.applyModulesSeed(seed({ state: "ready", modules: [module] }));
+    controller.revalidateModules();
+    controller.revalidateModules();
+    await flush();
+    expect(io.readModules).toHaveBeenCalledOnce();
+    expect(io.readSession).not.toHaveBeenCalled();
+    expect(io.readModules.mock.calls[0][1]).toMatchObject({
+      scopeKey: core.scopeKey,
+      resource: "modules",
+      generation: 2,
+    });
   });
 });
