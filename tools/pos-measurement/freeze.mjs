@@ -37,6 +37,12 @@ const report = {
   pnpm: run("pnpm", "--version"),
   next: JSON.parse(readFileSync("apps/merchant/node_modules/next/package.json"))
     .version,
+  flowFixtureSha256: hash(
+    readFileSync(resolve(directory, "flow-fixture.json")),
+  ),
+  controlArchiveSha256: hash(
+    readFileSync(resolve(directory, "control-build-6f.tar.gz")),
+  ),
   buildId: readFileSync("apps/merchant/.next/BUILD_ID", "utf8").trim(),
   lockSha256: hash(readFileSync("pnpm-lock.yaml")),
   privateConfigSha256: hash(readFileSync(resolve(directory, "selected.json"))),
@@ -48,6 +54,13 @@ const report = {
     files.sort().map((f) => [f, hash(readFileSync(f))]),
   ),
   recipe: {
+    campaignFlows: 18,
+    separateSmokeFlows: 3,
+    flowVariants: ["none", "discount10", "zero100"],
+    roles: ["owner", "staff"],
+    attemptsPerRoleVariant: 3,
+    mutableHistory:
+      "accumulates without resets; independent consumer/coupon/UUID/label per flow",
     reloadsPerCell: 5,
     cells: [
       "empty-owner",
@@ -73,8 +86,23 @@ if (process.argv[2] === "--reuse-build") {
     report.privateConfigSha256 !== previous.privateConfigSha256
   )
     throw Error("Build identity changed");
+  const uncompiledFixtures = new Set([
+    "apps/merchant/src/modules/pos/server/pos-measurement.test-support.ts",
+    "apps/merchant/src/modules/pos/server/pos-measurement.neon.integration.test.ts",
+    "apps/merchant/src/modules/pos/server/pos-measurement-login.test-support.ts",
+  ]);
+  report.uncompiledFixtureChanges = [];
   for (const [file, expected] of Object.entries(previous.files)) {
+    if (uncompiledFixtures.has(file) && hash(readFileSync(file)) !== expected)
+      report.uncompiledFixtureChanges.push({
+        file,
+        previousSha256: expected,
+        currentSha256: hash(readFileSync(file)),
+        reason:
+          "Wrapper-only Vitest fixture; no production imports (source grep recorded in handoff)",
+      });
     if (
+      !uncompiledFixtures.has(file) &&
       (file.startsWith("apps/") ||
         file.startsWith("packages/") ||
         file.includes("preload")) &&
@@ -84,7 +112,7 @@ if (process.argv[2] === "--reuse-build") {
   }
   report.buildSource = previous.buildSource ?? previous.source;
   writeFileSync(
-    resolve(directory, `freeze-${previous.source}.json`),
+    resolve(directory, `freeze-${previous.source}-${Date.now()}.json`),
     JSON.stringify(previous, null, 2) + "\n",
     { flag: "wx", mode: 0o600 },
   );
