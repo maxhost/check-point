@@ -1,7 +1,7 @@
 ---
 spec: 0239
 fecha: 2026-10-18
-estado: cerrada
+estado: implementada
 resumen: Inbox compacto como lista de correo y tres indicadores financieros reales del Dashboard, cargados en paralelo.
 disjunta: no; se integra con el contexto compartido de 0238.
 ---
@@ -47,3 +47,7 @@ Implementador en worktree/ref propios asignados por factory, sin editar índices
 - Tipos/lint/guardia UI focales y diff-check. Inspección visual desktop/móvil en una tanda y, si hace falta, una sola confirmación. No repetir M1 de120recargas ni baterías globales por ceremonia; los números previos de0238 pertenecen a su SHA y no certifican el Dashboard ampliado.
 
 Aceptación: requisitos anteriores, evidencia ligada a SHA/entorno, revisión del coordinador independiente del código del agente y demo disponible en dev. Main local después de QA proporcional; publicar sólo con nueva autorización. Preservar QA manual pendiente, CI/guardias históricas, FAIL frío1817.621042ms y todos los diferidos ajenos. Rollback conjunto de esta implementación sin DDL.
+
+## Entrega
+
+Implementada y aceptada localmente: entrega `aac013da`, integración dev `f27bce11`. [Handoff](../factory/0239-dashboard-handoff.md) y [QA independiente](../factory/0239-qa.md). Demo habilitada en dev; QA manual del owner pendiente. Sin push ni PROD.
