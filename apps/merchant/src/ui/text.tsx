@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { cx } from "./cx";
 
 export type TextProps = {
-  variant?: "body" | "muted" | "small" | "label";
+  variant?: "body" | "muted" | "small" | "label" | "metric";
   as?: "p" | "span";
   id?: string;
   className?: string;
@@ -14,6 +14,8 @@ const variants = {
   muted: "text-base font-normal leading-6 text-content-muted",
   small: "text-sm font-normal leading-5 text-content-muted",
   label: "text-base font-bold leading-5 text-content",
+  metric:
+    "text-3xl font-bold leading-tight text-content tabular-nums sm:text-4xl",
 } as const;
 
 export function Text({

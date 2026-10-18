@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useId, useState, type ReactNode } from "react";
+import { Coins, Cart, StatsReport } from "iconoir-react";
 import type {
   buildDay,
   buildHistory,
@@ -198,22 +199,64 @@ export default function AnalyticsConsole({
                 Del {history.from} al {history.to}
               </Text>
             </div>
-            <dl className="grid gap-3 sm:grid-cols-3">
-              <Metric
-                label="Ventas"
-                value={money(history.revenueMinor)}
-                detail={
-                  history.previous.variation === null
-                    ? "Sin ventas anteriores para comparar"
-                    : `${Math.round(Math.abs(history.previous.variation) * 100)}% ${history.previous.variation >= 0 ? "más" : "menos"} que el período anterior de igual duración`
-                }
-              />
-              <Metric label="Tickets" value={history.tickets} />
-              <Metric
-                label="Ticket promedio"
-                value={money(history.averageTicketMinor)}
-              />
+            <dl className="grid divide-y divide-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+              {[
+                {
+                  label: "Ventas",
+                  value: money(history.revenueMinor),
+                  icon: <Coins className="size-6" aria-hidden="true" />,
+                  tone: "bg-primary-soft text-primary",
+                },
+                {
+                  label: "Tickets",
+                  value: history.tickets,
+                  icon: <Cart className="size-6" aria-hidden="true" />,
+                  tone: "bg-info-soft text-info",
+                },
+                {
+                  label: "Ticket promedio",
+                  value: money(history.averageTicketMinor),
+                  icon: <StatsReport className="size-6" aria-hidden="true" />,
+                  tone: "bg-complement-soft text-complement",
+                },
+              ].map(({ label, value, icon, tone }) => (
+                <div
+                  key={label}
+                  className="grid min-w-0 content-start gap-3 py-4 sm:px-4"
+                >
+                  <dt className="flex items-center gap-3">
+                    <span
+                      className={`flex size-10 shrink-0 items-center justify-center rounded-md ${tone}`}
+                    >
+                      {icon}
+                    </span>
+                    <Text as="span" variant="small">
+                      {label}
+                    </Text>
+                  </dt>
+                  <dd className="m-0 min-w-0 break-words">
+                    <Text as="span" variant="metric">
+                      {value}
+                    </Text>
+                  </dd>
+                </div>
+              ))}
             </dl>
+            <Text
+              variant="small"
+              className={
+                history.previous.variation === null ||
+                history.previous.variation === 0
+                  ? undefined
+                  : history.previous.variation > 0
+                    ? "text-success"
+                    : "text-danger"
+              }
+            >
+              {history.previous.variation === null
+                ? "Sin ventas anteriores para comparar"
+                : `${Math.round(Math.abs(history.previous.variation) * 100)}% ${history.previous.variation >= 0 ? "más" : "menos"} ventas que en el período anterior de igual duración`}
+            </Text>
             {history.annual && (
               <Text variant="small">
                 En el mismo período del año anterior vendiste{" "}
