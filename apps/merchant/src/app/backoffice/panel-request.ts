@@ -1,3 +1,8 @@
+import {
+  backofficeScopeHeaders,
+  type BackofficeRequestOptions,
+} from "./backoffice-scope-request";
+
 export type PanelSession = {
   authenticated: boolean;
   user?: { id: string };
@@ -26,7 +31,9 @@ export async function panelRequest<T>(
   url: string,
   method = "GET",
   body?: unknown,
+  options?: BackofficeRequestOptions,
 ): Promise<T> {
+  const scopeHeaders = backofficeScopeHeaders(options?.scopeKey);
   const response = await fetch(url, {
     method,
     cache: "no-store",
@@ -38,6 +45,17 @@ export async function panelRequest<T>(
             headers: { "content-type": "application/json" },
             body: JSON.stringify(body),
           }),
+    ...(scopeHeaders
+      ? {
+          headers: {
+            ...(body !== undefined && !(body instanceof FormData)
+              ? { "content-type": "application/json" }
+              : {}),
+            ...scopeHeaders,
+          },
+        }
+      : {}),
+    ...(options?.signal ? { signal: options.signal } : {}),
   });
   const payload = await response.json().catch(() => null);
   if (!response.ok)

@@ -111,3 +111,22 @@ Comprobaciones sobre base77dc18aa más este delta, Node24.20.0:
 - `git diff --check`: PASS.
 
 Sin DB/browser/servidor, sin fetch/event listeners/loops, sin tocar layout/page/navegación/TrialNotice/Inbox/checklist ni helper de A. Pruebas usan DTOs tipados sintéticos del contrato A1. QA independiente y montaje/streaming real pertenecen a siguientes entregas: B1b espera A2c y nueva instrucción del coordinador. Estado de esta entrega no certifica conteos/performance ni implementación total de0238.
+
+## S1-client — Transporte HTTP opt-in sin adopción
+
+Encargo explícito para avanzar una pieza independiente mientras B1b espera A2c. `factory continue` sincronizó a base `70a02f798db164ac9d2989ccb3f5bae3e6f85bfe`, que incluye B1a aceptado. Paths reservados: `panel-request.ts` y test nuevo, `backoffice-scope-request.ts` y test nuevo, `settings/module-request.ts` y test nuevo, `onboarding/onboarding-api.ts` y test existente, más este informe. Sin cambios al contrato A1 ni helper servidor.
+
+Helper puro pequeño: `backofficeScopeHeaders(scopeKey)` produce header nuevo para64hex minúscula; undefined conserva caller legado sin header y marca malformada lanza error local sin operación HTTP. `isBackofficeContextChanged` compara únicamente code exacto, sin confundir cualquier409 de tarjeta/dependencia/órdenes. No autoriza, navega, limpia provider o reintenta; no almacén global/getter de marca. La marca se lee y convierte en header local síncronamente al entrar al wrapper, antes de primer await y antes de serializar body; cambiar opciones externas después no cambia la intención enviada.
+
+Firmas ampliadas con último argumento opcional, llamadas anteriores compatibles:
+
+- `panelRequest(url, method?, body?, options?:{scopeKey?,signal?})`.
+- `moduleRequest(url, body?, options?:{scopeKey?,signal?})` y `readModules(options?)`.
+- `getOnboardingChecklist(signal?, options?:{scopeKey?})`, manteniendo su signal posicional previo.
+- `recordOnboardingTour(id,status,options?:{scopeKey?,signal?})`.
+
+Preservados métodos/cache/no-store existentes, credenciales same-origin de onboarding, JSON y frontera FormData del navegador. Error panel/module mantiene clase/código/status/payload/missing/dependents/openCount; onboarding añade `OnboardingRequestError extends Error` con code/status, conservando mensajes legacy (`onboarding-checklist-failed`, `onboarding-tour-update-failed`) y error operativo cuando body fallido no es JSON. Errores de aborto se propagan; ningún wrapper hace replay.
+
+Verificación Node24.20.0 sobre esta base/delta: cinco suites focales, **36/36 PASS sin skips/retries**: scope helper8, panel7, módulos5, onboarding-api9, onboarding-tour existente7. Incluye captura A aunque caller cambie opciones aB durante await; malformed nofetch; señales, JSON/FormData, compat exacta caller legado; códigos409 separados y POST no reintentado. `pnpm typecheck` merchant PASS; ESLint focal ocho archivos PASS; prettier aplicado; UI guard contra70a02f79 PASS cuatro archivos sin aumentos; diff-check PASS. Warning Node de tipo módulo en tooling preexistente conserva condición anterior, sin cambios de tooling.
+
+**Ningún caller actual pasó a enviar la marca.** No se modificaron provider/layout/navegación/Inbox/TrialNotice/tour/ModuleSettings ni su dominio/UI. No browser/DB/servidor ni nuevas dependencias. El protocolo queda disponible opt-in, sin adoptar medio contrato en producción; falta servidor S y posterior adopción controlada en B1b/B2, con prueba integrada de cambio de cookie y recuperación. La prueba fetch simulada no certifica esos guards reales. B1b permanece pendiente de A2c/QA/nueva instrucción.
