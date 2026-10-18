@@ -13,6 +13,7 @@ import {
 } from "../../../apps/merchant/src/app/backoffice/backoffice-context";
 import { BackofficeNavigation } from "../../../apps/merchant/src/app/backoffice/backoffice-navigation";
 import { TrialNotice } from "../../../apps/merchant/src/app/backoffice/subscription/trial-notice";
+import { DashboardSummary } from "../../../apps/merchant/src/app/backoffice/analytics/dashboard-summary";
 import { AnalyticsInbox } from "../../../apps/merchant/src/app/backoffice/analytics/inbox";
 import { fixtureBackofficeCore } from "./backoffice-seed-fixture";
 import { businessModules } from "./modules-fixture";
@@ -94,6 +95,11 @@ const controller = createBackofficeContextController(core, {
     panelRequest("/api/merchant/session", "GET", undefined, { signal }),
   readModules: (signal, ticket) =>
     readModules({ signal, scopeKey: ticket.scopeKey }),
+  readSummary: (signal, ticket) =>
+    panelRequest("/api/analytics/summary", "GET", undefined, {
+      signal,
+      scopeKey: ticket.scopeKey,
+    }),
   readInbox: (signal, ticket) =>
     panelRequest("/api/analytics/inbox", "GET", undefined, {
       signal,
@@ -230,6 +236,7 @@ function Fixture({ initial }: { initial: BackofficeInitialContext }) {
               onAccessDenied={() => {}}
             />
           )}
+          {query.has("summary") && <DashboardSummary />}
           <InboxReaders />
           {query.has("checklist") && <ChecklistReaders />}
         </div>

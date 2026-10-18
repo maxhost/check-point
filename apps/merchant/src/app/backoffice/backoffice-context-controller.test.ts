@@ -78,6 +78,9 @@ function adapters() {
     >(async () => [module]),
     readChecklist: vi.fn(),
     verifyEmail: vi.fn(),
+    readSummary: async () => {
+      throw new Error("unexpected summary read");
+    },
     readInbox: vi.fn(),
     decideInbox: vi.fn(),
     requestRefresh: vi.fn(),

@@ -20,7 +20,7 @@ function stamp(): BackofficeRequestStamp {
   return {
     scopeKey: "a".repeat(64),
     epoch: 0,
-    generations: { session: 0, modules: 0, inbox: 0, checklist: 0 },
+    generations: { session: 0, modules: 0, inbox: 0, checklist: 0, summary: 0 },
   };
 }
 function ticket(

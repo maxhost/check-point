@@ -4,12 +4,14 @@ import type {
   BackofficeModulesSeed,
 } from "../../backoffice-context-contract";
 
-export type BackofficeResource = "session" | "modules" | "inbox" | "checklist";
+export type BackofficeResource =
+  "session" | "modules" | "inbox" | "checklist" | "summary";
 export const backofficeResources: readonly BackofficeResource[] = [
   "session",
   "modules",
   "inbox",
   "checklist",
+  "summary",
 ];
 
 /** Local causal ticket, never an authorization credential. */
@@ -39,7 +41,7 @@ export function createBackofficeContextState(
     core,
     modules: { state: "loading" },
     epoch: 0,
-    generations: { session: 0, modules: 0, inbox: 0, checklist: 0 },
+    generations: { session: 0, modules: 0, inbox: 0, checklist: 0, summary: 0 },
     initialModulesTicket: {
       resource: "modules",
       scopeKey: core.scopeKey,

@@ -1,3 +1,9 @@
+import {
+  createSummaryContextResource,
+  emptySummaryContext,
+  type SummaryAdapters,
+  type SummaryContextState,
+} from "./analytics/summary-context-resource";
 import type {
   BackofficeInitialContext,
   BackofficeModulesSeed,
@@ -47,10 +53,12 @@ import {
 
 export type BackofficeContextSnapshot = BackofficeContextState & {
   readonly sessionState: "ready" | "pending" | "unavailable";
+  readonly summary: SummaryContextState;
   readonly inbox: InboxContextState;
   readonly checklist: ChecklistContextState;
 };
-type Adapters = InboxAdapters &
+type Adapters = SummaryAdapters &
+  InboxAdapters &
   ChecklistAdapters & {
     readSession: (signal: AbortSignal) => Promise<unknown>;
     readModules: (
@@ -104,6 +112,7 @@ export function createBackofficeContextController(
   const serverSnapshot: BackofficeContextSnapshot = {
     ...createBackofficeContextState(initial),
     sessionState: "ready",
+    summary: emptySummaryContext(),
     inbox: emptyInboxContext(),
     checklist: emptyChecklistContext(),
   };
@@ -131,6 +140,19 @@ export function createBackofficeContextController(
     adapters,
   );
 
+  const summary = createSummaryContextResource(
+    {
+      owner,
+      capture: () => captureTicket("summary"),
+      current: (ticket) => current(ticket),
+      invalidate: () => invalidate(["summary"]),
+      get: () => snapshot.summary,
+      patch: (value) => commit({ ...snapshot, summary: value }),
+      retire: (href) => retire(href),
+    },
+    adapters,
+  );
+
   const checklist = createChecklistContextResource(
     {
       owner,
@@ -147,6 +169,7 @@ export function createBackofficeContextController(
 
   function commit(
     next: BackofficeContextState & {
+      summary?: SummaryContextState;
       inbox?: InboxContextState;
       checklist?: ChecklistContextState;
     },
@@ -156,6 +179,9 @@ export function createBackofficeContextController(
     snapshot = {
       ...next,
       sessionState,
+      summary: next.core
+        ? (next.summary ?? snapshot.summary)
+        : emptySummaryContext(),
       inbox: next.core ? (next.inbox ?? snapshot.inbox) : emptyInboxContext(),
       checklist: next.core
         ? (next.checklist ?? snapshot.checklist)
@@ -163,6 +189,7 @@ export function createBackofficeContextController(
     };
     owner.reconcile(stampOf(snapshot)); // Synchronous before subscriptions or a new captured intent.
     inbox.reconcile();
+    summary.reconcile();
     checklist.reconcile();
     for (const notify of [...listeners]) notify();
   }
@@ -205,6 +232,7 @@ export function createBackofficeContextController(
       if (disposed || !snapshot.core) return;
       revalidateSessionModules();
       inbox.refreshIfObserved();
+      summary.refreshIfObserved();
       checklist.refreshIfObserved();
       scheduleRscRefresh();
     });
@@ -243,7 +271,7 @@ export function createBackofficeContextController(
           value as ModuleDTO[],
         );
         structuralChanged = refreshState.revision !== previous;
-        if (structuralChanged) invalidate(["inbox", "checklist"]);
+        if (structuralChanged) invalidate(["inbox", "checklist", "summary"]);
         commit({
           ...snapshot,
           modules: { state: "ready", modules: value as ModuleDTO[] },
@@ -276,7 +304,7 @@ export function createBackofficeContextController(
         refreshState = confirmBackofficeCore(refreshState, core);
         structuralChanged = refreshState.revision !== previous;
         if (structuralChanged) {
-          invalidate(["modules", "inbox", "checklist"]);
+          invalidate(["modules", "inbox", "checklist", "summary"]);
           enqueue(["modules"]);
         }
         commit({ ...snapshot, core }, "ready");
@@ -381,7 +409,7 @@ export function createBackofficeContextController(
         description,
       })),
     };
-    invalidate(["modules", "inbox", "checklist"]);
+    invalidate(["modules", "inbox", "checklist", "summary"]);
     const live = captureTicket("modules");
     if (
       !live ||
@@ -430,12 +458,14 @@ export function createBackofficeContextController(
     snapshot = {
       ...retireBackofficeContext(snapshot),
       sessionState: "ready",
+      summary: emptySummaryContext(),
       inbox: emptyInboxContext(),
       checklist: emptyChecklistContext(),
     };
     disposed = true;
     queued.clear();
     inbox.dispose();
+    summary.dispose();
     checklist.dispose();
     owner.dispose();
     listeners.clear();
@@ -472,6 +502,8 @@ export function createBackofficeContextController(
     revalidateVisible,
     revalidateModules,
     applyConfirmedModule,
+    acquireSummary: summary.acquire,
+    refreshSummary: summary.refresh,
     acquireInbox: inbox.acquire,
     refreshInbox: inbox.refresh,
     decideInbox: inbox.decide,

@@ -82,6 +82,9 @@ function setup() {
       billing: core.billing,
     })),
     readModules: vi.fn(async () => [module]),
+    readSummary: async () => {
+      throw new Error("unexpected summary read");
+    },
     readInbox: vi.fn(),
     decideInbox: vi.fn(),
     readChecklist: vi.fn<ChecklistAdapters["readChecklist"]>(async () =>
