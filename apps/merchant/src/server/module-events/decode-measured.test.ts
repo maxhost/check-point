@@ -64,7 +64,11 @@ function event(
       measure: lines[i].measure,
       productId: randomUUID(),
       resourceVersions: [
-        { providerId: "recipes", slot: "composition", versionId: randomUUID() },
+        {
+          providerId: "provider-a",
+          slot: "composition",
+          versionId: randomUUID(),
+        },
       ],
       productLabel: "Producto",
       commissionMinor: "10",
