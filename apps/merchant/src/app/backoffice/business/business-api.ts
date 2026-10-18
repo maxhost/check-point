@@ -3,6 +3,8 @@ export class BusinessRequestError extends Error {
     message: string,
     public status: number,
     public code?: string,
+    public fields?: { salesMassUnits?: string },
+    public products?: { id: string; name: string }[],
   ) {
     super(message);
   }
@@ -38,7 +40,24 @@ export async function businessRequest<T>(
         ? data.error
         : "No pudimos cargar los datos. Intenta nuevamente.",
       response.status,
-      data?.code,
+      typeof data?.code === "string" ? data.code : undefined,
+      typeof data?.fields?.salesMassUnits === "string"
+        ? { salesMassUnits: data.fields.salesMassUnits }
+        : undefined,
+      Array.isArray(data?.products)
+        ? data.products
+            .filter((item: unknown): item is { id: string; name: string } =>
+              Boolean(
+                item &&
+                typeof item === "object" &&
+                "id" in item &&
+                typeof item.id === "string" &&
+                "name" in item &&
+                typeof item.name === "string",
+              ),
+            )
+            .map(({ id, name }: { id: string; name: string }) => ({ id, name }))
+        : undefined,
     );
   return data as T;
 }

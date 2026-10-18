@@ -52,6 +52,9 @@ export async function apiFixture(page: Page) {
       recoversPurchaseVat: false,
       revision: 1,
     },
+    units: { salesMassUnits: ["kg"] as ("kg" | "lb" | "g")[], revision: 1 },
+    errorFields: undefined as { salesMassUnits: string } | undefined,
+    errorProducts: undefined as { id: string; name: string }[] | undefined,
     writes: [] as { path: string; body: Record<string, unknown> }[],
     reads: [] as string[],
     fail: 0,
@@ -91,7 +94,12 @@ export async function apiFixture(page: Page) {
           },
         });
       return route.fulfill({
-        json: path === "regional" ? api.regional : api.fiscal,
+        json:
+          path === "regional"
+            ? api.regional
+            : path === "fiscal"
+              ? api.fiscal
+              : api.units,
       });
     }
     const body = route.request().postDataJSON();
@@ -101,13 +109,17 @@ export async function apiFixture(page: Page) {
       return route.fulfill({
         status: api.fail,
         json: {
+          fields: api.errorFields,
+          products: api.errorProducts,
           error:
             api.fail === 409
               ? "Otra sesión modificó los datos."
               : "No pudimos guardar los cambios.",
           code: path.endsWith("commission")
             ? "commission_revision_conflict"
-            : "business_revision_conflict",
+            : api.errorProducts
+              ? "unit_in_use"
+              : "business_revision_conflict",
         },
       });
     if (path.endsWith("/commission")) {
@@ -162,14 +174,30 @@ export async function apiFixture(page: Page) {
       api.methods.push(item);
       return route.fulfill({ status: 201, json: { method: item } });
     }
-    const revision = Math.max(api.regional.revision, api.fiscal.revision) + 1;
+    if (body.revision !== api.regional.revision)
+      return route.fulfill({
+        status: 409,
+        json: {
+          error: "Otra sesión modificó los datos.",
+          code: "business_revision_conflict",
+        },
+      });
+    const revision = api.regional.revision + 1;
     api.regional.revision = revision;
     api.fiscal.revision = revision;
+    api.units.revision = revision;
     if (path === "regional")
       api.regional = { ...api.regional, ...body, revision };
-    else api.fiscal = { ...api.fiscal, ...body, revision };
+    else if (path === "fiscal")
+      api.fiscal = { ...api.fiscal, ...body, revision };
+    else api.units = { ...api.units, ...body, revision };
     return route.fulfill({
-      json: path === "regional" ? api.regional : api.fiscal,
+      json:
+        path === "regional"
+          ? api.regional
+          : path === "fiscal"
+            ? api.fiscal
+            : api.units,
     });
   });
   return api;

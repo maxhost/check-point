@@ -6,6 +6,7 @@ import type {
   BusinessFiscal,
   BusinessMethods,
   BusinessRegional,
+  BusinessSalesUnits,
 } from "../../../lib/business-contract";
 import { Alert, Button, Card, PageHeader, Text } from "../../../ui";
 import { businessRequest, BusinessRequestError } from "./business-api";
@@ -17,6 +18,7 @@ type Data = {
   catalog: BusinessCatalog;
   regional: BusinessRegional;
   fiscal: BusinessFiscal;
+  units: BusinessSalesUnits;
 };
 export function BusinessConsole() {
   const [data, setData] = useState<Data | null>(null);
@@ -27,13 +29,14 @@ export function BusinessConsole() {
     setLoading(true);
     setError(null);
     try {
-      const [methods, catalog, regional, fiscal] = await Promise.all([
+      const [methods, catalog, regional, fiscal, units] = await Promise.all([
         businessRequest<BusinessMethods>("payment-methods?status=all"),
         businessRequest<BusinessCatalog>("payment-method-catalog"),
         businessRequest<BusinessRegional>("regional"),
         businessRequest<BusinessFiscal>("fiscal"),
+        businessRequest<BusinessSalesUnits>("sales-units"),
       ]);
-      setData({ methods, catalog, regional, fiscal });
+      setData({ methods, catalog, regional, fiscal, units });
     } catch (reason) {
       setError(
         reason instanceof Error ? reason.message : "No pudimos cargar Negocio.",
@@ -66,7 +69,7 @@ export function BusinessConsole() {
       <div className="mx-auto grid max-w-4xl gap-8 py-8">
         <PageHeader
           title="Negocio"
-          description="Administra tus medios de pago, configuración regional y datos fiscales."
+          description="Administra tus medios de pago, configuración regional, datos fiscales y unidades de venta."
         />
         {error && (
           <Alert kind="error" title="No pudimos cargar Negocio">
@@ -94,6 +97,7 @@ export function BusinessConsole() {
               onAccessDenied={deny}
               initialRegional={data.regional}
               initialFiscal={data.fiscal}
+              initialUnits={data.units}
               onCurrencyChange={(currencyCode) =>
                 setData(
                   (value) =>
