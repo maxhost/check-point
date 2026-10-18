@@ -9,6 +9,7 @@ import { and, asc, eq, inArray } from "drizzle-orm";
 import { getDb } from "@mi-pasaporte/db";
 import {
   businesses,
+  businessConfiguration,
   memberships,
   products,
   productCategories,
@@ -162,7 +163,18 @@ export async function listCatalog(
     byProduct.set(link.productId, list);
   }
 
+  const configuration =
+    options.contract === 2
+      ? await db
+          .select({ units: businessConfiguration.salesMassUnits })
+          .from(businessConfiguration)
+          .where(eq(businessConfiguration.businessId, business.id))
+      : null;
+
   return {
+    ...(configuration
+      ? { salesMassUnits: configuration[0]?.units ?? ["kg"] }
+      : {}),
     products: rows.map((row) =>
       catalogProductDTO(
         { ...row, locationIds: byProduct.get(row.id) ?? [] },

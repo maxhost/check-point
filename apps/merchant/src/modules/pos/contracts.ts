@@ -131,7 +131,7 @@ export type CatalogWriteV2 = Pick<
   | "locationIds"
 >;
 export type CatalogUpdateV2 = CatalogWriteV2 & {
-  expectedSalesRevision: number;
+  expectedSalesRevision: string;
 };
 export type PosNewLineV2 = {
   lineId?: never;

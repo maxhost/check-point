@@ -96,6 +96,10 @@ test("editar el segundo producto conserva el id y espera éxito", async ({
   );
   await expect(title(page)).toHaveText("Guarda los datos");
   api.failWrite = false;
+  await page.getByRole("button", { name: "Revisar estado actual" }).click();
+  await page
+    .getByRole("button", { name: "Ya revisé: conservar mis cambios" })
+    .click();
   await page
     .getByRole("button", { name: "Guardar producto", exact: true })
     .click();
