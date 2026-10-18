@@ -1,10 +1,11 @@
 "use client";
-import { useEffect, useId, useState, type ReactNode } from "react";
-import { Coins, Cart, StatsReport } from "iconoir-react";
+import { useEffect, useState, type ReactNode } from "react";
+import { Coins, Cart, StatsReport, Wallet } from "iconoir-react";
 import type {
   buildDay,
   buildHistory,
   HistoryPeriod,
+  RecentMovement,
 } from "@mi-pasaporte/domain/analytics/history";
 import { sumIntegers } from "@mi-pasaporte/domain/analytics/money";
 import { formatMoney } from "@mi-pasaporte/domain/analytics/date";
@@ -21,7 +22,9 @@ import {
   Text,
 } from "../../../ui";
 import { panelRequest } from "../panel-request";
-type History = ReturnType<typeof buildHistory>;
+type History = ReturnType<typeof buildHistory> & {
+  recentMovements?: RecentMovement[];
+};
 type Day = ReturnType<typeof buildDay>;
 const periods = [
   { id: "month", label: "Mes en curso" },
@@ -89,8 +92,6 @@ export default function AnalyticsConsole({
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [reload, setReload] = useState(0);
-  const [showGoalDetails, setShowGoalDetails] = useState(false);
-  const goalDetailsId = useId();
   useEffect(() => {
     let active = true;
     const query = new URLSearchParams({
@@ -429,12 +430,8 @@ export default function AnalyticsConsole({
                         value={money(history.goal.monthRevenueMinor)}
                       />
                     </dl>
-                    <dl className="grid grid-cols-2 gap-3 border-y border-border py-3 sm:grid-cols-3">
+                    <dl className="grid grid-cols-2 gap-3 border-y border-border py-3">
                       {[
-                        [
-                          "Margen de contribución",
-                          `${Math.round((history.goal.margin ?? 0) * 100)}%`,
-                        ],
                         [
                           history.goal.estimated
                             ? "Gastos estimados"
@@ -468,52 +465,60 @@ export default function AnalyticsConsole({
                         para cubrir el mes.
                       </Text>
                     )}
-                    {history.goal.concepts.length > 0 && (
-                      <div className="grid gap-2">
-                        <Button
-                          variant="quiet"
-                          className="justify-start"
-                          aria-expanded={showGoalDetails}
-                          aria-controls={goalDetailsId}
-                          onPress={() => setShowGoalDetails((open) => !open)}
-                        >
-                          {showGoalDetails
-                            ? "Ocultar desglose"
-                            : "Ver desglose de gastos"}{" "}
-                          ({history.goal.concepts.length})
-                        </Button>
-                        <div id={goalDetailsId} hidden={!showGoalDetails}>
-                          <ul className="grid divide-y divide-border">
-                            {history.goal.concepts.map((c) => (
-                              <li
-                                key={c.id}
-                                className="grid grid-cols-2 gap-1 py-2"
-                              >
-                                <Text as="span" className="min-w-0 break-words">
-                                  {c.label}
-                                </Text>
-                                <Text
-                                  as="span"
-                                  variant="label"
-                                  className="break-words text-right tabular-nums"
-                                >
-                                  {money(c.amountMinor)}
-                                </Text>
-                                <div className="col-span-2">
-                                  <Text variant="small">
-                                    {c.estimated
-                                      ? "Estimado con meses anteriores"
-                                      : "Pagado este mes"}
-                                  </Text>
-                                </div>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      </div>
-                    )}
                   </>
                 )}
+                <div className="grid gap-2 border-t border-border pt-4">
+                  <Heading level={3}>Movimientos recientes de este mes</Heading>
+                  {history.recentMovements?.length ? (
+                    <ul className="grid divide-y divide-border">
+                      {history.recentMovements.map((movement) => (
+                        <li
+                          key={movement.id}
+                          className="flex min-w-0 items-center gap-3 py-3"
+                        >
+                          <span
+                            aria-hidden="true"
+                            className={
+                              movement.kind === "sale"
+                                ? "flex size-10 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary"
+                                : "flex size-10 shrink-0 items-center justify-center rounded-full bg-info-soft text-info"
+                            }
+                          >
+                            {movement.kind === "sale" ? (
+                              <Cart className="size-5" />
+                            ) : (
+                              <Wallet className="size-5" />
+                            )}
+                          </span>
+                          <div className="grid min-w-0 flex-1 gap-1">
+                            <Text variant="label" className="break-words">
+                              {movement.label}
+                            </Text>
+                            <Text variant="small">
+                              {movement.kind === "sale" ? "Venta" : "Gasto"} ·{" "}
+                              {new Intl.DateTimeFormat("es-419", {
+                                day: "numeric",
+                                month: "short",
+                                timeZone: "UTC",
+                              }).format(new Date(`${movement.date}T12:00:00Z`))}
+                            </Text>
+                          </div>
+                          <Text
+                            as="span"
+                            variant="label"
+                            className="max-w-40 break-words text-right tabular-nums"
+                          >
+                            {money(movement.amountMinor)}
+                          </Text>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <Text variant="small">
+                      No hay movimientos recientes disponibles de este mes.
+                    </Text>
+                  )}
+                </div>
               </Card>
             </section>
           </div>

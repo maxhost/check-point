@@ -1,3 +1,4 @@
+import { readRecentMovements } from "./recent";
 import {
   ANALYTICS_POLICY,
   policyWindows,
@@ -350,6 +351,7 @@ export async function readHistory(
       daysBetween(range.annualFrom, range.annualTo) + 1
         ? summary("annual")
         : null,
+    recentMovements: await readRecentMovements(businessId, input, locationId),
     goal: calculateGoal(input),
     locations: input.locations,
   };

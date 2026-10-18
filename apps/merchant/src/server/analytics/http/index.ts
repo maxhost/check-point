@@ -174,15 +174,20 @@ export async function legacyCardPOST(request: Request, id: string) {
   );
 }
 export async function historyGET(request: Request) {
-  const auth = await authenticated(request);
-  if ("response" in auth) return auth.response;
-  const query = new URL(request.url).searchParams;
-  const period = query.get("period") ?? "month";
-  if (!(HISTORY_PERIODS as readonly string[]).includes(period))
-    return analyticsFailure(
-      new AnalyticsError(400, "invalid_period", "Elige un período válido."),
-    );
+  return privateBackofficeResponse(await historyResponse(request));
+}
+async function historyResponse(request: Request) {
   try {
+    const auth = await authenticated(request);
+    if ("response" in auth) return auth.response;
+    const scope = await backofficeScopeFailure(request, auth.business.id);
+    if (scope) return scope;
+    const query = new URL(request.url).searchParams;
+    const period = query.get("period") ?? "month";
+    if (!(HISTORY_PERIODS as readonly string[]).includes(period))
+      return analyticsFailure(
+        new AnalyticsError(400, "invalid_period", "Elige un período válido."),
+      );
     return NextResponse.json(
       await readHistory(
         auth.business.id,

@@ -4,6 +4,13 @@ import { sumIntegers, moneyRatio } from "./money";
 import { addDays, addMonths, daysBetween, monthStart } from "./date";
 import { calculateGoal, contribution, products } from "./cards/index";
 import type { AnalyticsInput, AnalyticsMetric } from "./types";
+export type RecentMovement = {
+  id: string;
+  date: string;
+  kind: "sale" | "expense";
+  label: string;
+  amountMinor: number;
+};
 export const HISTORY_PERIODS = ["month", "3m", "6m", "9m", "12m"] as const;
 export type HistoryPeriod = (typeof HISTORY_PERIODS)[number];
 export function historyRange(today: string, period: HistoryPeriod) {

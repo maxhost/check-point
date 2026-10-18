@@ -54,6 +54,29 @@ for (const width of [390, 768, 1440]) {
               costMinor: 500,
             },
           ],
+          recentMovements: [
+            {
+              id: "sale-1",
+              date: "2026-10-20",
+              kind: "sale",
+              label: "Venta registrada",
+              amountMinor: 21000,
+            },
+            {
+              id: "expense-1",
+              date: "2026-10-19",
+              kind: "expense",
+              label: "Alquiler del local principal",
+              amountMinor: 20000,
+            },
+            {
+              id: "expense-2",
+              date: "2026-10-18",
+              kind: "expense",
+              label: "Servicios",
+              amountMinor: 10000,
+            },
+          ],
           goal: {
             ...data.goal,
             closedMonth: true,
@@ -93,18 +116,17 @@ for (const width of [390, 768, 1440]) {
     ).toContainText("100");
     await expect(profit).toContainText("$0,00");
     await expect(goal).toContainText("Gastos estimados");
-    const toggle = goal.getByRole("button", {
-      name: /desglose.*\(2\)/,
-    });
-    await expect(toggle).toHaveAttribute("aria-expanded", "false");
-    await expect(goal.getByText("Servicios", { exact: true })).toBeHidden();
-    await toggle.focus();
-    await page.keyboard.press("Enter");
-    await expect(toggle).toHaveAttribute("aria-expanded", "true");
-    await expect(goal.getByText("Estimado con meses anteriores")).toBeVisible();
-    await expect(goal.getByText("Pagado este mes")).toBeVisible();
-    await page.keyboard.press("Space");
-    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await expect(
+      goal.getByText("Margen de contribución", { exact: true }),
+    ).toHaveCount(0);
+    await expect(goal.getByRole("button")).toHaveCount(0);
+    await expect(goal.getByRole("link")).toHaveCount(0);
+    await expect(goal.getByRole("listitem")).toHaveCount(3);
+    await expect(
+      goal.getByText("Venta registrada", { exact: true }),
+    ).toBeVisible();
+    await expect(goal.getByText("Alquiler del local principal")).toBeVisible();
+    await expect(goal.getByText("Servicios", { exact: true })).toBeVisible();
     await expect(page.getByText(/Estas ventas no indican/)).toBeVisible();
     const a = await profit.boundingBox();
     const b = await goal.boundingBox();
@@ -131,6 +153,9 @@ test("unknown costs and empty data remain explicit; filters and day still work",
   const fixture = await setupAnalytics(page);
   await page.goto(`${harness.url}/backoffice/analytics`);
   await expect(section(page, "Ganancia y gastos")).toContainText("Pendiente");
+  await expect(section(page, "El cálculo de este mes")).toContainText(
+    "No hay movimientos recientes disponibles de este mes.",
+  );
   await expect(
     page.getByText("Los costos de estas ventas todavía no están incluidos."),
   ).toBeVisible();
