@@ -19,9 +19,12 @@ import {
 import { parseComposition } from "./model/input";
 import {
   publishResolution,
+  compositionBasis,
+  assertCompositionCapture,
   resolveComponents,
   revisionIngredients,
 } from "./model/publication";
+import { ModuleError } from "../../errors";
 import { expandComposition } from "./model/expand";
 
 async function compositionDTO(
@@ -64,7 +67,13 @@ async function compositionDTO(
       revisionId: null,
       resolutionId: null,
       recipes: [],
+      basisQuantity: "1",
+      basisUnit: "unit",
+      conversionVersion: "mass-si-1",
     };
+  if (current.revision.productId !== product.id)
+    throw new Error("Current product composition is inconsistent");
+  assertCompositionCapture(current.revision, current.resolution);
   const ids = current.resolution.components.map((c) => c.recipeRevisionId);
   const revisions = ids.length
     ? await db
@@ -82,6 +91,7 @@ async function compositionDTO(
     productId: product.id,
     productName: product.name,
     isCombo: current.revision.isCombo,
+    ...compositionBasis(current.revision),
     revisionId: current.revision.id,
     resolutionId: current.resolution.id,
     recipes: current.resolution.components.map((c) => ({
@@ -117,6 +127,7 @@ export async function saveComposition(
         ),
       );
     expectRevision(body.expectedRevisionId, current?.revisionId ?? null);
+    const basis = await effectiveBasis(tx, businessId, product, parsed);
     const resolved = await resolveComponents(tx, businessId, parsed.recipes);
     const ingredients = await revisionIngredients(
       tx,
@@ -131,6 +142,7 @@ export async function saveComposition(
         productId: product.id,
         productNameAtComposition: product.name,
         ...parsed,
+        ...basis,
       })
       .returning();
     await publishResolution(tx, businessId, revision);
@@ -158,6 +170,7 @@ export async function previewComposition(
         ),
       );
     expectRevision(body.expectedRevisionId, current?.revisionId ?? null);
+    const basis = await effectiveBasis(tx, businessId, product, parsed);
     const resolved = await resolveComponents(tx, businessId, parsed.recipes),
       revisions = await revisionIngredients(
         tx,
@@ -170,6 +183,7 @@ export async function previewComposition(
       productId: product.id,
       productName: product.name,
       isCombo: parsed.isCombo,
+      ...basis,
       compositionRevisionId: current?.revisionId ?? null,
       resolutionId: null,
       components: resolved.map((c) => ({
@@ -268,8 +282,41 @@ export async function listCompositionRevisions(
       isCombo: r.isCombo,
       productNameAtComposition: r.productNameAtComposition,
       recipes: r.recipes,
+      ...compositionBasis(r),
       createdAt: r.createdAt.toISOString(),
     })),
     nextCursor,
   };
+}
+
+async function effectiveBasis(
+  db: Db,
+  businessId: string,
+  product: typeof products.$inferSelect,
+  parsed: ReturnType<typeof parseComposition>,
+) {
+  const current = await compositionDTO(db, businessId, product.id);
+  if (parsed.basisQuantity !== undefined && parsed.basisUnit !== undefined)
+    return compositionBasis({
+      basisQuantity: parsed.basisQuantity,
+      basisUnit: parsed.basisUnit,
+      conversionVersion: "mass-si-1",
+    });
+  if (current.revisionId)
+    return compositionBasis({
+      basisQuantity: current.basisQuantity!,
+      basisUnit: current.basisUnit!,
+      conversionVersion: current.conversionVersion!,
+    });
+  if (product.soldByWeight)
+    throw new ModuleError(
+      409,
+      "measurement_basis_required",
+      "Define la base de composición del producto.",
+    );
+  return {
+    basisQuantity: "1",
+    basisUnit: "unit",
+    conversionVersion: "mass-si-1",
+  } as const;
 }

@@ -10,12 +10,16 @@ import {
 } from "@mi-pasaporte/db/schema";
 import { isUuid } from "@mi-pasaporte/domain/server/counter/core";
 import { and, eq, inArray, sql } from "drizzle-orm";
-import { formatDecimal, fromDb, roundDiv } from "../../decimal";
+import { fromDb } from "../../decimal";
 import { ModuleError } from "../../errors";
 import { consumptionMinorUnits } from "../../stock/consumption-money";
 import type { RecipeCostListDTO } from "./contracts";
 import { compareName } from "./model/common";
-import { expandComposition } from "./model/expand";
+import {
+  compositionBasis,
+  assertCompositionCapture,
+} from "./model/publication";
+import { projectRecipeCostIngredients, recipeCostMoney } from "./measured-cost";
 
 /** Current, single-unit costs. Never initializes Stock pairs or captures a sale. */
 export async function listRecipeCosts(
@@ -49,6 +53,8 @@ export async function listRecipeCosts(
         productId: products.id,
         productName: products.name,
         price: products.unitPrice,
+        soldByWeight: products.soldByWeight,
+        pricingUnit: products.pricingUnit,
         composition: compositionRevisions,
         resolution: recipeSaleResolutions,
       })
@@ -75,13 +81,11 @@ export async function listRecipeCosts(
         ),
       )
       .where(eq(productCompositions.businessId, business.id));
-    for (const row of rows)
-      if (
-        row.composition.productId !== row.productId ||
-        row.resolution.productId !== row.productId ||
-        row.resolution.compositionRevisionId !== row.composition.id
-      )
-        throw new Error("Current composition references are inconsistent");
+    for (const row of rows) {
+      if (row.composition.productId !== row.productId)
+        throw new Error("Current product composition is inconsistent");
+      assertCompositionCapture(row.composition, row.resolution);
+    }
     const configured = rows.filter((row) => row.resolution.components.length);
     const revisionIds = [
       ...new Set(
@@ -103,11 +107,18 @@ export async function listRecipeCosts(
       : [];
     const expanded = configured.map((row) => ({
       ...row,
-      expanded: expandComposition(row.resolution.components, revisions),
+      expanded: projectRecipeCostIngredients(
+        row.resolution.components,
+        revisions,
+        compositionBasis(row.resolution),
+        row,
+      ),
     }));
     const itemIds = [
       ...new Set(
-        expanded.flatMap((r) => r.expanded.ingredients.map((i) => i.itemId)),
+        expanded.flatMap((r) =>
+          (r.expanded?.ingredients ?? []).map((i) => i.itemId),
+        ),
       ),
     ];
     const averages = itemIds.length
@@ -128,10 +139,14 @@ export async function listRecipeCosts(
     const costs = new Map(averages.map((row) => [row.itemId, row.cost]));
     const recipes = expanded.map((row) => {
       let exactCost = 0n;
+      let roundedToZero = false;
       const missingCosts: { itemId: string; itemName: string }[] = [];
-      for (const ingredient of row.expanded.ingredients) {
+      for (const ingredient of row.expanded?.ingredients ?? []) {
         const quantity = fromDb(ingredient.quantity, 3);
-        if (quantity === 0n) continue;
+        if (quantity === 0n) {
+          roundedToZero = true;
+          continue;
+        }
         const average = costs.get(ingredient.itemId);
         if (average === null || average === undefined)
           missingCosts.push({
@@ -146,18 +161,19 @@ export async function listRecipeCosts(
           { id: b.itemId, name: b.itemName },
         ),
       );
-      const roundedCost = roundDiv(exactCost, 10n ** BigInt(9 - minorUnits));
-      const price2 = row.price === null ? null : fromDb(row.price, 2);
-      const priceFactor = 10n ** BigInt(2 - minorUnits);
-      if (price2 !== null && price2 % priceFactor !== 0n)
-        throw new ModuleError(
-          422,
-          "invalid_number",
-          "El precio del catálogo no coincide con la unidad mínima de tu moneda.",
-        );
-      const price = price2 === null ? null : price2 / priceFactor;
-      const complete = missingCosts.length === 0;
-      const price9 = price2 === null ? null : price2 * 10n ** 7n;
+      const costStatus = !row.expanded
+        ? ("incompatible_basis" as const)
+        : roundedToZero
+          ? ("rounded_to_zero" as const)
+          : missingCosts.length
+            ? ("missing_costs" as const)
+            : ("complete" as const);
+      const money = recipeCostMoney(
+        exactCost,
+        row.price,
+        business.currencyCode,
+        costStatus === "complete",
+      );
       return {
         productId: row.productId,
         productName: row.productName,
@@ -172,16 +188,10 @@ export async function listRecipeCosts(
           0,
         ),
         recipeCount: row.resolution.components.length,
-        recipeCost: complete ? formatDecimal(roundedCost, minorUnits) : null,
-        price: price === null ? null : formatDecimal(price, minorUnits),
-        profit:
-          complete && price !== null
-            ? formatDecimal(price - roundedCost, minorUnits)
-            : null,
-        marginPercent:
-          complete && price9 !== null && price9 > 0n
-            ? formatDecimal(roundDiv((price9 - exactCost) * 1000n, price9), 1)
-            : null,
+        ...compositionBasis(row.resolution),
+        pricingUnit: row.pricingUnit as "unit" | "kg" | "lb" | "g",
+        costStatus,
+        ...money,
         missingCosts,
       };
     });

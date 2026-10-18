@@ -1,10 +1,18 @@
+export type CompositionBasisDTO = {
+  basisQuantity?: string;
+  basisUnit?: "unit" | "kg" | "lb" | "g";
+  conversionVersion?: "mass-si-1";
+};
 export const MAX_RECIPE_LINES = 50;
 export const MAX_COMPONENTS = 50;
 export type RecipeCostListDTO = {
   locationId: string;
   currencyCode: string;
   minorUnits: 0 | 2;
-  recipes: {
+  recipes: (CompositionBasisDTO & {
+    pricingUnit?: "unit" | "kg" | "lb" | "g";
+    costStatus?:
+      "complete" | "missing_costs" | "incompatible_basis" | "rounded_to_zero";
     productId: string;
     productName: string;
     isCombo: boolean;
@@ -17,7 +25,7 @@ export type RecipeCostListDTO = {
     profit: string | null;
     marginPercent: string | null;
     missingCosts: { itemId: string; itemName: string }[];
-  }[];
+  })[];
 };
 export type RecipeLineDTO = {
   itemId: string;
@@ -33,7 +41,7 @@ export type LibraryRecipeDTO = {
   revisionId: string;
   lines: RecipeLineDTO[];
 };
-export type ProductCompositionDTO = {
+export type ProductCompositionDTO = CompositionBasisDTO & {
   productId: string;
   productName: string;
   isCombo: boolean;
@@ -47,7 +55,7 @@ export type ProductCompositionDTO = {
     position: number;
   }[];
 };
-export type CompositionPreviewDTO = {
+export type CompositionPreviewDTO = CompositionBasisDTO & {
   productId: string;
   productName: string;
   isCombo: boolean;

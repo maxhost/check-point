@@ -350,7 +350,16 @@ describe.skipIf(!modulesIntegrationEnabled)("0234 current recipe costs", () => {
       profit: "-0.05",
       marginPercent: "-109.8",
     });
-    for (const id of [freeId, roundedZeroId, emptyId])
+    // 0242 / ADR0148: positive physical provenance rounded to zero has no ledger.
+    // Absence of that movement cannot certify a complete zero cost.
+    expect(byId.get(roundedZeroId)).toMatchObject({
+      recipeCost: null,
+      profit: null,
+      marginPercent: null,
+      missingCosts: [],
+      costStatus: "rounded_to_zero",
+    });
+    for (const id of [freeId, emptyId])
       expect(byId.get(id)).toMatchObject({
         recipeCost: "0.00",
         profit: "1.00",
