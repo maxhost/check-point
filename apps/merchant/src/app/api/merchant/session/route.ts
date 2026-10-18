@@ -1,16 +1,11 @@
 import { NextResponse } from "next/server";
-import { asc, eq } from "drizzle-orm";
-import { getMerchantAuth } from "../../../../server/auth";
-import { getDb } from "@mi-pasaporte/db";
-import { businesses, memberships } from "@mi-pasaporte/db/schema";
 import {
   NOT_AUTHENTICATED,
   toSessionView,
-  type SessionBilling,
 } from "../../../../server/session-view";
-import { readBusinessBilling } from "../../../../server/billing-gate";
+import { getBackofficeRequestContext } from "../../../../server/backoffice-context";
+import { publicBackofficeBilling } from "../../../../server/backoffice-initial-context";
 import { enabledModuleList } from "../../../../modules/activation";
-import { trialDaysLeft } from "@mi-pasaporte/domain/server/billing-access";
 
 export const dynamic = "force-dynamic";
 
@@ -37,62 +32,24 @@ export const dynamic = "force-dynamic";
  * la 0072 cazo justo eso en el corte del link magico. Es la mutacion M2.
  */
 export async function GET(request: Request) {
-  const session = await getMerchantAuth().api.getSession({
-    headers: request.headers,
-  });
+  const context = getBackofficeRequestContext(request);
+  const session = await context.readSession();
   if (!session) return NextResponse.json(NOT_AUTHENTICATED);
-
-  const [row] = await getDb()
-    .select({
-      id: businesses.id,
-      name: businesses.name,
-      slug: businesses.slug,
-      // `businessStatus` y no `status`: `status` ya es el de la MEMBRESIA en esta misma
-      // fila (ADR 0055), y son dos ejes que no se mezclan (ADR 0073 §1).
-      businessStatus: businesses.status,
-      suspensionReason: businesses.suspensionReason,
-      currencyCode: businesses.currencyCode,
-      timezone: businesses.timezone,
-      role: memberships.role,
-      membershipStatus: memberships.status,
-      // Spec 0086 §8: una columna mas en el `innerJoin` que ya existia. Lo que sale por la
-      // API NO es esta columna sino la capacidad (`permissionsForRole`): para un owner es
-      // `'{}'` acá y los SIETE allá.
-      permissions: memberships.permissions,
-    })
-    .from(memberships)
-    .innerJoin(businesses, eq(businesses.id, memberships.businessId))
-    .where(eq(memberships.userId, session.user.id))
-    .orderBy(asc(businesses.createdAt))
-    .limit(1);
-
-  return NextResponse.json(
-    toSessionView(
-      {
-        id: session.user.id,
-        name: session.user.name,
-        email: session.user.email,
-        // `=== true` y no `!!`: la forma del contrato es un booleano, y un `undefined` de
-        // una fila vieja tiene que leerse como «sin verificar» (fail-closed).
-        emailVerified: session.user.emailVerified === true,
-      },
-      row,
-      row ? await sessionBilling(row.id) : null,
-      // Spec 0220: los modulos encendidos (`business.enabledModules`). Una membresia no activa
-      // sale con `business: null`, asi que no se leen.
-      row?.membershipStatus === "active" ? await enabledModuleList(row.id) : [],
-    ),
-  );
-}
-
-/** Spec 0189 §D10: `billing` de la sesión. NO pasa por ningún guard de acceso — este endpoint
- * reporta el estado, así que un negocio bloqueado lo lee con 200 y `access: "blocked"`. */
-async function sessionBilling(businessId: string): Promise<SessionBilling> {
-  const now = new Date();
-  const { access, trialEndsAt } = await readBusinessBilling(businessId, now);
-  return {
-    access,
-    trialEndsAt: trialEndsAt === null ? null : trialEndsAt.toISOString(),
-    trialDaysLeft: trialDaysLeft(access, trialEndsAt, now),
+  const selection = await context.readSelection("page");
+  const row =
+    selection.state === "joined"
+      ? (selection.data?.member ?? null)
+      : selection.member;
+  const user = {
+    id: session.user.id,
+    name: session.user.name,
+    email: session.user.email,
+    emailVerified: session.user.emailVerified === true,
   };
+  // Reporter keeps inactive membership private and never invokes the page's revocation.
+  if (!row || row.membershipStatus !== "active")
+    return NextResponse.json(toSessionView(user, row));
+  const billing = await publicBackofficeBilling(context, row.id);
+  const enabled = await enabledModuleList(row.id);
+  return NextResponse.json(toSessionView(user, row, billing, enabled));
 }

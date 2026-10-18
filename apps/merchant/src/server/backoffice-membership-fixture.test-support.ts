@@ -35,7 +35,8 @@ function normalize(
     businessStatus: String(mode === "page" ? row.businessStatus : row.status),
     suspensionReason: row.suspensionReason as string | null,
     role: String(mode === "active-owner" ? "owner" : row.role),
-    membershipStatus: mode === "page" ? String(row.status) : "active",
+    membershipStatus:
+      mode === "page" ? String(row.membershipStatus ?? row.status) : "active",
     permissions: (row.permissions ?? []) as string[],
     pinMustChange: row.pinMustChange === true,
   };
