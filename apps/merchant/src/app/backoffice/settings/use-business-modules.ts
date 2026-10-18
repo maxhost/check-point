@@ -1,52 +1,20 @@
 "use client";
+import { useBackofficeContext } from "../backoffice-context";
 
-import { useEffect, useState } from "react";
-import {
-  MODULES_CHANGED_EVENT,
-  type BusinessModule,
-} from "./module-navigation";
-import { readModules } from "./module-request";
-
-/** Un GET anterior a un cambio confirmado no puede restablecer el estado viejo. */
+/** Presentation only: the provider owns the initial leaf, reads and invalidations. */
 export function useBusinessModules() {
-  const [modules, setModules] = useState<BusinessModule[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [attempt, setAttempt] = useState(0);
-  useEffect(() => {
-    let active = true;
-    let changed = false;
-    const onChange = (event: Event) => {
-      changed = true;
-      setModules((event as CustomEvent<BusinessModule[]>).detail);
-      setError(null);
-      setLoading(false);
-    };
-    window.addEventListener(MODULES_CHANGED_EVENT, onChange);
-    void readModules()
-      .then((data) => {
-        if (active && !changed) setModules(data);
-      })
-      .catch((cause) => {
-        if (active && !changed)
-          setError(
-            cause instanceof Error
-              ? cause.message
-              : "No pudimos leer los módulos.",
-          );
-      })
-      .finally(() => {
-        if (active && !changed) setLoading(false);
-      });
-    return () => {
-      active = false;
-      window.removeEventListener(MODULES_CHANGED_EVENT, onChange);
-    };
-  }, [attempt]);
-  function reload() {
-    setError(null);
-    setLoading(true);
-    setAttempt((value) => value + 1);
-  }
-  return { modules, loading, error, reload };
+  const { state, revalidateModules } = useBackofficeContext();
+  const result = state.core ? state.modules : { state: "restricted" as const };
+  return {
+    modules: result.state === "ready" ? result.modules : [],
+    state: result.state,
+    loading: result.state === "loading",
+    error:
+      result.state === "unavailable"
+        ? "No pudimos leer los módulos. Intenta otra vez."
+        : result.state === "restricted"
+          ? "Configuración no disponible"
+          : null,
+    reload: revalidateModules,
+  };
 }

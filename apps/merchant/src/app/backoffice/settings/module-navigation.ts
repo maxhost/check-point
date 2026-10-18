@@ -5,11 +5,9 @@ export type BusinessModule = ModuleDTO;
 
 export const MODULES_CHANGED_EVENT = "business-modules-changed";
 
-/** Solo se publica tras leer o guardar un estado confirmado por la API. */
-export function publishModules(modules: BusinessModule[]) {
-  window.dispatchEvent(
-    new CustomEvent(MODULES_CHANGED_EVENT, { detail: modules }),
-  );
+/** Raw signals request invalidation only; event payloads never establish module state. */
+export function publishModules() {
+  window.dispatchEvent(new Event(MODULES_CHANGED_EVENT));
 }
 
 /** Solo se usa con entradas aportadas por módulos. */
