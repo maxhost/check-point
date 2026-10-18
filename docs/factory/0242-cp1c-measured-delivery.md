@@ -24,6 +24,8 @@ Evento inválido/envelope inconsistente no se interpreta como una venta vacía c
 - `apps/merchant/src/modules/recipes/server/consumption-measured-delivery.neon.integration.test.ts`, nuevo.
 - `docs/factory/0242-cp1c-measured-delivery-handoff.md`.
 
+Ampliación autorizada al autor durante implementación: `apps/merchant/src/modules/analytics-origins.neon.integration.test.ts` y `apps/merchant/src/modules/recipes/server/model/consumption.neon.integration.test.ts`, exclusivamente tres invocaciones directas `.handler` a `.dispatch` con versión externa explícita coherente. La suscripción ahora genérica expone dispatch; el cambio adapta los callers sin modificar aserciones ni relajar decoder. Incluir regresión focal de esos casos y su evidencia en handoff.
+
 Sin schema/journal, productor/publish/close POS, helpers/expansores/provenance/evento derivado ya aceptados, Stock, analytics ingestion/reader/dominio, UI/auth/kit/tooling/deps/estados/índices. Si otro archivo necesita adaptación, presentar path/razón y reproducción al coordinador antes de editar. No modificar guardias ni tests para ocultar un error.
 
 ## Gate real de consumidores
