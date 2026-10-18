@@ -147,10 +147,12 @@ export function BusinessSettings({
         businessRequest<BusinessFiscal>("fiscal"),
         businessRequest<BusinessSalesUnits>("sales-units"),
       ]);
-      if (!coherentRevisions(savedRegional, savedFiscal, savedUnits))
+      if (!coherentRevisions(savedRegional, savedFiscal, savedUnits)) {
+        setReview(true);
         throw new Error(
           "La configuración cambió mientras la consultabas. Intenta actualizar nuevamente.",
         );
+      }
       const r = reconcileDraft(
         baseline.current.regional,
         regional,

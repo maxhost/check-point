@@ -398,6 +398,24 @@ test("conflicto conserva editados, adopta intactos y rechaza refresco con revisi
     salesMassUnits: ["kg", "lb"],
     revision: 5,
   });
+  await expect(
+    page.getByText("Unidades de venta guardadas.", { exact: true }),
+  ).toBeVisible();
+  // Discard is explicit and may itself encounter a cross-revision read.
+  api.units.revision = 7;
+  await page
+    .getByRole("button", {
+      name: "Descartar mis cambios y usar los datos guardados",
+    })
+    .click();
+  await expect(
+    page.getByText(/La configuración cambió mientras/),
+  ).toBeVisible();
+  await expect(saveUnits(page)).toBeDisabled();
+  api.regional.revision = 7;
+  api.fiscal.revision = 7;
+  await consult(page).click();
+  await expect(saveUnits(page)).toBeEnabled();
 });
 
 for (const status of [0, 500])
