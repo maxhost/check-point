@@ -221,187 +221,200 @@ export default function AnalyticsConsole({
               </Text>
             )}
           </Card>
-          <Card className="grid min-w-0 gap-4 lg:col-span-7">
-            <Heading level={2}>Ganancia y gastos</Heading>
-            <dl className="grid gap-3 sm:grid-cols-2">
-              <Metric
-                label="Ganancia bruta"
-                value={
-                  history.soldUnits === 0 || history.coverage === 0
-                    ? "Pendiente"
-                    : history.coverage < 1
-                      ? "Cálculo incompleto"
-                      : money(history.grossProfitMinor)
-                }
-              />
-              <Metric
-                label="Resultado después de gastos"
-                tone={
-                  history.resultMinor === null || history.resultMinor === 0
-                    ? undefined
-                    : history.resultMinor < 0
-                      ? "danger"
-                      : "success"
-                }
-                value={
-                  history.resultMinor === null
-                    ? "Pendiente"
-                    : money(history.resultMinor)
-                }
-              />
-              <Metric
-                label="Gastos fijos"
-                value={money(history.fixedExpensesMinor)}
-              />
-              <Metric
-                label="Gastos variables"
-                value={money(history.variableExpensesMinor)}
-              />
-            </dl>
-            {history.soldUnits === 0 ? (
-              <Text>No hay unidades vendidas en este período.</Text>
-            ) : history.coverage === 0 ? (
-              <>
-                <Text>Ventas: {money(history.revenueMinor)}.</Text>
-                <Text variant="muted">
-                  Los costos de estas ventas todavía no están incluidos.
-                </Text>
-              </>
-            ) : history.coverage < 1 ? (
-              <>
-                <Text>Ventas: {money(history.revenueMinor)}.</Text>
-                <Text variant="muted">
-                  Falta conocer el costo de {history.unitsWithoutCost} de las{" "}
-                  {history.soldUnits} unidades vendidas.
-                </Text>
-              </>
-            ) : (
-              <>
-                <Text variant="muted">
-                  Vendiste {money(history.revenueMinor)} y el costo de esos
-                  productos fue {money(history.costOfGoodsMinor)}.
-                  {history.paymentCommissionMinor !== 0 &&
-                    ` También se descontaron ${money(history.paymentCommissionMinor)} de comisiones.`}
-                </Text>
-              </>
-            )}
-            {history.resultMinor === null ? (
-              <Text variant="muted">
-                Con el costo de al menos el 80% de lo vendido podrás ver el
-                resultado después de gastos.
-              </Text>
-            ) : null}
-          </Card>
-          <section id="calculo" className="min-w-0 lg:col-span-5">
-            <Card className="grid min-w-0 gap-4">
-              <Heading level={2}>El cálculo de este mes</Heading>
-              {history.goal.breakEvenMinor === null ? (
-                <Text variant="muted">
-                  {!history.goal.closedMonth
-                    ? "La meta se calcula al cerrar tu primer mes con gastos."
-                    : history.goal.coverage < 0.8
-                      ? "Falta conocer el costo de al menos el 80% de lo vendido para calcular tu meta."
-                      : "Tus ventas con costo conocido todavía no dejan un margen positivo para calcular una meta."}
-                </Text>
+          <div className="grid min-w-0 items-stretch gap-6 lg:col-span-12 lg:grid-cols-2">
+            <Card className="grid min-w-0 content-start gap-4">
+              <Heading level={2}>Ganancia y gastos</Heading>
+              <dl className="grid gap-3 sm:grid-cols-2">
+                <Metric
+                  label="Ganancia bruta"
+                  value={
+                    history.soldUnits === 0 || history.coverage === 0
+                      ? "Pendiente"
+                      : history.coverage < 1
+                        ? "Cálculo incompleto"
+                        : money(history.grossProfitMinor)
+                  }
+                />
+                <Metric
+                  label="Resultado después de gastos"
+                  tone={
+                    history.resultMinor === null || history.resultMinor === 0
+                      ? undefined
+                      : history.resultMinor < 0
+                        ? "danger"
+                        : "success"
+                  }
+                  value={
+                    history.resultMinor === null
+                      ? "Pendiente"
+                      : money(history.resultMinor)
+                  }
+                />
+              </dl>
+              <dl className="grid grid-cols-2 gap-3 border-y border-border py-3 sm:grid-cols-3">
+                {[
+                  ["Gastos fijos", money(history.fixedExpensesMinor)],
+                  ["Gastos variables", money(history.variableExpensesMinor)],
+                ].map(([label, value]) => (
+                  <div key={label} className="grid min-w-0 content-start gap-1">
+                    <dt>
+                      <Text as="span" variant="small">
+                        {label}
+                      </Text>
+                    </dt>
+                    <dd className="m-0 break-words tabular-nums">
+                      <Text as="span" variant="label">
+                        {value}
+                      </Text>
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+              {history.soldUnits === 0 ? (
+                <Text>No hay unidades vendidas en este período.</Text>
+              ) : history.coverage === 0 ? (
+                <>
+                  <Text>Ventas: {money(history.revenueMinor)}.</Text>
+                  <Text variant="muted">
+                    Los costos de estas ventas todavía no están incluidos.
+                  </Text>
+                </>
+              ) : history.coverage < 1 ? (
+                <>
+                  <Text>Ventas: {money(history.revenueMinor)}.</Text>
+                  <Text variant="muted">
+                    Falta conocer el costo de {history.unitsWithoutCost} de las{" "}
+                    {history.soldUnits} unidades vendidas.
+                  </Text>
+                </>
               ) : (
                 <>
-                  <dl className="grid gap-3 sm:grid-cols-2">
-                    <Metric
-                      label="Para cubrir el mes"
-                      value={money(history.goal.breakEvenMinor)}
-                    />
-                    <Metric
-                      label="Ventas del mes"
-                      value={money(history.goal.monthRevenueMinor)}
-                    />
-                  </dl>
-                  <dl className="grid grid-cols-2 gap-3 border-y border-border py-3 sm:grid-cols-3">
-                    {[
-                      [
-                        "Margen de contribución",
-                        `${Math.round((history.goal.margin ?? 0) * 100)}%`,
-                      ],
-                      [
-                        history.goal.estimated
-                          ? "Gastos estimados"
-                          : "Gastos del mes",
-                        money(history.goal.expensesMinor),
-                      ],
-                      ...(history.goal.targetMinor === null
-                        ? []
-                        : [["Meta de hoy", money(history.goal.targetMinor)]]),
-                    ].map(([label, value]) => (
-                      <div
-                        key={label}
-                        className="grid min-w-0 content-start gap-1"
-                      >
-                        <dt>
-                          <Text as="span" variant="small">
-                            {label}
-                          </Text>
-                        </dt>
-                        <dd className="m-0 break-words tabular-nums">
-                          <Text as="span" variant="label">
-                            {value}
-                          </Text>
-                        </dd>
-                      </div>
-                    ))}
-                  </dl>
-                  {history.goal.targetMinor !== null && (
-                    <Text variant="small">
-                      {history.goal.remainingDays} días de venta restantes para
-                      cubrir el mes.
-                    </Text>
-                  )}
-                  {history.goal.concepts.length > 0 && (
-                    <div className="grid gap-2">
-                      <Button
-                        variant="quiet"
-                        className="justify-start"
-                        aria-expanded={showGoalDetails}
-                        aria-controls={goalDetailsId}
-                        onPress={() => setShowGoalDetails((open) => !open)}
-                      >
-                        {showGoalDetails
-                          ? "Ocultar desglose"
-                          : "Ver desglose de gastos"}{" "}
-                        ({history.goal.concepts.length})
-                      </Button>
-                      <div id={goalDetailsId} hidden={!showGoalDetails}>
-                        <ul className="grid divide-y divide-border">
-                          {history.goal.concepts.map((c) => (
-                            <li
-                              key={c.id}
-                              className="grid grid-cols-2 gap-1 py-2"
-                            >
-                              <Text as="span" className="min-w-0 break-words">
-                                {c.label}
-                              </Text>
-                              <Text
-                                as="span"
-                                variant="label"
-                                className="break-words text-right tabular-nums"
-                              >
-                                {money(c.amountMinor)}
-                              </Text>
-                              <div className="col-span-2">
-                                <Text variant="small">
-                                  {c.estimated
-                                    ? "Estimado con meses anteriores"
-                                    : "Pagado este mes"}
-                                </Text>
-                              </div>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-                  )}
+                  <Text variant="muted">
+                    Vendiste {money(history.revenueMinor)} y el costo de esos
+                    productos fue {money(history.costOfGoodsMinor)}.
+                    {history.paymentCommissionMinor !== 0 &&
+                      ` También se descontaron ${money(history.paymentCommissionMinor)} de comisiones.`}
+                  </Text>
                 </>
               )}
+              {history.resultMinor === null ? (
+                <Text variant="muted">
+                  Con el costo de al menos el 80% de lo vendido podrás ver el
+                  resultado después de gastos.
+                </Text>
+              ) : null}
             </Card>
-          </section>
+            <section id="calculo" className="min-w-0">
+              <Card className="grid h-full min-w-0 content-start gap-4">
+                <Heading level={2}>El cálculo de este mes</Heading>
+                {history.goal.breakEvenMinor === null ? (
+                  <Text variant="muted">
+                    {!history.goal.closedMonth
+                      ? "La meta se calcula al cerrar tu primer mes con gastos."
+                      : history.goal.coverage < 0.8
+                        ? "Falta conocer el costo de al menos el 80% de lo vendido para calcular tu meta."
+                        : "Tus ventas con costo conocido todavía no dejan un margen positivo para calcular una meta."}
+                  </Text>
+                ) : (
+                  <>
+                    <dl className="grid gap-3 sm:grid-cols-2">
+                      <Metric
+                        label="Para cubrir el mes"
+                        value={money(history.goal.breakEvenMinor)}
+                      />
+                      <Metric
+                        label="Ventas del mes"
+                        value={money(history.goal.monthRevenueMinor)}
+                      />
+                    </dl>
+                    <dl className="grid grid-cols-2 gap-3 border-y border-border py-3 sm:grid-cols-3">
+                      {[
+                        [
+                          "Margen de contribución",
+                          `${Math.round((history.goal.margin ?? 0) * 100)}%`,
+                        ],
+                        [
+                          history.goal.estimated
+                            ? "Gastos estimados"
+                            : "Gastos del mes",
+                          money(history.goal.expensesMinor),
+                        ],
+                        ...(history.goal.targetMinor === null
+                          ? []
+                          : [["Meta de hoy", money(history.goal.targetMinor)]]),
+                      ].map(([label, value]) => (
+                        <div
+                          key={label}
+                          className="grid min-w-0 content-start gap-1"
+                        >
+                          <dt>
+                            <Text as="span" variant="small">
+                              {label}
+                            </Text>
+                          </dt>
+                          <dd className="m-0 break-words tabular-nums">
+                            <Text as="span" variant="label">
+                              {value}
+                            </Text>
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+                    {history.goal.targetMinor !== null && (
+                      <Text variant="small">
+                        {history.goal.remainingDays} días de venta restantes
+                        para cubrir el mes.
+                      </Text>
+                    )}
+                    {history.goal.concepts.length > 0 && (
+                      <div className="grid gap-2">
+                        <Button
+                          variant="quiet"
+                          className="justify-start"
+                          aria-expanded={showGoalDetails}
+                          aria-controls={goalDetailsId}
+                          onPress={() => setShowGoalDetails((open) => !open)}
+                        >
+                          {showGoalDetails
+                            ? "Ocultar desglose"
+                            : "Ver desglose de gastos"}{" "}
+                          ({history.goal.concepts.length})
+                        </Button>
+                        <div id={goalDetailsId} hidden={!showGoalDetails}>
+                          <ul className="grid divide-y divide-border">
+                            {history.goal.concepts.map((c) => (
+                              <li
+                                key={c.id}
+                                className="grid grid-cols-2 gap-1 py-2"
+                              >
+                                <Text as="span" className="min-w-0 break-words">
+                                  {c.label}
+                                </Text>
+                                <Text
+                                  as="span"
+                                  variant="label"
+                                  className="break-words text-right tabular-nums"
+                                >
+                                  {money(c.amountMinor)}
+                                </Text>
+                                <div className="col-span-2">
+                                  <Text variant="small">
+                                    {c.estimated
+                                      ? "Estimado con meses anteriores"
+                                      : "Pagado este mes"}
+                                  </Text>
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </Card>
+            </section>
+          </div>
           <Card className="grid min-w-0 gap-4 lg:col-span-7">
             <Heading level={2}>Los productos que más vendieron</Heading>
             {history.topProducts.length ? (
