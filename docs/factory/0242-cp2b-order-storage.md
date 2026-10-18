@@ -1,6 +1,6 @@
 # 0242 — CP2b.1 expansión de intención y tipo de venta de órdenes
 
-Estado: preparada, sin autor/reserva. Próxima entrega de servidor tras liberar un WT/implementador UI; autor nuevo/contexto vacío. Coordinador confirma journal/base y reserva writer serial de esquema antes del código. No subdelegar. Contrato0242 §3/5; ninguna activación mass/precisión/V4 en esta entrega.
+Estado: preparada, sin autor/reserva. Próxima entrega de servidor tras liberar un WT/implementador UI; autor nuevo/contexto vacío. Coordinador verificó journal hasta0105 y asigna siguiente0106_pos_order_intent, exclusivo al reservar factory antes de código. Reconfirmar ausencia de otro writer al iniciar. No subdelegar. Contrato0242 §3/5; ninguna activación mass/precisión/V4 en esta entrega.
 
 ## Expansión acotada
 
@@ -15,8 +15,8 @@ DDL solo aditivo sobre pos.pos_order y backfill de tipo, sin tocar órdenes core
 ## Paths previstos
 
 - packages/db/src/schema/modules/pos.ts, solo columnas/checks/índice descritos
-- packages/db/drizzle/<siguiente>_pos_order_intent.sql
-- packages/db/drizzle/meta/_journal.json y <siguiente>_snapshot.json
+- packages/db/drizzle/0106_pos_order_intent.sql
+- packages/db/drizzle/meta/_journal.json y 0106_snapshot.json
 - apps/merchant/src/modules/pos/server/order-intent-storage.neon.integration.test.ts, nuevo
 - docs/factory/0242-cp2b-order-storage-handoff.md
 
