@@ -2,7 +2,7 @@
 
 ## Reanudación del18oct: preparación CP0 en curso
 
-Owner reiteró dos implementadores y QA independiente. Base real dev621951fc; se crearon tres WT propios y reservas documentales, sin producto/DB/servidores. Leer primero [fichas CP0](0242-cp0-launch.md) y bloque vigente de estado; este handoff conserva debajo el mapeo anterior. Sigue pendiente la respuesta monetaria gratis/2x1masa, consultada de nuevo: no interpretar la petición de retomar como elección. M0 y contratos ejecutables siguen pendientes. Anexo precisado con items, gramos derivados y procedencia racional; no es implementación ni QA global.
+Owner reiteró dos implementadores y QA independiente. Se crearon tres WT propios desde dev621951fc. Leer primero [fichas CP0](0242-cp0-launch.md) y bloque vigente de estado: ya hay reservas ampliadas de código/harness/M0. Owner resolvió gratis/2x1: no aplican a productos por peso. Spec/anexo cerrados0e413c94 y QA focal conforme; no volver a preguntar. A/B documentales aceptados e integrados89dc1707, QA42bf3422 incorporado. A implementa contratos puros; B instrumentación/baseline real con CI exclusiva y puerto43242; QA independiente espera entregas congeladas. M0 y salidaCP0 siguen pendientes. El resto de este handoff conserva contexto del mapeo anterior, incluida la pregunta histórica ya resuelta.
 
 ## Objetivo actual
 

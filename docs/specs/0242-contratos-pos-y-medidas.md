@@ -48,6 +48,12 @@ Se conserva el router de business/catalog; no crear /api/pos/catalog-writer alte
 
 Persistencia aditiva propuesta: campos de modo/unidad en core.product y configuración business; tarifas unitPrice/unitCost numeric(24,9), manteniendo restricciones existentes. Cantidades de pos_order_item y core.order_item numeric(24,9) con metadatos por línea. Índices/constraints y FKs por negocio conforme a patrón actual. Cada writer de esquema/journal tiene reserva única; SQL generado nunca se mergea concurrentemente.
 
+### Contrato genérico de cambio de medida
+
+El tipo puro vive en `packages/domain/src/resource-measurement.ts`, sin imports de módulos ni DB. Define `ResourceSaleMeasure = {kind:'unit'|'mass',pricingUnit:MeasureUnit}` y `ResourceMeasurementChange<Tx> = {tx:Tx,businessId:string,resourceType:string,resourceId:string,oldMeasure:ResourceSaleMeasure,newMeasure:ResourceSaleMeasure}`. `ResourceMeasurementValidator<Tx>` es una función asíncrona de ese contexto a `null | {code:'measurement_basis_required',message:string}`. No recibe cookie/scope ni sustituye guard, locks o revisión.
+
+En CP1, `ModuleServer` declara validadores por resourceType; el ensamblado merchant los consulta por registro, solo para módulos activos y dentro de la transacción del writer. Se inyecta un callback al dominio de catálogo/importación; `packages/domain` no importa el registro merchant. La ausencia de proveedor activo no inventa una receta. Un proveedor activo con composición incompatible devuelve error antes de cambiar modo; si falla inesperadamente, rollback sin cambio de producto. Cambiar solo unidad tarifaria entre masas conserva la base anterior; no requiere reescribir composición. Locks: business-config primero y recurso/producto después, compartidos con publicación de la base para no validar una revisión que cambia concurrentemente. CP1 asignará los archivos de ensamblado y pruebas antes de implementar esos consumers.
+
 ## 3. HTTP POS v2 y autorización
 
 Prefijo actual `/api/modules/pos/`. Cliente nuevo envía `X-Pos-Contract: 2` y `X-Backoffice-Scope` en todos los recursos POS y conserva su intención antes del await. Servidor conserva guard vigente, después valida scope/capacidad de contrato y recién ejecuta dominio. Cabeceras no son credenciales. Todas las respuestas adoptadas, también errores, `Cache-Control: private, no-store`.
@@ -57,6 +63,8 @@ Prefijo actual `/api/modules/pos/`. Cliente nuevo envía `X-Pos-Contract: 2` y `
 -401/403: revocación de estado/acciones como hoy; 404 unknown_pos_order mantiene no enumeración entre tenants.
 
 La política de scope será metadato genérico en ModuleRoute consumido por dispatcher, aplicándose a POS completo. No hardcode del nombre del módulo en core ni extensión silenciosa de otros módulos. Actualizar ticket/settings/mesas/pagos y todos sus consumidores antes de exigir cabeceras. Reporter/auth siguen exentos como0238.
+
+En CP1 el metadato se llama `backofficeScope?: 'optional'|'required'`: ausente conserva contrato de la ruta no adoptada; optional valida cualquier cabecera presente y admite cliente legacy; required rechaza cabecera ausente igual que mismatch. Ambos valores ejecutan guard completo antes de comparar scope y envuelven todas las respuestas de la ruta adoptada en private/no-store, también errores de acceso/contrato/dominio. Las rutas POS adoptan optional durante expand y required en cutover CP3. La capacidad `X-Pos-Contract:2` se valida en la capa POS tras guard/scope; el dispatcher no conoce nombre ni versión de POS.
 
 ### Lecturas
 
