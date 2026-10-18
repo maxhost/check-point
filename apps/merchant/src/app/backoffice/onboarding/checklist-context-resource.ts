@@ -165,6 +165,9 @@ export function createChecklistContextResource(
   return {
     acquire,
     refresh,
+    refreshIfObserved: () => {
+      if (subscribers) refresh();
+    },
     verify,
     reconcile,
     dispose() {

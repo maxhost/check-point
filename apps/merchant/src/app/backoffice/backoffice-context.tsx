@@ -24,6 +24,7 @@ import {
   type BackofficeResource,
   type BackofficeResourceTicket,
 } from "./backoffice-context-state";
+import { useRouter } from "next/navigation";
 import { panelRequest } from "./panel-request";
 import { emptyInboxContext } from "./analytics/inbox-context-resource";
 import { readModules } from "./settings/module-request";
@@ -62,6 +63,7 @@ export function BackofficeProvider({
   children: ReactNode;
   controller?: BackofficeContextController;
 }) {
+  const router = useRouter();
   const [controller] = useState(
     () =>
       suppliedController ??
@@ -94,6 +96,7 @@ export function BackofficeProvider({
           if (!response.ok) throw new Error("verify-email-failed");
           return response.json();
         },
+        requestRefresh: () => router.refresh(),
         navigate: (href) => window.location.assign(href),
       }),
   );
@@ -119,7 +122,13 @@ export function BackofficeProvider({
   }, [controller, initialContext]);
   useEffect(() => {
     const release = controller.attach();
-    const changed = () => controller.revalidateSessionModules();
+    const changed = () => controller.revalidateVisible();
+    const focused = () => {
+      if (document.visibilityState === "visible")
+        controller.revalidateVisible();
+    };
+    window.addEventListener("focus", focused);
+    window.addEventListener("online", focused);
     window.addEventListener(
       ONBOARDING_TOUR_ENDED_EVENT,
       controller.refreshChecklist,
@@ -133,6 +142,8 @@ export function BackofficeProvider({
       );
       window.removeEventListener(MODULES_CHANGED_EVENT, changed);
       window.removeEventListener("checkpass:modules-changed", changed);
+      window.removeEventListener("focus", focused);
+      window.removeEventListener("online", focused);
       release();
     };
   }, [controller]);
@@ -185,4 +196,9 @@ export function useBackofficeContext() {
   // A present context with state.core === null must not use legacy props or
   // issue an unscoped operation. captureTicket also returns null in that state.
   return context;
+}
+
+/** Live presentation in the otherwise server-rendered blocked billing shell. */
+export function BackofficeBusinessName() {
+  return useBackofficeContext().state.core?.business.name ?? null;
 }

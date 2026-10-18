@@ -80,6 +80,7 @@ function adapters() {
     verifyEmail: vi.fn(),
     readInbox: vi.fn(),
     decideInbox: vi.fn(),
+    requestRefresh: vi.fn(),
     navigate: vi.fn(),
   };
 }
@@ -504,5 +505,223 @@ describe("0238 confirmed module transport seam", () => {
       resource: "modules",
       generation: 2,
     });
+  });
+});
+
+const emptyInbox = {
+  contractVersion: 2 as const,
+  policyVersion: "fixture",
+  timezone: "UTC",
+  state: "ready" as const,
+  preparedAt: null,
+  nextReminderAt: null,
+  refreshAfterMs: null,
+  cards: [],
+};
+describe("0238 global signals and server reconciliation", () => {
+  it("coalesces visible signals once per subscribed resource, without hidden Inbox/checklist reads or mount requests", async () => {
+    const io = adapters();
+    io.readInbox.mockResolvedValue(emptyInbox);
+    io.readChecklist.mockResolvedValue({ locale: "es", items: [] });
+    const c = createBackofficeContextController(core, io);
+    c.applyModulesSeed(seed({ state: "ready", modules: [module] }));
+    c.attach();
+    await flush();
+    expect(io.readSession).not.toHaveBeenCalled();
+    expect(io.requestRefresh).not.toHaveBeenCalled();
+    const releaseInbox = c.acquireInbox(),
+      releaseChecklist = c.acquireChecklist();
+    await flush();
+    io.readInbox.mockClear();
+    io.readChecklist.mockClear();
+    c.revalidateVisible();
+    c.revalidateVisible();
+    c.revalidateVisible();
+    await flush();
+    expect(io.readSession).toHaveBeenCalledOnce();
+    expect(io.readModules).toHaveBeenCalledOnce();
+    expect(io.readInbox).toHaveBeenCalledOnce();
+    expect(io.readChecklist).toHaveBeenCalledOnce();
+    expect(io.requestRefresh).not.toHaveBeenCalled();
+    releaseInbox();
+    releaseChecklist();
+    await flush();
+    c.revalidateVisible();
+    await flush();
+    expect(io.readSession).toHaveBeenCalledTimes(2);
+    expect(io.readModules).toHaveBeenCalledTimes(2);
+    expect(io.readInbox).toHaveBeenCalledOnce();
+    expect(io.readChecklist).toHaveBeenCalledOnce();
+  });
+  it("reconciles a confirmed structural core change once, acknowledges boot without applying its stale DTO or looping", async () => {
+    const io = adapters();
+    const current = reporter();
+    current.billing = { ...core.billing, access: "subscribed" };
+    io.readSession.mockResolvedValue(current);
+    const c = createBackofficeContextController(core, io);
+    c.applyModulesSeed(seed({ state: "ready", modules: [module] }));
+    c.revalidateVisible();
+    await flush();
+    expect(io.requestRefresh).toHaveBeenCalledOnce();
+    expect(io.navigate).not.toHaveBeenCalled();
+    c.observeCoreSeed({ ...core, bootId: "ack-1" });
+    await flush();
+    expect(c.getSnapshot().core?.billing.access).toBe("subscribed");
+    expect(io.requestRefresh).toHaveBeenCalledOnce();
+    c.observeCoreSeed({ ...core, bootId: "ack-1" });
+    await flush();
+    expect(io.requestRefresh).toHaveBeenCalledOnce();
+  });
+  it("keeps one pending latest revision during refresh including A→B→A, then acknowledges without another loop", async () => {
+    const io = adapters();
+    const current = reporter();
+    current.billing = { ...core.billing, access: "subscribed" };
+    io.readSession.mockImplementation(async () => current);
+    const c = createBackofficeContextController(core, io);
+    c.applyModulesSeed(seed({ state: "ready", modules: [module] }));
+    c.revalidateVisible();
+    await flush();
+    expect(io.requestRefresh).toHaveBeenCalledOnce();
+    current.membership = { ...core.membership, role: "staff" };
+    c.revalidateVisible();
+    await flush();
+    current.membership = { ...core.membership, role: "owner" };
+    c.revalidateVisible();
+    await flush();
+    expect(io.requestRefresh).toHaveBeenCalledOnce();
+    c.observeCoreSeed({ ...core, bootId: "ack-first" });
+    await flush();
+    expect(io.requestRefresh).toHaveBeenCalledTimes(2);
+    c.observeCoreSeed({ ...core, bootId: "ack-last" });
+    await flush();
+    expect(io.requestRefresh).toHaveBeenCalledTimes(2);
+    expect(io.navigate).not.toHaveBeenCalled();
+  });
+  it("name, days, permission ordering and ordinary data reads do not request RSC refresh", async () => {
+    const io = adapters();
+    const current = reporter();
+    current.business = { ...current.business!, name: "Renamed" };
+    current.billing = { ...core.billing, trialDaysLeft: 9 };
+    current.membership = {
+      ...core.membership,
+      permissions: ["stock", "analytics"],
+    };
+    io.readSession.mockResolvedValue(current);
+    const c = createBackofficeContextController(core, io);
+    c.applyModulesSeed(seed({ state: "ready", modules: [module] }));
+    c.revalidateVisible();
+    await flush();
+    expect(c.getSnapshot().core?.business.name).toBe("Renamed");
+    expect(c.getSnapshot().core?.billing.trialDaysLeft).toBe(9);
+    expect(io.requestRefresh).not.toHaveBeenCalled();
+    c.observeCoreSeed({ ...core, bootId: "ordinary-navigation" });
+    await flush();
+    expect(io.requestRefresh).not.toHaveBeenCalled();
+  });
+  it("module flag confirmation demands one refresh and stale GET cannot create another demand", async () => {
+    const io = adapters();
+    const c = createBackofficeContextController(core, io);
+    c.applyModulesSeed(seed({ state: "ready", modules: [module] }));
+    expect(
+      c.applyConfirmedModule(c.captureTicket("modules")!, {
+        ...module,
+        enabled: false,
+      }),
+    ).toBe(true);
+    await flush();
+    expect(io.requestRefresh).toHaveBeenCalledOnce();
+    io.readModules.mockResolvedValue([{ ...module, enabled: false }]);
+    c.observeCoreSeed({ ...core, bootId: "module-ack" });
+    await flush();
+    expect(io.requestRefresh).toHaveBeenCalledOnce();
+  });
+  it("PIN403 reconciles via page guard once, repeat gate/ack cannot loop and email403 never requests page exit", async () => {
+    const io = adapters();
+    io.readModules.mockRejectedValue(
+      new ModuleRequestError(
+        "pin",
+        "pin_change_required",
+        [],
+        [],
+        undefined,
+        403,
+      ),
+    );
+    const staff = {
+      ...core,
+      membership: { ...core.membership, role: "staff" },
+    };
+    io.readSession.mockResolvedValue({
+      ...reporter(),
+      membership: staff.membership,
+    });
+    const c = createBackofficeContextController(staff, io);
+    c.applyModulesSeed(seed({ state: "ready", modules: [module] }));
+    c.revalidateVisible();
+    await flush();
+    expect(io.requestRefresh).toHaveBeenCalledOnce();
+    expect(io.navigate).not.toHaveBeenCalled();
+    c.observeCoreSeed({ ...core, bootId: "pin-ack" });
+    await flush();
+    expect(io.requestRefresh).toHaveBeenCalledOnce();
+    c.revalidateVisible();
+    await flush();
+    expect(io.requestRefresh).toHaveBeenCalledOnce();
+    const email = adapters();
+    email.readModules.mockRejectedValue(
+      new ModuleRequestError(
+        "email",
+        "email_not_verified",
+        [],
+        [],
+        undefined,
+        403,
+      ),
+    );
+    const unverified = { ...core, emailVerified: false };
+    email.readSession.mockResolvedValue({
+      ...reporter(),
+      user: { ...reporter().user, emailVerified: false },
+    });
+    const e = createBackofficeContextController(unverified, email);
+    e.applyModulesSeed(seed({ state: "restricted" }));
+    e.revalidateVisible();
+    await flush();
+    expect(email.requestRefresh).not.toHaveBeenCalled();
+    expect(email.navigate).not.toHaveBeenCalled();
+  });
+  it("retirement cancels queued refresh and all later signals instead of navigating twice", async () => {
+    const io = adapters();
+    const c = createBackofficeContextController(core, io);
+    c.applyModulesSeed(seed({ state: "ready", modules: [module] }));
+    c.applyConfirmedModule(c.captureTicket("modules")!, {
+      ...module,
+      enabled: false,
+    });
+    c.retire();
+    c.revalidateVisible();
+    await flush();
+    expect(io.requestRefresh).not.toHaveBeenCalled();
+    expect(io.navigate).toHaveBeenCalledExactlyOnceWith("/backoffice");
+    expect(io.readSession).not.toHaveBeenCalled();
+  });
+  it("operational router exception is observed without logout/autoretry; a later intentional signal retries", async () => {
+    const io = adapters();
+    io.requestRefresh.mockImplementationOnce(() => {
+      throw new Error("router unavailable");
+    });
+    const current = reporter();
+    current.billing = { ...core.billing, access: "subscribed" };
+    io.readSession.mockResolvedValue(current);
+    const c = createBackofficeContextController(core, io);
+    c.applyModulesSeed(seed({ state: "ready", modules: [module] }));
+    c.revalidateVisible();
+    await flush();
+    expect(io.requestRefresh).toHaveBeenCalledOnce();
+    expect(c.getSnapshot().core).not.toBeNull();
+    expect(io.navigate).not.toHaveBeenCalled();
+    c.revalidateVisible();
+    await flush();
+    expect(io.requestRefresh).toHaveBeenCalledTimes(2);
   });
 });

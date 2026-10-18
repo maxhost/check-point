@@ -74,6 +74,7 @@ function setup() {
     readModules: vi.fn(async () => []),
     readInbox: vi.fn<InboxAdapters["readInbox"]>(async () => payload()),
     decideInbox: vi.fn<InboxAdapters["decideInbox"]>(async () => mutation),
+    requestRefresh: vi.fn(),
     navigate: vi.fn(),
   };
   const controller = createBackofficeContextController(core, io);
