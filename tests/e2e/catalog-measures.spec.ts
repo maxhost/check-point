@@ -264,3 +264,51 @@ test("uncertain POST remains blocked after discarding until an authoritative cat
   ).toBeEnabled();
   expect(api.writes).toHaveLength(1);
 });
+test("crossed price and measure changes require review of the whole commercial basis", async ({
+  page,
+  catalogHarness,
+}) => {
+  const api = await catalogApiFixture(page);
+  await page.goto(catalogHarness);
+  await edit(page);
+  await page
+    .getByRole("textbox", { name: "Precio de venta (opcional)" })
+    .fill("5");
+  const remote = {
+    ...api.products[0],
+    soldByWeight: true,
+    pricingUnit: "lb",
+    unitPrice: "8",
+    catalogRevision: "2",
+  };
+  api.writeError = {
+    status: 409,
+    code: "catalog_changed",
+    error: "El producto cambió.",
+    product: remote,
+  };
+  await save(page).click();
+  await expect(
+    page.getByText(
+      /Ambos cambiaron: Venta por peso \/ Unidad de venta \/ Precio de venta \/ Precio de costo/,
+    ),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Ya revisé: conservar mis cambios" })
+    .click();
+  await expect(
+    page.getByRole("checkbox", { name: "Este producto se vende por peso" }),
+  ).not.toBeChecked();
+  await expect(
+    page.getByRole("textbox", { name: "Precio de venta (opcional)" }),
+  ).toHaveValue("5");
+  api.writeError = null;
+  await save(page).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  expect(api.writes.at(-1)?.body).toMatchObject({
+    unitPrice: "5",
+    soldByWeight: false,
+    pricingUnit: "unit",
+    expectedSalesRevision: "2",
+  });
+});
