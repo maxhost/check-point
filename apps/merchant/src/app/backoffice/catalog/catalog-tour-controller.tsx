@@ -1,4 +1,5 @@
 "use client";
+import { useOnboardingTourIntent } from "../onboarding/use-onboarding-tour-intent";
 import { useEffect, useRef, useState } from "react";
 import type { Driver } from "driver.js";
 import { HelpCircle } from "iconoir-react";
@@ -8,10 +9,7 @@ import {
   ONBOARDING_TOUR_ENDED_EVENT,
   startOnboardingTour,
 } from "../onboarding/onboarding-tour";
-import {
-  recordOnboardingTour,
-  type OnboardingTourStatus,
-} from "../onboarding/onboarding-api";
+import { type OnboardingTourStatus } from "../onboarding/onboarding-api";
 import {
   catalogHelpStep,
   catalogOnboardingStart,
@@ -46,6 +44,7 @@ export function CatalogTourController({
   const { session, start, stop, notify } = context;
   const latest = useRef(context);
   latest.current = context;
+  const captureTour = useOnboardingTourIntent();
   const [helpOpen, setHelpOpen] = useState(false);
   const [saveFailed, setSaveFailed] = useState<OnboardingTourStatus | null>(
     null,
@@ -65,7 +64,10 @@ export function CatalogTourController({
   useEffect(() => {
     if (requested.current || !isOwner || blocked) return;
     if (!wantsCatalogOnboardingTour(window.location.search)) return;
+    const intent = captureTour("catalog");
+    if (!intent) return;
     const frame = requestAnimationFrame(() => {
+      if (!intent.isCurrent()) return;
       requested.current = true;
       const url = new URL(window.location.href);
       url.searchParams.delete(CATALOG_TOUR_QUERY_KEY);
@@ -73,12 +75,13 @@ export function CatalogTourController({
       setOrienting(true);
       orientation.current = startOnboardingTour({
         ...catalogOnboardingStart(),
+        persistProgress: intent.persistProgress,
         onClosed: () => setOrienting(false),
         onSaveError: setSaveFailed,
       });
     });
     return () => cancelAnimationFrame(frame);
-  }, [isOwner, blocked]);
+  }, [isOwner, blocked, captureTour]);
   useEffect(
     () => () => {
       if (orientation.current) disposeOnboardingTour(orientation.current);
@@ -186,9 +189,11 @@ export function CatalogTourController({
   }
   async function retryProgress() {
     if (!saveFailed || saving) return;
+    const intent = captureTour("catalog");
+    if (!intent) return;
     setSaving(true);
     try {
-      await recordOnboardingTour("catalog", saveFailed);
+      if (!(await intent.persistProgress(saveFailed))) return;
       setSaveFailed(null);
       window.dispatchEvent(new Event(ONBOARDING_TOUR_ENDED_EVENT));
     } catch {

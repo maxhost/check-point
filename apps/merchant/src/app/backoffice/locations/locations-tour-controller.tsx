@@ -1,4 +1,5 @@
 "use client";
+import { useOnboardingTourIntent } from "../onboarding/use-onboarding-tour-intent";
 
 import { HelpCircle, Xmark } from "iconoir-react";
 import { useEffect, useRef, useState } from "react";
@@ -51,15 +52,21 @@ export function LocationsTourController({
   planAllowsMultiple: boolean;
   hasActiveLocations: boolean;
 }) {
+  const captureTour = useOnboardingTourIntent();
   const [helpOpen, setHelpOpen] = useState(false);
   const started = useRef(false);
 
   useEffect(() => {
     if (started.current) return;
     if (!wantsLocationsOnboardingTour(window.location.search)) return;
+    const intent = captureTour("locations");
+    if (!intent?.isCurrent()) return;
     started.current = true;
-    startOnboardingTour(locationsOnboardingStart(canAdd));
-  }, [canAdd]);
+    startOnboardingTour({
+      ...locationsOnboardingStart(canAdd),
+      persistProgress: intent.persistProgress,
+    });
+  }, [canAdd, captureTour]);
 
   function startHelp(id: LocationsHelpTour) {
     setHelpOpen(false);

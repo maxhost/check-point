@@ -1,4 +1,5 @@
 "use client";
+import { useOnboardingTourIntent } from "../onboarding/use-onboarding-tour-intent";
 import { useEffect, useRef, useState } from "react";
 import type { Driver } from "driver.js";
 import { HelpCircle } from "iconoir-react";
@@ -8,10 +9,7 @@ import {
   ONBOARDING_TOUR_ENDED_EVENT,
   startOnboardingTour,
 } from "../onboarding/onboarding-tour";
-import {
-  recordOnboardingTour,
-  type OnboardingTourStatus,
-} from "../onboarding/onboarding-api";
+import { type OnboardingTourStatus } from "../onboarding/onboarding-api";
 import {
   BRAND_HELP,
   BRAND_TOUR_QUERY_KEY,
@@ -41,6 +39,7 @@ export function BrandTourController({
   const { session, stop, notify, start } = context;
   const latest = useRef(context);
   latest.current = context;
+  const captureTour = useOnboardingTourIntent();
   const [helpOpen, setHelpOpen] = useState(false);
   const [saveFailed, setSaveFailed] = useState<OnboardingTourStatus | null>(
     null,
@@ -72,7 +71,10 @@ export function BrandTourController({
       !wantsBrandOnboardingTour(window.location.search)
     )
       return;
+    const intent = captureTour("brand");
+    if (!intent) return;
     const frame = requestAnimationFrame(() => {
+      if (!intent.isCurrent()) return;
       requested.current = true;
       const url = new URL(window.location.href);
       url.searchParams.delete(BRAND_TOUR_QUERY_KEY);
@@ -80,6 +82,7 @@ export function BrandTourController({
       setOrienting(true);
       orientation.current = startOnboardingTour({
         ...brandOnboardingStart(),
+        persistProgress: intent.persistProgress,
         onClosed: () => {
           if (alive.current) setOrienting(false);
         },
@@ -89,7 +92,7 @@ export function BrandTourController({
       });
     });
     return () => cancelAnimationFrame(frame);
-  }, [isOwner, blocked, accessDenied, session]);
+  }, [isOwner, blocked, accessDenied, session, captureTour]);
   useEffect(() => {
     if (!session) return;
     const keyboard = (event: KeyboardEvent) => brandTourKeyboard(event, stop);
@@ -179,9 +182,11 @@ export function BrandTourController({
   }, [session?.phase, stop]);
   async function retryProgress() {
     if (!saveFailed || saving || accessDenied) return;
+    const intent = captureTour("brand");
+    if (!intent) return;
     setSaving(true);
     try {
-      await recordOnboardingTour("brand", saveFailed);
+      if (!(await intent.persistProgress(saveFailed))) return;
       if (!alive.current) return;
       setSaveFailed(null);
       window.dispatchEvent(new Event(ONBOARDING_TOUR_ENDED_EVENT));

@@ -1,4 +1,5 @@
 "use client";
+import { useOnboardingTourIntent } from "../onboarding/use-onboarding-tour-intent";
 
 import { useEffect, useRef, useState } from "react";
 import { HelpCircle, Xmark } from "iconoir-react";
@@ -48,15 +49,21 @@ export function StaffTourController({
   loading: boolean;
   hasMembers: boolean;
 }) {
+  const captureTour = useOnboardingTourIntent();
   const [helpOpen, setHelpOpen] = useState(false);
   const started = useRef(false);
 
   useEffect(() => {
     if (loading || started.current) return;
     if (!wantsStaffOnboardingTour(window.location.search)) return;
+    const intent = captureTour("staff");
+    if (!intent?.isCurrent()) return;
     started.current = true;
-    startOnboardingTour(staffOnboardingStart());
-  }, [loading]);
+    startOnboardingTour({
+      ...staffOnboardingStart(),
+      persistProgress: intent.persistProgress,
+    });
+  }, [loading, captureTour]);
 
   function startHelp(id: StaffHelpTour) {
     setHelpOpen(false);
