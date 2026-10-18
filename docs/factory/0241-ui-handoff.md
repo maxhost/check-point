@@ -23,3 +23,6 @@ Límites: harness de componentes con ReactAria/kit/CSS reales y red simulada; no
 
 
 Corrección de interacción A+B tras entrega `01c07c4c7754c5924cb6cf30d201cf02b3461f6f`: summary conserva version1 y mapea `reference_sales` a `closed_month` legado, `expense_history` a `expense_history` y `sales_costs` a `cost_coverage`. El texto de `closed_month` ahora explica «Faltan ventas con costos completos como referencia para estimar el mes.», sin atribuir ese motivo a gastos. Sólo cambia esta copy y el handoff. ESLint focal y tipos merchant PASS (`lint-reason-alignment.log`, `types-reason-alignment.log`). Se reutiliza la evidencia anterior: estructura, lógica, importes y estados no cambian; sin nueva ronda browser/visual ni repetición de los21casos. QA anterior reutilizable salvo revisión de esta copy.
+
+
+Aclaración de compatibilidad de política tras `53b9163336579737f78c87767b406628c54d4448`: el detalle ahora dice «Referencias de meses anteriores con gastos registrados.», sin fijar la ventana predeterminada de tres meses ante overrides existentes de policy.finance. La cantidad de meses observados ya procede del DTO. Sólo cambia esta frase y el handoff; lint focal PASS (`lint-reference-window.log`). Sin nueva ronda browser/visual ni cambios HTTP/kit.

@@ -157,9 +157,8 @@ export function FinancePlan({
               {expanded && (
                 <div id={detailsId} className="grid min-w-0 gap-3">
                   <Text variant="small">
-                    Referencias de los tres meses anteriores con gastos
-                    registrados. Los pendientes son estimaciones, no deudas
-                    confirmadas.
+                    Referencias de meses anteriores con gastos registrados. Los
+                    pendientes son estimaciones, no deudas confirmadas.
                   </Text>
                   <ul
                     aria-label="Detalle de gastos del mes"
