@@ -1,8 +1,8 @@
 import { withDbTransaction } from "@mi-pasaporte/db";
 import { moduleEvents, moduleEventDeliveries } from "@mi-pasaporte/db/schema";
 import { and, eq, sql } from "drizzle-orm";
-import type { SaleClosedEvent } from "../../../server/module-events/types";
-import { capturedConsumption } from "./model/captured";
+import { decodeMeasuredSaleClosedEvent } from "../../../server/module-events/decode";
+import { capturedMeasuredConsumption } from "./model/captured-measured";
 import {
   readConsumptionCost,
   type ConsumptionDelivery,
@@ -60,9 +60,23 @@ export async function readSaleConsumptionCost(args: {
           state: storedDelivery.state as ConsumptionDelivery["state"],
           terminalReason: storedDelivery.terminalReason,
         };
-      const payload = event.payload as SaleClosedEvent;
       try {
-        const captured = await capturedConsumption(
+        const payload = decodeMeasuredSaleClosedEvent(
+          event.payload,
+          event.eventVersion,
+        );
+        if (
+          payload.locationId !== event.locationId ||
+          payload.sourceOrderId !== event.sourceId
+        )
+          throw new Error("Inconsistent sale event envelope");
+        expectedLines = payload.lines.map((line) => ({
+          sourceLineId: line.sourceLineId,
+          productId: line.productId,
+          recipe: "unknown",
+          consumptions: [],
+        }));
+        const captured = await capturedMeasuredConsumption(
           tx,
           args.businessId,
           payload,
@@ -79,16 +93,9 @@ export async function readSaleConsumptionCost(args: {
             : line,
         );
       } catch {
-        expectedLines = payload.lines.map((line) => ({
-          sourceLineId: line.sourceLineId,
-          productId: line.productId,
-          recipe:
-            delivery.state === "skipped" &&
-            delivery.terminalReason === "modules_disabled"
-              ? "absent"
-              : "unknown",
-          consumptions: [],
-        }));
+        // Keep only authorized caller context or fully decoded identities. Invalid
+        // capture cannot turn an applied/skipped delivery into complete coverage.
+        delivery = { state: "unknown" };
       }
     }
     return readConsumptionCost(tx, { ...args, expectedLines, delivery });
