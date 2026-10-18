@@ -152,7 +152,7 @@ export async function capturedConsumption(
   }
   return { movements, sources, expectedLines };
 }
-export type CapturedSource = {
+type CapturedSourceFields = {
   sourceLineId: string;
   productId: string;
   resolutionId: string;
@@ -164,3 +164,21 @@ export type CapturedSource = {
   exactQuantity: string;
   allocatedQuantity: string;
 };
+
+export type CapturedSource = CapturedSourceFields &
+  (
+    | {
+        quantityVersion?: 1;
+        recipeQuantityNumerator?: null;
+        recipeQuantityDenominator?: null;
+        exactQuantityNumerator?: null;
+        exactQuantityDenominator?: null;
+      }
+    | {
+        quantityVersion: 2;
+        recipeQuantityNumerator: string;
+        recipeQuantityDenominator: string;
+        exactQuantityNumerator: string;
+        exactQuantityDenominator: string;
+      }
+  );
