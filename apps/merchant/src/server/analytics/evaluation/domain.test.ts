@@ -45,7 +45,10 @@ function fixture(): AnalyticsInput {
     const day = addDays("2026-10-20", -i);
     const slow = new Date(`${day}T12:00Z`).getUTCDay() === 2;
     const revenue = slow ? 1000 : 10000;
-    metrics.push(row(day, "revenue", revenue, null, 0, 10));
+    metrics.push(
+      row(day, "revenue", revenue, null, 0, 10),
+      row(day, "payment_commission", 0),
+    );
     for (const id of ["coffee", "pizza"])
       metrics.push(
         row(day, "product_revenue", revenue / 2, id, 0, 5),
@@ -60,6 +63,7 @@ function fixture(): AnalyticsInput {
     row("2026-09-05", "expense_fixed", 600000, "rent"),
     row("2026-08-05", "expense_fixed", 400000, "rent"),
     row("2026-10-01", "expense_fixed", 10000, "electricity"),
+    row("2026-09-01", "expense_fixed", 10000, "electricity"),
     row("2026-09-01", "expense_variable", 30000, "misc"),
   );
   return {
@@ -129,10 +133,10 @@ describe("AN-1 weights and selection", () => {
 describe("AN-1 cards and daily goal", () => {
   it("uses paid concepts and estimates from only paid closed months", () => {
     const goal = calculateGoal(fixture());
-    expect(goal.expensesMinor).toBe(520000);
+    expect(goal.expensesMinor).toBe(540000);
     expect(goal.coverage).toBe(1);
     expect(goal.margin).toBe(0.5);
-    expect(goal.breakEvenMinor).toBe(1040000);
+    expect(goal.breakEvenMinor).toBe(1080000);
     expect(goal.estimated).toBe(true);
     expect(goal.concepts.find((c) => c.id === "rent")).toMatchObject({
       amountMinor: 500000,
@@ -144,7 +148,7 @@ describe("AN-1 cards and daily goal", () => {
     });
     expect(goal.remainingDays).toBe(12);
     expect(goal.targetMinor).toBe(
-      Math.ceil((1040000 - goal.monthRevenueMinor) / 12),
+      Math.ceil((1080000 - goal.monthRevenueMinor) / 12),
     );
     expect(buildCandidates(fixture()).map((c) => c.cardKey)).toEqual(
       expect.arrayContaining(["1", "2", "3", "13"]),
@@ -318,7 +322,7 @@ it("end-of-month goal multiplier survives urgency bounds", () => {
     (1 - 7 / 31) * 1.5,
   );
 });
-it("fixed estimates take the last three paid months even across gaps, ignoring residual zero rows", () => {
+it("v2 fixed references stay inside three calendar months, ignoring old and residual zero rows", () => {
   const input = fixture();
   input.metrics = input.metrics.filter((r) => !r.metric.startsWith("expense_"));
   (input.metrics as AnalyticsMetric[]).push(
@@ -327,7 +331,7 @@ it("fixed estimates take the last three paid months even across gaps, ignoring r
     row("2026-10-01", "expense_fixed", 0, "rent"),
   );
   expect(calculateGoal(input).concepts[0]).toMatchObject({
-    amountMinor: 20000,
+    amountMinor: 30000,
     estimated: true,
   });
 });
@@ -397,7 +401,7 @@ it("uses captured intraday revenue and commission and rejects incomplete legacy 
     row("2026-10-19", "payment_commission_with_cost", 2, "coffee", 0, 1),
     row("2026-10-19", "payment_commission", 20),
   ];
-  expect(calculateGoal(input).margin).toBe(0.58);
+  expect(calculateGoal(input).margin).toBeNull(); // v2 refuses extrapolation from partial captured revenue/costs
   expect(
     buildCandidates(input).find((c) => c.cardKey === "7")?.amountMinor,
   ).toBe(225);
@@ -405,10 +409,22 @@ it("uses captured intraday revenue and commission and rejects incomplete legacy 
   const covered = {
     ...input,
     metrics: input.metrics.map((r) =>
-      r.metric === "units_sold" ? { ...r, quantity: 1 } : r,
+      r.metric === "units_sold"
+        ? { ...r, quantity: 1 }
+        : r.metric === "revenue_with_cost"
+          ? { ...r, amountMinor: 1000 }
+          : r.metric === "cost_of_goods"
+            ? { ...r, amountMinor: 400 }
+            : r.metric === "payment_commission_with_cost" ||
+                r.metric === "payment_commission"
+              ? { ...r, amountMinor: 20 }
+              : r.metric === "product_revenue"
+                ? { ...r, count: 1 }
+                : r,
     ),
   };
-  expect(calculateGoal(covered).breakEvenMinor).toBe(100); // exact ceil58/.58
+  expect(calculateGoal(covered).margin).toBe(0.58);
+  expect(calculateGoal(covered).breakEvenMinor).toBeNull(); // no variable-expense reference
   for (const missing of ["revenue_with_cost", "payment_commission_with_cost"]) {
     const legacy = {
       ...covered,
@@ -425,7 +441,8 @@ it("uses captured intraday revenue and commission and rejects incomplete legacy 
   const zero = {
     ...covered,
     metrics: covered.metrics.map((r) =>
-      r.metric === "payment_commission_with_cost"
+      r.metric === "payment_commission_with_cost" ||
+      r.metric === "payment_commission"
         ? { ...r, amountMinor: 0 }
         : r,
     ),
@@ -466,6 +483,20 @@ it("rejects an overflowing break-even amount before losing integer precision", (
     row("2026-10-19", "units_sold", 0, "coffee", 1),
     row("2026-10-19", "units_with_cost", 0, "coffee", 1),
   ];
+  input.metrics = [
+    ...input.metrics,
+    row("2026-09-01", "expense_variable", 1),
+    row("2026-10-19", "revenue", Number.MAX_SAFE_INTEGER, null, 0, 1),
+    row(
+      "2026-10-19",
+      "product_revenue",
+      Number.MAX_SAFE_INTEGER,
+      "coffee",
+      0,
+      1,
+    ),
+    row("2026-10-19", "payment_commission", 0),
+  ];
   expect(() => calculateGoal(input)).toThrow("rango");
 });
 
@@ -484,7 +515,7 @@ it("recognizes free sales and old summary existence without inventing a new busi
   ).not.toContain("desde hoy");
 });
 
-it("keeps half-minor estimated expenses exact until the break-even ceil", () => {
+it("v2 rounds each half-minor reference once and blocks absent variable history", () => {
   const input = fixture();
   input.metrics = input.metrics.filter((r) => !r.metric.startsWith("expense_"));
   input.metrics = [
@@ -493,9 +524,10 @@ it("keeps half-minor estimated expenses exact until the break-even ceil", () => 
     row("2026-08-01", "expense_fixed", 101, "rent"),
   ];
   expect(calculateGoal(input)).toMatchObject({
-    expensesMinor: 101,
+    expensesMinor: 0, // legacy alias is recorded subtotal when forecast is unavailable
     margin: 0.5,
-    breakEvenMinor: 201,
+    breakEvenMinor: null,
+    finance: { forecastExpensesMinor: null, reasons: ["expense_history"] },
   });
 });
 

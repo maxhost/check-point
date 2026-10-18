@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildDashboardSummary } from "./dashboard-summary-calculation";
 import { parseDashboardSummary } from "./dashboard-summary";
-import { addDays, localDay } from "./date";
+import { addDays, addMonths, monthStart, localDay } from "./date";
 import type { AnalyticsInput, AnalyticsMetric } from "./types";
 
 const now = new Date("2026-10-20T01:00:00Z");
@@ -40,10 +40,14 @@ function fixture(
       row(recent, "units_sold", 0, 10),
       row(recent, "units_with_cost", 0, 10),
       row(recent, "revenue", 1000),
+      row(recent, "product_revenue", 1000),
+      row(recent, "payment_commission", 0),
       row(recent, "revenue_with_cost", 1000),
       row(recent, "cost_of_goods", 500),
       row(recent, "payment_commission_with_cost", 0),
       row(today.slice(0, 8) + "01", "expense_fixed", 101),
+      row(addMonths(monthStart(today), -1), "expense_fixed", 101),
+      row(addMonths(monthStart(today), -1), "expense_variable", 1),
     ],
   } satisfies AnalyticsInput & { timezone: string };
 }
@@ -56,8 +60,9 @@ describe("dashboard projection summary", () => {
     ["2026-10-20", 31],
   ] as const)("uses calendar denominator for %s", (date, days) => {
     const result = buildDashboardSummary(fixture(date), now);
-    expect(result.monthBreakEvenMinor).toBe(202);
-    expect(result.dailyBreakEvenMinor).toBe(Math.ceil(202 / days));
+    expect(result.monthBreakEvenMinor).toBe(1000); // current net contribution already covers forecast102
+    // Summary retains the calendar average of the dynamic total-sales target.
+    expect(result.dailyBreakEvenMinor).toBe(Math.ceil(1000 / days));
     expect(parseDashboardSummary(result)).toEqual(result);
   });
   it.each([
@@ -97,10 +102,13 @@ describe("dashboard projection summary", () => {
   it("keeps unknown equilibrium null with accurate reasons", () => {
     const first = fixture();
     first.hasClosedExpenseMonth = false;
+    first.metrics = first.metrics.filter(
+      (r) => !r.metric.startsWith("expense_") || r.day.startsWith("2026-10"),
+    );
     expect(buildDashboardSummary(first, now)).toMatchObject({
       monthBreakEvenMinor: null,
       dailyBreakEvenMinor: null,
-      unavailableReason: "closed_month",
+      unavailableReason: "expense_history",
     });
     const missing = fixture();
     missing.metrics = missing.metrics.filter(

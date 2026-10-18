@@ -12,7 +12,11 @@ export type DashboardSummary = {
   todayRevenueMinor: number;
   estimated: boolean;
   unavailableReason:
-    "closed_month" | "cost_coverage" | "positive_margin" | null;
+    | "closed_month"
+    | "cost_coverage"
+    | "positive_margin"
+    | "expense_history"
+    | null;
 };
 
 /** Reject malformed transport data instead of presenting a fabricated zero. */
@@ -36,9 +40,13 @@ export function parseDashboardSummary(value: unknown): DashboardSummary {
     typeof s.estimated !== "boolean" ||
     !(s.monthBreakEvenMinor === null || money(s.monthBreakEvenMinor)) ||
     !(s.dailyBreakEvenMinor === null || money(s.dailyBreakEvenMinor)) ||
-    ![null, "closed_month", "cost_coverage", "positive_margin"].includes(
-      s.unavailableReason,
-    ) ||
+    ![
+      null,
+      "closed_month",
+      "cost_coverage",
+      "positive_margin",
+      "expense_history",
+    ].includes(s.unavailableReason) ||
     (s.monthBreakEvenMinor === null) !== (s.dailyBreakEvenMinor === null) ||
     (s.monthBreakEvenMinor === null) !== (s.unavailableReason !== null)
   )

@@ -24,7 +24,7 @@ import type {
   AnalyticsMetric,
   CardState,
 } from "@mi-pasaporte/domain/analytics/types";
-import { calculateGoal as legacyGoal } from "./legacy-goal.test-support";
+
 const now = "2026-10-25T18:00:00.000Z";
 const config = (): AnalyticsPolicyConfig => structuredClone(ANALYTICS_POLICY);
 const row = (
@@ -50,6 +50,7 @@ export function simulationFixture(): AnalyticsInput {
     const day = addDays("2026-10-25", -age);
     metrics.push(
       row(day, "revenue", 100),
+      row(day, "payment_commission", 0),
       row(day, "product_revenue", 100, 0, "product"),
       row(day, "units_sold", 0, 1, "product"),
       row(day, "units_with_cost", 0, 1, "product"),
@@ -93,7 +94,7 @@ export function simulationFixture(): AnalyticsInput {
   };
 }
 describe("effective configurable policy and pure lifecycle simulation", () => {
-  it("keeps exact three-month money equivalent to the portable legacy oracle, including unpaid concepts/rounding/unknown", () => {
+  it("v2 uses observed calendar-month references and refuses the former partial-sales extrapolation", () => {
     for (let n = 0; n < 40; n++) {
       const input = simulationFixture();
       input.metrics = [
@@ -107,14 +108,25 @@ describe("effective configurable policy and pure lifecycle simulation", () => {
         input.metrics = input.metrics.filter(
           (r) => r.metric !== "revenue_with_cost",
         );
-      expect(calculateGoal(input)).toEqual(legacyGoal(input));
+      const goal = calculateGoal(input);
+      expect(goal.finance.version).toBe(2);
+      expect(
+        goal.finance.expenses.find((e) => e.id === "other"),
+      ).toBeUndefined();
+      expect(goal.finance.forecastExpensesMinor).toBe(
+        8500 + Math.round((302 + n * 23) / 2),
+      );
+      if (n % 3 === 0) {
+        expect(goal.finance.reasons).toContain("sales_costs");
+        expect(goal.breakEvenMinor).toBeNull();
+      } else expect(goal.finance.status).toBe("estimated");
     }
     const c = config();
     c.finance.closedMonths = 2;
     expect(
       calculateGoal(simulationFixture(), createAnalyticsPolicy(c))
         .expensesMinor,
-    ).toBe(8500);
+    ).toBe(0); // variable reference falls outside the configured two-month window
   });
   it("composes two IDs of the same handler, including disabled first/active second, without changing shared finance", () => {
     const c = config(),

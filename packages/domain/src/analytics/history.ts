@@ -1,3 +1,4 @@
+import { financialMetrics } from "./financial-metrics";
 import { summarizeCustomerPromoHistory } from "./customer-promo-history";
 import { summarizeStockHistory } from "./stock-history";
 import { sumIntegers, moneyRatio } from "./money";
@@ -31,6 +32,7 @@ export function summarizeHistory(
   input: AnalyticsInput,
   rows: readonly AnalyticsMetric[],
 ) {
+  rows = financialMetrics(input, rows);
   const c = contribution(input, rows);
   const tickets = rows
     .filter((r) => r.metric === "revenue")
