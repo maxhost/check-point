@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { buildFinancialSettlement } from "@mi-pasaporte/domain/financial";
 import { assertFinancialSettlement } from "@mi-pasaporte/domain/financial/validate";
 import { decodeSaleClosedEvent } from "./decode";
-import type { SaleClosedEventV2 } from "./types";
+import type { SaleClosedEventV2, SaleClosedEventV3 } from "./types";
 function financialEvent(): SaleClosedEventV2 {
   const sourceLineId = randomUUID(),
     methodId = randomUUID(),
@@ -62,6 +62,22 @@ function financialEvent(): SaleClosedEventV2 {
   };
 }
 describe("P1 durable v1/v2 decoder", () => {
+  it("preserves the full v3 payload and keeps v4 outside the legacy API", () => {
+    const v2 = financialEvent();
+    const v3: SaleClosedEventV3 = {
+      ...v2,
+      eventVersion: 3,
+      lines: v2.lines.map((line) => ({
+        ...line,
+        productLabel: "Historical product",
+        commissionMinor: null,
+      })),
+    };
+    const original = structuredClone(v3);
+    expect(decodeSaleClosedEvent(v3)).toBe(v3);
+    expect(v3).toEqual(original);
+    expect(() => decodeSaleClosedEvent({ ...v3, eventVersion: 4 })).toThrow();
+  });
   it("rejects a fabricated zero with coherent signed deltas but a positive original net", () => {
     const v = financialEvent();
     v.money.collected = "0";
