@@ -11,3 +11,9 @@ Comando focal reproducible: generar config temporal con `testDir` absoluto a `te
 Fallos preservados: configuración inicial de analytics-fixture sólo incluía analytics.spec y no encontró pruebas; se usó config focal temporal. Chromium restringido por sandbox (MachPort permission denied), ejecución técnica autorizada fuera del sandbox. Primer oráculo nuevo esperaba decimal punto; producto usa correctamente coma española, corregido a `$0,00`, sin cambio de producto para esconder fallo.
 
 No se ejecutó M1, campaña DB ni verify global. CI remoto continúa rojo histórico en90ebe18; QA manual owner y todos los diferidos del estado vigente se conservan. No push/PROD. El servidor3201/túnel se conserva.
+
+## QA e integración
+
+QA independiente `/root/qa_analytics_layout`: **PASS acotado** sobre `13b4988e6f269ee607f9ed45cecf4e2b7ae0a686`, base37c98622. Revisó diff, condiciones/datos y orden DOM, prueba focal, capturas390/1440, checkout limpio/scope3archivos y diff-check; reutilizó5/5 sin retries/skips y checks estáticos. Sin bloqueos. Límite explícito: componentes con API simulada, no certifica Next/auth/DB ni sustituye QA manual owner.
+
+Aceptación factory e integraciónFF en dev/main local del mismoSHA. Smoke de combinación: health3201HTTP200 y rutaAnalíticas sin sesión307a`/` esperada; fuente integrada idéntica al candidato. No nueva lectura financiera autenticada. Worktree limpio retirado vía factory, evidencia fuera delWT conservada,3201/túnel intactos. Sin push/PROD. Tipos/lint/guard/diff-check verificados; detector layout final[].

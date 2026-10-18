@@ -3,7 +3,19 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — 0239 DASHBOARD COMPACTO IMPLEMENTADO; PRUEBA OWNER EN DEV (2026-10-18 UTC)
+## ESTADO — 0239 ANALÍTICAS REORGANIZADA; PRUEBA OWNER EN DEV (2026-10-18 UTC)
+
+Owner aportó ocho referencias de composición y pidió aprovechar el layout de `/backoffice/analytics` sin abandonar Tailwind/React Aria/sistema visual. Refinamiento L1 dentro de0239, sin nueva spec funcional: indicadores de ventas en franja, ganancia/equilibrio paralelo7/5, ranking/stock7/5, clientes/promos5/7; móvil indicadores etiqueta/importe compactos, orden DOM lineal. Datos/cálculos/HTTP y todos los matices de costos/cobertura/null/cero/estimaciones/comparación anual/causalidad conservados. Sin gráficos o series inventadas, kit/guard/deps/DB intactos.
+
+Producto `13b4988e6f269ee607f9ed45cecf4e2b7ae0a686` sobre37c98622; integradoFF en dev/main local tras QA independiente `/root/qa_analytics_layout` PASS acotado sobre eseSHA. [Entrega/QA](../factory/0239-analytics-layout.md). Factory analytics-layout-0239 aceptado/integrado/retirado, WT propio limpio eliminado, evidencia fuera delWT `/private/tmp/checkpass-analytics-layout-evidence/`. Sin push/PROD; origin/main sigue90ebe18f. Untracked ajenos intactos.
+
+Node24.20/pnpm11.4: typecheck:ui, ESLint focal, ui-guard1archivo sin aumentos, diff-check PASS. Browser5/5 sin retries/skips390/768/1440: paralelo desktop/lineal móvil/sin overflow, pérdida/cero/nombre largo/estimado/pendiente, filtros/día y error-reintento. UI/CSS reales con API simulada, NO Next/auth/DB certificado. Capturas390/1440 abiertas; ajuste de compactación móvil y una confirmación final. Fallos setup sandbox y oráculo inicial decimal punto preservados, corregido formato esperado español coma; no ocultados. Detector layout[] base/final. Combinación: código idéntico al candidato, health3201HTTP200, analytics sin sesión307a`/` esperado; no nueva lectura financiera autenticada. Servidor3201/túnel intactos; disponible dev-business.checkpass.club/backoffice/analytics para QA manual owner.
+
+Dashboard0239 anterior conserva Inbox compacto, tres números reales (mensual/diario/hoy), owner0238 y supuesto diario calendario comunicado, sin nueva modificación. Sus evidencias/limitaciones se conservan en bloque histórico siguiente. Ninguna campaña M1 nueva.
+
+Diferidos conservados: QA manual0237/owner, CI remoto rojo/guardias24PASS2FAIL, FAILfrío1817.621042ms, ciudades/weather/calendarios/crons/Marketingcupón11/realtimeinfra. M1 de0238 sólo fuente66067758 anterior, no certificaDashboardampliado. PROD102migraciones dato histórico. Próximo: recibir feedback manual, sin publicación hasta autorización explícita para ese caso.
+
+## HISTÓRICO — 0239 DASHBOARD COMPACTO IMPLEMENTADO; PRUEBA OWNER EN DEV (2026-10-18 UTC)
 
 Owner pidió Inbox tipo correo y tres indicadores; solicitó UN agente con contexto limpio. `/root/dashboard_compacto` implementó sin subdelegación; coordinador revisó independientemente y aceptó factory. Spec0239/INDEX reservados antes del código en a8b2195f; entrega limpia `aac013dac939e9343408256466ab02244db1aede`, producto5d7d601f + correcciónuseId db390ddd. Integración dev `f27bce11a496bd072b45d58fc8928769d9ad5a0e`, sin conflictos. [Handoff](../factory/0239-dashboard-handoff.md), [QA](../factory/0239-qa.md), [spec](../specs/0239-dashboard-compacto-y-resumen.md). Main local avanzado tras QA, NO push/PROD; origin/main sigue90ebe18f. No migraciones ni kit/guard/deps modificados.
 
