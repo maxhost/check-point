@@ -69,6 +69,16 @@ export const businessConfiguration = core.table(
       .primaryKey()
       .references(() => businesses.id, { onDelete: "cascade" }),
     revision: integer("revision").notNull().default(1),
+    salesMassUnits: text("sales_mass_units")
+      .array()
+      .notNull()
+      .default(sql`ARRAY['kg']::text[]`),
   },
-  (t) => [check("business_configuration_revision_check", sql`${t.revision}>0`)],
+  (t) => [
+    check("business_configuration_revision_check", sql`${t.revision}>0`),
+    check(
+      "business_configuration_sales_mass_units_check",
+      sql`cardinality(${t.salesMassUnits}) between 1 and 3 and array_ndims(${t.salesMassUnits}) = 1 and array_position(${t.salesMassUnits}, null) is null and ${t.salesMassUnits} <@ ARRAY['kg', 'lb', 'g']::text[] and cardinality(array_positions(${t.salesMassUnits}, 'kg')) <= 1 and cardinality(array_positions(${t.salesMassUnits}, 'lb')) <= 1 and cardinality(array_positions(${t.salesMassUnits}, 'g')) <= 1`,
+    ),
+  ],
 );

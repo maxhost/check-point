@@ -49,6 +49,9 @@ export const products = core.table(
     name: text("name").notNull(),
     unitPrice: numeric("unit_price", { precision: 24, scale: 9 }),
     unitCost: numeric("unit_cost", { precision: 24, scale: 9 }),
+    soldByWeight: boolean("sold_by_weight").notNull().default(false),
+    pricingUnit: text("pricing_unit").notNull().default("unit"),
+    salesRevision: integer("sales_revision").notNull().default(1),
     /** Internal R2 prefix. NEVER serialized to the client. */
     imageObjectKey: text("image_object_key"),
     imageVersion: integer("image_version").notNull().default(0),
@@ -88,6 +91,16 @@ export const products = core.table(
     check(
       "product_unit_cost_legacy_check",
       sql`${table.unitCost} is null or (${table.unitCost} <= 9999999999.99 and ${table.unitCost} = trunc(${table.unitCost}, 2))`,
+    ),
+    check(
+      "product_sale_measure_check",
+      sql`(not ${table.soldByWeight} and ${table.pricingUnit} = 'unit') or (${table.soldByWeight} and ${table.pricingUnit} in ('kg', 'lb', 'g'))`,
+    ),
+    check("product_sales_revision_check", sql`${table.salesRevision} > 0`),
+    // Temporary expand barrier: mass products stay disabled until compatible CP2c activation.
+    check(
+      "product_sale_measure_legacy_check",
+      sql`not ${table.soldByWeight} and ${table.pricingUnit} = 'unit'`,
     ),
     check("product_image_version_check", sql`${table.imageVersion} >= 0`),
   ],
