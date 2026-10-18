@@ -20,6 +20,7 @@ Sources medidas guardan quantityVersion2, los cuatro textos racionales reducidos
 - `apps/merchant/src/modules/recipes/server/model/captured-measured.ts`, nuevo camino explícito.
 - `apps/merchant/src/modules/recipes/server/model/provenance.ts`.
 - `apps/merchant/src/modules/recipes/server/model/captured-measured.neon.integration.test.ts`, nuevo.
+- `apps/merchant/src/modules/recipes/server/model/consumption.neon.integration.test.ts`, ampliación del coordinador tras reproducción: tres expectativas obsoletas de1delivery frente a2 reales (Recetas/core.analytics); exigir resultado exacto y ambas deliveries, conservar aserciones de ledger/costo/procedencia. Limpieza propia comprobable, sin alterar helper común.
 - `docs/factory/0242-cp1c-recipes-captured-handoff.md`.
 
 Sin schema/migraciones/journal, publicación/composiciones/UI, subscriptions/consumption-event/metrics, framework/retry/producer, Stock/analytics, auth/kit/tooling/deps ni estados/índices. Solicitar ampliación justificada de paths antes de editar. Otro autor conectará la cadena cuando los eventos derivados y analytics distingan masa/piezas.
@@ -31,3 +32,7 @@ CI protegida exclusiva por `tools/neon-test.sh`, incluida limpieza; Node24. Fixt
 Persistir y releer los cuatro textos exactos. Replay idéntico mantiene IDs/conteos; racional cambiado aun con mismas proyecciones falla sin filas parciales. Negativos tenant/producto/revisión/slot legacy mass/base incompatible y ratios inválidos. Conservar regresión legacy de provenance y consumo; no retocar suites ajenas ni fixtures imposibles para ocultar fallos. Tipos db/domain/merchant, lint/formato/diff y tres guardias de módulos con backlog separado de nuevos offenders. Sin build/browser/M0/M1.
 
 QA nuevo sobre candidato congelado registra SHA/base/runtime/config/SQL y resultados reales, fallos/skips/límites, teardown completo y0 procesos. Autor entrega commit limpio y handoff; factory/aceptación/integración del coordinador. Sin push/PROD. Esta entrega por sí sola no habilita masa ni V4.
+
+## Recuperación de implementador por capacidad del servicio
+
+El primer autor dejó cuatro archivos propios sin commit y terminó por error de capacidad del modelo. Root verificó0procesosCWD, preservó archivos/hash/patch en `/private/tmp/checkpass-pos-0242/captured-capacity-recovery` y mantuvo la reserva. Su corrida `/private/tmp/captured-neon.log` acabó4FAIL/5PASS: un fixture nuevo esperaba una fuente cuando la composición produce dos; tres fallos legacy eran expectativas delivery1→2. No se cuenta comoPASS. El sustituto parte de esos archivos preservados, no los descarta ni interpreta como cambio ajeno sin dueño; revisión nueva y correcciones necesarias siguen el mismo bloque acotado. CI permanece exclusiva hasta teardown.
