@@ -1,0 +1,324 @@
+{
+  "scope": "0242 CP0 B: instrumentation and LIST baseline only; CP0 global incomplete",
+  "method": "M0 descriptive only:5reloads/cell; first-assets separate; no causal improvement or p95 uncertainty claim",
+  "sources": {
+    "m0-empty-owner-01.json": {
+      "sha256": "e44bf7e8e90288054cd0de6f30e8406315a2062215a36d9e4049d6b1afd2560d",
+      "source": "f33ced0a62899d147e70761f57fb16ec5d2512b8",
+      "buildSource": "6f8e1e9cecdd33930c5f055db43641d805dbe3c2",
+      "buildId": "VLV2fFFeM_dUWKnxvv7iY",
+      "freezeSha256": "5a0161e1ba334440d750cf9225eb6fb5e2e4b2778a9e88c1fc2536bcf7499312"
+    },
+    "m0-empty-staff-01.json": {
+      "sha256": "64ab6435c07ed46cd0b901e44500610d7a2b7aff9e5044b8418e901fcfa52edd",
+      "source": "f33ced0a62899d147e70761f57fb16ec5d2512b8",
+      "buildSource": "6f8e1e9cecdd33930c5f055db43641d805dbe3c2",
+      "buildId": "VLV2fFFeM_dUWKnxvv7iY",
+      "freezeSha256": "5a0161e1ba334440d750cf9225eb6fb5e2e4b2778a9e88c1fc2536bcf7499312"
+    },
+    "m0-normal-owner-02.json": {
+      "sha256": "f9e8064c49a3b4798ef51184b5722eedc717f606cb101045ea8e0957d4c01008",
+      "source": "647bac0edfd0c89e4d94e547e30ed381c8c47048",
+      "buildSource": "6f8e1e9cecdd33930c5f055db43641d805dbe3c2",
+      "buildId": "VLV2fFFeM_dUWKnxvv7iY",
+      "freezeSha256": "6ebb5f58a3547cb347361a104fd48135f8cdd1d5d8bdf17180d1af97a64892a0"
+    },
+    "m0-normal-staff-01.json": {
+      "sha256": "4d3261ca7d9812698fc393ec294f810fd13a5891e1061ed81cbf4c4497bb9a3e",
+      "source": "647bac0edfd0c89e4d94e547e30ed381c8c47048",
+      "buildSource": "6f8e1e9cecdd33930c5f055db43641d805dbe3c2",
+      "buildId": "VLV2fFFeM_dUWKnxvv7iY",
+      "freezeSha256": "6ebb5f58a3547cb347361a104fd48135f8cdd1d5d8bdf17180d1af97a64892a0"
+    },
+    "m0-volume-owner-01.json": {
+      "sha256": "4f2cd1f1c3d89ff77860e6d59354b049239ad4158b8b0504a8e228757bf0d583",
+      "source": "647bac0edfd0c89e4d94e547e30ed381c8c47048",
+      "buildSource": "6f8e1e9cecdd33930c5f055db43641d805dbe3c2",
+      "buildId": "VLV2fFFeM_dUWKnxvv7iY",
+      "freezeSha256": "6ebb5f58a3547cb347361a104fd48135f8cdd1d5d8bdf17180d1af97a64892a0"
+    },
+    "m0-volume-staff-01.json": {
+      "sha256": "042ba5d7afd6d38509d2a3e262f8944641a679ad903201baa59a974572c9714f",
+      "source": "647bac0edfd0c89e4d94e547e30ed381c8c47048",
+      "buildSource": "6f8e1e9cecdd33930c5f055db43641d805dbe3c2",
+      "buildId": "VLV2fFFeM_dUWKnxvv7iY",
+      "freezeSha256": "6ebb5f58a3547cb347361a104fd48135f8cdd1d5d8bdf17180d1af97a64892a0"
+    }
+  },
+  "cells": [
+    {
+      "case": "empty",
+      "role": "owner",
+      "firstAssetsReadyMs": 2644.2999999523163,
+      "medianReloadReadyMs": 2057.1999999284744,
+      "observedP95ReloadMs": 2340.7000000476837,
+      "medianReloadTTFBMs": 643.0999999046326,
+      "validAttempts": 6,
+      "pageErrors": 0,
+      "externalRequests": 0,
+      "sqlStarts": 156,
+      "sqlEnds": 156,
+      "sqlFailures": 0,
+      "phaseCount": 12,
+      "perEntry": {
+        "tag": "pos-m0-empty-owner-01-1",
+        "totalSQL": 26,
+        "byPath": {
+          "/api/merchant/session": 4,
+          "/api/modules/pos/orders": 7,
+          "/api/modules/pos/ticket": 5,
+          "/api/onboarding/checklist": 4,
+          "/backoffice/pos": 6
+        },
+        "browserGET": {
+          "/api/merchant/session": 1,
+          "/api/modules": 0,
+          "/api/modules/pos/orders": 1,
+          "/api/modules/pos/ticket": 1
+        },
+        "cacheHits": 24
+      },
+      "cacheHitsByReload": [24, 25, 25, 23, 25]
+    },
+    {
+      "case": "empty",
+      "role": "staff",
+      "firstAssetsReadyMs": 2141.4000000953674,
+      "medianReloadReadyMs": 2015.5,
+      "observedP95ReloadMs": 2070.899999976158,
+      "medianReloadTTFBMs": 637.7999999523163,
+      "validAttempts": 6,
+      "pageErrors": 0,
+      "externalRequests": 0,
+      "sqlStarts": 132,
+      "sqlEnds": 132,
+      "sqlFailures": 0,
+      "phaseCount": 12,
+      "perEntry": {
+        "tag": "pos-m0-empty-staff-01-1",
+        "totalSQL": 22,
+        "byPath": {
+          "/api/merchant/session": 4,
+          "/api/modules/pos/orders": 7,
+          "/api/modules/pos/ticket": 5,
+          "/backoffice/pos": 6
+        },
+        "browserGET": {
+          "/api/merchant/session": 1,
+          "/api/modules": 0,
+          "/api/modules/pos/orders": 1,
+          "/api/modules/pos/ticket": 1
+        },
+        "cacheHits": 22
+      },
+      "cacheHitsByReload": [22, 22, 22, 22, 22]
+    },
+    {
+      "case": "normal",
+      "role": "owner",
+      "firstAssetsReadyMs": 2768.7000000476837,
+      "medianReloadReadyMs": 2153.2999999523163,
+      "observedP95ReloadMs": 2362.600000023842,
+      "medianReloadTTFBMs": 609.8999999761581,
+      "validAttempts": 6,
+      "pageErrors": 0,
+      "externalRequests": 0,
+      "sqlStarts": 162,
+      "sqlEnds": 162,
+      "sqlFailures": 0,
+      "phaseCount": 12,
+      "perEntry": {
+        "tag": "pos-m0-normal-owner-02-1",
+        "totalSQL": 27,
+        "byPath": {
+          "/api/merchant/session": 4,
+          "/api/modules/pos/orders": 8,
+          "/api/modules/pos/ticket": 5,
+          "/api/onboarding/checklist": 4,
+          "/backoffice/pos": 6
+        },
+        "browserGET": {
+          "/api/merchant/session": 1,
+          "/api/modules": 0,
+          "/api/modules/pos/orders": 1,
+          "/api/modules/pos/ticket": 1
+        },
+        "cacheHits": 25
+      },
+      "cacheHitsByReload": [25, 24, 25, 24, 25]
+    },
+    {
+      "case": "normal",
+      "role": "staff",
+      "firstAssetsReadyMs": 2266.4000000953674,
+      "medianReloadReadyMs": 2140.399999976158,
+      "observedP95ReloadMs": 2411,
+      "medianReloadTTFBMs": 623.6999999284744,
+      "validAttempts": 6,
+      "pageErrors": 0,
+      "externalRequests": 0,
+      "sqlStarts": 138,
+      "sqlEnds": 138,
+      "sqlFailures": 0,
+      "phaseCount": 12,
+      "perEntry": {
+        "tag": "pos-m0-normal-staff-01-1",
+        "totalSQL": 23,
+        "byPath": {
+          "/api/merchant/session": 4,
+          "/api/modules/pos/orders": 8,
+          "/api/modules/pos/ticket": 5,
+          "/backoffice/pos": 6
+        },
+        "browserGET": {
+          "/api/merchant/session": 1,
+          "/api/modules": 0,
+          "/api/modules/pos/orders": 1,
+          "/api/modules/pos/ticket": 1
+        },
+        "cacheHits": 22
+      },
+      "cacheHitsByReload": [22, 22, 22, 22, 22]
+    },
+    {
+      "case": "volume",
+      "role": "owner",
+      "firstAssetsReadyMs": 2648.6999999284744,
+      "medianReloadReadyMs": 2306,
+      "observedP95ReloadMs": 2644.7999999523163,
+      "medianReloadTTFBMs": 613.8000000715256,
+      "validAttempts": 6,
+      "pageErrors": 0,
+      "externalRequests": 0,
+      "sqlStarts": 162,
+      "sqlEnds": 162,
+      "sqlFailures": 0,
+      "phaseCount": 12,
+      "perEntry": {
+        "tag": "pos-m0-volume-owner-01-1",
+        "totalSQL": 27,
+        "byPath": {
+          "/api/merchant/session": 4,
+          "/api/modules/pos/orders": 8,
+          "/api/modules/pos/ticket": 5,
+          "/api/onboarding/checklist": 4,
+          "/backoffice/pos": 6
+        },
+        "browserGET": {
+          "/api/merchant/session": 1,
+          "/api/modules": 0,
+          "/api/modules/pos/orders": 1,
+          "/api/modules/pos/ticket": 1
+        },
+        "cacheHits": 24
+      },
+      "cacheHitsByReload": [24, 25, 25, 25, 24]
+    },
+    {
+      "case": "volume",
+      "role": "staff",
+      "firstAssetsReadyMs": 2487.600000023842,
+      "medianReloadReadyMs": 2174.899999976158,
+      "observedP95ReloadMs": 2498.0999999046326,
+      "medianReloadTTFBMs": 613.5,
+      "validAttempts": 6,
+      "pageErrors": 0,
+      "externalRequests": 0,
+      "sqlStarts": 138,
+      "sqlEnds": 138,
+      "sqlFailures": 0,
+      "phaseCount": 12,
+      "perEntry": {
+        "tag": "pos-m0-volume-staff-01-1",
+        "totalSQL": 23,
+        "byPath": {
+          "/api/merchant/session": 4,
+          "/api/modules/pos/orders": 8,
+          "/api/modules/pos/ticket": 5,
+          "/backoffice/pos": 6
+        },
+        "browserGET": {
+          "/api/merchant/session": 1,
+          "/api/modules": 0,
+          "/api/modules/pos/orders": 1,
+          "/api/modules/pos/ticket": 1
+        },
+        "cacheHits": 22
+      },
+      "cacheHitsByReload": [22, 22, 22, 22, 22]
+    }
+  ],
+  "exceptions": [
+    {
+      "file": "smoke-empty-owner-01.json",
+      "completed": false,
+      "fatal": "Error",
+      "attempts": []
+    },
+    {
+      "file": "m0-normal-owner-01.json",
+      "completed": false,
+      "fatal": "Error",
+      "attempts": [
+        {
+          "tag": "pos-m0-normal-owner-01-0",
+          "valid": false,
+          "readyTimeout": true,
+          "navigationError": "TimeoutError",
+          "listResponses": [
+            {
+              "status": 200,
+              "valid": true
+            }
+          ]
+        },
+        {
+          "tag": "pos-m0-normal-owner-01-1",
+          "valid": false,
+          "readyTimeout": true,
+          "navigationError": "TimeoutError",
+          "listResponses": [
+            {
+              "status": 200,
+              "valid": true
+            }
+          ]
+        },
+        {
+          "tag": "pos-m0-normal-owner-01-2",
+          "valid": false,
+          "readyTimeout": false,
+          "navigationError": "Error",
+          "listResponses": [
+            {
+              "status": 200,
+              "valid": true
+            }
+          ]
+        },
+        {
+          "tag": "pos-m0-normal-owner-01-3",
+          "valid": null,
+          "readyTimeout": false,
+          "navigationError": null,
+          "listResponses": []
+        }
+      ]
+    }
+  ],
+  "artifacts": {
+    "control-build-6f.tar.gz": "54cbc567143f7d3e2af43309810c14da6bea647ab50926534ecb4b78109ec5fe",
+    "fixture.json": "02d4035d414d17df89b5e203d99f04366beacc536f8f8884a3f98f6a7ffa933d",
+    "list-freeze/schema-preflight.json": "e7fca8e3c3d510da1f6ea649c2319850f35dc0b363638256397d55ebefd4093d",
+    "campaign-list.jsonl": "8e870ec12aac7a4a134219ab110a3f9fc7c1f6d8b2bcc6574703c6084f635ee3",
+    "campaign-list-corrected.jsonl": "e951817f1f02918dd5606bb51432ae431c7431404351b23edb1b48d390698bf2"
+  },
+  "limitations": [
+    "Local build/start and prepared Neon CI; not PROD or suspended database",
+    "First assets separate; five reloads per cell do not establish p95 uncertainty or causal improvement",
+    "No QR, save, payment or close baseline in this delivery",
+    "No fractional quantities in control; weight has no equivalent M0 operation",
+    "Original normal-owner01 failed oracle/incomplete attempts preserved",
+    "No explicit browser clock-resolution probe in this descriptive campaign; do not infer resolution from decimal precision"
+  ]
+}
