@@ -128,7 +128,7 @@ export default function AnalyticsConsole({
         description="Tus ventas, costos, gastos, clientes y promos en números."
         actions={<Link href="/backoffice">Volver al inicio</Link>}
       />
-      <div className="grid gap-4 sm:grid-cols-2 lg:max-w-2xl">
+      <div className="grid gap-4 sm:grid-cols-3">
         <SelectField
           label="Período"
           options={periods}
@@ -145,7 +145,40 @@ export default function AnalyticsConsole({
           value={locationId}
           onChange={(key) => setLocationId(String(key))}
         />
+        <DateField label="Ver un día" value={date} onChange={setDate} />
       </div>
+      {day && !loading && !error && (
+        <Card className="grid gap-4">
+          <Heading level={2}>Ver un día</Heading>
+          <Text>
+            El {day.date} vendiste {money(day.revenueMinor)} en {day.tickets}{" "}
+            tickets.
+          </Text>
+          {day.products.length ? (
+            <ul className="grid divide-y divide-border">
+              {day.products.map((p) => (
+                <li
+                  key={p.id}
+                  className="grid min-w-0 grid-cols-1 gap-2 py-3 sm:grid-cols-3"
+                >
+                  <Text as="span" className="break-words sm:col-span-2">
+                    {p.label} · {p.units} unidades
+                  </Text>
+                  <Text
+                    as="span"
+                    variant="label"
+                    className="tabular-nums sm:text-right"
+                  >
+                    {money(p.revenueMinor)}
+                  </Text>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <Text variant="muted">No hay ventas registradas ese día.</Text>
+          )}
+        </Card>
+      )}
       {error && (
         <Alert kind="error" title={error}>
           <Button variant="quiet" onPress={() => setReload((n) => n + 1)}>
@@ -441,41 +474,6 @@ export default function AnalyticsConsole({
           )}
         </div>
       )}
-      <Card className="grid gap-4">
-        <Heading level={2}>Ver un día</Heading>
-        <DateField label="Fecha" value={date} onChange={setDate} />
-        {day && !loading && !error && (
-          <>
-            <Text>
-              El {day.date} vendiste {money(day.revenueMinor)} en {day.tickets}{" "}
-              tickets.
-            </Text>
-            {day.products.length ? (
-              <ul className="grid divide-y divide-border">
-                {day.products.map((p) => (
-                  <li
-                    key={p.id}
-                    className="grid min-w-0 grid-cols-1 gap-2 py-3 sm:grid-cols-3"
-                  >
-                    <Text as="span" className="break-words sm:col-span-2">
-                      {p.label} · {p.units} unidades
-                    </Text>
-                    <Text
-                      as="span"
-                      variant="label"
-                      className="tabular-nums sm:text-right"
-                    >
-                      {money(p.revenueMinor)}
-                    </Text>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <Text variant="muted">No hay ventas registradas ese día.</Text>
-            )}
-          </>
-        )}
-      </Card>
     </main>
   );
 }

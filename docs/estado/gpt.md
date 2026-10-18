@@ -5,6 +5,8 @@
 
 ## ESTADO — 0239 ANALÍTICAS REORGANIZADA; PRUEBA OWNER EN DEV (2026-10-18 UTC)
 
+Ajuste L0 posterior solicitado por owner: «Ver un día» junto a Período/Local en la fila superior (tres columnas desde sm, apilados móvil); resultado diario debajo de filtros sólo con fecha/datos, sin tarjeta vacía al pie. Mismo DateField/estado/GET y contenido diario. Diff/ESLint/typecheck:ui/ui-guard focales; sin tests nuevos ni nueva campaña browser para este L0. Sin push/PROD; todos los diferidos intactos.
+
 Owner aportó ocho referencias de composición y pidió aprovechar el layout de `/backoffice/analytics` sin abandonar Tailwind/React Aria/sistema visual. Refinamiento L1 dentro de0239, sin nueva spec funcional: indicadores de ventas en franja, ganancia/equilibrio paralelo7/5, ranking/stock7/5, clientes/promos5/7; móvil indicadores etiqueta/importe compactos, orden DOM lineal. Datos/cálculos/HTTP y todos los matices de costos/cobertura/null/cero/estimaciones/comparación anual/causalidad conservados. Sin gráficos o series inventadas, kit/guard/deps/DB intactos.
 
 Producto `13b4988e6f269ee607f9ed45cecf4e2b7ae0a686` sobre37c98622; integradoFF en dev/main local tras QA independiente `/root/qa_analytics_layout` PASS acotado sobre eseSHA. [Entrega/QA](../factory/0239-analytics-layout.md). Factory analytics-layout-0239 aceptado/integrado/retirado, WT propio limpio eliminado, evidencia fuera delWT `/private/tmp/checkpass-analytics-layout-evidence/`. Sin push/PROD; origin/main sigue90ebe18f. Untracked ajenos intactos.
