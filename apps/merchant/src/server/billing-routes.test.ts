@@ -39,6 +39,21 @@ const world = vi.hoisted(() => ({
 
 let fake: FakeStripe = fakeStripe();
 
+vi.mock("./backoffice-membership", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("./backoffice-membership")>();
+  const { legacyMembershipFixtures } =
+    await import("./backoffice-membership-fixture.test-support");
+  return {
+    ...actual,
+    ...legacyMembershipFixtures(async () => ({
+      access: "subscribed",
+      trialEndsAt: null,
+      failure: null,
+    })),
+  };
+});
+
 vi.mock("./auth", () => ({
   getMerchantAuth: () => ({ api: { getSession: async () => world.session } }),
 }));

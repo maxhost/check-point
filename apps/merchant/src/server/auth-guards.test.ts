@@ -10,6 +10,21 @@ class Redirected extends Error {
   }
 }
 
+vi.mock("./backoffice-membership", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("./backoffice-membership")>();
+  const { legacyMembershipFixtures } =
+    await import("./backoffice-membership-fixture.test-support");
+  return {
+    ...actual,
+    ...legacyMembershipFixtures(async () => ({
+      access: "subscribed",
+      trialEndsAt: null,
+      failure: null,
+    })),
+  };
+});
+
 vi.mock("next/navigation", () => ({
   redirect: (to: string) => {
     throw new Redirected(to);

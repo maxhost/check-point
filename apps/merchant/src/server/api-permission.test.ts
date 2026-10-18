@@ -13,11 +13,19 @@ const world = vi.hoisted(() => ({
   billing: null as null | { status: number; code: string; message: string },
 }));
 
+vi.mock("./backoffice-membership", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("./backoffice-membership")>();
+  const { legacyMembershipFixtures } =
+    await import("./backoffice-membership-fixture.test-support");
+  return { ...actual, ...legacyMembershipFixtures() };
+});
+
 vi.mock("./billing-gate", () => ({
   businessBillingFailure: async () => world.billing,
   readBusinessBilling: async () => ({
     access: world.billing ? "blocked" : "trial",
-    trialEndsAt: null,
+    trialEndsAt: world.billing ? null : new Date(Date.now() + 86_400_000),
     failure: world.billing,
   }),
 }));

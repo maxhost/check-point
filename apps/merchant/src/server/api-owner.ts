@@ -126,7 +126,8 @@ export async function requireApiOwner(
 
   // PASO 5 — el eje de ACCESO (spec 0189 §D4).
   if (!options.allowBlocked) {
-    const billing = (await context.readBilling(business.id)).failure;
+    const billing = (await context.readBilling(business.id, "active-owner"))
+      .failure;
     if (billing) return { failure: billing };
   }
 
@@ -249,7 +250,8 @@ export async function requireApiOwnerSinGateDeEmail(
   if (failure) return { failure };
 
   // PASO 5 — el eje de ACCESO (spec 0189 §D4), igual que en `requireApiOwner`.
-  const billing = (await context.readBilling(business.id)).failure;
+  const billing = (await context.readBilling(business.id, "active-owner"))
+    .failure;
   if (billing) return { failure: billing };
 
   return { business, userId: session.user.id };
