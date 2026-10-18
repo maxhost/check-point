@@ -1,6 +1,6 @@
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { sql } from "drizzle-orm";
-import { getDb } from "@mi-pasaporte/db";
+import { getDb, withDbTransaction, type DbTransaction } from "@mi-pasaporte/db";
 import {
   locations,
   productCategories,
@@ -35,9 +35,13 @@ const productColumns = {
 };
 
 /** Rejects a category that isn't the owner's; a null category is always allowed. */
-async function assertCategory(businessId: string, categoryId: string | null) {
+async function assertCategory(
+  tx: DbTransaction,
+  businessId: string,
+  categoryId: string | null,
+) {
   if (!categoryId) return;
-  const [row] = await getDb()
+  const [row] = await tx
     .select({ id: productCategories.id })
     .from(productCategories)
     .where(
@@ -53,12 +57,13 @@ async function assertCategory(businessId: string, categoryId: string | null) {
 
 /** Rejects a restricted visibility list containing a location outside the business. */
 async function assertLocations(
+  tx: DbTransaction,
   businessId: string,
   availableAllLocations: boolean,
   locationIds: string[],
 ) {
   if (availableAllLocations || locationIds.length === 0) return;
-  const rows = await getDb()
+  const rows = await tx
     .select({ id: locations.id })
     .from(locations)
     .where(
@@ -73,11 +78,11 @@ async function assertLocations(
 }
 
 async function syncLocations(
+  db: DbTransaction,
   productId: string,
   availableAllLocations: boolean,
   locationIds: string[],
 ) {
-  const db = getDb();
   await db
     .delete(productLocations)
     .where(eq(productLocations.productId, productId));
@@ -139,42 +144,70 @@ export async function listCatalog(business: OwnerBusiness) {
   };
 }
 
-/** ADR 0086 — **el alta se bloquea con un import abierto**: esta es la carrera del producto
- * duplicado, la que la spec 0091 habia declarado afuera por el costo de serializar. El guard
- * va ANTES de reservar la imagen: un 409 no deja nada que limpiar en R2. */
+/** The configuration mutex always precedes product/import locks and validation. */
+async function lockBusiness(tx: DbTransaction, businessId: string) {
+  await tx.execute(
+    sql`select pg_advisory_xact_lock(hashtextextended(${"business-config/" + businessId},0))`,
+  );
+}
+
+// Compare PostgreSQL numeric strings without converting tariffs to floating point.
+function normalizedDecimal(value: string | null) {
+  if (value === null) return null;
+  const [whole, fraction = ""] = value.split(".");
+  return `${whole.replace(/^0+(?=\d)/, "")}.${fraction.replace(/0+$/, "")}`;
+}
+
 export async function createProduct(business: OwnerBusiness, value: unknown) {
   const input = validateProductInput(value);
+  input.locationIds = [
+    ...new Set(input.locationIds.map((id) => id.toLowerCase())),
+  ];
+  // Preserve the early guard before preparing any external asset; recheck under lock.
   await assertNoOpenImport(business.id);
-  await assertCategory(business.id, input.categoryId);
-  await assertLocations(
-    business.id,
-    input.availableAllLocations,
-    input.locationIds,
-  );
   const change = await resolveImageChange(business.id, input, null);
   try {
-    const [row] = await getDb()
-      .insert(products)
-      .values({
-        businessId: business.id,
-        categoryId: input.categoryId,
-        name: input.name,
-        unitPrice: input.unitPrice,
-        unitCost: input.unitCost,
-        availableAllLocations: input.availableAllLocations,
-        imageObjectKey: change?.nextKey ?? null,
-        imageVersion: change?.nextKey ? 1 : 0,
-        imageSource: change?.attribution.source ?? null,
-        imageAuthor: change?.attribution.author ?? null,
-        imageAuthorUrl: change?.attribution.authorUrl ?? null,
-        imageSourceUrl: change?.attribution.sourceUrl ?? null,
-      })
-      .returning(productColumns);
-    await syncLocations(row.id, input.availableAllLocations, input.locationIds);
-    return toProductDTO({
-      ...row,
-      locationIds: input.availableAllLocations ? [] : input.locationIds,
-    } as ProductRecord);
+    return await withDbTransaction(async (tx) => {
+      await lockBusiness(tx, business.id);
+      await assertNoOpenImport(business.id, tx);
+      await assertCategory(tx, business.id, input.categoryId);
+      await assertLocations(
+        tx,
+        business.id,
+        input.availableAllLocations,
+        input.locationIds,
+      );
+      const [row] = await tx
+        .insert(products)
+        .values({
+          businessId: business.id,
+          categoryId: input.categoryId,
+          name: input.name,
+          unitPrice: input.unitPrice,
+          unitCost: input.unitCost,
+          soldByWeight: false,
+          pricingUnit: "unit",
+          salesRevision: 1,
+          availableAllLocations: input.availableAllLocations,
+          imageObjectKey: change?.nextKey ?? null,
+          imageVersion: change?.nextKey ? 1 : 0,
+          imageSource: change?.attribution.source ?? null,
+          imageAuthor: change?.attribution.author ?? null,
+          imageAuthorUrl: change?.attribution.authorUrl ?? null,
+          imageSourceUrl: change?.attribution.sourceUrl ?? null,
+        })
+        .returning(productColumns);
+      await syncLocations(
+        tx,
+        row.id,
+        input.availableAllLocations,
+        input.locationIds,
+      );
+      return toProductDTO({
+        ...row,
+        locationIds: input.availableAllLocations ? [] : input.locationIds,
+      } as ProductRecord);
+    });
   } catch (error) {
     if (change?.rollback)
       await cleanupProductPrefixNow(business.id, change.rollback);
@@ -187,94 +220,143 @@ export async function updateProduct(
   productId: string,
   value: unknown,
 ) {
-  if (!uuidPattern.test(productId)) {
+  if (!uuidPattern.test(productId))
     throw new CatalogError(404, "Producto no encontrado.");
-  }
   const input = validateProductInput(value);
-  const [current] = await getDb()
-    .select({ imageObjectKey: products.imageObjectKey })
+  input.locationIds = [
+    ...new Set(input.locationIds.map((id) => id.toLowerCase())),
+  ];
+  const [observed] = await getDb()
+    .select({
+      imageObjectKey: products.imageObjectKey,
+      imageVersion: products.imageVersion,
+    })
     .from(products)
     .where(
       and(eq(products.id, productId), eq(products.businessId, business.id)),
     )
     .limit(1);
-  if (!current) throw new CatalogError(404, "Producto no encontrado.");
-  await assertCategory(business.id, input.categoryId);
-  await assertLocations(
-    business.id,
-    input.availableAllLocations,
-    input.locationIds,
-  );
-
+  if (!observed) throw new CatalogError(404, "Producto no encontrado.");
   const change = await resolveImageChange(
     business.id,
     input,
-    current.imageObjectKey,
+    observed.imageObjectKey,
   );
+  let result;
   try {
-    const [row] = await getDb()
-      .update(products)
-      .set({
-        categoryId: input.categoryId,
-        name: input.name,
-        unitPrice: input.unitPrice,
-        unitCost: input.unitCost,
-        availableAllLocations: input.availableAllLocations,
-        ...(change
-          ? {
-              imageObjectKey: change.nextKey,
-              imageVersion: sql`${products.imageVersion} + 1`,
-              imageSource: change.attribution.source,
-              imageAuthor: change.attribution.author,
-              imageAuthorUrl: change.attribution.authorUrl,
-              imageSourceUrl: change.attribution.sourceUrl,
-            }
-          : {}),
-        updatedAt: new Date(),
-      })
-      .where(
-        and(eq(products.id, productId), eq(products.businessId, business.id)),
-      )
-      .returning(productColumns);
-    await syncLocations(
-      productId,
-      input.availableAllLocations,
-      input.locationIds,
-    );
-    if (change?.previous) {
-      await cleanupProductPrefixNow(business.id, change.previous);
-    }
-    return toProductDTO({
-      ...row,
-      locationIds: input.availableAllLocations ? [] : input.locationIds,
-    } as ProductRecord);
+    result = await withDbTransaction(async (tx) => {
+      await lockBusiness(tx, business.id);
+      const [current] = await tx
+        .select()
+        .from(products)
+        .where(
+          and(eq(products.id, productId), eq(products.businessId, business.id)),
+        )
+        .for("update")
+        .limit(1);
+      if (!current) throw new CatalogError(404, "Producto no encontrado.");
+      if (
+        change &&
+        (current.imageObjectKey !== observed.imageObjectKey ||
+          current.imageVersion !== observed.imageVersion)
+      ) {
+        throw new CatalogError(
+          409,
+          "La imagen cambió. Revisa el producto y vuelve a guardar.",
+        );
+      }
+      await assertCategory(tx, business.id, input.categoryId);
+      await assertLocations(
+        tx,
+        business.id,
+        input.availableAllLocations,
+        input.locationIds,
+      );
+      const links = await tx
+        .select({ id: productLocations.locationId })
+        .from(productLocations)
+        .where(eq(productLocations.productId, productId));
+      const oldLocations = current.availableAllLocations
+        ? []
+        : links.map((row) => row.id).sort();
+      const newLocations = input.availableAllLocations
+        ? []
+        : [...input.locationIds].sort();
+      const commercialChange =
+        current.name !== input.name ||
+        normalizedDecimal(current.unitPrice) !==
+          normalizedDecimal(input.unitPrice) ||
+        normalizedDecimal(current.unitCost) !==
+          normalizedDecimal(input.unitCost) ||
+        current.availableAllLocations !== input.availableAllLocations ||
+        JSON.stringify(oldLocations) !== JSON.stringify(newLocations);
+      const [row] = await tx
+        .update(products)
+        .set({
+          categoryId: input.categoryId,
+          name: input.name,
+          unitPrice: input.unitPrice,
+          unitCost: input.unitCost,
+          availableAllLocations: input.availableAllLocations,
+          ...(commercialChange
+            ? { salesRevision: sql`${products.salesRevision} + 1` }
+            : {}),
+          ...(change
+            ? {
+                imageObjectKey: change.nextKey,
+                imageVersion: sql`${products.imageVersion} + 1`,
+                imageSource: change.attribution.source,
+                imageAuthor: change.attribution.author,
+                imageAuthorUrl: change.attribution.authorUrl,
+                imageSourceUrl: change.attribution.sourceUrl,
+              }
+            : {}),
+          updatedAt: new Date(),
+        })
+        .where(
+          and(eq(products.id, productId), eq(products.businessId, business.id)),
+        )
+        .returning(productColumns);
+      await syncLocations(
+        tx,
+        productId,
+        input.availableAllLocations,
+        input.locationIds,
+      );
+      return toProductDTO({
+        ...row,
+        locationIds: input.availableAllLocations ? [] : input.locationIds,
+      } as ProductRecord);
+    });
   } catch (error) {
-    if (change?.rollback) {
+    if (change?.rollback)
       await cleanupProductPrefixNow(business.id, change.rollback);
-    }
     throw error;
   }
+  // A committed replacement owns its new prefix; never roll it back on aftercommit cleanup.
+  if (change?.previous)
+    await cleanupProductPrefixNow(business.id, change.previous);
+  return result;
 }
 
 export async function deleteProduct(
   business: OwnerBusiness,
   productId: string,
 ) {
-  if (!uuidPattern.test(productId)) {
+  if (!uuidPattern.test(productId))
     throw new CatalogError(404, "Producto no encontrado.");
-  }
-  const [row] = await getDb()
-    .delete(products)
-    .where(
-      and(eq(products.id, productId), eq(products.businessId, business.id)),
-    )
-    .returning({
-      id: products.id,
-      imageObjectKey: products.imageObjectKey,
-    });
-  if (!row) throw new CatalogError(404, "Producto no encontrado.");
-  if (row.imageObjectKey) {
+  const row = await withDbTransaction(async (tx) => {
+    await lockBusiness(tx, business.id);
+    const [deleted] = await tx
+      .delete(products)
+      .where(
+        and(eq(products.id, productId), eq(products.businessId, business.id)),
+      )
+      .returning({ id: products.id, imageObjectKey: products.imageObjectKey });
+    if (!deleted) throw new CatalogError(404, "Producto no encontrado.");
+    return deleted;
+  });
+  if (row.imageObjectKey)
     await cleanupProductPrefixNow(business.id, row.imageObjectKey);
-  }
   return { ok: true };
 }
