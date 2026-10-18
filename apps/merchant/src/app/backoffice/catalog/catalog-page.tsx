@@ -57,6 +57,7 @@ function CatalogContent({
     deleteProduct,
     deleteCategory,
     saveProduct,
+    reviewProduct,
     renameCategory,
     runConfirm,
     closeEditor,
@@ -238,6 +239,8 @@ function CatalogContent({
           categories={catalog.categories}
           locations={catalog.locations}
           currencyCode={catalog.currencyCode}
+          salesMassUnits={catalog.salesMassUnits}
+          onReview={reviewProduct}
           onCreateCategory={createCategory}
           onSave={saveProduct}
           onCancel={closeEditor}
