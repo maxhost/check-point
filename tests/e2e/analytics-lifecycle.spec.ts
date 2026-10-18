@@ -251,7 +251,24 @@ test("an obsolete read cannot release the newer read's focus coalescing", async 
   fixture.holdRead = new Promise<void>((resolve) => {
     releaseOld = resolve;
   });
+  const oldRequest = page.waitForRequest(
+    (request) =>
+      request.url().endsWith("/api/analytics/inbox") &&
+      request.method() === "GET",
+  );
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  const request = await oldRequest;
+  // Register BEFORE deciding: 0238 can cancel this GET before it has a response.
+  const oldTerminal = new Promise<void>((resolve) => {
+    const terminal = (candidate: typeof request) => {
+      if (candidate !== request) return;
+      page.off("requestfinished", terminal);
+      page.off("requestfailed", terminal);
+      resolve();
+    };
+    page.on("requestfinished", terminal);
+    page.on("requestfailed", terminal);
+  });
   await expect.poll(() => fixture.reads).toBe(2);
   let releaseNew!: () => void;
   fixture.holdRead = new Promise<void>((resolve) => {
@@ -264,14 +281,9 @@ test("an obsolete read cannot release the newer read's focus coalescing", async 
   };
   await page.getByRole("button", { name: "Solucionado" }).click();
   await expect.poll(() => fixture.reads).toBe(3);
-  const oldResponse = page.waitForResponse(
-    (response) =>
-      response.url().endsWith("/api/analytics/inbox") &&
-      response.request().method() === "GET",
-  );
   releaseOld();
-  await (await oldResponse).finished();
-  // Let the completed body and its promise chain settle before triggering focus.
+  await oldTerminal;
+  // Let the old transport terminal and its promise chain settle before triggering focus.
   await page.evaluate(
     () =>
       new Promise<void>((resolve) => {

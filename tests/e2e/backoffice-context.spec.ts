@@ -281,3 +281,246 @@ test("0238 scope409 retira privados y navega una sola vez sin repetir lecturas",
   ).toEqual(["/backoffice"]);
   expect(moduleReads).toBe(1);
 });
+
+const inboxCard: AnalyticsInboxResponse["cards"][number] = {
+  id: "fixture-card",
+  version: "c".repeat(64),
+  category: "informational",
+  expiresAt: "2099-01-01T00:00:00.000Z",
+  period: { from: "2026-01-01", to: "2026-01-02", label: "Fixture" },
+  decisions: [{ key: "seen", label: "Entendido" }],
+  cardKey: "fixture",
+  sender: "Fixture",
+  title: "Aviso accionable sintético",
+  body: "Contenido del aviso",
+  amountAtStake: null,
+  quality: "observed",
+  action: null,
+};
+const inboxEnvelope = (cards = [inboxCard]): AnalyticsInboxResponse => ({
+  contractVersion: 2,
+  policyVersion: "synthetic-0238",
+  timezone: "UTC",
+  state: "ready",
+  preparedAt: null,
+  nextReminderAt: null,
+  refreshAfterMs: null,
+  cards,
+});
+
+test("0238 StrictMode y dos lectores comparten un GET Inbox scoped", async ({
+  page,
+}) => {
+  const reads: string[] = [];
+  await page.route("**/api/analytics/inbox", (route) => {
+    reads.push(route.request().headers()["x-backoffice-scope"]);
+    return route.fulfill({ json: inboxEnvelope() });
+  });
+  await page.goto(
+    `${harness.url}?modules=ready&readers=2&strict&fixturePath=/backoffice`,
+  );
+  await expect(
+    page.getByRole("heading", { name: inboxCard.title }),
+  ).toHaveCount(2);
+  expect(reads).toEqual(["a".repeat(64)]);
+  await page.evaluate(() =>
+    (
+      window as unknown as { backofficeFixture: BackofficeFixtureApi }
+    ).backofficeFixture.setInboxReaders(1),
+  );
+  await expect(
+    page.getByRole("heading", { name: inboxCard.title }),
+  ).toHaveCount(1);
+  expect(reads).toHaveLength(1);
+});
+
+test("0238 POST Inbox scoped + foco/remount conserva una cola y recupera módulos pendientes sin seed viejo", async ({
+  page,
+}) => {
+  const reads: string[] = [];
+  const writes: { scope: string; body: Record<string, unknown> }[] = [];
+  let saved = false;
+  let release!: () => void;
+  const gate = new Promise<void>((done) => {
+    release = done;
+  });
+  await page.route("**/api/analytics/inbox", (route) => {
+    reads.push(route.request().headers()["x-backoffice-scope"]);
+    return route.fulfill({ json: inboxEnvelope(saved ? [] : [inboxCard]) });
+  });
+  const moduleReads: string[] = [];
+  await page.route("**/api/modules", (route) => {
+    moduleReads.push(route.request().headers()["x-backoffice-scope"]);
+    return route.fulfill({ json: { modules: businessModules(true, false) } });
+  });
+  await page.route(
+    "**/api/analytics/inbox/fixture-card/seen",
+    async (route) => {
+      writes.push({
+        scope: route.request().headers()["x-backoffice-scope"],
+        body: route.request().postDataJSON(),
+      });
+      await gate;
+      saved = true;
+      await route.fulfill({ json: { cards: [], nextReminderAt: null } });
+    },
+  );
+  await page.goto(`${harness.url}?fixturePath=/backoffice`);
+  await page.getByRole("button", { name: "Entendido", exact: true }).click();
+  await expect.poll(() => writes.length).toBe(1);
+  await page.evaluate(() => {
+    const api = (
+      window as unknown as { backofficeFixture: BackofficeFixtureApi }
+    ).backofficeFixture;
+    for (let i = 0; i < 5; i++) window.dispatchEvent(new Event("focus"));
+    api.setInboxReaders(0);
+  });
+  await expect(
+    page.getByRole("heading", { name: "Hoy en tu negocio" }),
+  ).toHaveCount(0);
+  await page.evaluate(() =>
+    (
+      window as unknown as { backofficeFixture: BackofficeFixtureApi }
+    ).backofficeFixture.setInboxReaders(1),
+  );
+  await expect(
+    page.getByRole("button", { name: "Entendido", exact: true }),
+  ).toBeDisabled();
+  expect(reads).toHaveLength(1);
+  release();
+  await expect(
+    page.getByText("Hoy no tengo nada para avisarte."),
+  ).toBeVisible();
+  await expect.poll(() => reads.length).toBe(2);
+  expect(reads).toEqual(["a".repeat(64), "a".repeat(64)]);
+  expect(writes).toEqual([
+    {
+      scope: "a".repeat(64),
+      body: {
+        expectedVersion: inboxCard.version,
+        operationId: expect.any(String),
+      },
+    },
+  ]);
+  expect(moduleReads).toEqual(["a".repeat(64)]);
+  await page.evaluate(() =>
+    (
+      window as unknown as { backofficeFixture: BackofficeFixtureApi }
+    ).backofficeFixture.resolveModules("restricted"),
+  );
+  await expect(page.getByLabel("Estado módulos")).toHaveText("ready");
+  await expect(
+    page.getByRole("link", { name: "Stock", exact: true }),
+  ).toBeVisible();
+});
+
+test("0238 scope409 de decisión retira todos los privados y no reenvía POST", async ({
+  page,
+}) => {
+  const writes: string[] = [];
+  let reads = 0;
+  await page.route("**/api/analytics/inbox", (route) => {
+    reads += 1;
+    return route.fulfill({ json: inboxEnvelope() });
+  });
+  await page.route("**/api/analytics/inbox/fixture-card/seen", (route) => {
+    writes.push(route.request().headers()["x-backoffice-scope"]);
+    return route.fulfill({
+      status: 409,
+      json: { error: "Context changed", code: "backoffice_context_changed" },
+    });
+  });
+  await page.goto(`${harness.url}?modules=ready&fixturePath=/backoffice`);
+  await page.getByRole("button", { name: "Entendido", exact: true }).click();
+  await expect(page.getByText("Contenido privado sintético")).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: inboxCard.title }),
+  ).toHaveCount(0);
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event("focus"));
+    (
+      window as unknown as { backofficeFixture: BackofficeFixtureApi }
+    ).backofficeFixture.lateSeed();
+  });
+  expect(
+    await page.evaluate(
+      () =>
+        (window as unknown as { backofficeFixture: BackofficeFixtureApi })
+          .backofficeFixture.navigations,
+    ),
+  ).toEqual(["/backoffice"]);
+  expect(writes).toEqual(["a".repeat(64)]);
+  expect(reads).toBe(1);
+});
+
+test("0238 fallo ambiguo conserva operationId/version sólo para reintento explícito", async ({
+  page,
+}) => {
+  const commands: Record<string, unknown>[] = [];
+  const scopes: string[] = [];
+  await page.route("**/api/analytics/inbox", (route) =>
+    route.fulfill({ json: inboxEnvelope() }),
+  );
+  await page.route("**/api/analytics/inbox/fixture-card/seen", (route) => {
+    commands.push(route.request().postDataJSON());
+    scopes.push(route.request().headers()["x-backoffice-scope"]);
+    return commands.length === 1
+      ? route.abort("failed")
+      : route.fulfill({ json: { cards: [], nextReminderAt: null } });
+  });
+  await page.goto(`${harness.url}?modules=ready&fixturePath=/backoffice`);
+  await page.getByRole("button", { name: "Entendido", exact: true }).click();
+  await expect(
+    page.getByText("No pudimos guardar la acción. Intenta otra vez."),
+  ).toBeVisible();
+  expect(commands).toHaveLength(1);
+  await page.getByRole("button", { name: "Entendido", exact: true }).click();
+  await expect(
+    page.getByText("Hoy no tengo nada para avisarte."),
+  ).toBeVisible();
+  expect(commands).toHaveLength(2);
+  expect(commands[1]).toEqual(commands[0]);
+  expect(scopes).toEqual(["a".repeat(64), "a".repeat(64)]);
+});
+
+test("0238 Inbox restringido oculta tarjetas sin bucle de navegación y un reintento explícito recupera", async ({
+  page,
+}) => {
+  let reads = 0;
+  let denied = false;
+  await page.route("**/api/analytics/inbox", (route) => {
+    reads += 1;
+    return denied
+      ? route.fulfill({
+          status: 403,
+          json: { error: "Acceso restringido", code: "email_not_verified" },
+        })
+      : route.fulfill({ json: inboxEnvelope() });
+  });
+  await page.goto(`${harness.url}?modules=ready&fixturePath=/backoffice`);
+  await expect(
+    page.getByRole("heading", { name: inboxCard.title }),
+  ).toBeVisible();
+  denied = true;
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect(page.getByText("Acceso restringido")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: inboxCard.title }),
+  ).toHaveCount(0);
+  await expect(page.getByText("Contenido privado sintético")).toBeVisible();
+  expect(
+    await page.evaluate(
+      () =>
+        (window as unknown as { backofficeFixture: BackofficeFixtureApi })
+          .backofficeFixture.navigations,
+    ),
+  ).toEqual([]);
+  expect(reads).toBe(2);
+  denied = false;
+  await page.getByRole("button", { name: "Volver a intentar" }).click();
+  await expect(
+    page.getByRole("heading", { name: inboxCard.title }),
+  ).toBeVisible();
+  await expect(page.getByText("Acceso restringido")).toHaveCount(0);
+  expect(reads).toBe(3);
+});

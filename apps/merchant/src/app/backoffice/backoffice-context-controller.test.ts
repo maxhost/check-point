@@ -74,6 +74,8 @@ function adapters() {
   return {
     readSession: vi.fn(async (): Promise<unknown> => reporter()),
     readModules: vi.fn(async (): Promise<ModuleDTO[]> => [module]),
+    readInbox: vi.fn(),
+    decideInbox: vi.fn(),
     navigate: vi.fn(),
   };
 }

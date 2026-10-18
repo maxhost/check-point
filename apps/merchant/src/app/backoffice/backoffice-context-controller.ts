@@ -21,11 +21,18 @@ import {
 } from "./backoffice-context-state";
 import { isBackofficeContextChanged } from "./backoffice-scope-request";
 import { parseBackofficeSessionContext } from "./backoffice-session-context";
+import {
+  createInboxContextResource,
+  emptyInboxContext,
+  type InboxAdapters,
+  type InboxContextState,
+} from "./analytics/inbox-context-resource";
 
 export type BackofficeContextSnapshot = BackofficeContextState & {
   readonly sessionState: "ready" | "pending" | "unavailable";
+  readonly inbox: InboxContextState;
 };
-type Adapters = {
+type Adapters = InboxAdapters & {
   readSession: (signal: AbortSignal) => Promise<unknown>;
   readModules: (
     signal: AbortSignal,
@@ -47,6 +54,7 @@ export function createBackofficeContextController(
   const serverSnapshot: BackofficeContextSnapshot = {
     ...createBackofficeContextState(initial),
     sessionState: "ready",
+    inbox: emptyInboxContext(),
   };
   let snapshot = serverSnapshot;
   const owner = createBackofficeRequestOwner(stampOf(snapshot));
@@ -56,14 +64,31 @@ export function createBackofficeContextController(
     disposed = false,
     navigated = false,
     attachments = 0;
+  const inbox = createInboxContextResource(
+    {
+      owner,
+      capture: () => captureTicket("inbox"),
+      current: (ticket) => current(ticket),
+      invalidate: () => invalidate(["inbox"]),
+      get: () => snapshot.inbox,
+      patch: (value) => commit({ ...snapshot, inbox: value }),
+      retire: (href) => retire(href),
+    },
+    adapters,
+  );
 
   function commit(
-    next: BackofficeContextState,
+    next: BackofficeContextState & { inbox?: InboxContextState },
     sessionState = snapshot.sessionState,
   ) {
     if (disposed) return;
-    snapshot = { ...next, sessionState };
+    snapshot = {
+      ...next,
+      sessionState,
+      inbox: next.core ? (next.inbox ?? snapshot.inbox) : emptyInboxContext(),
+    };
     owner.reconcile(stampOf(snapshot)); // Synchronous before subscriptions or a new captured intent.
+    inbox.reconcile();
     for (const notify of [...listeners]) notify();
   }
   const current = (ticket: BackofficeResourceTicket) =>
@@ -215,9 +240,14 @@ export function createBackofficeContextController(
   }
   function dispose() {
     if (disposed) return;
-    snapshot = { ...retireBackofficeContext(snapshot), sessionState: "ready" };
+    snapshot = {
+      ...retireBackofficeContext(snapshot),
+      sessionState: "ready",
+      inbox: emptyInboxContext(),
+    };
     disposed = true;
     queued.clear();
+    inbox.dispose();
     owner.dispose();
     listeners.clear();
   }
@@ -250,6 +280,9 @@ export function createBackofficeContextController(
     applyModulesSeed,
     observeCoreSeed,
     revalidateSessionModules,
+    acquireInbox: inbox.acquire,
+    refreshInbox: inbox.refresh,
+    decideInbox: inbox.decide,
     retire,
     attach,
     dispose,

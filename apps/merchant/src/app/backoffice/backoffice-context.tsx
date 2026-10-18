@@ -25,6 +25,7 @@ import {
   type BackofficeResourceTicket,
 } from "./backoffice-context-state";
 import { panelRequest } from "./panel-request";
+import { emptyInboxContext } from "./analytics/inbox-context-resource";
 import { readModules } from "./settings/module-request";
 import { MODULES_CHANGED_EVENT } from "./settings/module-navigation";
 
@@ -36,6 +37,9 @@ type BackofficeContextValue = {
   applyModulesSeed: (seed: BackofficeModulesSeed) => void;
   invalidate: (resources: readonly BackofficeResource[]) => void;
   retire: () => void;
+  acquireInbox: BackofficeContextController["acquireInbox"];
+  refreshInbox: BackofficeContextController["refreshInbox"];
+  decideInbox: BackofficeContextController["decideInbox"];
 };
 
 const BackofficeContext = createContext<BackofficeContextValue | null>(null);
@@ -60,6 +64,18 @@ export function BackofficeProvider({
           }),
         readModules: (signal, ticket) =>
           readModules({ signal, scopeKey: ticket.scopeKey }),
+        readInbox: (signal, ticket) =>
+          panelRequest("/api/analytics/inbox", "GET", undefined, {
+            signal,
+            scopeKey: ticket.scopeKey,
+          }),
+        decideInbox: (command, ticket) =>
+          panelRequest(
+            `/api/analytics/inbox/${command.cardId}/${command.decision}`,
+            "POST",
+            command.body,
+            { scopeKey: ticket.scopeKey },
+          ),
         navigate: (href) => window.location.assign(href),
       }),
   );
@@ -70,8 +86,12 @@ export function BackofficeProvider({
   );
   const observed = observeBackofficeCoreSeed(stored, initialContext);
   const state = useMemo(
-    () => ({ ...observed, sessionState: stored.sessionState }),
-    [observed, stored.sessionState],
+    () => ({
+      ...observed,
+      sessionState: stored.sessionState,
+      inbox: observed.core ? stored.inbox : emptyInboxContext(),
+    }),
+    [observed, stored.sessionState, stored.inbox],
   );
   // Hide a different scope during render, but reconcile/cancel only after commit:
   // an abandoned concurrent render must never mutate the live request owner.
@@ -96,6 +116,9 @@ export function BackofficeProvider({
       applyModulesSeed: controller.applyModulesSeed,
       invalidate: controller.invalidate,
       retire: controller.retire,
+      acquireInbox: controller.acquireInbox,
+      refreshInbox: controller.refreshInbox,
+      decideInbox: controller.decideInbox,
     }),
     [state, controller],
   );
