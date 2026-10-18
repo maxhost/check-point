@@ -486,6 +486,94 @@ export default function AnalyticsConsole({
                   )}
                 </section>
               )}
+              {history.promos && (
+                <Card className="grid min-w-0 gap-4">
+                  <Heading level={2}>Promos del período</Heading>
+                  {history.promos.length ? (
+                    <>
+                      <div
+                        role="region"
+                        aria-label="Tabla de promociones"
+                        tabIndex={0}
+                        className="min-w-0 overflow-x-auto rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                      >
+                        <div
+                          role="table"
+                          aria-label="Promos del período"
+                          className="min-w-96"
+                        >
+                          <div
+                            role="row"
+                            className="grid grid-cols-5 items-center gap-2 border-y border-border bg-surface-subtle px-2 py-3"
+                          >
+                            <div role="columnheader" className="col-span-2">
+                              <Text variant="small">Promoción</Text>
+                            </div>
+                            <div role="columnheader" className="text-right">
+                              <Text variant="small">Descuentos</Text>
+                            </div>
+                            <div role="columnheader" className="text-right">
+                              <Text variant="small">Ventas asociadas</Text>
+                            </div>
+                            <div role="columnheader" className="text-right">
+                              <Text variant="small">Costo de premios</Text>
+                            </div>
+                          </div>
+                          {history.promos.map((promo) => (
+                            <div
+                              key={promo.id}
+                              role="row"
+                              className="grid min-w-0 grid-cols-5 items-center gap-2 border-b border-border px-2 py-4 last:border-b-0"
+                            >
+                              <div
+                                role="cell"
+                                className="col-span-2 min-w-0 break-words"
+                              >
+                                <Text variant="label">{promo.label}</Text>
+                              </div>
+                              <div
+                                role="cell"
+                                className="min-w-0 text-right tabular-nums"
+                              >
+                                <Text variant="label" className="text-danger">
+                                  {money(promo.discountMinor)}
+                                </Text>
+                              </div>
+                              <div
+                                role="cell"
+                                className="min-w-0 text-right tabular-nums"
+                              >
+                                <Text variant="label" className="text-success">
+                                  {money(promo.salesMinor)}
+                                </Text>
+                              </div>
+                              <div
+                                role="cell"
+                                className="min-w-0 text-right tabular-nums"
+                              >
+                                {promo.costMinor === null ? (
+                                  <Text variant="small">Sin dato</Text>
+                                ) : (
+                                  <Text variant="label" className="text-danger">
+                                    {money(promo.costMinor)}
+                                  </Text>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <Text variant="small">
+                        Estas ventas no indican que la promo las haya causado.
+                      </Text>
+                    </>
+                  ) : (
+                    <Text variant="muted">
+                      No hay promos registradas en este período y local.
+                    </Text>
+                  )}
+                </Card>
+              )}
             </div>
             <div className="grid min-w-0 content-start gap-6">
               <section id="calculo" className="min-w-0">
@@ -716,36 +804,6 @@ export default function AnalyticsConsole({
               </Card>
             </div>
           </div>
-          {history.promos && (
-            <Card className="grid min-w-0 gap-4 lg:col-span-7">
-              <Heading level={2}>Promos del período</Heading>
-              <Text variant="muted">
-                Descuentos y ventas en los mismos tickets. Estas ventas no
-                indican que la promo las haya causado.
-              </Text>
-              {history.promos.length ? (
-                <ul className="grid divide-y divide-border">
-                  {history.promos.map((p) => (
-                    <li key={p.id} className="grid gap-2 py-3">
-                      <Text>
-                        {p.label}: {money(p.discountMinor)} en descuentos y{" "}
-                        {money(p.salesMinor)} en ventas asociadas.
-                      </Text>
-                      {p.costMinor !== null && p.costMinor > 0 && (
-                        <Text variant="small">
-                          Costo de premios registrado: {money(p.costMinor)}.
-                        </Text>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <Text variant="muted">
-                  No hay promos registradas en este período y local.
-                </Text>
-              )}
-            </Card>
-          )}
         </div>
       )}
     </main>

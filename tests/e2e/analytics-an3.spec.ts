@@ -56,8 +56,25 @@ for (const viewport of [
       expect(Math.abs(boxes[0]!.y - boxes[2]!.y)).toBeLessThan(2);
       expect(boxes[1]!.x).toBeGreaterThan(boxes[0]!.x);
     }
-    await expect(page.getByText(/Café de la tarde:/)).toContainText("30,00");
-    await expect(page.getByText(/Café de la tarde:/)).toContainText("140,00");
+    const promos = page.getByRole("table", {
+      name: "Promos del período",
+      exact: true,
+    });
+    const promoRow = promos
+      .getByRole("row")
+      .filter({ hasText: "Café de la tarde" });
+    await expect(promoRow.getByRole("cell").nth(1)).toContainText("30,00");
+    await expect(promoRow.getByRole("cell").nth(2)).toContainText("140,00");
+    await expect(promoRow.getByRole("cell").nth(3)).toContainText("Sin dato");
+    const customerBox = await customers.boundingBox();
+    const promoBox = await promos.boundingBox();
+    expect(promoBox!.y).toBeGreaterThanOrEqual(
+      customerBox!.y + customerBox!.height,
+    );
+    await page.screenshot({
+      path: `/private/tmp/checkpass-promos-layout/promos-${viewport.width}.png`,
+      fullPage: true,
+    });
     await expect(
       page.getByText(/Estas ventas no indican que la promo/),
     ).toBeVisible();
@@ -85,7 +102,7 @@ for (const viewport of [
       ),
     ).toBe(true);
     await page.screenshot({
-      path: `/private/tmp/checkpass-customers-layout/history-${viewport.width}.png`,
+      path: `/private/tmp/checkpass-promos-layout/empty-${viewport.width}.png`,
       fullPage: true,
     });
   });
