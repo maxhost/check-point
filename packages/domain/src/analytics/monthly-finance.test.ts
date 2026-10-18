@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildMonthlyFinance } from "./monthly-finance";
+import { buildMonthlyFinance, salesBasis } from "./monthly-finance";
 import { calculateGoal, buildCandidates } from "./cards/index";
 import { summarizeHistory } from "./history";
 import { buildDashboardSummary } from "./dashboard-summary-calculation";
@@ -276,7 +276,7 @@ describe("monthly finance v2", () => {
       expect(buildMonthlyFinance(i).reasons).toContain("sales_costs");
     }
   });
-  it("does not offset missing costs between days or locals and accepts exact fractional quantities", () => {
+  it("does not offset missing costs between days or locals and rejects fractional legacy units", () => {
     for (const segment of ["day", "locationId"] as const) {
       const i = fixture();
       const second = sale("2026-10-18").map((r) => ({
@@ -302,7 +302,8 @@ describe("monthly finance v2", () => {
           ? [{ ...r, quantity: 0.3 }]
           : [r],
     );
-    expect(buildMonthlyFinance(i).reasons).toEqual([]);
+    expect(buildMonthlyFinance(i).reasons).toContain("sales_costs");
+    i.metrics = fixture().metrics;
     // Editing/deleting a source leaves zero daily aggregates; they are not missing sales.
     i.metrics.push(
       row("cost_of_goods", 0, "2026-10-18", {
@@ -399,4 +400,261 @@ describe("monthly finance v2", () => {
       }).version,
     ).toBe(1);
   });
+});
+
+const measuredSale = (
+  day = "2026-10-18",
+  grams = "1250.00000000000001",
+  revenue = 100,
+  cost = 40,
+  commission = 10,
+) =>
+  sale(day, revenue, cost, commission).map((r) =>
+    r.metric === "units_sold" || r.metric === "units_with_cost"
+      ? {
+          ...r,
+          metric:
+            r.metric === "units_sold" ? "mass_sold_g" : "mass_with_cost_g",
+          quantity: 0,
+          quantityExact: grams,
+        }
+      : r,
+  );
+
+describe("exact physical financial basis", () => {
+  it.each(["unit", "mass", "mixed"])(
+    "certifies %s contribution without changing captured money",
+    (kind) => {
+      const rows = kind === "unit" ? sale("2026-10-18") : measuredSale();
+      if (kind === "mixed")
+        rows.push(...sale("2026-10-18", 200, 60, 20, "unit-product"));
+      expect(salesBasis(rows)).toMatchObject({
+        hasSales: true,
+        complete: true,
+        contribution: kind === "mixed" ? 170 : 50,
+        unitCoverage: kind === "mass" ? 0 : 1,
+      });
+    },
+  );
+  it("requires both dimensions within the same mixed product, including a zero exact authority", () => {
+    const rows = [...sale("2026-10-18"), ...measuredSale()];
+    expect(salesBasis(rows)).toMatchObject({
+      complete: true,
+      contribution: 100,
+      unitCoverage: 1,
+    });
+    rows.find((r) => r.metric === "units_with_cost")!.quantityExact = "1";
+    rows.find((r) => r.metric === "mass_with_cost_g")!.quantityExact =
+      "1251.00000000000001";
+    expect(salesBasis(rows)).toMatchObject({
+      complete: false,
+      contribution: null,
+    });
+    const zero = [
+      row("mass_sold_g", 0, undefined, {
+        quantity: 999,
+        quantityExact: "0",
+        count: 0,
+      }),
+    ];
+    expect(salesBasis(zero)).toMatchObject({
+      hasSales: false,
+      complete: true,
+      contribution: 0,
+    });
+  });
+  it("uses exact decimal addition beyond capture precision and amount bounds", () => {
+    const rows = measuredSale(
+      undefined,
+      "999999999999999999999999999999.00000000000003",
+    );
+    const sold = rows.find((r) => r.metric === "mass_sold_g")!;
+    sold.quantityExact = "999999999999999999999999999999.00000000000001";
+    rows.push({ ...sold, quantityExact: "0.00000000000002" });
+    expect(salesBasis(rows).complete).toBe(true);
+    rows.at(-1)!.quantityExact = "0.00000000000001";
+    expect(salesBasis(rows)).toMatchObject({
+      complete: false,
+      contribution: null,
+    });
+  });
+  it("honors exact fields over contradictory and nonfinite Number projections", () => {
+    const rows = measuredSale();
+    for (const r of rows.filter((r) => r.metric.startsWith("mass_")))
+      r.quantity = Number.NaN;
+    expect(salesBasis(rows).complete).toBe(true);
+    rows.find((r) => r.metric === "mass_with_cost_g")!.quantityExact = "1250";
+    expect(salesBasis(rows).complete).toBe(false);
+    const unit = sale("2026-10-18");
+    for (const r of unit.filter((r) => r.metric.startsWith("units_"))) {
+      r.quantityExact = "3";
+      r.quantity = 0;
+    }
+    expect(salesBasis(unit)).toMatchObject({ complete: true, unitCoverage: 1 });
+  });
+  it.each(["units_sold", "units_with_cost", "mass_sold_g", "mass_with_cost_g"])(
+    "never offsets a deficit in %s with excess in the other dimension",
+    (metric) => {
+      const rows = [
+        ...sale("2026-10-18"),
+        ...measuredSale().map((r) => ({
+          ...r,
+          dimensionId: r.dimensionId === null ? null : "mass-product",
+        })),
+      ];
+      for (const r of rows) {
+        if (r.metric === metric) {
+          r.quantityExact = metric.startsWith("units_") ? "1" : "1000";
+        }
+        if (
+          r.metric ===
+          (metric.startsWith("units_") ? "mass_with_cost_g" : "units_with_cost")
+        ) {
+          r.quantityExact = "999999";
+        }
+      }
+      expect(salesBasis(rows)).toMatchObject({
+        complete: false,
+        contribution: null,
+      });
+    },
+  );
+  it.each(["dimensionId", "day", "locationId"] as const)(
+    "prevents exact mass compensation across %s",
+    (field) => {
+      const first = measuredSale(undefined, "1");
+      const second = measuredSale(undefined, "1").map((r) => ({
+        ...r,
+        [field]:
+          field === "day"
+            ? "2026-10-19"
+            : field === "locationId"
+              ? "other-local"
+              : r.dimensionId === null
+                ? null
+                : "other-product",
+      }));
+      first.find((r) => r.metric === "mass_with_cost_g")!.quantityExact =
+        "0.99999999999999";
+      second.find((r) => r.metric === "mass_with_cost_g")!.quantityExact =
+        "1.00000000000001";
+      expect(salesBasis([...first, ...second])).toMatchObject({
+        complete: false,
+        contribution: null,
+      });
+    },
+  );
+  it.each([undefined, "", "NaN", "-1", "1e3", "1/3"])(
+    "does not certify missing or invalid exact mass %s even if Number matches",
+    (value) => {
+      const rows = measuredSale();
+      for (const r of rows.filter((r) => r.metric.startsWith("mass_"))) {
+        r.quantity = 1250;
+        r.quantityExact = value;
+      }
+      expect(salesBasis(rows)).toMatchObject({
+        complete: false,
+        contribution: null,
+      });
+    },
+  );
+  it.each([
+    0.1,
+    Number.MAX_SAFE_INTEGER + 1,
+    Number.NaN,
+    Number.POSITIVE_INFINITY,
+    -1,
+  ])("rejects nonlegacy fallback units %s", (quantity) => {
+    const rows = sale("2026-10-18");
+    for (const r of rows.filter((r) => r.metric.startsWith("units_")))
+      r.quantity = quantity;
+    expect(salesBasis(rows)).toMatchObject({
+      complete: false,
+      contribution: null,
+    });
+  });
+  it("recognizes tiny zero-projection mass sales and requires their captured cost counts", () => {
+    const rows = measuredSale(undefined, "0.00000000000001", 0, 0, 0);
+    expect(salesBasis(rows)).toMatchObject({
+      hasSales: true,
+      complete: true,
+      contribution: 0,
+      unitCoverage: 0,
+    });
+    rows.find((r) => r.metric === "cost_of_goods")!.count = 0;
+    expect(salesBasis(rows)).toMatchObject({
+      hasSales: true,
+      complete: false,
+      contribution: null,
+    });
+    expect(
+      salesBasis([
+        row("mass_sold_g", 0, undefined, {
+          quantity: 0,
+          quantityExact: "0.00000000000001",
+          count: 0,
+        }),
+      ]),
+    ).toMatchObject({ hasSales: true, complete: false });
+  });
+  it("preserves empty and orphan invariants for mass with exact zero or invalid quantities", () => {
+    expect(salesBasis([])).toMatchObject({
+      hasSales: false,
+      complete: true,
+      contribution: 0,
+    });
+    expect(
+      salesBasis([
+        row("mass_sold_g", 0, undefined, { quantityExact: "0", count: 0 }),
+      ]),
+    ).toMatchObject({ hasSales: false, complete: true });
+    expect(
+      salesBasis([
+        row("mass_with_cost_g", 0, undefined, { quantityExact: "1", count: 0 }),
+      ]),
+    ).toMatchObject({ hasSales: false, complete: false, contribution: null });
+    expect(
+      salesBasis([
+        row("mass_with_cost_g", 0, undefined, {
+          quantityExact: "invalid",
+          count: 0,
+        }),
+      ]),
+    ).toMatchObject({ complete: false, contribution: null });
+    const rows = measuredSale();
+    rows.push(
+      row("mass_sold_g", 0, undefined, {
+        dimensionId: "hidden",
+        quantityExact: "0.00000000000001",
+        count: 0,
+      }),
+      row("mass_with_cost_g", 0, undefined, {
+        dimensionId: "hidden",
+        quantityExact: "0.00000000000001",
+        count: 0,
+      }),
+    );
+    expect(salesBasis(rows).complete).toBe(false);
+  });
+  it.each(["currencyCode", "minorUnit"] as const)(
+    "physical equality never admits money with a foreign %s",
+    (field) => {
+      const i = fixture();
+      i.metrics = [
+        ...i.metrics.filter((r) => r.day !== "2026-10-18"),
+        ...measuredSale(),
+      ];
+      expect(buildMonthlyFinance(i).monthContributionMinor).toBe(50);
+      for (const r of i.metrics.filter(
+        (r) => r.day === "2026-10-18" && r.metric === "cost_of_goods",
+      )) {
+        if (field === "currencyCode") r.currencyCode = "MXN";
+        else r.minorUnit = 0;
+      }
+      expect(buildMonthlyFinance(i)).toMatchObject({
+        monthContributionMinor: null,
+        reasons: ["sales_costs"],
+      });
+    },
+  );
 });
