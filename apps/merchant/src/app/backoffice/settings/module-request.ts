@@ -1,4 +1,8 @@
 import type { BusinessModule } from "./module-navigation";
+import {
+  backofficeScopeHeaders,
+  type BackofficeRequestOptions,
+} from "../backoffice-scope-request";
 
 export class ModuleRequestError extends Error {
   constructor(
@@ -16,7 +20,9 @@ export class ModuleRequestError extends Error {
 export async function moduleRequest<T>(
   url: string,
   body?: unknown,
+  options?: BackofficeRequestOptions,
 ): Promise<T> {
+  const scopeHeaders = backofficeScopeHeaders(options?.scopeKey);
   const response = await fetch(url, {
     method: body === undefined ? "GET" : "PUT",
     cache: "no-store",
@@ -26,6 +32,17 @@ export async function moduleRequest<T>(
           headers: { "content-type": "application/json" },
           body: JSON.stringify(body),
         }),
+    ...(scopeHeaders
+      ? {
+          headers: {
+            ...(body !== undefined
+              ? { "content-type": "application/json" }
+              : {}),
+            ...scopeHeaders,
+          },
+        }
+      : {}),
+    ...(options?.signal ? { signal: options.signal } : {}),
   });
   const payload = await response.json().catch(() => null);
   if (!response.ok)
@@ -42,9 +59,13 @@ export async function moduleRequest<T>(
   return payload as T;
 }
 
-export async function readModules(): Promise<BusinessModule[]> {
+export async function readModules(
+  options?: BackofficeRequestOptions,
+): Promise<BusinessModule[]> {
   const data = await moduleRequest<{ modules: BusinessModule[] }>(
     "/api/modules",
+    undefined,
+    options,
   );
   if (
     !Array.isArray(data.modules) ||
