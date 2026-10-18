@@ -100,8 +100,9 @@ export const diningTables = posSchema.table(
  * - `order_id`: la `core.order` que creo el cierre CON pase (unica); null si se cerro sin pase.
  * - `close_request_id`: la idempotencia del cierre (unico por negocio).
  *
- * El total no se guarda: se calcula al leer, linea por linea, con el mismo calculo que
- * `buildDetailed` (`modules/pos/server/lines.ts`).
+ * El reader legacy calcula el total linea por linea (`modules/pos/server/lines.ts`).
+ * `total_snapshot` es una captura privada nullable para el futuro writer/listado V2;
+ * null indica ausencia de captura, no importe cero.
  */
 export const posOrders = posSchema.table(
   "pos_order",
@@ -119,6 +120,12 @@ export const posOrders = posSchema.table(
     diningTableId: uuid("dining_table_id").references(() => diningTables.id, {
       onDelete: "set null",
     }),
+    /** Spec 0242: nullable durante expand; el fallback legacy usa solo dining_table_id. */
+    saleType: text("sale_type"),
+    createRequestId: uuid("create_request_id"),
+    createRequestFingerprint: text("create_request_fingerprint"),
+    /** Proyeccion V2 futura, sin backfill monetario ni semantica de settlement. */
+    totalSnapshot: numeric("total_snapshot", { precision: 30, scale: 2 }),
     status: text("status").notNull().default("open"),
     /** Nota libre de la orden (p. ej. los datos para facturar; owner 2026-10-12). Editable solo
      * con la orden abierta, como el resto; null = sin nota. */
@@ -143,6 +150,22 @@ export const posOrders = posSchema.table(
   },
   (table) => [
     uniqueIndex("pos_order_business_id_unique").on(table.businessId, table.id),
+    uniqueIndex("pos_order_create_request_unique").on(
+      table.businessId,
+      table.createRequestId,
+    ),
+    check(
+      "pos_order_sale_type_check",
+      sql`${table.saleType} in ('table', 'pickup', 'delivery', 'counter', 'legacy')`,
+    ),
+    check(
+      "pos_order_sale_type_table_check",
+      sql`${table.saleType} not in ('pickup', 'delivery', 'counter') or ${table.diningTableId} is null`,
+    ),
+    check(
+      "pos_order_create_request_check",
+      sql`(${table.createRequestId} is null and ${table.createRequestFingerprint} is null) or (${table.createRequestId} is not null and ${table.createRequestFingerprint} is not null and ${table.createRequestFingerprint} ~ '^[0-9a-f]{64}$')`,
+    ),
     foreignKey({
       name: "pos_order_business_location_fk",
       columns: [table.businessId, table.locationId],
