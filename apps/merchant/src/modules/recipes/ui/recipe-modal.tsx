@@ -26,6 +26,7 @@ import type {
   LibraryRecipeDTO,
   ProductCompositionDTO,
 } from "../server/contracts";
+import { loadRecipeReview } from "./recipe-requests";
 import { RecipeDraftSource } from "./recipe-source";
 import { RecipeLines } from "./recipe-lines";
 import {
@@ -37,6 +38,8 @@ import {
   recipePayload,
   recipeUrl,
   savedIngredients,
+  savedRecipeState,
+  reconcileRecipeDraft,
   type LibrarySummary,
   type RecipeComponent,
   type RecipeDraft,
@@ -216,22 +219,7 @@ export function RecipeModal({
           "No pudimos verificar la base guardada. Consulta de nuevo antes de guardar.",
         );
       }
-      if (detail) {
-        savedBody.current = JSON.stringify({
-          name: detail.name,
-          lines: recipePayload(
-            savedIngredients(detail),
-            detail.lines.map((line) => ({
-              id: line.itemId,
-              name: line.itemName,
-              unit: line.unit as StockItem["unit"],
-              status: line.itemStatus,
-            })),
-            detail.lines.map((line) => line.itemId),
-            true,
-          ),
-        });
-      }
+      if (detail) savedBody.current = savedRecipeState(detail).body;
       setProduct(selected);
       setRevisionId(composition.revisionId);
       setName(detail?.name ?? selected.productName);
@@ -335,32 +323,12 @@ export function RecipeModal({
           saved = result.recipe;
           // Library persistence can succeed before composition fails. Keep its identity,
           // revision and resolved item IDs so retry neither recreates recipe nor insumos.
-          const resolvedItems: StockItem[] = saved.lines.map((line) => ({
-            id: line.itemId,
-            name: line.itemName,
-            unit: line.unit as StockItem["unit"],
-            status: line.itemStatus,
-          }));
-          const nextItems = [
-            ...items.filter(
-              (item) =>
-                !resolvedItems.some((resolved) => resolved.id === item.id),
-            ),
-            ...resolvedItems,
-          ];
-          const nextLines = savedIngredients(saved);
-          savedBody.current = JSON.stringify({
-            name: saved.name,
-            lines: recipePayload(
-              nextLines,
-              nextItems,
-              saved.lines.map((line) => line.itemId),
-            ),
-          });
+          const persisted = savedRecipeState(saved, items);
+          savedBody.current = persisted.body;
           if (mounted.current) {
             setRecipe(saved);
-            setLines(nextLines);
-            setItems(nextItems);
+            setLines(persisted.lines);
+            setItems(persisted.items);
             setPartialSave(true);
           }
         }
@@ -401,43 +369,12 @@ export function RecipeModal({
     setBusy("load");
     setRemote(null);
     try {
-      let foundRecipe = recipe;
-      if (reviewRequired === "unknown-library") {
-        const candidates: LibrarySummary[] = [];
-        let cursor: string | null = null;
-        do {
-          const query = new URLSearchParams({ limit: "100", status: "all" });
-          if (cursor) query.set("cursor", cursor);
-          const page: { recipes: LibrarySummary[]; nextCursor: string | null } =
-            await panelRequest(`/api/modules/recipes/library?${query}`);
-          candidates.push(
-            ...page.recipes.filter(
-              (entry) =>
-                entry.name === name.trim() && entry.status === "active",
-            ),
-          );
-          cursor = page.nextCursor;
-        } while (cursor);
-        if (candidates.length !== 1)
-          throw new Error(
-            "No podemos identificar una única receta guardada. Revisa la biblioteca antes de continuar; tu borrador permanece aquí.",
-          );
-        foundRecipe = { ...candidates[0], lines: [] };
-      }
-      const result =
-        (reviewRequired === "library" ||
-          reviewRequired === "unknown-library") &&
-        foundRecipe
-          ? (
-              await panelRequest<{ recipe: LibraryRecipeDTO }>(
-                recipeUrl(foundRecipe.id),
-              )
-            ).recipe
-          : (
-              await panelRequest<{ composition: ProductCompositionDTO }>(
-                compositionUrl(product.productId),
-              )
-            ).composition;
+      const result = await loadRecipeReview(
+        product.productId,
+        reviewRequired,
+        recipe?.id ?? null,
+        name,
+      );
       if (mounted.current) setRemote(result);
     } catch (cause) {
       if (mounted.current) handleError(cause);
@@ -462,37 +399,10 @@ export function RecipeModal({
       }
       setRevisionId(remote.revisionId);
     } else {
-      const resolvedItems: StockItem[] = remote.lines.map((line) => ({
-        id: line.itemId,
-        name: line.itemName,
-        unit: line.unit as StockItem["unit"],
-        status: line.itemStatus,
-      }));
-      setItems([
-        ...(items ?? []).filter(
-          (item) => !resolvedItems.some((entry) => entry.id === item.id),
-        ),
-        ...resolvedItems,
-      ]);
-      setLines(
-        lines.map((line) => {
-          const resolved = remote.lines.find(
-            (entry) => entry.itemName === line.name && entry.unit === line.unit,
-          );
-          return !line.itemId && resolved
-            ? { ...line, itemId: resolved.itemId }
-            : line;
-        }),
-      );
-      savedBody.current = JSON.stringify({
-        name: remote.name,
-        lines: recipePayload(
-          savedIngredients(remote),
-          resolvedItems,
-          remote.lines.map((line) => line.itemId),
-          true,
-        ),
-      });
+      const reconciled = reconcileRecipeDraft(remote, lines, items ?? []);
+      setItems(reconciled.items);
+      setLines(reconciled.lines);
+      savedBody.current = reconciled.body;
       setRecipe(remote);
       setPartialSave(true);
     }

@@ -4,6 +4,7 @@ import {
   draftIngredients,
   recipePayload,
   savedIngredients,
+  reconcileRecipeDraft,
   type RecipeDraft,
   type RecipeLine,
 } from "./recipe-types";
@@ -232,4 +233,30 @@ describe("revisión de recetas y payload HTTP", () => {
         .recipes,
     ).toEqual([{ recipeId: "pan", quantity: "2.5" }]);
   });
+});
+
+it("revisión remota resuelve insumos sin perder cantidades e intención", () => {
+  const remote = {
+    id: "r",
+    name: "Remota",
+    status: "active" as const,
+    revisionId: "v2",
+    lines: [
+      {
+        itemId: "salt",
+        itemName: "Sal",
+        itemStatus: "active" as const,
+        quantity: "3",
+        unit: "g",
+      },
+    ],
+  };
+  const local = ingredient({ itemId: null, name: "Sal", quantity: "7" });
+  const result = reconcileRecipeDraft(remote, [local], items);
+  expect(result.lines[0]).toEqual({ ...local, itemId: "salt" });
+  expect(JSON.parse(result.body)).toEqual({
+    name: "Remota",
+    lines: [{ itemId: "salt", quantity: "3", unit: "g" }],
+  });
+  expect(result.items.filter((item) => item.id === "salt")).toHaveLength(1);
 });
