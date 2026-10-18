@@ -1,12 +1,12 @@
 # 0242 — Handoff para retomar después de clear
 
-## Reanudación del18oct: CP1a y lectores aceptados; catálogo en QA
+## Reanudación del18oct: expansiones unit y cálculo puro de Recetas aceptados
 
 Owner exige entregables pequeños y **agentes nuevos/contexto vacío por bloque aceptado**, incluidos QA. Gratis/2x1 no aplican a líneas por peso; decisión cerrada. CP0 aceptado: contratos329c7917, LISTAc379c9a8, flujos8dca14ee y sus QA. Después se aceptaron financiale9d409ac/QA9a4a52a6, scope servidor1af3d7f3/QA0b52df93, lectores unit8624cda8/QA745bff45 y cliente scopeb0127037/QA7f9dce96. Ver sus fichas/handoffs/QA y el bloque vigente de estado. No confundir M0 descriptivo con POSV2/M1.
 
-Catálogo ad9df221/QA98ab4e39, decoder96195674/QA63cd3c97 y quantity storage00ce3546/QA6cb655d8 ya aceptados/integrados.0102/0103 aplicadas a CI y, por root trasQA, a local protegida (104 migraciones; health3201 HTTP200). Main local86c5ad00 por FF, sin push/PROD. Dos regresiones nuevas de fixtures se corrigieron en00ce sin tocar guardias: prueba catálogo ahora en modules/pos/server y provider de decoder genérico; solo queda backlog00efff81 probado.
+Catálogo ad9df221/QA98ab4e39, decoder96195674/QA63cd3c97 y quantity storage00ce3546/QA6cb655d8 ya aceptados/integrados.0102/0103 aplicadas a CI y, por root trasQA, a local protegida (104 migraciones; health3201 HTTP200). Main local1f207a0c por FF, sin push/PROD. Dos regresiones nuevas de fixtures se corrigieron en00ce sin tocar guardias: prueba catálogo ahora en modules/pos/server y provider de decoder genérico; solo queda backlog00efff81 probado.
 
-Ronda actual con autores nuevos: [expansor puro Recetas](0242-cp1c-recipes-exact.md) en WTnuevo pos-recipes-exact-0242 y [base/procedencia storage](0242-cp1c-recipes-storage.md) en WTdata con CI/schema exclusivos. Viejo WTpos-ui retirado limpio por factory después de aceptación/main; QApos-qa permanece y se continúa para cada revisión nueva. Ver estado vigente para fuentes/reservas. No iniciar otro writer schema ni DB concurrente. Archivo control/RAW/fixtures M0 intactos,43242 libre;3201/túnel/demos preservados.
+Expansor puro41d2aaa2/QA8287f8fb aceptado e integrado sobre13140830:125 focales+122 escenarios propios, tipos/lint PASS y solo2 guardias backlog. Ronda actual con autores nuevos: [base financiera de analytics](0242-cp1c-analytics-basis.md) en WT pos-recipes-exact-0242 y [base/procedencia storage](0242-cp1c-recipes-storage.md) en WTdata con CI/schema exclusivos. Captura/procedencia siguiente ya tiene [ficha](0242-cp1c-recipes-captured.md), pero espera0104 aceptada y otro autor limpio. Viejo WTpos-ui retirado limpio por factory después de aceptación/main; QApos-qa permanece y se continúa para cada revisión nueva. Ver estado vigente para fuentes/reservas. No iniciar otro writer schema ni DB concurrente. Archivo control/RAW/fixtures M0 intactos,43242 libre;3201/túnel/demos preservados.
 
 La precisión nueva y mass/V4 siguen dormidas hasta CP2c compatible; las expansiones físicas mantienen barreras temporales. El resto del handoff es contexto histórico del mapeo: sus afirmaciones de preparación sin código no describen las entregas ya aceptadas.
 
