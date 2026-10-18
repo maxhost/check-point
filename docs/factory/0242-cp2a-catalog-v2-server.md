@@ -33,6 +33,7 @@ No retirar constraints temporales de0102/0103/0105 ni activar productor4. Los ha
 - apps/merchant/src/app/api/catalog/_auth.ts, errores/metadata/cache solo rutas adoptadas
 - apps/merchant/src/modules/recipes/server/model/common.ts, solo orden de locks
 - apps/merchant/src/modules/pos/server/catalog-v2.neon.integration.test.ts, nuevo
+- apps/merchant/src/modules/recipes/server/catalog-v2.neon.integration.test.ts, ampliación autorizada para provider/mutex sin imports POS→Recipes
 - docs/factory/0242-cp2a-catalog-v2-server-handoff.md
 
 Sin schema/journal, kit/guardias/tooling/deps/UI/estados/índices/POS handlers ni implementación de base nueva. Helpers adicionales o ampliaciones deben volver a root antes de editar. Reutilizar writer atómico; si tamaño exige extracción concreta, proponer paths antes, sin meter todo en un archivo enorme.

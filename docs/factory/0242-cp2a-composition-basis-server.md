@@ -27,6 +27,7 @@ La barrera real de producto mass y tarifa precisa sigue hastaCP2c. Probar proyec
 - apps/merchant/src/modules/recipes/server/costs.ts
 - apps/merchant/src/modules/recipes/server/measured-cost.ts y measured-cost.test.ts, nuevos si se necesita separar proyección pura
 - apps/merchant/src/modules/recipes/server/composition-basis.neon.integration.test.ts, nuevo
+- apps/merchant/src/modules/recipes/server/costs.neon.integration.test.ts, ampliación autorizada: tiny positivo sin ledger incompleto; ceros reales conservados
 - docs/factory/0242-cp2a-composition-basis-server-handoff.md
 
 Sin common.ts/schema/journal/catalog writer/importación/Stock/consumers/producer/UI/kit/guardias/tooling/deps/estados/índices. Endpoints existentes llaman composition functions; no ruta alternativa. Si serialización de revisiones en otro archivo requiere cambio, pedir ampliación concreta antes de editar. No tocar helpers exactos aceptados para facilitar fixture.
