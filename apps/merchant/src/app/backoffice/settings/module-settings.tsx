@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useBackofficeContext } from "../backoffice-context";
+import { useBusinessModules } from "./use-business-modules";
+import { captureModuleToggleIntent } from "./module-toggle-intent";
 import {
   Alert,
   Button,
@@ -13,25 +15,20 @@ import {
 } from "../../../ui";
 import {
   ModuleRequestError,
-  moduleRequest,
-  readModules,
   moduleDependency,
   moduleNames,
 } from "./module-request";
-import {
-  publishModules,
-  type BusinessModule as Module,
-} from "./module-navigation";
+import type { BusinessModule as Module } from "./module-navigation";
 
 import type { SettingsPanel } from "./module-configuration";
 
 export function ModuleSettings({ panels = [] }: { panels?: SettingsPanel[] }) {
-  const router = useRouter();
-  const [modules, setModules] = useState<Module[] | null>(null);
-  const [loading, setLoading] = useState(true);
+  const context = useBackofficeContext();
+  const moduleState = useBusinessModules();
+  const modules = moduleState.state === "ready" ? moduleState.modules : null;
+  const { loading } = moduleState;
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [attempt, setAttempt] = useState(0);
   const [blocked, setBlocked] = useState<{
     title: string;
     description: string;
@@ -46,36 +43,9 @@ export function ModuleSettings({ panels = [] }: { panels?: SettingsPanel[] }) {
     };
   }, []);
 
-  useEffect(() => {
-    let active = true;
-    void readModules()
-      .then((data) => {
-        if (active) {
-          setModules(data);
-          publishModules(data);
-        }
-      })
-      .catch((cause) => {
-        if (active)
-          setError(
-            cause instanceof Error
-              ? cause.message
-              : "No pudimos leer los módulos. Intenta otra vez.",
-          );
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [attempt]);
-
   function reload() {
     setError(null);
-    setModules(null);
-    setLoading(true);
-    setAttempt((value) => value + 1);
+    moduleState.reload();
   }
 
   async function toggle(module: Module) {
@@ -83,25 +53,10 @@ export function ModuleSettings({ panels = [] }: { panels?: SettingsPanel[] }) {
     lock.current = true;
     setBusy(module.id);
     setError(null);
+    const moduleName = module.name;
     try {
-      const result = await moduleRequest<{ module: Module }>(
-        `/api/modules/${encodeURIComponent(module.id)}`,
-        { enabled: !module.enabled },
-      );
-      if (
-        result.module?.id !== module.id ||
-        typeof result.module.enabled !== "boolean"
-      )
-        throw new Error("No pudimos confirmar el cambio. Intenta otra vez.");
-      if (!mounted.current) return;
-      const next =
-        modules?.map((item) =>
-          item.id === module.id ? result.module : item,
-        ) ?? null;
-      setModules(next);
-      if (next) publishModules(next);
-      window.dispatchEvent(new CustomEvent("checkpass:modules-changed"));
-      router.refresh();
+      const intent = captureModuleToggleIntent(module, context);
+      if (!intent || !(await intent.execute()) || !mounted.current) return;
     } catch (cause) {
       if (!mounted.current) return;
       if (
@@ -109,13 +64,11 @@ export function ModuleSettings({ panels = [] }: { panels?: SettingsPanel[] }) {
         (cause.code === "module_requires" ||
           cause.code === "module_required_by")
       ) {
-        setModules(null);
-        setLoading(true);
-        setAttempt((value) => value + 1);
+        moduleState.reload();
         setError(
           cause.code === "module_requires"
-            ? `Activa ${moduleNames(cause.missing, modules ?? []) || "los módulos requeridos"} para usar ${module.name}.`
-            : `Desactiva ${moduleNames(cause.dependents, modules ?? []) || "los módulos dependientes"} antes de desactivar ${module.name}.`,
+            ? `Activa ${moduleNames(cause.missing, modules ?? []) || "los módulos requeridos"} para usar ${moduleName}.`
+            : `Desactiva ${moduleNames(cause.dependents, modules ?? []) || "los módulos dependientes"} antes de desactivar ${moduleName}.`,
         );
       } else if (
         cause instanceof ModuleRequestError &&
@@ -138,11 +91,12 @@ export function ModuleSettings({ panels = [] }: { panels?: SettingsPanel[] }) {
     }
   }
 
+  const displayError = error ?? moduleState.error;
   return (
     <>
-      {error && (
-        <Alert kind="error" title={error}>
-          {!loading && !modules && (
+      {displayError && (
+        <Alert kind="error" title={displayError}>
+          {!loading && !modules && moduleState.state !== "restricted" && (
             <Button variant="secondary" onPress={reload}>
               Reintentar módulos
             </Button>
