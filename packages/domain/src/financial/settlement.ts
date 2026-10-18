@@ -1,11 +1,13 @@
 import {
   FinancialError,
   type FinancialInput,
+  type FinancialInputV2,
   type FinancialAmounts,
   type FinancialSettlement,
   type PaymentInput,
 } from "./types";
 import {
+  fromExact,
   add,
   subtract,
   multiply,
@@ -19,7 +21,26 @@ import {
   minorRational,
   allocateCumulative,
 } from "./rational";
-export function buildFinancialAmounts(input: FinancialInput): FinancialAmounts {
+import { assertMoneyRange, exactLineGross } from "../measures/mass";
+import { exactSnapshotLineGross } from "../measures/legacy";
+import { MeasureError } from "../measures/types";
+
+type AmountInput = FinancialInput | FinancialInputV2;
+type SettlementInput = AmountInput & { payments: readonly PaymentInput[] };
+
+export function buildFinancialAmounts(input: AmountInput): FinancialAmounts {
+  return buildAmounts(input, false);
+}
+/** Trusted persisted snapshots only; never select this path from input shape. */
+export function buildFinancialAmountsFromSnapshots(
+  input: FinancialInputV2,
+): FinancialAmounts {
+  return buildAmounts(input, true);
+}
+function buildAmounts(
+  input: AmountInput,
+  snapshots: boolean,
+): FinancialAmounts {
   const minorUnit = minorUnitForCurrency(input.currencyCode);
   const lines = [...input.lines].sort(
     (a, b) =>
@@ -30,21 +51,37 @@ export function buildFinancialAmounts(input: FinancialInput): FinancialAmounts {
     new Set(lines.map((l) => l.sourceLineId)).size !== lines.length ||
     lines.some(
       (l) =>
-        !l.sourceLineId ||
-        !Number.isSafeInteger(l.quantity) ||
-        l.quantity < 1 ||
-        !Number.isSafeInteger(l.position) ||
-        l.position < 0,
+        !l.sourceLineId || !Number.isSafeInteger(l.position) || l.position < 0,
     )
   )
     throw new FinancialError("invalid_financial_input");
-  const gross = lines.map((l) =>
-      multiply(originalMoney(l.unitPrice), rational(BigInt(l.quantity))),
-    ),
+  const gross = lines.map((line) => {
+      if (snapshots || "measure" in line) {
+        if (typeof line.quantity !== "string")
+          throw new MeasureError("invalid_quantity", "quantity");
+        return fromExact(
+          (snapshots ? exactSnapshotLineGross : exactLineGross)(
+            line.quantity,
+            line.unitPrice,
+            "measure" in line ? line.measure : undefined,
+          ),
+        );
+      }
+      if (!Number.isSafeInteger(line.quantity) || line.quantity < 1)
+        throw new FinancialError("invalid_financial_input");
+      return multiply(
+        originalMoney(line.unitPrice),
+        rational(BigInt(line.quantity)),
+      );
+    }),
     g0 = gross.reduce(add, rational(0n)),
     d0 = input.discount ? originalMoney(input.discount.amount) : rational(0n),
     n0 = subtract(g0, d0);
+  for (const amount of [...gross, g0, d0]) assertMoneyRange(amount);
+  // The stored total must fit after currency normalization as well.
+  for (const amount of [g0, d0]) assertMoneyRange(amount, input.currencyCode);
   if (n0.n < 0n) throw new FinancialError("invalid_financial_input");
+  assertMoneyRange(n0, input.currencyCode);
   const origin = input.discount?.origin ?? null;
   const target =
     origin?.scope === "line"
@@ -108,6 +145,8 @@ export function buildFinancialAmounts(input: FinancialInput): FinancialAmounts {
         ni = nets[i],
         di = discounts[i],
         ni0 = subtract(gross[i], originalDiscount[i]);
+      for (const amount of [gi, ni, di])
+        assertMoneyRange(minorRational(amount, minorUnit));
       return {
         sourceLineId: line.sourceLineId,
         position: line.position,
@@ -139,10 +178,21 @@ export function buildFinancialAmounts(input: FinancialInput): FinancialAmounts {
   };
 }
 export function buildFinancialSettlement(
-  input: FinancialInput & { payments: readonly PaymentInput[] },
+  input: SettlementInput,
 ): FinancialSettlement {
-  const amounts = buildFinancialAmounts(input),
-    N = toMinor(originalMoney(amounts.collected), amounts.minorUnit),
+  return settle(input, buildFinancialAmounts(input));
+}
+/** Explicit adapter for trusted persisted unit tariffs/counts and measured snapshots. */
+export function buildFinancialSettlementFromSnapshots(
+  input: FinancialInputV2 & { payments: readonly PaymentInput[] },
+): FinancialSettlement {
+  return settle(input, buildFinancialAmountsFromSnapshots(input));
+}
+function settle(
+  input: SettlementInput,
+  amounts: FinancialAmounts,
+): FinancialSettlement {
+  const N = toMinor(originalMoney(amounts.collected), amounts.minorUnit),
     payments = input.payments;
   if (!Array.isArray(payments))
     throw new FinancialError(
@@ -167,6 +217,8 @@ export function buildFinancialSettlement(
   } catch {
     throw new FinancialError("invalid_payment_amount");
   }
+  for (const amount of originals) assertMoneyRange(amount, input.currencyCode);
+  assertMoneyRange(originals.reduce(add, rational(0n)), input.currencyCode);
   if (new Set(payments.map((p) => p.paymentId)).size !== payments.length)
     throw new FinancialError("invalid_payment_amount");
   if (toMinor(originals.reduce(add, rational(0n)), amounts.minorUnit) !== N)

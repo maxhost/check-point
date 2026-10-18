@@ -42,16 +42,4 @@ export class MeasureError extends Error {
   }
 }
 
-/** Pure input contract; existing settlement remains unchanged until CP1 adoption. */
-export type FinancialInputV2 = Omit<
-  import("../financial/types").FinancialInput,
-  "lines"
-> & {
-  lines: readonly {
-    sourceLineId: string;
-    position: number;
-    unitPrice: Decimal;
-    quantity: Decimal;
-    measure: LineMeasure;
-  }[];
-};
+export type { FinancialInputV2 } from "../financial/types";
