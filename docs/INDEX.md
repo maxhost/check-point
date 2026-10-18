@@ -484,3 +484,5 @@ técnica, Definition of Done y plan de pruebas antes de que su estado pase a `ce
 
 | 0239 | 2026-10-18 | Dashboard: Inbox compacto tipo correo y equilibrio mensual/diario más ventas netas de hoy, con resumen paralelo aislado. | implementada; QA focal PASS; disponible en dev; QA manual pendiente; sin push/PROD | no; contexto compartido0238 | `specs/0239-dashboard-compacto-y-resumen.md` |
 | 0240 | 2026-10-18 | Evolución de costos por insumo/local en Analíticas, selector con default y gráfico accesible del kit. | implementada localmente; QA focal y combinación PASS, sin push/PROD | no; GET history y tarjeta Stock0239 | `specs/0240-evolucion-costos-insumos.md` |
+
+| 0241 | 2026-10-18 | Conciliación de gastos y equilibrio mensual; reglas de previsión, moneda y calidad antes de rediseñar el cálculo. | conciliación completada; propuesta L2 en revisión, sin implementación ni push/PROD | no; cálculo compartido Histórico/resumen/Inbox | `specs/0241-gastos-y-equilibrio-mensual.md` |

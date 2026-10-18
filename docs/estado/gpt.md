@@ -3,7 +3,19 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — 0240 IMPLEMENTADA LOCALMENTE: EVOLUCIÓN DE COSTOS POR INSUMO (2026-10-18 UTC)
+## ESTADO — 0241 CONCILIACIÓN COMPLETA; CONTRATO DE CÁLCULO EN REVISIÓN (2026-10-18 UTC)
+
+Owner autorizó avanzar plan de revisión financiera; primera entrega [spec0241](../specs/0241-gastos-y-equilibrio-mensual.md) e INDEX reservados documentalmente antes de cualquier código nuevo. No se implementaron fórmula/UI/HTTP/DB/migraciones. Base inspeccionada4e588895b05e087654c3b912af37f8fbcd4f1015. Evidencia local readonly `/private/tmp/checkpass-finance-review/`: snapshot18oct16:04:08.968Z, scripts/JSON/conciliación pura. Consulta local protegida y fuentes en transacción READONLY; readHistory/input en conexiones distintas (no snapshot atómico ni Nextautenticado).
+
+Conciliado516,75=alquiler450+agua11+internet21+luz31+gas3,75, todos pagosUSD17oct; fuente/contribuciones/proyección concuerdan sin duplicación.570=450+demoServicios120 histórico, excluye66,75variablesactuales por regla0237.680,23=ceil(570/(45,25/54)). Actualmes569ventas (54ayer+515hoy), costo conocido5/12unidades41,7% y54/569importe9,49%; resultado histórico null, goal sigue con margen de28díashastaayer83,7963%, atRiskfalse/targetnull. Rango3meses cambia gastos registrados a636,75, no goal mensual570.636,75/759,88 son sólo escenarios condicionados, no metas nuevas.
+
+Hallazgos: dividir variables por3 sin distinguir meses sin datos; cualquier pago positivo fijo sustituye referencia como si completo; mes cerrado sólo exige algún gasto anterior (demo lo habilita). Stock no duplica gasto automáticamente, pero no hay vínculo que deduzca registro manual doble. Defecto real latente de monedas: dominio/queries no filtran dinero ajeno y apply sólo valida moneda soportada; reproducido puroUSD100+MXN900→1000minor. No se observó mezcla en muestra local. GastoslegacyMXN existen en fuente sin proyección; no repararlos de oficio. No reembolsos inventados ni promesas caja/resultado contable.
+
+Agente data0240 auditó módulos/monedas readonly; QA0240 revisó spec/evidencia: conformidad documental acotada, sin pruebasDB ni producto. Pregunta pendiente al owner por async: cuando faltan costos/gastos, bloquear estimación con motivo breve (recomendado) o permitir escenario parcial explícito. Es decisión funcional material para cerrar contratoL2, no permiso técnico. Próximo: incorporar respuesta, cerrar reglas/contrato compartido y luego dos implementadores con WT/factory +QA; revisar consumidores Histórico/resumen/Inbox/política/contexto. No afirmar que modelo nuevo está aprobado/implementado.
+
+Demos anteriores, server3201/túnel y trabajo ajeno intactos. Sin push/PROD. Diferidos conservados: QAmanual0237/owner, CIrojo90ebe18f, guardias24PASS2FAIL, FAILfrío1817.621042ms, M1previo66067758 no certifica modelo nuevo, ciudades/weather/calendarios/crons/Marketingcupón11/realtimeinfra y PROD102migraciones histórico.
+
+## HISTÓRICO — 0240 IMPLEMENTADA LOCALMENTE: EVOLUCIÓN DE COSTOS POR INSUMO (2026-10-18 UTC)
 
 L0 solicitado owner: Ganancia y gastos se llama Gastos; quitadas líneas Ventas:importe en estados cobertura0/parcial y explicación del umbral80%. Rango real history.from/to localizado visible junto a Gastos del período, flexwrap móvil. Cifras/estados de cálculo y resto del contenido conservados, sin cambios de dinero/HTTP/DB/kit. TiposUI/lint/guard/diff PASS;2browserlayout existentes390/1440 PASSsin retries/skips, capturas abiertas y conservadas en `/private/tmp/checkpass-gastos-layout/`. Selectores de título existentes actualizados. En dev, demos y diferidos intactos, sin push/PROD.
 
