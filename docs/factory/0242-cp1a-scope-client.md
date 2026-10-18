@@ -25,6 +25,7 @@ Toda petición de consola, catálogo/detalle, guardar/anular, QR/cupones, prepar
 - `apps/merchant/src/modules/pos/ui/pos-tables.tsx`
 - `apps/merchant/src/modules/pos/ui/ticket-settings.tsx`
 - `tests/e2e/pos-context.spec.ts` nuevo
+- `tests/e2e/pos-printing.spec.ts`, solo caso de ajuste tardío al revocar sesión: sustituir heading local anterior por retiro/navegación documental401 y conservar aserción de que ticket tardío no revive UI
 - `tests/e2e/support/pos-context-fixture.tsx` nuevo
 - `apps/merchant/src/modules/pos/server/pos-context-native.neon.integration.test.ts` nuevo, solo fixtures/inspección/teardown propios del smoke
 - `tools/pos-measurement/scope-client-smoke.mjs` nuevo, runner nativo explícitamente asignado
