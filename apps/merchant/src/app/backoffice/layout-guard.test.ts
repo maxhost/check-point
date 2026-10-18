@@ -30,6 +30,14 @@ vi.mock("../../server/auth", () => ({
     },
   }),
 }));
+// Existing guard oracle's pre-JOIN read double; native SQL is covered separately.
+vi.mock("../../server/backoffice-membership", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../server/backoffice-membership")>();
+  const { legacyMembershipFixtures } =
+    await import("../../server/backoffice-membership-fixture.test-support");
+  return { ...actual, ...legacyMembershipFixtures() };
+});
 vi.mock("@mi-pasaporte/db", () => {
   const chain: Record<string, unknown> = {};
   for (const m of ["select", "from", "innerJoin", "where", "orderBy"])
@@ -62,6 +70,27 @@ vi.mock("./backoffice-navigation", () => ({
 }));
 vi.mock("./onboarding/onboarding-checklist", () => ({
   OnboardingChecklist: () => null,
+}));
+vi.mock("../../server/backoffice-initial-context", () => ({
+  readBackofficeInitialCore: async () => ({
+    version: 1,
+    bootId: "fixture-boot",
+    scopeKey: "a".repeat(64),
+    userId: "u1",
+    emailVerified: true,
+    business: {
+      id: "b1",
+      name: "Bar",
+      status: "active",
+      timezone: "UTC",
+      currencyCode: "USD",
+    },
+    membership: { role: "owner", status: "active", permissions: [] },
+    billing: { access: "blocked", trialEndsAt: null, trialDaysLeft: null },
+  }),
+}));
+vi.mock("./backoffice-modules-seed", () => ({
+  BackofficeModulesSeed: () => null,
 }));
 
 const { default: BackofficeLayout } = await import("./layout");

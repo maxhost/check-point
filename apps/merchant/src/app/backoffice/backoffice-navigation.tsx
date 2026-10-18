@@ -22,14 +22,9 @@ import { useEffect, useRef, useState } from "react";
 import { SignOutButton } from "../components/sign-out-button";
 import { Button, Text } from "../../ui";
 import { MODULES } from "../../modules/registry";
-import { panelRequest, type PanelSession } from "./panel-request";
+import { useBackofficeContext } from "./backoffice-context";
 import { openOnboardingChecklist } from "./onboarding/onboarding-checklist-visibility";
-import {
-  MODULES_CHANGED_EVENT,
-  type BusinessModule,
-} from "./settings/module-navigation";
 
-import { readModules } from "./settings/module-request";
 import { moduleNavigation } from "../../modules/navigation";
 
 import { moduleIcon } from "./module-icon";
@@ -237,84 +232,24 @@ function HelpButton({ onOpen }: { onOpen?: () => void }) {
   );
 }
 
-export function BackofficeNavigation({
-  businessName,
-  isOwner,
-  permissions,
-}: {
-  businessName: string;
-  isOwner: boolean;
-  permissions: string[];
-}) {
+export function BackofficeNavigation() {
+  const { state } = useBackofficeContext();
   const segment = useSelectedLayoutSegment();
-  const [enabledModules, setEnabledModules] = useState<string[]>([]);
-  const confirmedModules = useRef(0);
-  const [modules, setModules] = useState<BusinessModule[]>([]);
-  useEffect(() => {
-    let active = true;
-    let changed = false;
-    const onModulesChanged = (event: Event) => {
-      changed = true;
-      confirmedModules.current += 1;
-      setModules((event as CustomEvent<BusinessModule[]>).detail);
-    };
-    window.addEventListener(MODULES_CHANGED_EVENT, onModulesChanged);
-    void readModules()
-      .then((data) => {
-        // Un GET iniciado antes de guardar no puede pisar el nuevo estado.
-        if (active && !changed) setModules(data);
-      })
-      .catch(() => {
-        if (active && !changed) setModules([]);
-      });
-    return () => {
-      active = false;
-      window.removeEventListener(MODULES_CHANGED_EVENT, onModulesChanged);
-    };
-  }, []);
-  useEffect(() => {
-    let active = true;
-    let generation = 0;
-    const refresh = () => {
-      const current = ++generation;
-      const revision = confirmedModules.current;
-      void readModules()
-        .then((data) => {
-          if (
-            active &&
-            current === generation &&
-            revision === confirmedModules.current
-          )
-            setModules(data);
-        })
-        .catch(() => {});
-      void panelRequest<PanelSession>("/api/merchant/session")
-        .then((data) => {
-          if (active && current === generation)
-            setEnabledModules(data.business?.enabledModules ?? []);
-        })
-        .catch(() => {
-          if (active && current === generation) setEnabledModules([]);
-        });
-    };
-    refresh();
-    window.addEventListener("checkpass:modules-changed", refresh);
-    return () => {
-      active = false;
-      window.removeEventListener("checkpass:modules-changed", refresh);
-    };
-  }, []);
-  const moduleLinks = moduleNavigation(
-    modules.map((module) => ({
-      ...module,
-      enabled: module.enabled && enabledModules.includes(module.id),
-    })),
-    { isOwner, permissions },
-  ).map((entry) => ({
-    ...entry,
-    segment: entry.moduleId,
-    icon: moduleIcon(entry.icon),
-  }));
+  const core = state.core;
+  const businessName = core?.business.name ?? "";
+  const isOwner = core?.membership.role === "owner";
+  const permissions = core?.membership.permissions ?? [];
+  const modules = state.modules.state === "ready" ? state.modules.modules : [];
+  const enabledModules = modules
+    .filter((module) => module.enabled)
+    .map((module) => module.id);
+  const moduleLinks = moduleNavigation(modules, { isOwner, permissions }).map(
+    (entry) => ({
+      ...entry,
+      segment: entry.moduleId,
+      icon: moduleIcon(entry.icon),
+    }),
+  );
   const links = [...businessLinks, ...moduleLinks];
   const delegados = [...delegatedLinks(permissions), ...moduleLinks];
   const operationModule = MODULES.find(
@@ -352,6 +287,8 @@ export function BackofficeNavigation({
       document.removeEventListener("keydown", onKeyDown);
     };
   }, [openMenu]);
+
+  if (!core) return null;
 
   return (
     <>

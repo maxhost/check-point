@@ -1,7 +1,7 @@
 import { TrialNotice } from "../../../apps/merchant/src/app/backoffice/subscription/trial-notice";
 import { TicketSettings } from "../../../apps/merchant/src/modules/pos/ui/ticket-settings";
 import { operationModules } from "./modules-fixture";
-import { createRoot } from "react-dom/client";
+import { renderBackofficeSeedFixture } from "./backoffice-seed-fixture";
 import { PosConsole } from "../../../apps/merchant/src/modules/pos/ui/pos-console";
 import { ModuleConfiguration } from "../../../apps/merchant/src/app/backoffice/settings/module-configuration";
 import { BackofficeNavigation } from "../../../apps/merchant/src/app/backoffice/backoffice-navigation";
@@ -60,13 +60,9 @@ const params = new URLSearchParams(window.location.search);
 const mode = params.get("mode");
 // El menú usa el mismo rol y permisos que la sesión simulada.
 const settingsOwner = mode === "settings" && params.get("role") !== "staff";
-createRoot(document.getElementById("root")!).render(
+void renderBackofficeSeedFixture(
   <div className="backoffice-layout print:block">
-    <BackofficeNavigation
-      businessName="Café de prueba"
-      isOwner={settingsOwner}
-      permissions={settingsOwner ? ["pos", "staff"] : ["pos"]}
-    />
+    <BackofficeNavigation />
     <div className="backoffice-content print:m-0 print:p-0">
       {params.has("trial") && <TrialNotice />}
       {mode === "settings" ? (
@@ -90,4 +86,9 @@ createRoot(document.getElementById("root")!).render(
       )}
     </div>
   </div>,
+  {
+    businessName: "Café de prueba",
+    isOwner: params.has("trial") || settingsOwner,
+    permissions: settingsOwner ? ["pos", "staff"] : ["pos"],
+  },
 );

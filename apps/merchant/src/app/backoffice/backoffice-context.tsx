@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -71,9 +72,22 @@ export function BackofficeProvider({
   );
   return (
     <BackofficeContext.Provider value={value}>
-      {children}
+      {state.core ? children : null}
     </BackofficeContext.Provider>
   );
+}
+
+/** The server leaf may arrive after invalidation; the state checks its ticket. */
+export function BackofficeModulesSeedConsumer({
+  seed,
+}: {
+  seed: BackofficeModulesSeed;
+}) {
+  const { applyModulesSeed } = useBackofficeContext();
+  useEffect(() => {
+    applyModulesSeed(seed);
+  }, [applyModulesSeed, seed]);
+  return null;
 }
 
 /** Null means absent provider, never a provider whose core has been withdrawn. */

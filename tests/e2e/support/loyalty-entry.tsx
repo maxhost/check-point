@@ -1,4 +1,4 @@
-import { createRoot } from "react-dom/client";
+import { renderBackofficeSeedFixture } from "./backoffice-seed-fixture";
 import LoyaltyProgramPage from "../../../apps/merchant/src/app/backoffice/loyalty/loyalty-page";
 import { BackofficeNavigation } from "../../../apps/merchant/src/app/backoffice/backoffice-navigation";
 import { TextField } from "../../../apps/merchant/src/ui";
@@ -7,13 +7,9 @@ const owner = !query.has("staff");
 const permissions = query.has("no-catalog")
   ? ["loyalty"]
   : ["brand", "catalog", "staff", "locations", "loyalty", "counter"];
-createRoot(document.getElementById("root")!).render(
+void renderBackofficeSeedFixture(
   <div className="backoffice-layout">
-    <BackofficeNavigation
-      businessName="Café"
-      isOwner={owner}
-      permissions={permissions}
-    />
+    <BackofficeNavigation />
     <div className="backoffice-content">
       <LoyaltyProgramPage
         isOwner={owner}
@@ -24,4 +20,5 @@ createRoot(document.getElementById("root")!).render(
       <TextField label="Referencia wizard" placeholder="Ej.: nombre" />
     </div>
   </div>,
+  { businessName: "Café", isOwner: owner, permissions: permissions },
 );

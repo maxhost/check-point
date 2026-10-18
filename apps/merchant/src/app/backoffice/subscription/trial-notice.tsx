@@ -1,32 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { MODULES } from "../../../modules/registry";
 import { Alert, Link } from "../../../ui";
+import { useBackofficeContext } from "../backoffice-context";
 
 /** Usa el número de días del contrato de sesión; no recalcula fechas. */
 export function TrialNotice() {
   const pathname = usePathname();
-  const [days, setDays] = useState<number | null>(null);
-  useEffect(() => {
-    const controller = new AbortController();
-    void fetch("/api/merchant/session", {
-      cache: "no-store",
-      signal: controller.signal,
-    })
-      .then(async (response) => (response.ok ? response.json() : null))
-      .then((session) => {
-        if (
-          !controller.signal.aborted &&
-          session?.billing?.access === "trial"
-        ) {
-          setDays(session.billing.trialDaysLeft);
-        }
-      })
-      .catch(() => {});
-    return () => controller.abort();
-  }, []);
+  const { state } = useBackofficeContext();
+  const core = state.core;
+  const days =
+    core?.membership.role === "owner" && core.billing.access === "trial"
+      ? core.billing.trialDaysLeft
+      : null;
   const isOperation = MODULES.some(
     (module) =>
       module.operation &&

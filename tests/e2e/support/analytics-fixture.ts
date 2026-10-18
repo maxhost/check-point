@@ -34,9 +34,12 @@ export async function startAnalyticsHarness() {
   const nav = path.resolve(
     "apps/merchant/src/app/backoffice/backoffice-navigation.tsx",
   );
+  const seedFixture = path.resolve(
+    "tests/e2e/support/backoffice-seed-fixture.tsx",
+  );
   await writeFile(
     entry,
-    `import {createRoot} from 'react-dom/client';import {AnalyticsInbox} from ${JSON.stringify(inbox)};import History from ${JSON.stringify(history)};import {BackofficeNavigation} from ${JSON.stringify(nav)};const q=new URLSearchParams(location.search);createRoot(document.getElementById('root')).render(<div className="backoffice-layout"><BackofficeNavigation businessName="Café Centro" isOwner={true} permissions={['analytics','catalog','business']}/><div className="backoffice-content">{location.pathname.includes('/analytics')?<History initialDate={q.get('date')||''}/>:<main className="merchant-shell"><AnalyticsInbox/></main>}</div></div>);`,
+    `import {renderBackofficeSeedFixture} from ${JSON.stringify(seedFixture)};import {AnalyticsInbox} from ${JSON.stringify(inbox)};import History from ${JSON.stringify(history)};import {BackofficeNavigation} from ${JSON.stringify(nav)};const q=new URLSearchParams(location.search);void renderBackofficeSeedFixture(<div className="backoffice-layout"><BackofficeNavigation /><div className="backoffice-content">{location.pathname.includes('/analytics')?<History initialDate={q.get('date')||''}/>:<main className="merchant-shell"><AnalyticsInbox/></main>}</div></div>,{businessName:"Café Centro",isOwner:true,permissions:["analytics","catalog","business"]});`,
   );
   try {
     const harness = await startCatalogHarness(entry, "analytics");
