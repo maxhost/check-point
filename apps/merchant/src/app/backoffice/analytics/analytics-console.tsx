@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState, type ReactNode } from "react";
-import { Coins, Cart, StatsReport, Wallet } from "iconoir-react";
+import { Coins, Cart, StatsReport, Wallet, Archery } from "iconoir-react";
 import type {
   buildDay,
   buildHistory,
@@ -421,14 +421,43 @@ export default function AnalyticsConsole({
                 ) : (
                   <>
                     <dl className="grid gap-3 sm:grid-cols-2">
-                      <Metric
-                        label="Para cubrir el mes"
-                        value={money(history.goal.breakEvenMinor)}
-                      />
-                      <Metric
-                        label="Ventas del mes"
-                        value={money(history.goal.monthRevenueMinor)}
-                      />
+                      {[
+                        {
+                          label: "Para cubrir el mes",
+                          value: money(history.goal.breakEvenMinor),
+                          icon: (
+                            <Archery className="size-6" aria-hidden="true" />
+                          ),
+                          tone: "bg-primary-soft text-primary",
+                        },
+                        {
+                          label: "Ventas del mes",
+                          value: money(history.goal.monthRevenueMinor),
+                          icon: <Coins className="size-6" aria-hidden="true" />,
+                          tone: "bg-info-soft text-info",
+                        },
+                      ].map(({ label, value, icon, tone }) => (
+                        <div
+                          key={label}
+                          className="grid min-w-0 content-between gap-5 rounded-lg border border-border bg-surface p-4"
+                        >
+                          <dt className="flex items-center gap-3">
+                            <span
+                              className={`flex size-10 shrink-0 items-center justify-center rounded-full ${tone}`}
+                            >
+                              {icon}
+                            </span>
+                            <Text as="span" variant="label">
+                              {label}
+                            </Text>
+                          </dt>
+                          <dd className="m-0 min-w-0 break-words">
+                            <Text as="span" variant="metric">
+                              {value}
+                            </Text>
+                          </dd>
+                        </div>
+                      ))}
                     </dl>
                     <dl className="grid grid-cols-2 gap-3 border-y border-border py-3">
                       {[

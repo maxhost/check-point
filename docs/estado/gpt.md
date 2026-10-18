@@ -5,6 +5,8 @@
 
 ## ESTADO — 0239 CÁLCULO SIN MARGEN VISIBLE Y MOVIMIENTOS; LISTO PARA OWNER EN DEV (2026-10-18 UTC)
 
+L0 posterior owner: boxes Para cubrir el mes/Ventas del mes con borde y fondo surface, iconosIconoir Archery/Coins junto a etiqueta, importe Textmetric grande abajo; sin badges/variaciones inventadas. Sólo presentación local en analytics-console, móvil apilado/desktop2columnas, datos/estados intactos. TiposUI/lint/guard/diff-checkPASS y2browserexistentes390/1440sinretries/skips, capturas abiertas en tanda. Ganancia/gastos mantiene altura natural. Sin push/PROD; demos/diferidos intactos.
+
 L0 posterior solicitado por owner: Ganancia/gastos usa self-start para tomar altura natural y no estirarse con la tarjeta de movimientos contigua; owner acepta alturas distintas. Sólo una clase, sin cambiar datos/layout restantes. Diff/ESLint/ui-guard focales, sin nueva campaña browser ni DB. Diferidos intactos; sin push/PROD.
 
 Owner pidió quitar margen visible y rediseñar cálculo mensual con boxes y lista, sin ViewAll; aclaró «Ventas y gastos recientes». Producto`92fcbd344b88f7499a747fb71982e77dc2c24cab`, base4f124e4f (contrato0239 reservado antes del código). [Entrega](../factory/0239-monthly-activity.md). Margen sigue en fórmula; tarjeta mantiene equilibrio/ventasmes/gastos estimados/meta/plazo, lista visible incluso pendiente y vacío explícito. No desglose desplegable ni botón/enlaceViewAll.
