@@ -100,6 +100,11 @@ if (process.argv[2] === "init") {
   if (mode === "fixture") {
     env.POS_MEASUREMENT_SETUP = "true";
     env.POS_MEASUREMENT_OPERATION = process.argv[3];
+    if (process.argv[4]) {
+      if (!/^\d{2}$/.test(process.argv[4]))
+        throw Error("Two digit flow run required");
+      env.POS_MEASUREMENT_FLOW_RUN = process.argv[4];
+    }
     const result = spawnSync(
       "bash",
       [

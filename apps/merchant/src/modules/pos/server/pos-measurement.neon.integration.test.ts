@@ -1,3 +1,5 @@
+import { dropBusiness } from "../../../server/counter-integration-support";
+import { dropCampaigns } from "../../../server/marketing-read-support";
 /** Explicit operations, exclusively tools/neon-test.sh. Persistent owned M0 fixtures. */
 import { randomUUID, randomInt } from "node:crypto";
 import { writeFile } from "node:fs/promises";
@@ -6,6 +8,7 @@ import { eq, sql } from "drizzle-orm";
 import { getDb, withDbTransaction } from "@mi-pasaporte/db";
 import {
   users,
+  consumerAccounts,
   businesses,
   memberships,
   subscriptions,
@@ -26,6 +29,9 @@ import {
   save,
   owned,
   inspect,
+  setupFlows,
+  inspectFlows,
+  loadFlows,
   type Manifest,
 } from "./pos-measurement.test-support";
 import { login } from "./pos-measurement-login.test-support";
@@ -35,7 +41,15 @@ describe.skipIf(process.env.POS_MEASUREMENT_SETUP !== "true")(
     it("executes requested operation without unrelated cleanup", async () => {
       const { directory, endpoint, file } = await guard();
       const op = process.env.POS_MEASUREMENT_OPERATION;
-      expect(["setup", "inspect", "login", "cleanup"]).toContain(op);
+      expect([
+        "setup",
+        "inspect",
+        "login",
+        "cleanup",
+        "flows-setup",
+        "flows-inspect",
+        "flows-inspect-smoke",
+      ]).toContain(op);
       if (op === "setup") {
         const runId = randomUUID(),
           now = new Date();
@@ -205,7 +219,10 @@ describe.skipIf(process.env.POS_MEASUREMENT_SETUP !== "true")(
         await inspect(m);
       } else {
         const m = await load(file, endpoint);
-        if (op === "inspect") {
+        if (op === "flows-setup") await setupFlows(m, directory);
+        else if (op === "flows-inspect" || op === "flows-inspect-smoke")
+          await inspectFlows(m, directory);
+        else if (op === "inspect") {
           await inspect(m);
           const ledger = await getDb().execute(
             sql`select id,hash,created_at from drizzle.__drizzle_migrations order by id`,
@@ -230,14 +247,31 @@ describe.skipIf(process.env.POS_MEASUREMENT_SETUP !== "true")(
           await inspect(m);
           await login(m, directory);
         } else {
+          const flow = await loadFlows(m, directory).catch(
+            (error: NodeJS.ErrnoException) => {
+              if (error.code === "ENOENT") return null;
+              throw error;
+            },
+          );
           for (const f of m.fixtures) {
             await owned(f);
+            await getDb()
+              .update(posOrders)
+              .set({ orderId: null })
+              .where(eq(posOrders.businessId, f.businessId));
+            await dropCampaigns(f.businessId);
+            await dropBusiness(f.businessId);
             await getDb()
               .delete(businesses)
               .where(eq(businesses.id, f.businessId));
             await getDb().delete(users).where(eq(users.id, f.ownerId));
             await getDb().delete(users).where(eq(users.id, f.staffId));
           }
+          if (flow)
+            for (const c of flow.cases)
+              await getDb()
+                .delete(consumerAccounts)
+                .where(eq(consumerAccounts.id, c.consumerId));
           m.phase = "cleaned";
           await save(file, m);
         }
