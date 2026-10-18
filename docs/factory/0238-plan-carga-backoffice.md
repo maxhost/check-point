@@ -47,6 +47,26 @@ Plan solicitado tras las revisiones. Referencia documental inspeccionada: `21f4f
 
 Dependencia efectiva: `D0 → M0 → A1 → [A2 || B1→B2] → C → M1/QA de combinación → aceptación local`. QA de entrega puede comenzar sobre una entrega congelada mientras termina la otra; no equivale a QA de combinación.
 
+### Tamaño de las entregas y checkpoints
+
+El reparto A/B asigna responsabilidad, no dos encargos monolíticos. No podemos garantizar capacidad por la amplitud de un prompt: la evidencia son entregas pequeñas que compilan y superan sus casos decisivos. Despachar **solo el siguiente checkpoint habilitado** de cada agente, con paths/casos concretos y el SHA de entrada. Los checkpoints refinan A1/A2/B1/B2; no añaden features ni agentes.
+
+| Checkpoint | Responsable / dependencia | Límite de cambio y comprobación antes de seguir |
+| --- | --- | --- |
+| A1, contrato común | A; después de M0 | DTO público mínimo, firmas, modos y transiciones acordados con B/coordinador. Compila en servidor/cliente sin importar secretos o runtime servidor; fixtures tipadas. Congelar contrato antes de trabajo paralelo |
+| A2a, contexto por petición | A; A1 | Compartir resolución de sesión/datos manteniendo inicialmente las consultas separadas. Distinguir RSC/Request y modos; comprobar no repetición interna, identidad intercalada y revocación entre Requests. No introducir todavía JOIN |
+| A2b, JOIN y precedencia | A; A2a | Sustituir solo obtención de membresía/billing, proyección nullable y fallback único. Negativos reales, selección múltiple, fallo parcial y caller autorizado; SQL/plan focal. Este checkpoint concentra el riesgo de datos/auth |
+| A2c, constructores y consumidores servidor | A; A2b | Seed core autorizado, constructor puro de módulos/reutilización de categoría, reporter y checklist equivalentes. Verificar gates de módulos, ausencia de datos privados y conteos. Entregar helper estable que B conectará al shell |
+| B1a, provider y estado inicial | B; A1 | Provider, hooks y tickets del seed en componentes/pruebas aisladas. Core/módulos loading/ready/restricted/unavailable y rechazo/seed tardío. Todavía no sustituir efectos de producción mediante una integración a medias |
+| B1b, shell y streaming | B; B1a, y A2c disponible para smoke real | Conectar layout/page/hoja Suspense, navegación y TrialNotice; retirar sus efectos iniciales repetidos. Probar módulos lentos/rechazados y conteos reales; no declarar correcto el cableado con fixtures simuladas |
+| B2a, transportes compartidos | B; B1b | Inbox/checklist comparten solicitudes en curso; suscriptores/cleanup/finally por ticket y generación. Probar Strict Mode, dos consumidores, rechazo/reintento y GET anterior a decisión. Conservar máquina/temporizadores/idempotencia de Inbox |
+| B2b, revalidación e integración cliente | B; B2a | Conectar foco/reconexión/mutaciones/reporters y reconciliación RSC. Probar ámbito retirado, respuesta tardía, restricted→ready y formularios autorizados; no bucles ni fan-out. Entrega cliente completa para candidato C |
+| S, ámbito condicional | A y B, cada uno en sus paths; solo si se acepta §4.3 | Servidor entrega primero marca/verificación/409 y negativos sin modificar dominio; B adopta captura de intención y recuperación tipada en otro commit. Comprobar ambos juntos, cookie A→B y no reintento de escritura. Contrato exacto en A1; no activar consumidores nuevos con medio protocolo conectado |
+
+B puede desarrollar pruebas y componentes contra A1 mientras A completa A2a–c. La conexión real B1b depende de A2c: no prometer dos líneas de trabajo independientes durante todo el encargo. El coordinador transmite commits necesarios de A al worktree B de forma explícita, con estado limpio y pruebas detenidas, sin incorporar trabajo no entregado.
+
+Cada checkpoint termina en commit identificable, diff acotado y evidencia focal; el siguiente no comienza con fallos del anterior sin resolver. Son puntos de control internos: commits intermedios no equivalen a un producto aceptado ni se avanzan a main por separado. QA puede revisar evidencia de entregas coherentes sin ejecutar una batería nueva por cada commit. M0/M1 y aceptación de rendimiento siguen evaluando el conjunto 1+2+3, sin benchmarks parciales para escoger resultados. Si cambia un invariante del contrato, detener solo la parte dependiente y resolverlo con el coordinador antes de seguir.
+
 ### Contratos de los implementadores y propiedad de archivos
 
 Raíz de paths de producto: `apps/merchant/src/`. Los paths nuevos siguientes son nombres previstos, no archivos ya creados. El coordinador convierte esta lista en reservas factory de archivos reales, sin globs, antes de despachar. Si la extracción necesita otro archivo, ampliar primero la reserva; no reservar todo `server/` o `backoffice/`.
