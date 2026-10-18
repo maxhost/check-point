@@ -32,7 +32,11 @@ vi.mock("./auth", () => ({
 }));
 vi.mock("./billing-gate", () => ({
   businessBillingFailure: async () => null,
-  readBusinessBilling: async () => ({ access: "active", trialEndsAt: null }),
+  readBusinessBilling: async () => ({
+    access: "subscribed",
+    trialEndsAt: null,
+    failure: null,
+  }),
 }));
 vi.mock("./staff", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./staff")>()),

@@ -1,7 +1,8 @@
-import { getMerchantAuth } from "./auth";
-import { membershipContext } from "./staff";
 import { type ApiOwnerBusiness } from "./api-owner";
-import { businessBillingFailure } from "./billing-gate";
+import {
+  getBackofficeRequestContext,
+  type BackofficeDataContext,
+} from "./backoffice-context";
 import { pinChangeFailure } from "./pin-change-gate";
 // Desde la HOJA pura, igual que `api-owner.ts`: `DEFAULT_MESSAGES` no esta entre lo que ese
 // modulo re-exporta, y traerlo de acá evita una re-exportacion nueva en un archivo que la
@@ -131,7 +132,7 @@ export async function memberLadder(
     };
   }
 
-  return await statusStep(resolved);
+  return await statusStep(resolved, getBackofficeRequestContext(request));
 }
 
 /**
@@ -171,7 +172,7 @@ export async function requireApiPermissionSinGateDeEmail(
 
   // PASO 4 — NO CORRE, a proposito. Es la razon de ser de esta funcion.
 
-  return await statusStep(resolved);
+  return await statusStep(resolved, getBackofficeRequestContext(request));
 }
 
 /** Los pasos 1, 2 y 3, que las dos funciones comparten ENTEROS. Lo unico que las distingue
@@ -192,9 +193,8 @@ async function resolveMembership(
   | { failure: ApiOwnerFailure }
 > {
   // PASO 1 — la sesion.
-  const session = await getMerchantAuth().api.getSession({
-    headers: request.headers,
-  });
+  const context = getBackofficeRequestContext(request);
+  const session = await context.readSession();
   if (!session) {
     return {
       failure: {
@@ -207,7 +207,7 @@ async function resolveMembership(
 
   // PASO 2 — membresia ACTIVA. `membershipContext` filtra `memberships.status='active'` y
   // NO filtra rol: es el gemelo exacto de `ownerContext` salvo por eso.
-  const membership = await membershipContext(session.user.id);
+  const membership = await context.readMembership("active-member");
   if (!membership) {
     return {
       failure: {
@@ -258,13 +258,16 @@ async function resolveMembership(
  * `reasonVisible` sale del rol: el `suspensionReason` es una nota interna sobre la cuenta y
  * **se serializa solo al owner** (spec 0072 §D4, y `auth-guards.ts` / `session-view.ts` hacen
  * exactamente lo mismo con la misma fila). Un integrante recibe `business_suspended` mudo. */
-async function statusStep(resolved: {
-  business: ApiOwnerBusiness;
-  userId: string;
-  role: string;
-  permissions: string[];
-  pinMustChange: boolean;
-}): Promise<ApiPermissionResult> {
+async function statusStep(
+  resolved: {
+    business: ApiOwnerBusiness;
+    userId: string;
+    role: string;
+    permissions: string[];
+    pinMustChange: boolean;
+  },
+  context: BackofficeDataContext,
+): Promise<ApiPermissionResult> {
   const failure = businessStatusFailure(
     resolved.business.status,
     resolved.business.suspensionReason,
@@ -273,7 +276,7 @@ async function statusStep(resolved: {
   if (failure) return { failure };
   // PASO 6 — el eje de ACCESO (spec 0189 §D4), DESPUES del eje `status`: un negocio
   // suspendido sigue diciendo `business_suspended`.
-  const billing = await businessBillingFailure(resolved.business.id);
+  const billing = (await context.readBilling(resolved.business.id)).failure;
   if (billing) return { failure: billing };
   // PASO 7 — el PIN temporal (spec 0218), ULTIMO: ver `pin-change-gate.ts`.
   const pin = pinChangeFailure(resolved);

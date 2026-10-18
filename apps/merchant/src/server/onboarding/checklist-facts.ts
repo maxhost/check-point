@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { getMerchantAuth } from "../auth";
+import { getBackofficeRequestContext } from "../backoffice-context";
 import { getDb } from "@mi-pasaporte/db";
 import { businessOnboardingTours } from "@mi-pasaporte/db/schema";
 import type { ChecklistFacts } from "./checklist";
@@ -15,11 +15,9 @@ import type { ChecklistFacts } from "./checklist";
  * que queden byte por byte iguales. Con los hechos aca, el archivo de la ruta no nombra
  * `getSession` ni consulta por su cuenta: su unica escalera es la compartida.
  *
- * ### EL COSTO, DECLARADO: son DOS lecturas por pedido de checklist
- *
- * 1. **Una segunda resolucion de la SESION en el mismo request**. Sin `cookieCache`
- *    configurado es una consulta mas.
- * 2. **UNA consulta a `core.business_onboarding_tour`** — la agrego la spec 0085.
+ * ### Spec0238: el guard y estos hechos comparten la resolución nativa de sesión
+ * dentro del mismo objeto Request. No hay una segunda lectura de sesión/usuario.
+ * La consulta de tours sigue independiente después del guard, sin caché entre peticiones.
  *
  * **Es UNA sola consulta y no cuatro**: se leen TODAS las filas del negocio (son 4 como mucho,
  * el catalogo de tours es cerrado) y despues cada item pregunta por su id contra el `Set`. El
@@ -39,9 +37,7 @@ export async function checklistFacts(
   request: Request,
   businessId: string,
 ): Promise<ChecklistFacts> {
-  const session = await getMerchantAuth().api.getSession({
-    headers: request.headers,
-  });
+  const session = await getBackofficeRequestContext(request).readSession();
   const filas = await getDb()
     .select({ tourId: businessOnboardingTours.tourId })
     .from(businessOnboardingTours)

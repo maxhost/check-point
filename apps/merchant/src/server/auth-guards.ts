@@ -1,10 +1,8 @@
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { asc, eq } from "drizzle-orm";
-import { getMerchantAuth } from "./auth";
-import { readBusinessBilling } from "./billing-gate";
+import { eq } from "drizzle-orm";
+import { getBackofficeRenderContext } from "./backoffice-context";
 import { getDb } from "@mi-pasaporte/db";
-import { businesses, memberships, sessions } from "@mi-pasaporte/db/schema";
+import { sessions } from "@mi-pasaporte/db/schema";
 import { memberPermissions } from "../modules/permissions";
 import { PIN_CHANGE_PAGE, pinChangeRequired } from "./pin-change-gate";
 
@@ -123,32 +121,10 @@ export type BackofficeSession = {
 export async function requireBackofficeSession(
   options: { allowBlocked?: boolean } = {},
 ): Promise<BackofficeSession> {
-  const session = await getMerchantAuth().api.getSession({
-    headers: await headers(),
-  });
+  const context = await getBackofficeRenderContext();
+  const session = await context.readSession();
   if (!session) redirect("/");
-
-  const [row] = await getDb()
-    .select({
-      id: businesses.id,
-      name: businesses.name,
-      currencyCode: businesses.currencyCode,
-      timezone: businesses.timezone,
-      // `businessStatus` y no `status`: `status` ya es el de la MEMBRESIA en esta misma
-      // fila (ADR 0055). Dos ejes distintos con el mismo nombre es como uno termina
-      // decidiendo por el otro.
-      businessStatus: businesses.status,
-      suspensionReason: businesses.suspensionReason,
-      role: memberships.role,
-      status: memberships.status,
-      permissions: memberships.permissions,
-      pinMustChange: memberships.pinMustChange,
-    })
-    .from(memberships)
-    .innerJoin(businesses, eq(businesses.id, memberships.businessId))
-    .where(eq(memberships.userId, session.user.id))
-    .orderBy(asc(businesses.createdAt))
-    .limit(1);
+  const row = await context.readMembership("page");
 
   if (!row) {
     // Spec 0166: una sesión sin negocio no corresponde (hoy no se puede crear: el alta crea
@@ -209,7 +185,7 @@ export async function requireBackofficeSession(
   // EL EJE DE ACCESO (spec 0189 §D4), DESPUES del eje `status`: un owner suspendido conserva
   // su pantalla de cuenta suspendida (el motivo manda sobre el cobro).
   if (row.businessStatus === "active" && !options.allowBlocked) {
-    const billing = await readBusinessBilling(row.id);
+    const billing = await context.readBilling(row.id);
     if (billing.access === "blocked") {
       redirect(
         row.role === "owner"
