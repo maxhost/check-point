@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-import { getMerchantAuth } from "./auth";
-import { ownerContext } from "./staff";
-import { businessBillingFailure } from "./billing-gate";
+import { getBackofficeRequestContext } from "./backoffice-context";
 import {
   API_OWNER_CODES,
   type ApiOwnerFailure,
@@ -81,9 +79,8 @@ export async function requireApiOwner(
    * bloqueado paga. */
   options: { allowBlocked?: boolean } = {},
 ): Promise<ApiOwnerResult> {
-  const session = await getMerchantAuth().api.getSession({
-    headers: request.headers,
-  });
+  const context = getBackofficeRequestContext(request);
+  const session = await context.readSession();
   if (!session) {
     return {
       failure: {
@@ -96,7 +93,7 @@ export async function requireApiOwner(
 
   // PASO 2 — owner ACTIVO. `ownerContext` filtra `role='owner'` y
   // `memberships.status='active'`, que es lo que los tres `ownerBusiness` no hacian.
-  const business = await ownerContext(session.user.id);
+  const business = await context.readMembership("active-owner");
   if (!business) {
     return {
       failure: {
@@ -129,7 +126,7 @@ export async function requireApiOwner(
 
   // PASO 5 — el eje de ACCESO (spec 0189 §D4).
   if (!options.allowBlocked) {
-    const billing = await businessBillingFailure(business.id);
+    const billing = (await context.readBilling(business.id)).failure;
     if (billing) return { failure: billing };
   }
 
@@ -216,9 +213,8 @@ export async function requireApiOwnerSinGateDeEmail(
   messages: Pick<ApiOwnerMessages, "notOwner"> = {},
 ): Promise<ApiOwnerResult> {
   // PASO 1 — la sesion.
-  const session = await getMerchantAuth().api.getSession({
-    headers: request.headers,
-  });
+  const context = getBackofficeRequestContext(request);
+  const session = await context.readSession();
   if (!session) {
     return {
       failure: {
@@ -231,7 +227,7 @@ export async function requireApiOwnerSinGateDeEmail(
 
   // PASO 2 — owner ACTIVO: `ownerContext` filtra `role='owner'` y
   // `memberships.status='active'`. Sacar el paso 3 no afloja este.
-  const business = await ownerContext(session.user.id);
+  const business = await context.readMembership("active-owner");
   if (!business) {
     return {
       failure: {
@@ -253,7 +249,7 @@ export async function requireApiOwnerSinGateDeEmail(
   if (failure) return { failure };
 
   // PASO 5 — el eje de ACCESO (spec 0189 §D4), igual que en `requireApiOwner`.
-  const billing = await businessBillingFailure(business.id);
+  const billing = (await context.readBilling(business.id)).failure;
   if (billing) return { failure: billing };
 
   return { business, userId: session.user.id };
