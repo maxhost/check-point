@@ -26,6 +26,7 @@ import {
   type HistoryPeriod,
 } from "@mi-pasaporte/domain/analytics/history";
 import { summarizeCustomerPromoHistory } from "@mi-pasaporte/domain/analytics/customer-promo-history";
+import { buildStockCostHistory } from "@mi-pasaporte/domain/analytics/stock-cost-history";
 import { summarizeStockHistory } from "@mi-pasaporte/domain/analytics/stock-history";
 import { validDay } from "@mi-pasaporte/domain/analytics/date";
 import { calculateGoal } from "@mi-pasaporte/domain/analytics/cards/index";
@@ -337,6 +338,12 @@ export async function readHistory(
     minorUnit: input.minorUnit,
     ...current,
     stock,
+    stockCosts: buildStockCostHistory(
+      { ...input, gauges: stockRows.rows as AnalyticsGauge[] },
+      range.from,
+      range.to,
+      locationId,
+    ),
     ...customerPromo,
     previous: {
       revenueMinor: previous.revenueMinor,
