@@ -1,4 +1,4 @@
-import { Suspense, use, useEffect } from "react";
+import { StrictMode, Suspense, use, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import type {
   BackofficeInitialContext,
@@ -28,6 +28,7 @@ export type BackofficeFixtureApi = {
   changeIdentity: () => void;
   invalidateInbox: () => void;
   navigations: string[];
+  setInboxReaders: (count: number) => void;
 };
 const query = new URLSearchParams(location.search);
 const core = fixtureBackofficeCore(
@@ -67,12 +68,25 @@ const fixture: BackofficeFixtureApi = {
   changeIdentity: () => {},
   invalidateInbox: () => controller.invalidate(["inbox"]),
   navigations: [],
+  setInboxReaders: () => {},
 };
 const controller = createBackofficeContextController(core, {
   readSession: (signal) =>
     panelRequest("/api/merchant/session", "GET", undefined, { signal }),
   readModules: (signal, ticket) =>
     readModules({ signal, scopeKey: ticket.scopeKey }),
+  readInbox: (signal, ticket) =>
+    panelRequest("/api/analytics/inbox", "GET", undefined, {
+      signal,
+      scopeKey: ticket.scopeKey,
+    }),
+  decideInbox: (command, ticket) =>
+    panelRequest(
+      `/api/analytics/inbox/${command.cardId}/${command.decision}`,
+      "POST",
+      command.body,
+      { scopeKey: ticket.scopeKey },
+    ),
   navigate: (href) => {
     fixture.navigations.push(href);
   },
@@ -95,6 +109,19 @@ function Bridge() {
 function StreamedSeed() {
   return <BackofficeModulesSeedConsumer seed={use(stream)} />;
 }
+function InboxReaders() {
+  const [readers, setReaders] = useState(Number(query.get("readers") ?? "1"));
+  useEffect(() => {
+    fixture.setInboxReaders = setReaders;
+  }, []);
+  return (
+    <>
+      {Array.from({ length: readers }, (_, index) => (
+        <AnalyticsInbox key={index} />
+      ))}
+    </>
+  );
+}
 function Fixture({ initial }: { initial: BackofficeInitialContext }) {
   return (
     <BackofficeProvider initialContext={initial} controller={controller}>
@@ -107,7 +134,7 @@ function Fixture({ initial }: { initial: BackofficeInitialContext }) {
         <div className="backoffice-content">
           <TrialNotice />
           <p>Contenido privado sintético</p>
-          <AnalyticsInbox />
+          <InboxReaders />
         </div>
       </div>
     </BackofficeProvider>
@@ -126,4 +153,12 @@ fixture.changeIdentity = () =>
     />,
   );
 if (query.get("modules") === "ready") fixture.resolveModules("ready");
-root.render(<Fixture initial={core} />);
+root.render(
+  query.has("strict") ? (
+    <StrictMode>
+      <Fixture initial={core} />
+    </StrictMode>
+  ) : (
+    <Fixture initial={core} />
+  ),
+);
