@@ -1,0 +1,29 @@
+# 0242 CP2a.1 — QA independiente
+
+Resultado: PASS focal de entrega y combinación sobre candidato final `a15e3b9a9cf060bb4e6e4a4328ffec436b989d39`, base aceptada `afbe2ce4`. No es PASS global ni habilita venta por peso. QA nuevo, sin subdelegación ni implementación de producto.
+
+## Identidad y revisión
+
+WT/rama asignados `/private/tmp/checkpass-pos-0242/pos-qa-0242` / `pos-qa-0242`, limpio al inicio en `e77871dd21810a92c537df4dee85977d72535129`. Coordinador actualizó a candidato final después de las comprobaciones tempranas. `git diff --exit-code e77871dd..a15e3b9a -- apps packages tools pnpm-lock.yaml`: EXIT0; el único añadido es el handoff. Código del autor probado `30c684348fbdb6558aca459563fff0bbe81db927`; handoff entregado `d25543876b097337bace38b6d18916293b6dacf3` leído. Reutilización de evidencia compatible con esta identidad.
+
+Leídos AGENTS/protocolos, ficha CP2a.1, contrato0242 §2, diff de esquema/SQL/journal, test nuevo y handoff. SQL0105 contiene únicamente ocho ALTER ADD: tres columnas y tres checks de producto, una columna y un check de configuración. Defaults false/unit/1 y ['kg']; revisión positiva, lista unidimensional no vacía/única/sin null/desconocidos y combinación permanente unit/mass correctas. Barrera temporal obliga false/unit en core; restricciones tarifarias anteriores intactas. Sin nuevos writers/DTO, precisión ni activación mass. No DML que inserte configuración ausente, cambie revisión, timestamps o historia.
+
+Comparación JSON semántica0104→0105 limitada a `core.product` y `core.business_configuration`: tras retirar las cuatro columnas/cuatro checks añadidos, ambas definiciones son idénticas; prevId enlaza id anterior. No se leyó/imprimió snapshot entero. Journal añade sólo0105. SQL SHA256 `bc45625df27153b41a45aa96bc0798e39b9acfbac6d26a3604fd636af6a3f562`.
+
+## Evidencia
+
+Runtime QA Node24.20.0, pnpm11.4.0, Vitest4.0.18. Lock SHA256 `4cfe18864f12af4fe3b0cd84ab477e936ecd52d96847579cc087e6e13b020821`; drizzle.config.ts `e53ee9595e5f28ecb1034088a2ead25255dfb9f42c6a6b1281707a37f69721cc`; merchant vitest.config.ts `073bf307a361c779b82c9b696e3918a5a1a8cdd0e01dd4838117470d654f7e81`, setup AI fake. Identidades comprobadas con el handoff, sin cambios de configuración/dependencias.
+
+- QA: comparación semántica de ambas tablas, Prettier focal de dos esquemas/test y `git diff --check afbe2ce4..HEAD`: EXIT0.
+- QA, desde apps/merchant: `pnpm exec vitest run src/modules/modules-boundary.test.ts src/modules/modules-boundary-between.test.ts src/modules/modules-boundary-literals.test.ts`: 24PASS/2FAIL, cero skips. Fallos exactos de backlog: expenses/server/immediate.neon.integration.test.ts → stock/count.ts; cinco archivos core con literales extra: backoffice-context-controller.test.ts(3), backoffice-context-refresh.test.ts(1), onboarding/checklist-context-resource.test.ts(1), analytics/evaluation/policy-simulation.test.ts(2), analytics/lifecycle/index.ts(1). Estos archivos y guardias no cambian respecto de base. Fixture CP2a usa unsplash y no añade offender.
+- Dos invocaciones QA preliminares de Vitest fallaron en selección/configuración: proyecto merchant sin nombre y ejecución desde raíz con include relativo src. No ejecutaron casos ni se contabilizan como PASS; la corrida correcta anterior ejecutó los26 casos, con los dos fallos expresos.
+- Reutilizados del autor: tipos db/domain/merchant EXIT0, lint/formato/UI guard focal EXIT0, pruebas puras compatibilidad/lines46PASS/0FAIL/0SKIP. La invocación conjunta con guardias salió1 y no se declara verde global.
+- CI autor exclusivamente por `NEON_TEST_ENV_FILE=/private/tmp/checkpass-pos-0242/private/ci.env tools/neon-test.sh src/modules/pos/server/catalog-measure-storage.neon.integration.test.ts --no-file-parallelism`: primer intento EXIT0, 5PASS/0FAIL/0SKIP en25.63s. Log inspeccionado `/private/tmp/checkpass-pos-0242/private/catalog-measure-storage-ci-30c68434.log`: migración aplicada; hash canónico/journal, tipos/defaults/nullability y checks reales validados. Aviso consumer sin URL: no se certifica el oráculo de ese rol.
+
+Inspección de pruebas CI: clones propios LIKE INCLUDING ALL reconstruyen sólo sus definiciones previas, aplican SQL canónico sustituyendo únicamente identificadores de tabla y comparan filas completas (tarifas text/timestamps JSONB), preservando IDs, imagen, disponibilidad, revisión17 y ausencia de configuración. Clones no copian FKs: preservación estructural de FKs se apoya en SQL aditivo y definición sin cambios. Sólo el clon pierde la barrera temporal para validar pares permanentes; core conserva barrera y rechaza mass. Negativos reales de revisiones, nulls y tarifas previas;15 subconjuntos ordenados válidos de unidades, vacíos/duplicados/desconocidos/null rechazados. Writer regional conserva unidades e incrementa revisión compartida; catálogo/POS/writers legacy y orden con máximo histórico×1 conservan valores exactos. No fixtures imposibles ni debilitamiento de restricciones reales.
+
+Teardown CI forma parte del PASS: esquema propio, owner y negocio ausentes mediante aserciones. Autor reporta cero procesos tras inspección; QA no inició servidores, DB ni sesiones persistentes, todas sus herramientas finalizaron: cero procesos propios pendientes. No se pidió otra corrida DB al no quedar duda concreta tras inspección; recurso CI liberado por coordinador y ya transferido.
+
+## Límites y siguiente paso
+
+Sin hallazgos nuevos de producto ni correcciones solicitadas. Persisten los dos fallos de guardias ajenos documentados; sin retries/skips para fabricar aprobación. Sin fullverify/build/browser/M0/M1, DB local o PROD, push ni cambios de producto/tests/guardias por QA. Activación mass/precisión y APIs futuras fuera de alcance. Coordinador puede aceptar este bloque focal y aplicar migración LOCAL protegida antes de integrar descriptor; producción requiere autorización específica.
