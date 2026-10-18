@@ -1,10 +1,10 @@
 # 0242 — Handoff para retomar después de clear
 
-## Reanudación del18oct: CP0 aceptado; CP1a preparado
+## Reanudación del18oct: CP0 y CP1a financiero/servidor aceptados
 
 Owner exige entregables manejables y **agentes nuevos/contexto vacío por bloque aceptado**, incluidos QA. Gratis/2x1 no aplican a líneas por peso; decisión cerrada. Contratos puros A329c7917/QA7fc88bad, LISTA M0 Bc379c9a8/QA80b32497 y flujos8dca14ee/QA9ee475dc aceptados e integrados en dev. Combinación congelada a5cbd20c:53/53 pruebas puras,2/2 instrumentales y tipos merchant PASS; habilita CP1. M0:36 muestras listado y18flujos+3smokes válidos, evidencia durable CI y fallos/límites preservados en [handoff flujos](0242-cp0-flows-handoff.md) y [QA](0242-cp0-flows-qa.md). No certifica POSv2/M1/PROD. Servidores propios detenidos, fixtures/control/RAW privados conservados.
 
-Siguientes entregas con nuevos autores: [financial puro](0242-cp1a-financial.md) sin DB y [scope servidor](0242-cp1a-scope-server.md) con CI exclusiva; base/paths/reservas en factory y estado vigente. Cliente/seed/cache será otro contexto. No schema/UI enCP1a; no activar mass/V4 antes de cierre y consumidores completos. El resto conserva contexto histórico del mapeo previo; las afirmaciones de preparación sin código no describen las entregas CP0 ya aceptadas.
+CP1a financiale9d409ac/QA9a4a52a6 (88pruebas) y servidor1af3d7f3/QA0b52df93 (138focales+4CI/teardown0) aceptados/integrados. Dos guardias rojas preexistentes atribuidas por hashes, no ocultadas; ver handoffs. Nueva ronda sobre7c16236f: autores nuevos para [lectores unit antes del expand](0242-cp1b-unit-readers.md) y [cliente scope](0242-cp1a-scope-client.md); CI primeroA, luegoB, puerto43242B. Sin schema todavía. CP1b se divide en preparar lectores, ampliar catálogo, ampliar cantidades/snapshots+writercasts; autores nuevos por corte. Mass/V4 sigue dormido hasta2c. Skillimpeccable aplicada para refinamiento acotado de cliente, contexto cargado porcoordinación, sin rediseño/init/artefactosajenos. El resto conserva contexto histórico del mapeo previo; afirmaciones de preparación sin código no describen entregas aceptadas actuales.
 
 ## Objetivo actual
 
