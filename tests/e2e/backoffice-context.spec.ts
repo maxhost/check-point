@@ -64,6 +64,54 @@ test.beforeEach(async ({ page }) => {
   );
 });
 
+test("summary numbers disappear immediately when scope is withdrawn", async ({
+  page,
+}) => {
+  const requests: string[] = [];
+  page.on("request", (r) => {
+    if (r.url().includes("/api/")) requests.push(new URL(r.url()).pathname);
+  });
+  await page.route("**/api/analytics/summary", (route) =>
+    route.fulfill({
+      json: {
+        version: 1,
+        date: "2026-10-20",
+        timezone: "UTC",
+        currencyCode: "USD",
+        minorUnit: 2,
+        readAt: "2026-10-20T15:00:00Z",
+        monthBreakEvenMinor: 310000,
+        dailyBreakEvenMinor: 10000,
+        todayRevenueMinor: 45600,
+        estimated: false,
+        unavailableReason: null,
+      },
+    }),
+  );
+  await page.goto(
+    `${harness.url}?modules=ready&summary&fixturePath=/backoffice`,
+  );
+  await expect(page.getByText("$456,00", { exact: true })).toBeVisible();
+  expect(requests.filter((p) => p === "/api/analytics/summary")).toHaveLength(
+    1,
+  );
+  expect(requests.filter((p) => p === "/api/analytics/inbox")).toHaveLength(1);
+  expect(
+    requests.filter(
+      (p) => p === "/api/merchant/session" || p === "/api/modules",
+    ),
+  ).toEqual([]);
+  await page.evaluate(() =>
+    (
+      window as unknown as { backofficeFixture: BackofficeFixtureApi }
+    ).backofficeFixture.retire(),
+  );
+  await expect(page.getByText("$456,00", { exact: true })).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Tus números de hoy" }),
+  ).toHaveCount(0);
+});
+
 for (const width of [390, 1280]) {
   test(`seed directo listo evita GET auxiliares y conserva UI (${width})`, async ({
     page,

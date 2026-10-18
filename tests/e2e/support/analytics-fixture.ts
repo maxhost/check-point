@@ -28,6 +28,9 @@ export async function startAnalyticsHarness() {
   const inbox = path.resolve(
     "apps/merchant/src/app/backoffice/analytics/inbox.tsx",
   );
+  const summary = path.resolve(
+    "apps/merchant/src/app/backoffice/analytics/dashboard-summary.tsx",
+  );
   const history = path.resolve(
     "apps/merchant/src/app/backoffice/analytics/analytics-console.tsx",
   );
@@ -39,7 +42,7 @@ export async function startAnalyticsHarness() {
   );
   await writeFile(
     entry,
-    `import {renderBackofficeSeedFixture} from ${JSON.stringify(seedFixture)};import {AnalyticsInbox} from ${JSON.stringify(inbox)};import History from ${JSON.stringify(history)};import {BackofficeNavigation} from ${JSON.stringify(nav)};const q=new URLSearchParams(location.search);void renderBackofficeSeedFixture(<div className="backoffice-layout"><BackofficeNavigation /><div className="backoffice-content">{location.pathname.includes('/analytics')?<History initialDate={q.get('date')||''}/>:<main className="merchant-shell"><AnalyticsInbox/></main>}</div></div>,{businessName:"Café Centro",isOwner:true,permissions:["analytics","catalog","business"]});`,
+    `import {renderBackofficeSeedFixture} from ${JSON.stringify(seedFixture)};import {AnalyticsInbox} from ${JSON.stringify(inbox)};import {DashboardSummary} from ${JSON.stringify(summary)};import History from ${JSON.stringify(history)};import {BackofficeNavigation} from ${JSON.stringify(nav)};const q=new URLSearchParams(location.search);void renderBackofficeSeedFixture(<div className="backoffice-layout"><BackofficeNavigation /><div className="backoffice-content">{location.pathname.includes('/analytics')?<History initialDate={q.get('date')||''}/>:<main className="merchant-shell grid min-w-0 grid-cols-1 content-start gap-6"><DashboardSummary/><AnalyticsInbox/></main>}</div></div>,{businessName:"Café Centro",isOwner:true,permissions:["analytics","catalog","business"]});`,
   );
   try {
     const harness = await startCatalogHarness(entry, "analytics");

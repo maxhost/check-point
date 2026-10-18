@@ -72,6 +72,9 @@ function setup() {
       throw new Error("unexpected reporter");
     }),
     readModules: vi.fn(async () => []),
+    readSummary: async () => {
+      throw new Error("unexpected summary read");
+    },
     readInbox: vi.fn<InboxAdapters["readInbox"]>(async () => payload()),
     decideInbox: vi.fn<InboxAdapters["decideInbox"]>(async () => mutation),
     requestRefresh: vi.fn(),

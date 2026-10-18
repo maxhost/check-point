@@ -94,6 +94,26 @@ export async function setupLifecycle(page: Page) {
   );
   const fixture = {
     inbox: lifecycleEnvelope([informative, actionable]),
+    summary: {
+      version: 1,
+      date: "2026-10-20",
+      timezone: "America/Guayaquil",
+      currencyCode: "USD",
+      minorUnit: 2,
+      readAt: "2026-10-20T15:00:00Z",
+      monthBreakEvenMinor: 310000,
+      dailyBreakEvenMinor: 10000,
+      todayRevenueMinor: 45600,
+      estimated: true,
+      unavailableReason: null,
+    },
+    summaryReads: 0,
+    holdSummary: null as Promise<void> | null,
+    summaryError: null as {
+      status: number;
+      code: string;
+      error: string;
+    } | null,
     reads: 0,
     holdRead: null as Promise<void> | null,
     holdWrite: null as Promise<void> | null,
@@ -101,6 +121,17 @@ export async function setupLifecycle(page: Page) {
     writes: [] as { decision: string; body: Record<string, unknown> }[],
     nextError: null as { status: number; code: string; error: string } | null,
   };
+  await page.route("**/api/analytics/summary", async (route) => {
+    fixture.summaryReads++;
+    const snapshot = structuredClone(fixture.summary);
+    await fixture.holdSummary;
+    if (fixture.summaryError)
+      return route.fulfill({
+        status: fixture.summaryError.status,
+        json: fixture.summaryError,
+      });
+    return route.fulfill({ json: snapshot });
+  });
   await page.route(/\/api\/analytics\/inbox(?:\/.*)?$/, async (route) => {
     const request = route.request();
     if (request.method() === "GET") {

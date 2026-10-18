@@ -1,4 +1,5 @@
 "use client";
+import { emptySummaryContext } from "./analytics/summary-context-resource";
 
 import {
   createContext,
@@ -41,6 +42,8 @@ type BackofficeContextValue = {
   applyModulesSeed: (seed: BackofficeModulesSeed) => void;
   invalidate: (resources: readonly BackofficeResource[]) => void;
   retire: () => void;
+  acquireSummary: BackofficeContextController["acquireSummary"];
+  refreshSummary: BackofficeContextController["refreshSummary"];
   acquireInbox: BackofficeContextController["acquireInbox"];
   refreshInbox: BackofficeContextController["refreshInbox"];
   decideInbox: BackofficeContextController["decideInbox"];
@@ -74,6 +77,11 @@ export function BackofficeProvider({
           }),
         readModules: (signal, ticket) =>
           readModules({ signal, scopeKey: ticket.scopeKey }),
+        readSummary: (signal, ticket) =>
+          panelRequest("/api/analytics/summary", "GET", undefined, {
+            signal,
+            scopeKey: ticket.scopeKey,
+          }),
         readInbox: (signal, ticket) =>
           panelRequest("/api/analytics/inbox", "GET", undefined, {
             signal,
@@ -110,10 +118,17 @@ export function BackofficeProvider({
     () => ({
       ...observed,
       sessionState: stored.sessionState,
+      summary: observed.core ? stored.summary : emptySummaryContext(),
       inbox: observed.core ? stored.inbox : emptyInboxContext(),
       checklist: observed.core ? stored.checklist : emptyChecklistContext(),
     }),
-    [observed, stored.sessionState, stored.inbox, stored.checklist],
+    [
+      observed,
+      stored.sessionState,
+      stored.summary,
+      stored.inbox,
+      stored.checklist,
+    ],
   );
   // Hide a different scope during render, but reconcile/cancel only after commit:
   // an abandoned concurrent render must never mutate the live request owner.
@@ -154,6 +169,8 @@ export function BackofficeProvider({
       applyModulesSeed: controller.applyModulesSeed,
       invalidate: controller.invalidate,
       retire: controller.retire,
+      acquireSummary: controller.acquireSummary,
+      refreshSummary: controller.refreshSummary,
       acquireInbox: controller.acquireInbox,
       refreshInbox: controller.refreshInbox,
       decideInbox: controller.decideInbox,

@@ -15,6 +15,7 @@ import { requireBackofficeSession } from "../../server/auth-guards";
 import { statusLabel } from "../../server/billing";
 import { readBackofficePagePlan } from "../../server/backoffice-initial-context";
 
+import { DashboardSummary } from "./analytics/dashboard-summary";
 import { AnalyticsInbox } from "./analytics/inbox";
 
 export const dynamic = "force-dynamic";
@@ -125,7 +126,12 @@ export default async function BackofficePage() {
         )}
       </header>
 
-      {membership.permissions.includes("analytics") && <AnalyticsInbox />}
+      {membership.permissions.includes("analytics") && (
+        <div className="grid min-w-0 grid-cols-1 gap-6">
+          <DashboardSummary />
+          <AnalyticsInbox />
+        </div>
+      )}
 
       {isOwner && (
         <div className="dashboard-groups">
