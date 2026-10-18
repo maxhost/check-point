@@ -47,8 +47,14 @@ export async function DELETE(
   if ("response" in auth) return catalogResponse(request, auth.response);
   const { id } = await params;
   try {
-    return NextResponse.json(await deleteProduct(auth.business, id));
+    return catalogResponse(
+      request,
+      NextResponse.json(await deleteProduct(auth.business, id)),
+    );
   } catch (error) {
-    return catalogError(error, "No pudimos borrar el producto.");
+    return catalogResponse(
+      request,
+      catalogError(error, "No pudimos borrar el producto."),
+    );
   }
 }
