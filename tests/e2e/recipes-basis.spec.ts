@@ -292,3 +292,149 @@ test("nueva biblioteca POST y fallo composición no duplica receta ni insumos", 
     lines: [{ newItem: { name: "Harina nueva" }, quantity: "50", unit: "g" }],
   });
 });
+
+async function newRecipe(
+  page: import("@playwright/test").Page,
+  api: Awaited<ReturnType<typeof setupRecipes>>,
+) {
+  api.remote({ recipes: [] });
+  await page.goto(harness.url);
+  await page.getByRole("button", { name: "Nueva receta", exact: true }).click();
+  await page.getByRole("button", { name: "Catálogo", exact: true }).click();
+  await page.getByRole("button", { name: "Continuar", exact: true }).click();
+  await page.getByRole("textbox", { name: "Buscar producto" }).fill("Pan");
+  await page.getByRole("button", { name: "Pan", exact: true }).click();
+  await page.getByRole("button", { name: "Continuar", exact: true }).click();
+  await page.getByRole("button", { name: "Cargar a mano" }).click();
+  await page
+    .getByRole("textbox", { name: "Nombre del insumo nuevo" })
+    .fill("Sal nueva");
+  await page
+    .getByRole("textbox", {
+      name: "Cantidad por unidad de la receta",
+      exact: true,
+    })
+    .fill("7");
+}
+async function renameRecipe(page: import("@playwright/test").Page) {
+  await page.getByRole("button", { name: "Atrás", exact: true }).click();
+  await page.getByRole("button", { name: "Atrás", exact: true }).click();
+  await page
+    .getByRole("textbox", { name: "Nombre de la receta", exact: true })
+    .fill("Masa propia");
+  await page.getByRole("button", { name: "Continuar", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Revisar los ingredientes actuales" })
+    .click();
+}
+test("POST biblioteca incierto identifica lo guardado y no repite alta ni insumos", async ({
+  page,
+}) => {
+  const api = await setupRecipes(page);
+  await newRecipe(page, api);
+  await page
+    .getByRole("textbox", { name: "Cantidad de producto obtenido" })
+    .fill("10");
+  api.failLibrary("network");
+  await page
+    .getByRole("button", { name: "Confirmar receta", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Consultar estado guardado" }),
+  ).toBeVisible();
+  expect(api.writes).toHaveLength(1);
+  await expect(
+    page.getByRole("button", { name: "Confirmar receta", exact: true }),
+  ).toBeDisabled();
+  api.failLibrary(null);
+  await page.getByRole("button", { name: "Consultar estado guardado" }).click();
+  await expect(
+    page.getByText(/Receta guardada: Pan. Ingredientes: Sal nueva: 7 g/),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("textbox", { name: "Cantidad de producto obtenido" }),
+  ).toHaveValue("10");
+  await page
+    .getByRole("button", {
+      name: "Conservar borrador con la revisión consultada",
+    })
+    .click();
+  await page
+    .getByRole("button", { name: "Confirmar receta", exact: true })
+    .click();
+  await expect.poll(() => api.writes.length).toBe(2);
+  expect(
+    api.writes.filter((entry) => entry.url.includes("library")),
+  ).toHaveLength(1);
+  expect(api.writes[1].body).toMatchObject({
+    basisQuantity: "10",
+    recipes: [{ recipeId: "recipe-1", quantity: "1" }],
+  });
+});
+test("409 biblioteca conserva intención y adopta solo revisión consultada", async ({
+  page,
+}) => {
+  const api = await setupRecipes(page);
+  await editRecipe(page, harness.url);
+  await renameRecipe(page);
+  api.failLibrary(409);
+  await page
+    .getByRole("button", { name: "Confirmar receta", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Consultar estado guardado" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Consultar estado guardado" }).click();
+  await expect(page.getByText(/Receta guardada: Masa./)).toBeVisible();
+  api.failLibrary(null);
+  await page
+    .getByRole("button", {
+      name: "Conservar borrador con la revisión consultada",
+    })
+    .click();
+  await page
+    .getByRole("button", { name: "Confirmar receta", exact: true })
+    .click();
+  await expect.poll(() => api.writes.length).toBe(3);
+  expect(api.writes[1].body).toMatchObject({
+    name: "Masa propia",
+    expectedRevisionId: "library-conflict",
+  });
+});
+test("respuesta tardía de biblioteca tras desmontar y cambiar local no publica composición", async ({
+  page,
+}) => {
+  const api = await setupRecipes(page);
+  await editRecipe(page, harness.url);
+  await renameRecipe(page);
+  api.holdLibrary();
+  await page
+    .getByRole("button", { name: "Confirmar receta", exact: true })
+    .click();
+  await expect.poll(() => api.writes.length).toBe(1);
+  // Host navigation removes the busy editor; its own close remains correctly blocked while saving.
+  await page.evaluate(() =>
+    window.dispatchEvent(new Event("recipes-harness:leave")),
+  );
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.evaluate(() =>
+    window.dispatchEvent(new Event("recipes-harness:enter")),
+  );
+  await page.getByRole("button", { name: /^Local/ }).click();
+  await page.getByRole("option", { name: "Norte", exact: true }).click();
+  api.remote({
+    basisQuantity: "2",
+    basisUnit: "unit",
+    conversionVersion: "mass-si-1",
+    revisionId: "new-local-revision",
+  });
+  api.releaseLibrary();
+  await expect.poll(api.librarySettled).toBe(true);
+  await page.getByRole("button", { name: "Editar receta de Pan" }).click();
+  await expect(
+    page.getByRole("textbox", { name: "Cantidad de producto obtenido" }),
+  ).toHaveValue("2");
+  expect(
+    api.writes.filter((entry) => entry.url.endsWith("composition")),
+  ).toHaveLength(0);
+});

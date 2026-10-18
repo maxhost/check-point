@@ -56,6 +56,11 @@ export async function setupRecipes(
   let composition = { ...baseComposition, ...metadata };
   let failure: number | "network" | null = null;
   let delay = 0;
+  let storedLibrary = libraryRecipe;
+  let libraryFailure: number | "network" | null = null;
+  let holdLibrary = false;
+  let releaseLibrary: (() => void) | null = null;
+  let librarySettled = false;
   await page.route("**/api/**", async (route) => {
     const url = new URL(route.request().url());
     const method = route.request().method();
@@ -82,29 +87,56 @@ export async function setupRecipes(
         };
         return route.fulfill({ json: { composition } });
       }
-      return route.fulfill({
-        json: {
-          recipe: {
-            ...libraryRecipe,
-            revisionId: "library-2",
-            name: route.request().postDataJSON().name,
-            lines: (
-              route.request().postDataJSON().lines as {
-                itemId?: string;
-                newItem?: { name: string };
-                quantity: string;
-                unit: string;
-              }[]
-            ).map((line, index) => ({
-              itemId: line.itemId ?? `new-${index}`,
-              itemName: line.newItem?.name ?? "Harina",
-              itemStatus: "active",
-              quantity: line.quantity,
-              unit: line.unit,
-            })),
-          },
-        },
-      });
+      if (libraryFailure === 409) {
+        storedLibrary = { ...storedLibrary, revisionId: "library-conflict" };
+        return route.fulfill({
+          status: 409,
+          json: { error: "La receta cambió", code: "recipe_revision_conflict" },
+        });
+      }
+      storedLibrary = {
+        ...storedLibrary,
+        revisionId: "library-2",
+        name: route.request().postDataJSON().name,
+        lines: (
+          route.request().postDataJSON().lines as {
+            itemId?: string;
+            newItem?: { name: string };
+            quantity: string;
+            unit: string;
+          }[]
+        ).map((line, index) => ({
+          itemId: line.itemId ?? `new-${index}`,
+          itemName:
+            line.newItem?.name ??
+            storedLibrary.lines.find((entry) => entry.itemId === line.itemId)
+              ?.itemName ??
+            "Harina",
+          itemStatus: "active",
+          quantity: line.quantity,
+          unit: line.unit,
+        })),
+      };
+      if (holdLibrary)
+        await new Promise<void>((resolve) => {
+          releaseLibrary = resolve;
+        });
+      if (libraryFailure === "network") {
+        await route.abort();
+        librarySettled = true;
+        return;
+      }
+      if (libraryFailure) {
+        await route.fulfill({
+          status: libraryFailure,
+          json: { error: "Respuesta de biblioteca incierta" },
+        });
+        librarySettled = true;
+        return;
+      }
+      await route.fulfill({ json: { recipe: storedLibrary } });
+      librarySettled = true;
+      return;
     }
     if (url.pathname.endsWith("locations"))
       return route.fulfill({
@@ -119,11 +151,13 @@ export async function setupRecipes(
     if (url.pathname.endsWith("composition"))
       return route.fulfill({ json: { composition } });
     if (url.pathname.endsWith("library/recipe-1"))
-      return route.fulfill({ json: { recipe: libraryRecipe } });
+      return route.fulfill({ json: { recipe: storedLibrary } });
     if (url.pathname.endsWith("library"))
       return route.fulfill({
         json: {
-          recipes: [{ ...libraryRecipe, lineCount: 1 }],
+          recipes: [
+            { ...storedLibrary, lineCount: storedLibrary.lines.length },
+          ],
           nextCursor: null,
         },
       });
@@ -187,6 +221,17 @@ export async function setupRecipes(
     delay: (ms: number) => {
       delay = ms;
     },
+    failLibrary: (status: typeof libraryFailure) => {
+      libraryFailure = status;
+    },
+    holdLibrary: () => {
+      holdLibrary = true;
+    },
+    releaseLibrary: () => {
+      releaseLibrary?.();
+      holdLibrary = false;
+    },
+    librarySettled: () => librarySettled,
     remote: (data: Record<string, unknown>) => {
       composition = { ...composition, ...data };
     },
