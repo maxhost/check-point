@@ -1,13 +1,13 @@
 ---
 adr: 0154
 fecha: 2026-10-17
-estado: propuesta
+estado: aceptada
 resumen: Resolver y compartir los datos de acceso dentro de cada petición, entregar un contexto inicial mínimo al navegador y reducir viajes SQL sin cachear autorización entre peticiones ni alterar los guards.
 ---
 
 # 0154 — Contexto del backoffice por petición
 
-El owner eligió combinar las alternativas 1, 2 y 3 y medir después. Este ADR concreta el diseño para revisión; no declara aprobación del detalle técnico, implementación ni publicación. Implementación: [spec 0238](../specs/0238-carga-inicial-del-backoffice.md). Plan: [ficha operativa](../factory/0238-plan-carga-backoffice.md).
+El owner eligió combinar las alternativas 1, 2 y 3 y medir después. El owner autorizó iniciar implementación por checkpoints y aceptó explícitamente el contrato scopeKey (2026-10-18 UTC). ADR aceptado; no declara implementación, QA ni publicación. Implementación: [spec 0238](../specs/0238-carga-inicial-del-backoffice.md). Plan: [ficha operativa](../factory/0238-plan-carga-backoffice.md).
 
 ## Contexto
 
@@ -15,7 +15,7 @@ La [medición real de Joyas local](../factory/0237-inbox-measurement.md) encontr
 
 Cada GET Inbox reconstruye acceso con 4 lecturas secuenciales antes de leer avisos. Tener una sesión iniciada no elimina la validación por petición, pero tampoco exige 4 viajes independientes. Los guards tienen diferencias intencionales: selección de negocio, filtros de membresía/rol, email, estado, facturación, PIN y redirects. La lectura del Inbox tiene efectos sobre exposición, vencimientos y recordatorios.
 
-## Decisión propuesta
+## Decisión
 
 ### 1. Compartir datos dentro de una petición; decidir acceso en cada guard
 
@@ -49,11 +49,11 @@ Cada nueva petición protegida autentica y autoriza. El cliente invalida su cont
 
 El provider inicializa core una vez por documento y acepta el seed de módulos solo con ticket inicial vigente. Versión de contrato y `bootId` no son una revisión temporal ni credencial. Nuevos seeds RSC no sustituyen datos por el orden en que llegan: invalidan/coordinan una revalidación del reporter y recursos pertinentes. Mutaciones avanzan generaciones locales; resultados previos no pisan el DTO confirmado. Reporter con usuario autenticado pero negocio/membresía nulos también limpia el ámbito, no solo authenticated:false. Cambio/pérdida de sesión, identidad o negocio retira el ámbito y provoca una sola navegación completa para restablecerlo. Dentro del mismo ámbito, cambios de rol/permisos/estado/acceso actualizan el provider y usan un router.refresh coordinado cuando es necesario reevaluar el árbol, preservando estado cliente no afectado y autorizado. No descartar un formulario por trial→subscribed o por ganar un permiso. Si el gate retira acceso a la ruta, prevalece esa salida. Restricted se reevalúa tras señales relevantes sin retry periódico. La tabla de transición y los casos negativos están en spec §4.1.
 
-### 3 bis. Intención y ámbito efectivo de cada petición — propuesta adicional pendiente
+### 3 bis. Intención y ámbito efectivo de cada petición — contrato adicional aceptado
 
 La [revisión del autor](../factory/0238-author-review.md) detectó que una época local no ve por sí sola una cookie cambiada en otra pestaña. Una petición marcada localmente A puede salir con la sesión B y ser legítimamente autorizada para B. Para los consumidores adoptados se propone `scopeKey` ligado mediante HMAC a sesión/usuario/negocio y enviado en `X-Backoffice-Scope`, capturado al iniciar la intención. Los guards validan primero la sesión y acceso actuales; después comparan la marca antes de operaciones de dominio. No usan la marca para seleccionar negocio o conceder acceso.
 
-Desajuste devuelve409 `backoffice_context_changed`, retira el ámbito cliente y no reintenta escrituras en otro ámbito. Clientes sin cabecera mantienen su contrato; reporter/auth quedan exentos para recuperar/cerrar sesión. Sin consulta nueva, tabla ni credencial de autorización. La spec §4.3 define forma, superficies, compatibilidad y negativos. Este contrato es una propuesta de diseño adicional, **pendiente de aceptación explícita**; el dictamen adversarial sobre 20e81dfb no lo certifica. Hasta resolverlo no cerrar el borrador ni prometer aislamiento completo entre ámbito visible y efectivo de una operación.
+Desajuste devuelve409 `backoffice_context_changed`, retira el ámbito cliente y no reintenta escrituras en otro ámbito. Clientes sin cabecera mantienen su contrato; reporter/auth quedan exentos para recuperar/cerrar sesión. Sin consulta nueva, tabla ni credencial de autorización. La spec §4.3 define forma, superficies, compatibilidad y negativos. Este contrato adicional fue **aceptado explícitamente por el owner** tras explicar el caso entre pestañas; el dictamen adversarial sobre20e81dfb no lo certifica. La garantía se limita a consumidores adoptados. Reporter legado no detecta sesión nueva de la misma cuenta; la siguiente API adoptada con marca anterior señala cambio por409, sin añadir campos al reporter ni prometer detección inmediata.
 
 ### 4. Conservar el recorrido de efectos del Inbox
 
@@ -71,8 +71,8 @@ Conservar M0 y ejecutar en M1 un control de la base congelada junto al candidato
 
 ## Compatibilidad con decisiones previas
 
-- Se mantienen las decisiones funcionales de 0074/0075,0086,0189,0218,0152/0237 y ADR 0153. No cambia el conjunto de rutas con/sin gate de email ni el carácter reporter 200 de GET sesión. La cabecera/409 de ámbito es aditiva y todavía propuesta; no se oculta como equivalencia exacta de todos los errores.
-- Si este ADR se acepta, reemplaza **solo para el refactor descrito** las restricciones históricas de implementación «guards byte por byte iguales» de 0075 y «no modificar auth-guards» de 0074. Permite refactorizar su obtención de datos con evidencia de equivalencia; no habilita nuevos flags públicos, excepciones de acceso ni retirar oráculos.
+- Se mantienen las decisiones funcionales de 0074/0075,0086,0189,0218,0152/0237 y ADR 0153. No cambia el conjunto de rutas con/sin gate de email ni el carácter reporter 200 de GET sesión. La cabecera/409 de ámbito es aditiva y aceptada explícitamente; no se oculta como equivalencia exacta de todos los errores.
+- Este ADR reemplaza **solo para el refactor descrito** las restricciones históricas de implementación «guards byte por byte iguales» de 0075 y «no modificar auth-guards» de 0074. Permite refactorizar su obtención de datos con evidencia de equivalencia; no habilita nuevos flags públicos, excepciones de acceso ni retirar oráculos.
 - No es una migración global de autenticación. Si un helper compartido alcanza otras rutas, su compatibilidad debe verificarse; no cambiar sus flujos por extensión automática.
 
 ## Alternativas consideradas

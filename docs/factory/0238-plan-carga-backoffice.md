@@ -1,6 +1,6 @@
 # 0238 — Plan de implementación y medición
 
-Estado: propuesta documental, sin tareas de producto iniciadas. Base de diseño `005b8235d3178295037efbf5deca29596f69c80a`; confirmar dev y cambios ajenos al asignar implementación. [Spec](../specs/0238-carga-inicial-del-backoffice.md), [ADR](../adr/0154-contexto-del-backoffice-por-peticion.md), [medición inicial](0237-inbox-measurement.md). El owner eligió implementar 1 + 2 + 3 y medir el conjunto; este turno prepara los documentos, no ejecuta ese código.
+Estado vigente: implementación autorizada por checkpoints; spec cerrada y ADR aceptado tras aceptación explícita de scopeKey por owner (2026-10-18 UTC). M0 todavía precede al código. El texto de planificación/revisiones más abajo conserva contexto histórico; las tareas condicionales de §4.3 quedan habilitadas por esta decisión. Base de diseño `005b8235d3178295037efbf5deca29596f69c80a`; confirmar dev y cambios ajenos al asignar implementación. [Spec](../specs/0238-carga-inicial-del-backoffice.md), [ADR](../adr/0154-contexto-del-backoffice-por-peticion.md), [medición inicial](0237-inbox-measurement.md). El owner eligió implementar 1 + 2 + 3 y medir el conjunto; este turno prepara los documentos, no ejecuta ese código.
 
 ## Secuencia y entregas
 

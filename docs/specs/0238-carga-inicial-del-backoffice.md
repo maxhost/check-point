@@ -1,7 +1,7 @@
 ---
 spec: 0238
 fecha: 2026-10-17
-estado: borrador
+estado: cerrada
 resumen: Reducir lecturas y peticiones repetidas del backoffice compartiendo datos por petición, entregando contexto inicial al navegador y uniendo la lectura de membresía/negocio con facturación; medir el resultado combinado sin cambiar acceso ni ciclo del Inbox.
 disjunta: no; contrato servidor/cliente y guards compartidos requieren integración serial y QA de combinación.
 archivos: apps/merchant/src/server/auth-guards.ts; server/api-owner.ts; server/api-permission.ts; server/billing-gate.ts; server/session-view.ts y nuevos helpers de contexto; server/onboarding/checklist-facts.ts; app/backoffice/layout.tsx y page.tsx; navegación, trial-notice, contexto cliente e inbox-state; rutas auxiliares afectadas y tests focales. Sin cambios al kit, esquema o migraciones.
@@ -9,7 +9,7 @@ archivos: apps/merchant/src/server/auth-guards.ts; server/api-owner.ts; server/a
 
 # 0238 — Carga inicial del backoffice
 
-Piso L2 por autenticación/tenant; alcance transversal acotado según ADR 0144 y `VERIFICACION.md`. Implementa la propuesta [ADR 0154](../adr/0154-contexto-del-backoffice-por-peticion.md). El owner eligió las mejoras 1, 2 y 3 juntas y medición posterior. **Entrega actual documental**: borrador completo para revisión, no autorización nueva de implementación, push ni PROD. No se declara cerrada antes de revisar el ADR y este contrato.
+Piso L2 por autenticación/tenant; alcance transversal acotado según ADR 0144 y `VERIFICACION.md`. Implementa la propuesta [ADR 0154](../adr/0154-contexto-del-backoffice-por-peticion.md). El owner eligió las mejoras 1, 2 y 3 juntas y medición posterior. El owner autorizó iniciar la implementación por checkpoints y aceptó explícitamente `scopeKey` de §4.3 (2026-10-18 UTC). Contrato cerrado para implementar con ADR0154 aceptado; no declara producto implementado, QA aprobado ni autorización de push/PROD.
 
 ## 1. Problema y comportamiento esperado
 
@@ -27,7 +27,7 @@ Incluye las tres mejoras:
 
 No incluye caché de autorización entre peticiones, caché de cookie/JWT/Redis/CDN privado, nuevas tablas/índices/migraciones, servicios de realtime, actualización por venta, fórmulas o tarjetas nuevas, equilibrio mensual/diario ni avance del Dashboard, cambios de UI visual, schema de módulos, filtros de permisos nuevos, refactor de todos los guards del sistema, corrección de CI histórica o nuevos crons. Los números del Dashboard son un encargo futuro, no criterio de esta spec.
 
-La revisión posterior del autor detectó un hueco de vinculación entre la intención del cliente y la cookie vigente. §4.3 propone una cabecera de ámbito y un 409 opt-in; esa adición necesita aceptación antes del cierre. No se considera un cambio interno ya autorizado por haber elegido las mejoras 1 + 2 + 3. Ver [revisión del autor](../factory/0238-author-review.md).
+La revisión posterior del autor detectó un hueco de vinculación entre la intención del cliente y la cookie vigente. §4.3 añade una cabecera de ámbito y un 409 opt-in, aceptados explícitamente por el owner tras explicar el ejemplo de UI deA/cookie deB. La aceptación es adicional a elegir las mejoras 1+2+3. Ver [revisión del autor](../factory/0238-author-review.md).
 
 ## 3. Contrato servidor
 
@@ -119,11 +119,11 @@ El provider del documento posee las peticiones compartidas, con clave de recurso
 
 Una decisión Inbox invalida el ticket anterior antes de aplicar su respuesta, conserva `operationId`/versiones y garantiza que el refresco posterior no se adhiera al GET previo a esa decisión. Mantener como máximo un transporte vigente y un refresco pendiente por recurso; una petición vieja invalidada se cancela o se drena con resultado descartado antes del transporte pendiente, sin iniciar fan-out. No esperar a una promesa de otra identidad para limpiar datos privados. Los temporizadores de vencimiento/recordatorio/preparing y la cola durante mutación se conservan. Checklist usa el mismo régimen de suscripciones: el AbortController de un efecto no cancela una lectura usada por otro.
 
-### 4.3. Vincular peticiones al ámbito visible — propuesta pendiente (U1)
+### 4.3. Vincular peticiones al ámbito visible — contrato aceptado (U1)
 
 Los tickets locales evitan carreras conocidas por el provider, pero no detectan por sí solos una cookie cambiada en otra pestaña. No garantizar aislamiento entre el contexto visible y la operación usando únicamente una generación del navegador.
 
-Propuesta contractual: el seed incluye `scopeKey`, marca opaca estable para sesión Better Auth, usuario y negocio seleccionados. Calcularla en servidor mediante HMAC-SHA256 con el secreto existente de auth, mensaje canónico exacto `JSON.stringify(["backoffice.scope.v1", session.id, user.id, business.id])` y salida hexadecimal minúscula de 64 caracteres. Validar que esas identidades proceden de la sesión/contexto íntegros; no firmar valores ausentes. No serializar sesión/id de sesión, token o secreto; no usar `bootId` como sustituto de esta marca. Renovación ordinaria de una misma sesión no cambia el ámbito; un nuevo login que crea otra sesión sí. No añadir estado persistido ni consulta extra para construirla: todos los datos proceden del contexto autenticado.
+Contrato aceptado: el seed incluye `scopeKey`, marca opaca estable para sesión Better Auth, usuario y negocio seleccionados. Calcularla en servidor mediante HMAC-SHA256 con el secreto existente de auth, mensaje canónico exacto `JSON.stringify(["backoffice.scope.v1", session.id, user.id, business.id])` y salida hexadecimal minúscula de 64 caracteres. Validar que esas identidades proceden de la sesión/contexto íntegros; no firmar valores ausentes. No serializar sesión/id de sesión, token o secreto; no usar `bootId` como sustituto de esta marca. Renovación ordinaria de una misma sesión no cambia el ámbito; un nuevo login que crea otra sesión sí. No añadir estado persistido ni consulta extra para construirla: todos los datos proceden del contexto autenticado.
 
 Los transportes adoptados por el provider envían `X-Backoffice-Scope` con la marca **capturada al iniciar la intención**. No toman otra marca de una variable global después de un await ni la sustituyen en un reintento. La clave de petición compartida incluye esa marca además de época/generación. El servidor primero valida la cookie y todos los gates existentes; después valida longitud/formato y compara la marca esperada con la del contexto actual en tiempo constante y antes de cualquier lectura de dominio, exposición o escritura. No usa la cabecera para seleccionar usuario/negocio, evitar un guard o conceder permisos. Si no coincide o está mal formada, responder 409 con `{code:'backoffice_context_changed', error:'Tu sesión cambió. Actualiza el panel para continuar.'}` sin revelar el ámbito actual, ejecutar dominio ni reintentar la escritura. El cliente invalida datos y vuelve una sola vez al backoffice; requiere una intención nueva antes de escribir en el nuevo ámbito. Respuestas privadas adoptadas y 409 usan `Cache-Control: private, no-store`; no introducir caché HTTP de contexto privado ni guardar marcas en logs/HAR de entrega.
 
@@ -131,11 +131,11 @@ La cabecera es opt-in por compatibilidad: clientes existentes sin ella mantienen
 
 El helper servidor se ubica en la ruta común de los guards HTTP afectados, con inventario de consumidores y regresión de los no adoptados; el reporter conserva su comportamiento. Nuevos clientes no suponen que una API soporta la marca sin cobertura de su guard. Respuestas tardías se comparan además con el ticket local original. La protección no promete detectar instantáneamente una cookie cambiada sin interacción/señal; sí impide atribuir una respuesta o escritura del ámbito B a una intención del ámbito A en las superficies adoptadas.
 
-Esta sección amplía de forma explícita el contrato HTTP de la propuesta y permanece **pendiente de aceptación**; no fue revisada por el agente en su dictamen sobre 20e81dfb. Si no se adopta, se debe retirar esa garantía del plan y documentar la limitación, sin presentarla como resuelta por deduplicación.
+Esta sección amplía explícitamente el contrato HTTP y fue aceptada por el owner después de las revisiones y del ejemplo entre pestañas. El dictamen adversarial sobre20e81dfb no validó este protocolo posterior. El reporter legado no distingue un nuevo login de la misma cuenta/negocio: la siguiente petición adoptada con marca anterior produce409 y recupera el documento; no prometer detección inmediata sin interacción ni añadir campos al reporter.
 
 ## 5. Contratos HTTP y ciclo del Inbox
 
-No se agrega endpoint bootstrap. JSON de éxito, autorización y contratos de clientes sin cabecera permanecen iguales. La propuesta opt-in de §4.3 añade la cabecera de ámbito y el 409 indicado para peticiones adoptadas; no afirmar que todos los códigos HTTP permanecen idénticos en ese caso.
+No se agrega endpoint bootstrap. JSON de éxito, autorización y contratos de clientes sin cabecera permanecen iguales. El contrato opt-in de §4.3 añade la cabecera de ámbito y el 409 indicado para peticiones adoptadas; no afirmar que todos los códigos HTTP permanecen idénticos en ese caso.
 
 | Superficie | Compatibilidad requerida |
 | --- | --- |
@@ -145,7 +145,7 @@ No se agrega endpoint bootstrap. JSON de éxito, autorización y contratos de cl
 | `GET /api/analytics/inbox` | Contrato 2 intacto: ready/preparing, timezone, preparedAt, nextReminderAt, refreshAfterMs y cards; mismos códigos de error |
 | `POST /api/analytics/inbox/:id/:decision` | Versiones, operationId, idempotencia, carreras, decisiones, privacidad y límites de recordatorio de 0237 sin cambios |
 
-Si se acepta §4.3, añadir al contrato del toggle `PUT /api/modules/:moduleId` y tours `POST /api/onboarding/tours/:tourId` la misma comprobación antes del writer, sin cambiar su dominio. Una denegación de un guard actual sigue precediendo al 409 de ámbito; `operationId` no se reutiliza automáticamente en otro ámbito.
+Como parte de §4.3, añadir al contrato del toggle `PUT /api/modules/:moduleId` y tours `POST /api/onboarding/tours/:tourId` la misma comprobación antes del writer, sin cambiar su dominio. Una denegación de un guard actual sigue precediendo al 409 de ámbito; `operationId` no se reutiliza automáticamente en otro ámbito.
 
 El GET Inbox permanece iniciado por componente visible. SSR/prefetch del shell no llama a `readInbox`, no dispara evaluación diaria ni registra exposición. Deduplicar GET simultáneos no los convierte en un caché persistente: un refresco intencional posterior hace una lectura nueva. Mantener expiración local, recordatorios, fallback de 3 s, try-lock sin espera, decisiones optimistas vigentes y protección frente a respuestas tardías. No trasladar efectos a `useMemo`, render, cálculo de navegación ni un layout prefetcheado.
 
@@ -161,7 +161,7 @@ El GET Inbox permanece iniciado por componente visible. SSR/prefetch del shell n
 - Falla exclusiva de la lectura que referencia suscripción: permiso/email/estado denegados conservan precedencia; caller autorizado que necesita billing sigue fallando; PIN no se adelanta; fallback usa misma selección y no mezcla filas. Distinguirla de una caída total de DB.
 - Navegación interna con layout persistente, reporter con membresía/negocio nulos, cambio de rol/permisos, restricted→ready con misma identidad y seed/RSC tardío tras mutación. Formularios todavía autorizados conservan su edición tras trial→subscribed, cambio de nombre, módulo y permiso no relacionado; cambios de ámbito sí retiran datos anteriores. Sin bucles de refresh.
 - GET Inbox lento→decisión confirmada→remount/foco→respuesta vieja; reintento después de rechazo produce petición real nueva. Desmontaje de un consumidor checklist no aborta al que permanece. Módulos lentos/rechazados no bloquean el Inbox ni dejan rechazo sin observar.
-- Protocolo de ámbito propuesto: cookie A→B sin foco entre render/fetch; nuevo login de la misma cuenta; payload tardío y callbacks de intención anterior; actor con membresía staff en A y owner en B; toggle/acción de tours/Inbox con marca A y cookie B. No operaciones de dominio en 409, sin reintento de escritura en B, marca sin autoridad y clientes sin cabecera compatibles.
+- Protocolo de ámbito aceptado: cookie A→B sin foco entre render/fetch; nuevo login de la misma cuenta; payload tardío y callbacks de intención anterior; actor con membresía staff en A y owner en B; toggle/acción de tours/Inbox con marca A y cookie B. No operaciones de dominio en 409, sin reintento de escritura en B, marca sin autoridad y clientes sin cabecera compatibles.
 
 ### Rendimiento del conjunto
 
@@ -177,7 +177,7 @@ El FAIL anterior `evaluateBusiness`1817,621042 ms>1000 ms mide otro contrato. Es
 
 El observador se instala antes de la navegación y marca Inbox utilizable mientras el stream puede seguir abierto; `load`, DOMContentLoaded, networkidle y EOF son métricas separadas y no condiciones para empezar a observar. La revalidación adversarial de `20e81dfb` cerró B1/B2 y comprobó R1–R4; el [informe](../factory/0238-adversarial-review.md) distingue ese cierre documental de cualquier futura aceptación de producto/rendimiento.
 
-La comparación con prácticas publicadas añade precisiones I1–I4 en la [receta](../factory/0238-plan-carga-backoffice.md): bytes y CPU observables, caché del navegador frente a servidor/DB, recorridos diagnósticos con layout persistente y evidencia focal de proyección/plan del JOIN y cardinalidades. No cambia los gates anteriores ni exige infraestructura, optimización de bundles o nuevas migraciones. El [informe de industria](../factory/0238-industry-review.md) revisa el diseño documental; no certifica implementación, rendimiento PROD ni resuelve la propuesta pendiente de §4.3.
+La comparación con prácticas publicadas añade precisiones I1–I4 en la [receta](../factory/0238-plan-carga-backoffice.md): bytes y CPU observables, caché del navegador frente a servidor/DB, recorridos diagnósticos con layout persistente y evidencia focal de proyección/plan del JOIN y cardinalidades. No cambia los gates anteriores ni exige infraestructura, optimización de bundles o nuevas migraciones. El [informe de industria](../factory/0238-industry-review.md) revisa el diseño documental; no certifica implementación, rendimiento PROD ni sustituye la aceptación explícita posterior de §4.3.
 
 ## 7. Archivos, dependencias y checks
 
@@ -191,7 +191,7 @@ Pruebas focales de guards/reporters/billing/tenant, datos/consultas y browser de
 
 ## 8. Definition of Done
 
-- [ ] Spec y ADR revisados y cerrados/aceptados, incluida decisión explícita sobre el contrato de ámbito propuesto de §4.3; reserva documental local antes del código.
+- [x] Spec y ADR revisados y cerrados/aceptados, incluida aceptación explícita del contrato de ámbito de §4.3; reserva documental local antes del código.
 - [ ] Las 3 mejoras integradas con contrato inicial versionado y sin cambios de acceso/ciclo.
 - [ ] Matriz de aislamiento/precedencia y negativos reales PASS; guards compartidos revisados en todos sus consumidores afectados.
 - [ ] Conteos de página/API/navegador comprobados en app real y Strict Mode sin ocultar duplicación.
