@@ -3,7 +3,21 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — 0239 ANALÍTICAS REORGANIZADA; PRUEBA OWNER EN DEV (2026-10-18 UTC)
+## ESTADO — 0239 CÁLCULO SIN MARGEN VISIBLE Y MOVIMIENTOS; LISTO PARA OWNER EN DEV (2026-10-18 UTC)
+
+Owner pidió quitar margen visible y rediseñar cálculo mensual con boxes y lista, sin ViewAll; aclaró «Ventas y gastos recientes». Producto`92fcbd344b88f7499a747fb71982e77dc2c24cab`, base4f124e4f (contrato0239 reservado antes del código). [Entrega](../factory/0239-monthly-activity.md). Margen sigue en fórmula; tarjeta mantiene equilibrio/ventasmes/gastos estimados/meta/plazo, lista visible incluso pendiente y vacío explícito. No desglose desplegable ni botón/enlaceViewAll.
+
+HistoryGET incorpora recentMovements hasta4 operaciones vigentes de metric_contribution: revenue/expense_fixed/expense_variable, negocio/local/moneda/unidad/mescalendariolocal actual (como goal), agrupadasfuente/día/tipo/local. Fechadesc/desempateestable, NOordenhorario intradía ni promesa sincronía cobro. Tipo/fecha/concepto/importe, sin fuentes ni clientes/personal. Core no importa módulos, sin esquema ni APIs de módulos. UnSELECTadicional/ceroGETadicional, sin caché/polling; M1previo no certifica esta ampliación. History adopta scope trasguards antesdominio y private/no-store en todasrespuestas; day/Inbox/summary intactos.
+
+Autor: merchant typecheckcompleto, ESLintfocal/UIguard1sin aumentos/diff-check PASS.32unitHTTP/query/lifecyclePASS; NeonCI2/2 real sin skips/retries sólo wrapperprotegido (aislamiento tenant/local/moneda/unidad/fechas/limit/agrupación/cero/negativo/retiradafuente), fixturespropias retiradas.5browser390/768/1440PASS sin retries/skips; capturas390/1440 abiertas. QAindependiente `/root/qa_analytics_layout` PASSacotado sobreSHA92fcbd34, reutilizaevidencia y revisaSQL/guards/ingestión/UI. Límite: componentes/API simulada + CIquery, no flujoautenticadoNextcompleto. SetupVitest --projectmerchant sinproyecto preservado en handoff, comando corregido.
+
+Factory monthly-activity-0239 entregado/aceptado/integradoFFdev-mainlocal y retirado limpio/sinprocesos, evidencia `/private/tmp/checkpass-monthly-activity-evidence/`. Combinación: fuenteidéntica; health3201HTTP200, historysinlogin401JSON/private,no-store. Lectura READONLY guardadalocal con código candidato sobreJoyas: equilibrio disponible y4movimientos17oct (ventas13/26/15USD +gastoGas3.75), sinmutar demos. No nueva lectura financiera autenticadaHTTP.3201/túnel intactos; probar dev-business.checkpass.club/backoffice/analytics. Sin push/PROD; origin/main90ebe18f. Untrackedajenosintactos.
+
+Demos locales anteriores conservadas y reversibles: `/private/tmp/checkpass-joyas-goal-demo/` (Servicios120USDhistórico) y `/private/tmp/checkpass-joyas-stock-demo/` (3costosDEMO), ademásInboxDEMO anterior. Todas las refinacionesL0previas (fechaarriba, cifrasgrandes/Iconoir, ganancia/barra/paletas) preservadas; detalleenhistóricosiguiente.
+
+Diferidos conservados: QA manual0237/owner, CI remoto rojo/guardias24PASS2FAIL, FAILfrío1817.621042ms, ciudades/weather/calendarios/crons/Marketingcupón11/realtimeinfra. M1 de0238 sólo fuente66067758 anterior, no certificaDashboardampliado. PROD102migraciones dato histórico. Próximo: feedback manual, sin publicación hasta autorización explícita para ese caso.
+
+## HISTÓRICO — 0239 ANALÍTICAS REORGANIZADA; PRUEBA OWNER EN DEV (2026-10-18 UTC)
 
 L0 paleta barra posterior: owner pide tonos suaves como nueva referencia. Fijos lavanda#8C9EFF/variables celeste#94DAFA en barra y puntos de leyenda, tokenschart del kit separados del coral de resultado (que sigue#FD5C63). Segmentos con gap1 y radio pequeño; sólo2categorías reales, sin inventar segmentos. Etiquetas/importes de leyenda en oscuro. Diff/ESLint/tiposUI/guardfocales, sin nueva campaña browser por paleta. Sin cambios de datos/HTTP/cálculos, push ni PROD; diferidos/demos intactos.
 

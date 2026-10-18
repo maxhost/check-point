@@ -11,3 +11,9 @@ Checks del autor: merchant typecheck completo, ESLint focal, UIguard base4f124e4
 Browser componentes con UI/CSS reales y APIs simuladas:5/5 sin retries/skips390/768/1440, lista/valores y ausencia margen/botones/enlaces, vacío aun pendiente, filtros/día/error/reintento, orden/alineación/sin overflow. Capturas390/1440 abiertas en tanda. Evidencia fueraWT `/private/tmp/checkpass-monthly-activity-evidence/`; config/capturas preservadas. Límite: no sustituye lectura financiera autenticada appNext real ni QAmanualowner. TipoHTTPscope nativo reutiliza primitiva existente, aquí oráculo unitario de orden/negativos.
 
 Fallo de setup preservado: invocación inicial Vitest `--project merchant` no encuentra proyecto con ese nombre; se usa script del paquete. No hubo casos unit ejecutados en intento inicial, sin relajar tests. No campaña global/benchmark ni cambios a datos localesDEMO o diferidos. Sin push/PROD. No tocar3201/túnel.
+
+## QA y cierre
+
+QA independiente `/root/qa_analytics_layout`: PASS acotado sobre92fcbd344b88f7499a747fb71982e77dc2c24cab. Revisó diez archivos/SQL/guard/ingestión/lista/capturas; reutiliza32unit+2CI+5browser y estáticos. No certifica orden por hora ni cobro sincrónico; browsermock+CIconsulta no equivalen a flujo Next autenticado completo.
+
+Aceptado factory e integradoFFdev/mainlocal. Fuente integrada idéntica, health3201HTTP200 y historysinlogin401JSON/private,no-store. Lectura local readonly protegida con candidato compilado confirmó goaldisponible y3ventas+1gasto en mesactual; `/private/tmp/checkpass-monthly-activity-evidence/local-read.json`, no testCI ni lecturaHTTPautenticada. Worktree retirado limpio vía factory; artefactos preservados. Sin push/PROD ni cambios de demos/diferidos.
