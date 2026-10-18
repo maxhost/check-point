@@ -1,81 +1,36 @@
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { getDb, withDbTransaction, type DbTransaction } from "@mi-pasaporte/db";
-import {
-  locations,
-  productCategories,
-  productLocations,
-  products,
-} from "@mi-pasaporte/db/schema";
+import { productLocations, products } from "@mi-pasaporte/db/schema";
 import {
   CatalogError,
   type OwnerBusiness,
   type ProductRecord,
-  toProductDTO,
+  productColumns,
   uuidPattern,
 } from "./core";
-import { validateProductInput } from "./validation";
-import { assertNoOpenImport, hasOpenImport } from "./import-guard";
+import {
+  validateProductInput,
+  assertCategory,
+  assertLocations,
+} from "./validation";
+import { assertNoOpenImport } from "./import-guard";
 import { resolveImageChange } from "./image";
 import { cleanupProductPrefixNow } from "./cleanup";
 
-const productColumns = {
-  id: products.id,
-  name: products.name,
-  categoryId: products.categoryId,
-  unitPrice: products.unitPrice,
-  unitCost: products.unitCost,
-  imageObjectKey: products.imageObjectKey,
-  imageVersion: products.imageVersion,
-  imageSource: products.imageSource,
-  imageAuthor: products.imageAuthor,
-  imageAuthorUrl: products.imageAuthorUrl,
-  imageSourceUrl: products.imageSourceUrl,
-  availableAllLocations: products.availableAllLocations,
-};
-
-/** Rejects a category that isn't the owner's; a null category is always allowed. */
-async function assertCategory(
-  tx: DbTransaction,
-  businessId: string,
-  categoryId: string | null,
-) {
-  if (!categoryId) return;
-  const [row] = await tx
-    .select({ id: productCategories.id })
-    .from(productCategories)
-    .where(
-      and(
-        eq(productCategories.id, categoryId),
-        eq(productCategories.businessId, businessId),
-      ),
-    )
-    .limit(1);
-  if (!row)
-    throw new CatalogError(422, "La categoría no pertenece a tu negocio.");
-}
-
-/** Rejects a restricted visibility list containing a location outside the business. */
-async function assertLocations(
-  tx: DbTransaction,
-  businessId: string,
-  availableAllLocations: boolean,
-  locationIds: string[],
-) {
-  if (availableAllLocations || locationIds.length === 0) return;
-  const rows = await tx
-    .select({ id: locations.id })
-    .from(locations)
-    .where(
-      and(
-        eq(locations.businessId, businessId),
-        inArray(locations.id, locationIds),
-      ),
-    );
-  if (rows.length !== locationIds.length) {
-    throw new CatalogError(422, "Hay un local que no pertenece a tu negocio.");
-  }
-}
+import {
+  catalogPrice,
+  lockBusiness,
+  normalizedDecimal,
+  productBody,
+  catalogProductDTO,
+  parseCatalogMeasure,
+  prepareCatalogUpdate,
+  assertMeasureUnit,
+  parseSalesRevision,
+  rethrowCatalogWriteError,
+  type CatalogOptions,
+} from "./measured-contract";
 
 async function syncLocations(
   db: DbTransaction,
@@ -93,73 +48,27 @@ async function syncLocations(
   }
 }
 
-export async function listCatalog(business: OwnerBusiness) {
-  const db = getDb();
-  const rows = await db
-    .select(productColumns)
-    .from(products)
-    .where(eq(products.businessId, business.id))
-    .orderBy(asc(products.name));
-  const categories = await db
-    .select({ id: productCategories.id, name: productCategories.name })
-    .from(productCategories)
-    .where(eq(productCategories.businessId, business.id))
-    .orderBy(asc(productCategories.name));
-  const locationList = await db
-    .select({ id: locations.id, name: locations.name })
-    .from(locations)
-    .where(eq(locations.businessId, business.id))
-    .orderBy(asc(locations.name));
+export { listCatalog } from "./core";
 
-  const restrictedIds = rows
-    .filter((row) => !row.availableAllLocations)
-    .map((row) => row.id);
-  const links = restrictedIds.length
-    ? await db
-        .select({
-          productId: productLocations.productId,
-          locationId: productLocations.locationId,
-        })
-        .from(productLocations)
-        .where(inArray(productLocations.productId, restrictedIds))
-    : [];
-  const byProduct = new Map<string, string[]>();
-  for (const link of links) {
-    const list = byProduct.get(link.productId) ?? [];
-    list.push(link.locationId);
-    byProduct.set(link.productId, list);
-  }
-
-  return {
-    products: rows.map((row) =>
-      toProductDTO({ ...row, locationIds: byProduct.get(row.id) ?? [] }),
-    ),
-    categories,
-    locations: locationList,
-    currencyCode: business.currencyCode,
-    // ADR 0086 — un BOOLEANO, y nada mas: la pantalla necesita saber que el alta esta
-    // bloqueada, no quien importa ni con que. Ninguna clave interna del import cruza.
-    // **No es el guard**, es su reflejo: la proteccion sigue siendo el 409 del servidor.
-    importInProgress: await hasOpenImport(business.id),
-  };
-}
-
-/** The configuration mutex always precedes product/import locks and validation. */
-async function lockBusiness(tx: DbTransaction, businessId: string) {
-  await tx.execute(
-    sql`select pg_advisory_xact_lock(hashtextextended(${"business-config/" + businessId},0))`,
+export async function createProduct(
+  business: OwnerBusiness,
+  value: unknown,
+  options: CatalogOptions = {},
+) {
+  const raw = productBody(value);
+  const measure =
+    options.contract === 2
+      ? parseCatalogMeasure(raw.soldByWeight, raw.pricingUnit)
+      : { soldByWeight: false, pricingUnit: "unit" as const };
+  const input = validateProductInput(
+    value,
+    options.contract === 2
+      ? {
+          unitPrice: catalogPrice(raw.unitPrice),
+          unitCost: catalogPrice(raw.unitCost),
+        }
+      : undefined,
   );
-}
-
-// Compare PostgreSQL numeric strings without converting tariffs to floating point.
-function normalizedDecimal(value: string | null) {
-  if (value === null) return null;
-  const [whole, fraction = ""] = value.split(".");
-  return `${whole.replace(/^0+(?=\d)/, "")}.${fraction.replace(/0+$/, "")}`;
-}
-
-export async function createProduct(business: OwnerBusiness, value: unknown) {
-  const input = validateProductInput(value);
   input.locationIds = [
     ...new Set(input.locationIds.map((id) => id.toLowerCase())),
   ];
@@ -170,6 +79,7 @@ export async function createProduct(business: OwnerBusiness, value: unknown) {
     return await withDbTransaction(async (tx) => {
       await lockBusiness(tx, business.id);
       await assertNoOpenImport(business.id, tx);
+      await assertMeasureUnit(tx, business.id, measure);
       await assertCategory(tx, business.id, input.categoryId);
       await assertLocations(
         tx,
@@ -185,8 +95,7 @@ export async function createProduct(business: OwnerBusiness, value: unknown) {
           name: input.name,
           unitPrice: input.unitPrice,
           unitCost: input.unitCost,
-          soldByWeight: false,
-          pricingUnit: "unit",
+          ...measure,
           salesRevision: 1,
           availableAllLocations: input.availableAllLocations,
           imageObjectKey: change?.nextKey ?? null,
@@ -203,15 +112,18 @@ export async function createProduct(business: OwnerBusiness, value: unknown) {
         input.availableAllLocations,
         input.locationIds,
       );
-      return toProductDTO({
-        ...row,
-        locationIds: input.availableAllLocations ? [] : input.locationIds,
-      } as ProductRecord);
+      return catalogProductDTO(
+        {
+          ...row,
+          locationIds: input.availableAllLocations ? [] : input.locationIds,
+        } as ProductRecord,
+        options,
+      );
     });
   } catch (error) {
     if (change?.rollback)
       await cleanupProductPrefixNow(business.id, change.rollback);
-    throw error;
+    rethrowCatalogWriteError(error);
   }
 }
 
@@ -219,10 +131,20 @@ export async function updateProduct(
   business: OwnerBusiness,
   productId: string,
   value: unknown,
+  options: CatalogOptions = {},
 ) {
   if (!uuidPattern.test(productId))
     throw new CatalogError(404, "Producto no encontrado.");
-  const input = validateProductInput(value);
+  const raw = productBody(value);
+  const expected =
+    options.contract === 2
+      ? parseSalesRevision(raw.expectedSalesRevision)
+      : null;
+  // Strict tariffs are parsed against the locked snapshot below, never an unlocked observation.
+  const input = validateProductInput(value, {
+    unitPrice: null,
+    unitCost: null,
+  });
   input.locationIds = [
     ...new Set(input.locationIds.map((id) => id.toLowerCase())),
   ];
@@ -255,6 +177,20 @@ export async function updateProduct(
         .for("update")
         .limit(1);
       if (!current) throw new CatalogError(404, "Producto no encontrado.");
+      const linksForConflict = await tx
+        .select({ id: productLocations.locationId })
+        .from(productLocations)
+        .where(eq(productLocations.productId, productId));
+      const measure = await prepareCatalogUpdate(
+        tx,
+        business.id,
+        { ...current, locationIds: [] },
+        raw,
+        input,
+        linksForConflict.map((link) => link.id),
+        expected,
+        options,
+      );
       if (
         change &&
         (current.imageObjectKey !== observed.imageObjectKey ||
@@ -272,17 +208,15 @@ export async function updateProduct(
         input.availableAllLocations,
         input.locationIds,
       );
-      const links = await tx
-        .select({ id: productLocations.locationId })
-        .from(productLocations)
-        .where(eq(productLocations.productId, productId));
       const oldLocations = current.availableAllLocations
         ? []
-        : links.map((row) => row.id).sort();
+        : linksForConflict.map((row) => row.id).sort();
       const newLocations = input.availableAllLocations
         ? []
         : [...input.locationIds].sort();
       const commercialChange =
+        current.soldByWeight !== measure.soldByWeight ||
+        current.pricingUnit !== measure.pricingUnit ||
         current.name !== input.name ||
         normalizedDecimal(current.unitPrice) !==
           normalizedDecimal(input.unitPrice) ||
@@ -293,6 +227,7 @@ export async function updateProduct(
       const [row] = await tx
         .update(products)
         .set({
+          ...measure,
           categoryId: input.categoryId,
           name: input.name,
           unitPrice: input.unitPrice,
@@ -323,15 +258,18 @@ export async function updateProduct(
         input.availableAllLocations,
         input.locationIds,
       );
-      return toProductDTO({
-        ...row,
-        locationIds: input.availableAllLocations ? [] : input.locationIds,
-      } as ProductRecord);
+      return catalogProductDTO(
+        {
+          ...row,
+          locationIds: input.availableAllLocations ? [] : input.locationIds,
+        } as ProductRecord,
+        options,
+      );
     });
   } catch (error) {
     if (change?.rollback)
       await cleanupProductPrefixNow(business.id, change.rollback);
-    throw error;
+    rethrowCatalogWriteError(error);
   }
   // A committed replacement owns its new prefix; never roll it back on aftercommit cleanup.
   if (change?.previous)
