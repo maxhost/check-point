@@ -288,3 +288,50 @@ it.each(surfaces.slice(0, 2))(
     expect(domainCalls()).toBe(0);
   },
 );
+
+it("required absence rejects without resolving identity or signing", async () => {
+  const response = await backofficeScopeFailure(
+    new Request("https://merchant.test"),
+    "business-a",
+    "required",
+  );
+  expect(response?.status).toBe(409);
+  expect(await response?.json()).toEqual(changed);
+  expect(response?.headers.get("cache-control")).toBe("private, no-store");
+  expect(h.native).not.toHaveBeenCalled();
+});
+it.each(["optional", "required"] as const)(
+  "%s accepts exact native scope and rejects foreign scope",
+  async (policy) => {
+    expect(
+      await backofficeScopeFailure(
+        makeRequest(surfaces[0], mark()),
+        "business-a",
+        policy,
+      ),
+    ).toBeNull();
+    expect(
+      (
+        await backofficeScopeFailure(
+          makeRequest(surfaces[0], mark("other")),
+          "business-a",
+          policy,
+        )
+      )?.status,
+    ).toBe(409);
+  },
+);
+
+it.each(["", "bad", "A".repeat(64)])(
+  "required rejects malformed or empty scope %s",
+  async (header) => {
+    const response = await backofficeScopeFailure(
+      makeRequest(surfaces[0], header),
+      "business-a",
+      "required",
+    );
+    expect(response?.status).toBe(409);
+    expect(response?.headers.get("cache-control")).toBe("private, no-store");
+    expect(h.native).not.toHaveBeenCalled();
+  },
+);

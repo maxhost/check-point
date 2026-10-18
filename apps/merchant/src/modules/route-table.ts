@@ -28,6 +28,8 @@ export type ModuleRoute = {
   /** ADR 0141 §7 — SOLO EL OWNER: el despachador aplica `requireApiOwner` en vez del permiso, y
    * despues el modulo encendido. Excluye `permission` (`modules-boundary.test.ts`). */
   owner?: true;
+  /** ADR0154: guard completo → intención de ámbito → dominio. Ausente no adopta el contrato. */
+  backofficeScope?: "optional" | "required";
   /** El mensaje del 503 si el handler falla con algo que no es un `ModuleError`. */
   failure: string;
   handler: (context: ModuleRouteContext) => Promise<Response>;

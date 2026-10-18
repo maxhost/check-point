@@ -24,10 +24,11 @@ function contextChanged(): NextResponse<BackofficeContextChanged> {
 export async function backofficeScopeFailure(
   request: Request,
   businessId: string,
+  policy: "optional" | "required" = "optional",
 ): Promise<NextResponse<BackofficeContextChanged> | null> {
   const received = request.headers.get("X-Backoffice-Scope");
   // Deliberately exact: an empty/malformed adopted header is never a legacy request.
-  if (received === null) return null;
+  if (received === null) return policy === "required" ? contextChanged() : null;
   if (!/^[0-9a-f]{64}$/.test(received)) return contextChanged();
   const session = await getBackofficeRequestContext(request).readSession();
   if (!session)

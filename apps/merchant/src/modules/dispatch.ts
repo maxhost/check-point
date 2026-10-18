@@ -100,21 +100,35 @@ export async function dispatchModuleRequest(
   if (match.kind === "method_not_allowed") {
     return methodNotAllowed(match.allow);
   }
-  const access = await measureRequestPhase("module-guard", () =>
-    match.route.owner
-      ? requireModuleOwnerAccess(request, manifest.id)
-      : permissionAccess(request, manifest, match.route),
-  );
-  if ("response" in access) return access.response;
+  const respond = (response: Response) =>
+    match.route.backofficeScope
+      ? privateBackofficeResponse(response)
+      : response;
   try {
-    return await match.route.handler({
-      request,
-      business: access.business,
-      userId: access.userId,
-      params: match.params,
-    });
+    const access = await measureRequestPhase("module-guard", () =>
+      match.route.owner
+        ? requireModuleOwnerAccess(request, manifest.id)
+        : permissionAccess(request, manifest, match.route),
+    );
+    if ("response" in access) return respond(access.response);
+    if (match.route.backofficeScope) {
+      const scope = await backofficeScopeFailure(
+        request,
+        access.business.id,
+        match.route.backofficeScope,
+      );
+      if (scope) return respond(scope);
+    }
+    return respond(
+      await match.route.handler({
+        request,
+        business: access.business,
+        userId: access.userId,
+        params: match.params,
+      }),
+    );
   } catch (error) {
-    return moduleErrorResponse(error, match.route.failure);
+    return respond(moduleErrorResponse(error, match.route.failure));
   }
 }
 

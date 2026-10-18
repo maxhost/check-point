@@ -19,8 +19,16 @@ const h = vi.hoisted(() => ({
   owner: vi.fn(),
   setEnabled: vi.fn(),
   handler: vi.fn(),
+  scope: vi.fn(),
 }));
 
+vi.mock("../server/backoffice-scope-http", () => ({
+  backofficeScopeFailure: h.scope,
+  privateBackofficeResponse: (response: Response) => {
+    response.headers.set("cache-control", "private, no-store");
+    return response;
+  },
+}));
 vi.mock("./guard", () => ({
   requireModuleAccess: h.access,
   requireModuleOwnerAccess: h.ownerAccess,
@@ -50,6 +58,12 @@ vi.mock("./server-registry", () => {
       stock: {
         routes: [
           route("GET", "items"),
+          { ...route("GET", "optional"), backofficeScope: "optional" },
+          { ...route("GET", "required"), backofficeScope: "required" },
+          {
+            ...route("PUT", "owner-scope", undefined, true),
+            backofficeScope: "optional",
+          },
           route("PATCH", "items/:itemId"),
           route("GET", "report", "catalog"),
           route("PUT", "settings", undefined, true),
@@ -69,6 +83,7 @@ const BUSINESS = { id: "b1", currencyCode: "ARS", status: "active" };
 
 beforeEach(() => {
   for (const fn of Object.values(h)) fn.mockReset();
+  h.scope.mockResolvedValue(null);
   h.access.mockResolvedValue({ business: BUSINESS, userId: "u1" });
   h.ownerAccess.mockResolvedValue({ business: BUSINESS, userId: "owner-1" });
   h.handler.mockResolvedValue(NextResponse.json({ ok: true }));
@@ -224,4 +239,96 @@ describe("despachador de /api/modules (spec 0216)", () => {
     });
     expect(h.access).not.toHaveBeenCalled();
   });
+});
+
+describe("generic scope policy", () => {
+  it.each(["optional", "required"])(
+    "%s guards before scope and domain",
+    async (policy) => {
+      const response = await dispatchModuleRequest("GET", request(), {
+        moduleId: "stock",
+        path: [policy],
+      });
+      expect(response.status).toBe(200);
+      expect(response.headers.get("cache-control")).toBe("private, no-store");
+      expect(h.scope).toHaveBeenCalledWith(
+        expect.any(Request),
+        BUSINESS.id,
+        policy,
+      );
+      expect(h.access.mock.invocationCallOrder[0]).toBeLessThan(
+        h.scope.mock.invocationCallOrder[0],
+      );
+      expect(h.scope.mock.invocationCallOrder[0]).toBeLessThan(
+        h.handler.mock.invocationCallOrder[0],
+      );
+    },
+  );
+  it("unadopted route neither compares nor changes cache", async () => {
+    const response = await dispatchModuleRequest("GET", request(), {
+      moduleId: "stock",
+      path: ["items"],
+    });
+    expect(h.scope).not.toHaveBeenCalled();
+    expect(response.headers.get("cache-control")).toBeNull();
+  });
+  it.each([401, 403, 404, 409, 503])(
+    "guard %i precedes scope and remains private",
+    async (status) => {
+      h.access.mockResolvedValue({
+        response: NextResponse.json({ code: "original" }, { status }),
+      });
+      const response = await dispatchModuleRequest("GET", request(), {
+        moduleId: "stock",
+        path: ["optional"],
+      });
+      expect(response.status).toBe(status);
+      expect(await response.json()).toEqual({ code: "original" });
+      expect(response.headers.get("cache-control")).toBe("private, no-store");
+      expect(h.scope).not.toHaveBeenCalled();
+      expect(h.handler).not.toHaveBeenCalled();
+    },
+  );
+  it("owner denial stays before scope", async () => {
+    h.ownerAccess.mockResolvedValue({
+      response: NextResponse.json({ code: "not_owner" }, { status: 403 }),
+    });
+    const response = await dispatchModuleRequest("PUT", request("PUT"), {
+      moduleId: "stock",
+      path: ["owner-scope"],
+    });
+    expect(response.status).toBe(403);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(h.scope).not.toHaveBeenCalled();
+  });
+  it("scope rejection prevents domain", async () => {
+    h.scope.mockResolvedValue(
+      NextResponse.json(
+        { code: "backoffice_context_changed" },
+        { status: 409 },
+      ),
+    );
+    const response = await dispatchModuleRequest("GET", request(), {
+      moduleId: "stock",
+      path: ["optional"],
+    });
+    expect(response.status).toBe(409);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(h.handler).not.toHaveBeenCalled();
+  });
+  it.each([404, 409, 422, 503])(
+    "domain %i retains code and private cache",
+    async (status) => {
+      h.handler.mockRejectedValue(
+        new ModuleError(status, "domain_code", "Domain failure"),
+      );
+      const response = await dispatchModuleRequest("GET", request(), {
+        moduleId: "stock",
+        path: ["required"],
+      });
+      expect(response.status).toBe(status);
+      expect((await response.json()).code).toBe("domain_code");
+      expect(response.headers.get("cache-control")).toBe("private, no-store");
+    },
+  );
 });
