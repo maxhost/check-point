@@ -30,6 +30,7 @@ Mass/precisión siguen bloqueados por constraints temporales hasta CP2c. Esta UI
 - apps/merchant/src/modules/pos/server/catalog-v2.neon.integration.test.ts, solo metadata/default/guard/tenant/V1 y regresión de barreras
 - tests/e2e/catalog-measures.spec.ts, nuevo
 - tests/e2e/support/catalog-api-fixture.ts
+- tests/e2e/support/catalog-harness.tsx, ampliación autorizada solo proveedor de contexto real requerido por checklist/catálogo
 - tests/e2e/support/catalog-tour-fixture.ts, solo fixture/typing si necesario
 - tests/e2e/catalog-tour-crud.spec.ts, solo expectativas payload V2/errores afectados sin reducir cobertura
 - docs/factory/0242-cp2a-catalog-ui-handoff.md
