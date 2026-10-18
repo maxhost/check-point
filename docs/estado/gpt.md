@@ -3,7 +3,15 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — 0238 SCOPEKEY ACEPTADO; D0 CERRADO, M0 EN PREPARACIÓN (2026-10-17/18 UTC)
+## ESTADO — 0238 M0 COMPLETA; QA PREPARACIÓN PASS CON LÍMITES, A1 SIGUIENTE (2026-10-17/18 UTC)
+
+Owner aceptó scopeKey y autorizó implementación por checkpoints. D0 cerrado6e45066c. [M0](../factory/0238-m0.md): buildWebpackprod/Chromium real contraNeonCI protegido, fixtures propias0/5 yloginOTP real.62/62intentos válidos (primeraentrada+30recargasporcaso),0timeouts. Mediana/p95 ready recarga vacío2045,8/2276,6ms ycinco2037,85/2289,5ms. Documento9SELECT; Inbox11operaciones(9SELECTincllock+BEGIN/COMMIT), guardauth4. Navegador2módulos/2sesión/1Inbox/1checklist. No mejora niSLOPROD demostrados aún. Artefactos ybuildbasearchivado privados en /private/tmp/checkpass-0238/artifacts; app43152detenida.
+
+QAindependiente `/root/backoffice_0238_qa` en tercerWTmedición existente: informe iniciale1a8ded0 SOLOdocs/factory/0238-qa.md, cherry-picksoloesecommit(no rama c9conDBhooks). Recomputó62muestras y3038SQLstart=end (49/entrada); PASSpreparación conlímites, no producto. FixtureA8591e003 genérica moduleIdsconfigexterno, inspect1/1,24guardPASS2FAILheredadossinnewoffenders; B16ecM0versionsfiltrabadecimalenvezhashstring, limitéafrontendready/IDs yfixture/SQL estado. BcorrigiómétodoM1en0c0f9a44, QAestáticodeltaenprogreso; manifestsM1versionhash reales, controlA/candidatoBusaránmismométodocorregido. RecipeM0histórico16ec preservado. RootfiltroHTTPNeoncorregido(hostapi vsDB): primerascapturas62http-incomplete conservadasfueradeconteos, repeticiónM0completaantesproductoconHTTP+WS. No ocultar errores/primerfixture7d/noCPUporfunción.
+
+A/B tasksfactory entregadas (A8591, B0c0f trasreject16ec); pendienteaceptarsegúnQAymergepreparaciónDev, sincronizarWT ydespacharA1contrato único. A2a/B1anoantesA1entregado. Aactualresource db:ci-integration trasinspect, liberarloparaotrotramo; servidornoactivo. TercerWTtienenext-env.d.ts generado porbuildyQAlorespetó; preservarloencommitpropioantescambioramaQA, nunca descartar. M0soloRAMruntimeproducto005b=cierreD0, hookc9fueraDev. CIremoto90ebe rojo, QAmanual/FAIL1817,621042ms/diferidos intactos.102migracionesPRODhistóricas, sin nueva comprobación. Sin push/PROD.
+
+## HISTÓRICO — 0238 SCOPEKEY ACEPTADO; D0 CERRADO, M0 EN PREPARACIÓN (2026-10-17/18 UTC)
 
 Owner aceptó explícitamente protección scopeKey tras ejemplo UIA/cookieB. Spec cerrada, ADR aceptado, INDEX actualizado en6e45066c; autorización de implementación por checkpoints vigente, sin push/PROD. A/B iniciados y preparaciones documentadas en susWT; encargos actuales SOLO harness/fixtureM0 previos a optimización. A fixture/loginauthreal opt-in en testsneon focales reservados; B harnessPlaywright externo con observadorDOM/fetch/red previo navegación. NoA1/A2/B1a antes deM0. [Registro actualizado](../factory/0238-launch.md).
 
