@@ -8,6 +8,8 @@ Ampliar `pos.pos_order_item.quantity` y `core.order_item.quantity` a numeric(24,
 
 Conservar integralidad/rango positivo INT32 del circuito unit mediante constraints temporales genéricas; preservar toda fila anterior válida. Mantener tarifas snapshot dentro de numeric(12,2) y centavos exactos por constraints temporales, como catálogo. Metadatos temporalmente admiten únicamente el default histórico coherente. No admitir una fila mass operativa que los readersV1 interpreten como piezas. Las barreras temporales se retiran por migración serial de activación compatible CP2c, junto con validaciones finales unit/mass del anexo y todos los consumidores. No retirar barreras aquí.
 
+Precisión detectada en schema real: core.order_item no tenía CHECK de precio no negativo; su barrera temporal conserva el rango signed anterior de numeric(12,2), sin convertir un negativo en captura válida del dominio. POS conserva su CHECK no negativo. Ambas tablas sí mantienen cantidad positiva; no añadir un saneamiento destructivo de historia como parte del expand.
+
 Writer Drizzle POS convierte cantidades validadas unit a string al insertar y editar, en el mismo candidato que cambia el tipo de schema. Core counter cambia solo cast de cantidad `::integer` a `::numeric`, después de validar el contrato unit; puntos/sellos siguen integer. Readers aceptados convierten DBstring validada a DTO/eventos unit anteriores. No cambiar payloadHTTP a quantity:string ni publicar V4 por este expand.
 
 ## Paths previstos para reservar
@@ -19,6 +21,7 @@ Writer Drizzle POS convierte cantidades validadas unit a string al insertar y ed
 - `apps/merchant/src/server/counter/orders.ts`, cast de cantidad y validación de writer unit
 - `apps/merchant/src/modules/pos/server/pos-measurement.neon.integration.test.ts`, inserción Drizzle quantity a string; no reejecutar setup M0 ni tocar evidencia congelada
 - `apps/merchant/src/modules/pos/server/quantity-storage-expand.neon.integration.test.ts` nuevo
+- `apps/merchant/src/modules/pos/server/unit-expand-compat.neon.integration.test.ts`, solo las dos aserciones de representación DB de precio/quantity (`stored` y `ordersWithItems`) a strings padded9; payloadHTTP/DTO/eventos y pruebas de rollback/retry intactos
 - `docs/factory/0242-cp1b-quantity-storage-handoff.md`
 
 Ampliaciones para fixtures/aserciones de almacenamiento en suites existentes se solicitan antes de editar con archivo/caso/motivo. No normalizar ciegamente todos los tests ni modificar payload HTTP para satisfacer tipo DB. Adaptadores ya aceptados no se duplican. No catálogo/business/config UI, scope/transporte, Recetas/Stock/analytics/decoders/publisher/V4/kit/guardias/tooling/deps/estados/índices. Si surge un consumidor real incompatible por la expansión, se identifica y reserva explícitamente, sin tomar CP1c entero.
