@@ -26,6 +26,8 @@ Evento inválido/envelope inconsistente no se interpreta como una venta vacía c
 
 Ampliación autorizada al autor durante implementación: `apps/merchant/src/modules/analytics-origins.neon.integration.test.ts` y `apps/merchant/src/modules/recipes/server/model/consumption.neon.integration.test.ts`, exclusivamente tres invocaciones directas `.handler` a `.dispatch` con versión externa explícita coherente. La suscripción ahora genérica expone dispatch; el cambio adapta los callers sin modificar aserciones ni relajar decoder. Incluir regresión focal de esos casos y su evidencia en handoff.
 
+Segunda ampliación autorizada tras CI original11PASS/6FAIL: `apps/merchant/src/modules/recipes/server/consumption-cost.neon.integration.test.ts`, para focalizar retries a Recipes y comprobar explícitamente ambas deliveries reales (Recipes applied/core.analytics pending/cardinalidad2). No ocultar la segunda fila con SELECT filtrado ni modificar assertions de costo. En analytics-origins se autoriza lookup del traductor por eventType exacto y assert de existencia en vez del índice0 obsoleto. Corrida original preservada; repetir solo suites afectadas y reutilizar nuevo5/modelo5 compatibles, sin convertir el retry en PASS integral.
+
 Sin schema/journal, productor/publish/close POS, helpers/expansores/provenance/evento derivado ya aceptados, Stock, analytics ingestion/reader/dominio, UI/auth/kit/tooling/deps/estados/índices. Si otro archivo necesita adaptación, presentar path/razón y reproducción al coordinador antes de editar. No modificar guardias ni tests para ocultar un error.
 
 ## Gate real de consumidores
