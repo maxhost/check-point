@@ -81,7 +81,7 @@ describe.skipIf(!modulesIntegrationEnabled)(
         .set({ emailVerified: false })
         .where(eq(users.id, world.ownerId));
       staff = await moduleStaff(world, ["catalog"]);
-      denied = await moduleStaff(world, []);
+      denied = await moduleStaff(world, ["business"]);
     }, 120000);
     afterAll(async () => {
       for (const fixture of [world, other]) {
@@ -398,27 +398,27 @@ describe.skipIf(!modulesIntegrationEnabled)(
       ).rejects.toBe(failure);
       expect(await snapshot(p.id)).toEqual(before);
     }, 60000);
+    it("returns private 503 for unexpected injected provider failure and rolls back its writes", async () => {
+      const p = await create();
+      const before = await snapshot(p.id);
+      const spy = vi
+        .spyOn(measurement, "validateResourceMeasurementChange")
+        .mockImplementationOnce(async ({ tx }) => {
+          await tx
+            .update(products)
+            .set({ name: "Rollback" })
+            .where(eq(products.id, p.id));
+          throw new Error("Unexpected provider failure");
+        });
+      try {
+        await response(
+          await put(p.id, { ...body, expectedSalesRevision: "1" }),
+          503,
+        );
+        expect(await snapshot(p.id)).toEqual(before);
+      } finally {
+        spy.mockRestore();
+      }
+    }, 60000);
   },
 );
-it("returns private 503 for unexpected injected provider failure and rolls back its writes", async () => {
-  const p = await create();
-  const before = await snapshot(p.id);
-  const spy = vi
-    .spyOn(measurement, "validateResourceMeasurementChange")
-    .mockImplementationOnce(async ({ tx }) => {
-      await tx
-        .update(products)
-        .set({ name: "Rollback" })
-        .where(eq(products.id, p.id));
-      throw new Error("Unexpected provider failure");
-    });
-  try {
-    await response(
-      await put(p.id, { ...body, expectedSalesRevision: "1" }),
-      503,
-    );
-    expect(await snapshot(p.id)).toEqual(before);
-  } finally {
-    spy.mockRestore();
-  }
-}, 60000);

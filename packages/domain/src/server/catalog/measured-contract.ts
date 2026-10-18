@@ -61,8 +61,9 @@ export function parseCatalogMeasure(
 ) {
   if (
     typeof soldByWeight !== "boolean" ||
+    typeof pricingUnit !== "string" ||
     (!soldByWeight && pricingUnit !== "unit") ||
-    (soldByWeight && !["kg", "lb", "g"].includes(String(pricingUnit)))
+    (soldByWeight && !["kg", "lb", "g"].includes(pricingUnit))
   )
     throw new CatalogError(422, "La medida no es válida.", "invalid_measure");
   return { soldByWeight, pricingUnit: pricingUnit as MeasureUnit };
