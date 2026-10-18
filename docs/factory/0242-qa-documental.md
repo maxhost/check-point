@@ -1,5 +1,9 @@
 # 0242 — Revisión documental independiente
 
+## Actualización al retomar
+
+Owner resolvió: «No aplican a productos por peso. Gratis ni 2x1». Spec/anexo/ADR/plan actualizados en0e413c94 y revisión focal independiente conforme en42bf3422, incorporada en [QA CP0](0242-cp0-qa.md). El bloqueo monetario descrito abajo es histórico y está resuelto; no se captura peso bonificado. Spec funcional cerrada, CP0 ejecutable/M0 y QA de producto siguen pendientes. Leer [fichas vigentes](0242-cp0-launch.md); las revisiones siguientes corresponden al mapeo anterior.
+
 2026-10-18. Agente QA en contexto fresco, solo lectura. Base de producto5f9cb2b2; reserva documentalec454681. Esta revisión valida especificación/plan contra lectura del código. No ejecutó tests, DB ni servidores y no certifica producto o rendimiento.
 
 ## Primera revisión: FAIL con dos bloqueos
