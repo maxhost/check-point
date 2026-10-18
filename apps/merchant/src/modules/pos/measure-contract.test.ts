@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   captureQuantity,
+  trustedUnitSnapshotPrice,
+  trustedUnitSnapshotQuantity,
+  exactSnapshotLineGross,
   decimalRational,
   exactGrams,
   exactLineGross,
@@ -314,6 +317,91 @@ describe("0242 unit-only product coupon target", () => {
     expect(
       selectProductCouponLine("free_product", couponLines, null),
     ).toMatchObject({ ok: false, code: "coupon_product_missing" });
+  });
+});
+describe("0242 trusted legacy unit snapshots", () => {
+  it("preserves ten-digit legacy tariffs without widening new HTTP inputs", () => {
+    const price = "9999999999.99";
+    expect(trustedUnitSnapshotPrice(price)).toBe(price);
+    expect(trustedUnitSnapshotPrice("9999999999.990000000")).toBe(price);
+    expect(exactSnapshotLineGross("1", price, UNIT_MEASURE)).toEqual({
+      numerator: "999999999999",
+      denominator: "1",
+      scale: 2,
+    });
+    const line: PosLineV2 = {
+      lineId: "old",
+      productId: "p",
+      name: "Legado",
+      quantity: "1",
+      unitPrice: price,
+      measure: UNIT_MEASURE,
+      lineTotal: price,
+    };
+    expect(
+      canCombinePosLines(line, {
+        ...line,
+        lineId: "new",
+        unitPrice: "9999999999.990000000",
+      }),
+    ).toBe(true);
+    expect(
+      canCombinePosLines(
+        { ...line, unitPrice: "1.000000001" },
+        { ...line, unitPrice: "1.000000001" },
+      ),
+    ).toBe(true);
+    expectCode(() => parsePrice(price), "invalid_price");
+    expectCode(
+      () => trustedUnitSnapshotPrice("1000000000.001"),
+      "invalid_price",
+    );
+  });
+  it("preserves positive int32 unit quantities for historical coupon eligibility", () => {
+    const quantity = "2147483647";
+    expect(trustedUnitSnapshotQuantity(quantity)).toBe(quantity);
+    expect(trustedUnitSnapshotQuantity(2147483647)).toBe(quantity);
+    expect(trustedUnitSnapshotQuantity("2147483647.000000000")).toBe(quantity);
+    expect(exactSnapshotLineGross(quantity, "0", UNIT_MEASURE).numerator).toBe(
+      "0",
+    );
+    const line: ProductCouponLine = {
+      lineId: "legacy",
+      productId: "p",
+      quantity,
+      measure: UNIT_MEASURE,
+    };
+    expect(selectProductCouponLine("two_for_one", [line], "p")).toEqual({
+      ok: true,
+      targetSourceLineId: "legacy",
+    });
+    expect(
+      selectProductCouponLine("two_for_one", [line], "p", "legacy"),
+    ).toEqual({ ok: true, targetSourceLineId: "legacy" });
+    expectCode(() => parseQuantity(quantity), "invalid_quantity");
+    for (const invalid of ["2147483648", "1.5", "0", "-1", "1e3"])
+      expectCode(
+        () => trustedUnitSnapshotQuantity(invalid),
+        "invalid_quantity",
+      );
+  });
+  it("does not extend either legacy allowance to measured snapshots", () => {
+    expectCode(
+      () => exactSnapshotLineGross("1", "9999999999.99", massMeasure("kg")),
+      "invalid_price",
+    );
+    expectCode(
+      () => exactSnapshotLineGross("2147483647", "0", massMeasure("g")),
+      "invalid_quantity",
+    );
+    expectCode(
+      () => exactLineGross("2147483647", "0", UNIT_MEASURE),
+      "invalid_quantity",
+    );
+    expectCode(
+      () => exactLineGross("1", "9999999999.99", UNIT_MEASURE),
+      "invalid_price",
+    );
   });
 });
 describe("0242 frozen intents and snapshots", () => {

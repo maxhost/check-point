@@ -4,7 +4,8 @@ import type {
   PaymentInput,
 } from "@mi-pasaporte/domain/financial";
 import {
-  captureQuantity,
+  trustedUnitSnapshotQuantity,
+  trustedUnitSnapshotPrice,
   parseMeasure,
   parsePrice,
   type Decimal,
@@ -307,7 +308,7 @@ export function selectProductCouponLine(
     : unitLines.find(
         (item) =>
           kind === "free_product" ||
-          BigInt(captureQuantity(item.quantity, "unit").quantity) >= 2n,
+          BigInt(trustedUnitSnapshotQuantity(item.quantity)) >= 2n,
       );
   if (!line) {
     if (explicit || !matching.length) return no("coupon_product_missing");
@@ -317,8 +318,8 @@ export function selectProductCouponLine(
   }
   const measure = parseMeasure(line.measure);
   if (measure.kind === "mass") return no("coupon_measure_not_supported");
-  const capture = captureQuantity(line.quantity, "unit");
-  if (kind === "two_for_one" && BigInt(capture.quantity) < 2n)
+  const quantity = trustedUnitSnapshotQuantity(line.quantity);
+  if (kind === "two_for_one" && BigInt(quantity) < 2n)
     return no("coupon_quantity");
   return { ok: true, targetSourceLineId: line.lineId };
 }
@@ -339,7 +340,12 @@ export function canCombinePosLines(a: PosLineV2, b: PosLineV2): boolean {
   const left = parseMeasure(a.measure),
     right = parseMeasure(b.measure);
   return (
-    parsePrice(a.unitPrice) === parsePrice(b.unitPrice) &&
+    (left.kind === "unit"
+      ? trustedUnitSnapshotPrice(a.unitPrice)
+      : parsePrice(a.unitPrice)) ===
+      (right.kind === "unit"
+        ? trustedUnitSnapshotPrice(b.unitPrice)
+        : parsePrice(b.unitPrice)) &&
     left.kind === right.kind &&
     left.quantityUnit === right.quantityUnit &&
     left.priceUnit === right.priceUnit &&
