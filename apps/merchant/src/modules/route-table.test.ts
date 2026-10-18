@@ -68,3 +68,14 @@ describe("matchRoute (spec 0216)", () => {
     }
   });
 });
+
+it.each(["optional", "required"] as const)(
+  "matching preserves generic %s scope policy",
+  (backofficeScope) => {
+    const adopted: ModuleRoute = { ...route("GET", "scoped"), backofficeScope };
+    expect(matchRoute([adopted], "GET", ["scoped"])).toMatchObject({
+      kind: "found",
+      route: { backofficeScope },
+    });
+  },
+);
