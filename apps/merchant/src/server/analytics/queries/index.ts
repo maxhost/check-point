@@ -58,6 +58,11 @@ function metricRow(row: Record<string, unknown>): AnalyticsMetric {
     amountMinor: safeMoney(String(row.amountMinor)),
     currencyCode: String(row.currencyCode),
     minorUnit: Number(row.minorUnit),
+    ...(typeof row.quantity === "string"
+      ? { quantityExact: row.quantity }
+      : Number.isSafeInteger(row.quantity)
+        ? { quantityExact: String(row.quantity) }
+        : {}),
     quantity: Number(row.quantity),
     count: safeMoney(String(row.count)),
   };
@@ -105,8 +110,8 @@ export function inputStatement(
       union all select m.* from b join analytics.daily_metric m on m.business_id=b.id and m.day>=b.today-${windows.anomalyDays}::int and m.day<b.today-${baseDays}::int where m.metric='voided_tickets' ${location}
       union all select m.* from b join same_days sd on true join analytics.daily_metric m on m.business_id=b.id and m.day=sd.day where m.day<b.today-${baseDays}::int and m.metric='units_sold' ${location}
       union all select m.* from b join same_days sd on true join analytics.daily_metric m on m.business_id=b.id and m.day=sd.day where m.day<b.today-${revenueDays}::int and m.metric='revenue' ${location}),
-    reference_metrics as materialized (select m.day::text,m.metric,case when m.day=b.today-1 or m.metric in ('stock_consumption','units_sold','revenue','voided_tickets','visits','promo_discount','promo_sales','promo_cost','product_revenue','cost_of_goods','revenue_with_cost','payment_commission','payment_commission_with_cost','units_with_cost') then m.location_id else null end as "locationId",m.dimension_id as "dimensionId",sum(m.amount_minor)::text as "amountMinor",m.currency_code as "currencyCode",m.minor_unit as "minorUnit",sum(m.quantity)::text as quantity,sum(m.count)::int as count
-      from metric_rows m,b group by m.day,m.metric,case when m.day=b.today-1 or m.metric in ('stock_consumption','units_sold','revenue','voided_tickets','visits','promo_discount','promo_sales','promo_cost','product_revenue','cost_of_goods','revenue_with_cost','payment_commission','payment_commission_with_cost','units_with_cost') then m.location_id else null end,m.dimension_id,m.currency_code,m.minor_unit
+    reference_metrics as materialized (select m.day::text,m.metric,case when m.day=b.today-1 or m.metric in ('stock_consumption','units_sold','revenue','voided_tickets','visits','promo_discount','promo_sales','promo_cost','product_revenue','cost_of_goods','revenue_with_cost','payment_commission','payment_commission_with_cost','units_with_cost','mass_sold_g','mass_with_cost_g') then m.location_id else null end as "locationId",m.dimension_id as "dimensionId",sum(m.amount_minor)::text as "amountMinor",m.currency_code as "currencyCode",m.minor_unit as "minorUnit",sum(m.quantity)::text as quantity,sum(m.count)::int as count
+      from metric_rows m,b group by m.day,m.metric,case when m.day=b.today-1 or m.metric in ('stock_consumption','units_sold','revenue','voided_tickets','visits','promo_discount','promo_sales','promo_cost','product_revenue','cost_of_goods','revenue_with_cost','payment_commission','payment_commission_with_cost','units_with_cost','mass_sold_g','mass_with_cost_g') then m.location_id else null end,m.dimension_id,m.currency_code,m.minor_unit
       union all select day::text,'expense_fixed',null,dimension_id,amount,currency_code,minor_unit,'0',0 from fixed_months where rank<=${windows.closedMonths}),
     extended_metric_rows as (
       select m.* from analytics.daily_metric m,b where m.business_id=b.id and m.day>=b.today-${windows.recentDays}::int and m.day<b.today-${baseDays}::int
@@ -114,7 +119,7 @@ export function inputStatement(
       and (m.metric<>'expense_variable' or m.day<date_trunc('month',b.today)-${windows.closedMonths}*interval '1 month')
       and (m.metric<>'voided_tickets' or m.day<b.today-${windows.anomalyDays}::int)
       and (m.metric<>'units_sold' or not exists(select 1 from same_days sd where sd.day=m.day)) ${location}),
-    extended_metrics as (select m.day::text,m.metric,case when m.metric in ('stock_consumption','units_sold','voided_tickets','product_revenue','cost_of_goods','revenue_with_cost','payment_commission','payment_commission_with_cost','units_with_cost') then m.location_id else null end as "locationId",m.dimension_id as "dimensionId",sum(m.amount_minor)::text as "amountMinor",m.currency_code as "currencyCode",m.minor_unit as "minorUnit",sum(m.quantity)::text as quantity,sum(m.count)::int as count from extended_metric_rows m group by m.day,m.metric,case when m.metric in ('stock_consumption','units_sold','voided_tickets','product_revenue','cost_of_goods','revenue_with_cost','payment_commission','payment_commission_with_cost','units_with_cost') then m.location_id else null end,m.dimension_id,m.currency_code,m.minor_unit),
+    extended_metrics as (select m.day::text,m.metric,case when m.metric in ('stock_consumption','units_sold','voided_tickets','product_revenue','cost_of_goods','revenue_with_cost','payment_commission','payment_commission_with_cost','units_with_cost','mass_sold_g','mass_with_cost_g') then m.location_id else null end as "locationId",m.dimension_id as "dimensionId",sum(m.amount_minor)::text as "amountMinor",m.currency_code as "currencyCode",m.minor_unit as "minorUnit",sum(m.quantity)::text as quantity,sum(m.count)::int as count from extended_metric_rows m group by m.day,m.metric,case when m.metric in ('stock_consumption','units_sold','voided_tickets','product_revenue','cost_of_goods','revenue_with_cost','payment_commission','payment_commission_with_cost','units_with_cost','mass_sold_g','mass_with_cost_g') then m.location_id else null end,m.dimension_id,m.currency_code,m.minor_unit),
     metrics as (select * from reference_metrics union all select * from extended_metrics)
     select b.currency_code as "currencyCode",b.timezone,b.today::text,${JSON.stringify(windows)}::jsonb as "readWindows",
       (select min(day)::text from account_money where metric='revenue' and (count>0 or amount_minor>0)) as "firstSaleDay",
@@ -320,7 +325,7 @@ export async function readHistory(
     locationId,
   );
   const customerPromoRows = await getDb().execute(
-    sql`select day::text,metric,location_id as "locationId",dimension_id as "dimensionId",amount_minor::text as "amountMinor",quantity,count,currency_code as "currencyCode",minor_unit as "minorUnit" from analytics.daily_metric where business_id=${businessId} and day<=${range.to}::date and metric in ('visits','promo_discount','promo_sales','promo_cost') ${location}`,
+    sql`select day::text,metric,location_id as "locationId",dimension_id as "dimensionId",amount_minor::text as "amountMinor",quantity::text as quantity,count,currency_code as "currencyCode",minor_unit as "minorUnit" from analytics.daily_metric where business_id=${businessId} and day<=${range.to}::date and metric in ('visits','promo_discount','promo_sales','promo_cost') ${location}`,
   );
   const customerPromo = summarizeCustomerPromoHistory(
     { ...input, metrics: customerPromoRows.rows.map(metricRow) },
@@ -373,7 +378,7 @@ export async function readDay(
   assertLocation(input, locationId);
   const location = locationId ? sql`and location_id=${locationId}` : sql``;
   const rows = await getDb().execute(
-    sql`select day::text,metric,location_id as "locationId",dimension_id as "dimensionId",amount_minor::text as "amountMinor",quantity,count,currency_code as "currencyCode",minor_unit as "minorUnit" from analytics.daily_metric where business_id=${businessId} and day=${day}::date ${location}`,
+    sql`select day::text,metric,location_id as "locationId",dimension_id as "dimensionId",amount_minor::text as "amountMinor",quantity::text as quantity,count,currency_code as "currencyCode",minor_unit as "minorUnit" from analytics.daily_metric where business_id=${businessId} and day=${day}::date ${location}`,
   );
   return buildDay(
     { ...input, metrics: rows.rows.map(metricRow) },
