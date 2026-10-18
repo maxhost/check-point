@@ -8,7 +8,7 @@ import {
 } from "@mi-pasaporte/db/schema";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { appendModuleEvent } from "../../../server/module-events/append";
-import type { CapturedModuleEvent } from "../../../server/module-events/types";
+import type { MeasuredSaleClosedEvent } from "../../../server/module-events/types";
 import {
   readConsumptionCost,
   type ExpectedCostLine,
@@ -17,41 +17,46 @@ import {
   originalMoney,
   toMinor,
 } from "@mi-pasaporte/domain/financial/rational";
-export type ConsumptionApplied = {
-  eventVersion: 1;
-  observedAt?: string;
-  sourceOrderId: string;
-  locationId: string;
-  closedAt: string;
-  currencyCode: string | null;
-  minorUnit: number | null;
-  lines: {
-    sourceLineId: string;
-    productId: string | null;
-    productLabel: string | null;
-    quantity: string;
-    revenueMinor: string | null;
-    allocatedCommissionMinor: string | null;
-    cost: {
-      amountMinor: string;
-      currencyCode: string;
-      minorUnit: number;
-    } | null;
-  }[];
-  items: {
-    itemId: string;
-    itemLabel: string;
-    itemUnit?: string;
-    quantity: string;
-    onHandAfter: string;
-  }[];
-};
+import type {
+  ConsumptionAppliedEvent,
+  MeasuredConsumptionApplied,
+} from "./consumption-applied";
+import { decodeConsumptionApplied } from "./consumption-applied";
+export type { ConsumptionApplied } from "./consumption-applied";
+import { decodeMeasuredSaleClosedEvent } from "../../../server/module-events/decode";
+import { parseMeasure } from "@mi-pasaporte/domain/measures";
 export async function publishConsumptionApplied(
   tx: DbTransaction,
-  event: CapturedModuleEvent,
+  event: {
+    id: string;
+    businessId: string;
+    eventVersion?: number;
+    payload: MeasuredSaleClosedEvent;
+  },
   expectedLines: ExpectedCostLine[],
 ) {
   const p = event.payload;
+  if (p.eventVersion === 4) {
+    decodeMeasuredSaleClosedEvent(p, event.eventVersion ?? 4);
+    // The durable parent is the authority for every original financial/physical capture.
+    const [parent] = await tx
+      .select({ id: moduleEvents.id })
+      .from(moduleEvents)
+      .where(
+        and(
+          eq(moduleEvents.id, event.id),
+          eq(moduleEvents.businessId, event.businessId),
+          eq(moduleEvents.eventType, "sale.closed"),
+          eq(moduleEvents.eventVersion, 4),
+          eq(moduleEvents.sourceId, p.sourceOrderId),
+          eq(moduleEvents.locationId, p.locationId),
+          sql`${moduleEvents.payload} = ${JSON.stringify(p)}::jsonb`,
+        ),
+      );
+    if (!parent)
+      throw new Error("Captured consumption event snapshot conflict");
+  }
+  const eventVersion = p.eventVersion === 4 ? 2 : 1;
   const currencyCode = p.eventVersion === 1 ? null : p.money.currencyCode;
   const minorUnit = p.eventVersion === 1 ? null : p.money.minorUnit;
   const identities = p.lines.map((line) => ({
@@ -59,12 +64,16 @@ export async function publishConsumptionApplied(
     productId: line.productId,
     productLabel: "productLabel" in line ? String(line.productLabel) : null,
     quantity: String(line.quantity),
+    ...(p.eventVersion === 4 && "measure" in line
+      ? { measure: parseMeasure(line.measure) }
+      : {}),
     revenueMinor:
       p.eventVersion !== 1 && "money" in line
         ? String(toMinor(originalMoney(line.money.net), p.money.minorUnit))
         : null,
     allocatedCommissionMinor:
-      p.eventVersion === 3 && "commissionMinor" in line
+      (p.eventVersion === 3 || p.eventVersion === 4) &&
+      "commissionMinor" in line
         ? line.commissionMinor
         : null,
   }));
@@ -79,12 +88,13 @@ export async function publishConsumptionApplied(
       ),
     );
   if (existing) {
-    const previous = existing.payload as Partial<ConsumptionApplied> | null;
+    const previous =
+      existing.payload as Partial<ConsumptionAppliedEvent> | null;
     if (
-      existing.eventVersion !== 1 ||
+      existing.eventVersion !== eventVersion ||
       existing.locationId !== p.locationId ||
       !previous ||
-      previous.eventVersion !== 1 ||
+      previous.eventVersion !== eventVersion ||
       previous.sourceOrderId !== p.sourceOrderId ||
       previous.locationId !== p.locationId ||
       previous.closedAt !== p.closedAt ||
@@ -98,6 +108,13 @@ export async function publishConsumptionApplied(
           productId: line.productId,
           productLabel: line.productLabel,
           quantity: line.quantity,
+          ...(eventVersion === 2
+            ? {
+                measure: parseMeasure(
+                  (line as MeasuredConsumptionApplied["lines"][number]).measure,
+                ),
+              }
+            : {}),
           revenueMinor: line.revenueMinor,
           allocatedCommissionMinor: line.allocatedCommissionMinor,
         })),
@@ -144,8 +161,8 @@ export async function publishConsumptionApplied(
           ),
         )
     : [];
-  const payload: ConsumptionApplied = {
-    eventVersion: 1,
+  const payload = {
+    eventVersion,
     observedAt: new Date().toISOString(),
     sourceOrderId: p.sourceOrderId,
     locationId: p.locationId,
@@ -181,11 +198,12 @@ export async function publishConsumptionApplied(
       ),
     })),
   };
+  if (eventVersion === 2) decodeConsumptionApplied(payload, eventVersion);
   await appendModuleEvent(tx, {
     businessId: event.businessId,
     eventType: "recipes.consumption.applied",
     causationEventId: event.id,
-    eventVersion: 1,
+    eventVersion,
     sourceId: p.sourceOrderId,
     locationId: p.locationId,
     payload,
