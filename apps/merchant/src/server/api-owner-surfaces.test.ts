@@ -40,6 +40,14 @@ import {
 } from "./api-owner-surfaces-support";
 import { DESENLACE_SIN_GATE } from "./api-owner-surfaces-desenlaces";
 
+vi.mock("./backoffice-membership", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("./backoffice-membership")>();
+  const { legacyMembershipFixtures } =
+    await import("./backoffice-membership-fixture.test-support");
+  return { ...actual, ...legacyMembershipFixtures() };
+});
+
 vi.mock("./auth", () => ({
   getMerchantAuth: () => ({ api: { getSession: () => dobleDeSesion() } }),
 }));

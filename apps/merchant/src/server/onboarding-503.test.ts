@@ -42,6 +42,14 @@ const world = vi.hoisted(() => ({
 }));
 
 // Spec 0189 §D4: el eje de acceso (402) tiene su oráculo propio (T7); acá el negocio paga.
+vi.mock("./backoffice-membership", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("./backoffice-membership")>();
+  const { legacyMembershipFixtures } =
+    await import("./backoffice-membership-fixture.test-support");
+  return { ...actual, ...legacyMembershipFixtures() };
+});
+
 vi.mock("./billing-gate", () => ({
   businessBillingFailure: async () => null,
   readBusinessBilling: async () => ({

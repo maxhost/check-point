@@ -21,6 +21,14 @@ import { and, eq, ne } from "drizzle-orm";
 
 let fake: FakeStripe = fakeStripe();
 
+vi.mock("./backoffice-membership", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("./backoffice-membership")>();
+  const { legacyMembershipFixtures } =
+    await import("./backoffice-membership-fixture.test-support");
+  return { ...actual, ...legacyMembershipFixtures() };
+});
+
 vi.mock("./stripe-config", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./stripe-config")>();
   const { stripeConfigDouble } = await import("./billing-integration-support");

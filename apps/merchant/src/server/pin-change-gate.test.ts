@@ -21,6 +21,14 @@ const world = vi.hoisted(() => ({
   row: undefined as undefined | Record<string, unknown>,
 }));
 
+vi.mock("./backoffice-membership", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("./backoffice-membership")>();
+  const { legacyMembershipFixtures } =
+    await import("./backoffice-membership-fixture.test-support");
+  return { ...actual, ...legacyMembershipFixtures() };
+});
+
 vi.mock("next/navigation", () => ({
   redirect: (to: string) => {
     throw new Redirected(to);

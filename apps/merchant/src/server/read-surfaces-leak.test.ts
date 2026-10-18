@@ -30,6 +30,14 @@ const world = vi.hoisted(() => ({
   readSubscription: vi.fn(),
 }));
 
+vi.mock("./backoffice-membership", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("./backoffice-membership")>();
+  const { legacyMembershipFixtures } =
+    await import("./backoffice-membership-fixture.test-support");
+  return { ...actual, ...legacyMembershipFixtures() };
+});
+
 vi.mock("./auth", () => ({
   getMerchantAuth: () => ({ api: { getSession: async () => world.session } }),
 }));

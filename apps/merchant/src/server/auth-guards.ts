@@ -185,7 +185,7 @@ export async function requireBackofficeSession(
   // EL EJE DE ACCESO (spec 0189 §D4), DESPUES del eje `status`: un owner suspendido conserva
   // su pantalla de cuenta suspendida (el motivo manda sobre el cobro).
   if (row.businessStatus === "active" && !options.allowBlocked) {
-    const billing = await context.readBilling(row.id);
+    const billing = await context.readBilling(row.id, "page");
     if (billing.access === "blocked") {
       redirect(
         row.role === "owner"

@@ -276,7 +276,9 @@ async function statusStep(
   if (failure) return { failure };
   // PASO 6 — el eje de ACCESO (spec 0189 §D4), DESPUES del eje `status`: un negocio
   // suspendido sigue diciendo `business_suspended`.
-  const billing = (await context.readBilling(resolved.business.id)).failure;
+  const billing = (
+    await context.readBilling(resolved.business.id, "active-member")
+  ).failure;
   if (billing) return { failure: billing };
   // PASO 7 — el PIN temporal (spec 0218), ULTIMO: ver `pin-change-gate.ts`.
   const pin = pinChangeFailure(resolved);

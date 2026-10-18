@@ -24,6 +24,28 @@ export type BusinessBilling = {
   failure: BillingAccessFailure | null;
 };
 
+export type BusinessSubscription = Pick<
+  typeof subscriptions.$inferSelect,
+  | "plan"
+  | "status"
+  | "stripeSubscriptionId"
+  | "stripeCustomerId"
+  | "trialEndsAt"
+>;
+
+/** Reuse a confirmed nullable row; operational failures must never be passed as null. */
+export function billingFromSubscription(
+  row: BusinessSubscription | null,
+  now: Date,
+): BusinessBilling {
+  const access = billingAccess(row, now);
+  return {
+    access,
+    trialEndsAt: row?.trialEndsAt ?? null,
+    failure: billingAccessFailure(access, row),
+  };
+}
+
 /** La fila de acceso del negocio + la decisión. Una fila AUSENTE es `blocked` (fail-closed). */
 export async function readBusinessBilling(
   businessId: string,
@@ -40,12 +62,7 @@ export async function readBusinessBilling(
     .from(subscriptions)
     .where(eq(subscriptions.businessId, businessId))
     .limit(1);
-  const access = billingAccess(row ?? null, now);
-  return {
-    access,
-    trialEndsAt: row?.trialEndsAt ?? null,
-    failure: billingAccessFailure(access, row ?? null),
-  };
+  return billingFromSubscription(row ?? null, now);
 }
 
 /** El 402 `payment_required` del negocio, o `null` si tiene acceso. */
