@@ -17,7 +17,7 @@ La [medición de Joyas](../factory/0237-inbox-measurement.md) encontró 9 consul
 
 Al entrar, los consumidores comparten contexto inicial de negocio, navegación y prueba. El servidor resuelve cada dato común una vez por petición compatible y reduce viajes SQL de acceso. Inbox sigue siendo legible/accionable con la misma semántica. El cambio debe disminuir trabajo y mejorar el tiempo hasta avisos utilizables en medición comparable.
 
-## 2. Alcance cerrado de la propuesta
+## 2. Alcance de la propuesta
 
 Incluye las tres mejoras:
 
@@ -26,6 +26,8 @@ Incluye las tres mejoras:
 3. Lectura combinada de membresía/negocio y suscripción con filtros/selección equivalentes; reuso de la fila de facturación para acceso y plan. Better Auth mantiene su obtención de sesión/usuario. Paralelismo solo entre cargas independientes.
 
 No incluye caché de autorización entre peticiones, caché de cookie/JWT/Redis/CDN privado, nuevas tablas/índices/migraciones, servicios de realtime, actualización por venta, fórmulas o tarjetas nuevas, equilibrio mensual/diario ni avance del Dashboard, cambios de UI visual, schema de módulos, filtros de permisos nuevos, refactor de todos los guards del sistema, corrección de CI histórica o nuevos crons. Los números del Dashboard son un encargo futuro, no criterio de esta spec.
+
+La revisión posterior del autor detectó un hueco de vinculación entre la intención del cliente y la cookie vigente. §4.3 propone una cabecera de ámbito y un 409 opt-in; esa adición necesita aceptación antes del cierre. No se considera un cambio interno ya autorizado por haber elegido las mejoras 1 + 2 + 3. Ver [revisión del autor](../factory/0238-author-review.md).
 
 ## 3. Contrato servidor
 
@@ -93,7 +95,7 @@ No persistir este contexto en localStorage/IndexedDB ni usarlo para dar permiso 
 
 ### 4.1. Seed, layout persistente y transiciones (B2)
 
-La versión1 del contrato describe su forma, no su frescura. Cada arranque servidor del árbol tiene un `bootId` opaco, sin valor de autorización. El provider conserva una época local de identidad/acceso y una generación por recurso. El seed core inicializa el provider una sola vez por documento; el seed de módulos en streaming se acepta solo para ese `bootId` y si su generación inicial no fue invalidada. Una mutación o revalidación cierra esa aceptación inicial. Llegar después no convierte un seed en más reciente.
+La versión 1 del contrato describe su forma, no su frescura. Cada arranque servidor del árbol tiene un `bootId` opaco, sin valor de autorización. El provider conserva una época local de identidad/acceso y una generación por recurso. El seed core inicializa el provider una sola vez por documento; el seed de módulos en streaming se acepta solo para ese `bootId` y si su generación inicial no fue invalidada. Una mutación o revalidación cierra esa aceptación inicial. Llegar después no convierte un seed en más reciente.
 
 Nuevas props RSC del mismo ámbito, incluidas las de `router.refresh`, no reemplazan directamente datos vivos del provider: provocan como máximo una revalidación coordinada por cada `bootId` nuevo, sin reutilizar la instantánea llegada como prueba de frescura. Si cambia el ámbito de esas props, ocultar primero los datos privados anteriores y confirmar la identidad actual con el reporter; no instalar un ámbito nuevo desde un seed posiblemente prefetcheado. No crear una revisión persistida ni comparar relojes de servidores para decidir causalidad.
 
@@ -103,12 +105,13 @@ Nuevas props RSC del mismo ámbito, incluidas las de `router.refresh`, no reempl
 | Mutación local confirmada | Avanzar generación antes de aplicar el DTO confirmado; resultados GET/RSC anteriores no lo sobrescriben; una lectura posterior intencional tiene ticket nuevo |
 | Reporter `authenticated:false` | Invalidar épocas/promesas y retirar datos de negocio/Inbox; navegación completa a la entrada vigente |
 | Reporter `authenticated:true` con `business:null`, `membership:null` o membresía no activa | Retirar negocio, menús y tarjetas aunque userId no cambie; una única navegación completa a `/backoffice` para que el guard aplique su revocación/redirect vigente; el reporter no revoca |
-| Cambia identidad/negocio, rol, permisos efectivos, estado de negocio o `billing.access` | Retirar contexto anterior e invalidar recursos; una única navegación completa al backoffice por transición para reevaluar gates y decisiones estructurales de layout/checklist/TrialNotice |
+| Cambia sesión, identidad o negocio | Retirar el ámbito anterior e invalidar recursos; una única navegación completa al backoffice para establecer el nuevo documento/contexto |
+| Mismo ámbito: cambia rol, permisos efectivos, estado de negocio o `billing.access` | Actualizar contexto e invalidar recursos afectados; reconciliar decisiones servidor con un `router.refresh()` coordinado cuando haga falta, conservando estado cliente no afectado y todavía autorizado; si los gates retiran acceso a la ruta, seguir su salida vigente |
 | Misma identidad y estructura, cambia presentación | Actualizar coherentemente nombre, datos públicos de prueba y módulos en consumidores del provider; no conservar props de navegación paralelas como otra fuente de permisos |
 | Módulos `restricted` | Sin timer/bucle de retry; un foco posterior, reconexión o evento relevante de sesión/email/acceso permite una única reevaluación coordinada del contexto y, si corresponde, una solicitud al endpoint para decidir el gate completo |
 | Error operativo de revalidación | Marcar recuperación; no convertirlo en logout, contexto vacío confirmado ni acceso concedido; un reintento intencional inicia transporte nuevo |
 
-Las navegaciones completas son excepcionales ante cambios estructurales, no por cada actualización de módulos o foco. Cada transición solo puede iniciarlas una vez por época; el guard del documento nuevo decide la ruta final. La actualización ordinaria de módulos mantiene el layout. El reporter actual no expresa por sí solo todos los gates de GET módulos, incluido PIN: el cliente no infiere acceso completo a partir de sus campos; el endpoint y la construcción autorizada del seed siguen siendo la autoridad.
+Las navegaciones completas son excepcionales ante cambio/pérdida del ámbito, no por cada actualización de permisos, suscripción, módulos o foco. Cada transición solo puede iniciarlas una vez por época; el guard del documento nuevo decide la ruta final. El refresh del mismo ámbito no cambia keys ni reinicializa formularios todavía autorizados, y su nuevo seed no provoca otro refresh en bucle. Trial→subscribed, días de prueba, nombre o un permiso nuevo no descartan por sí solos la edición. Si el servidor retira acceso, no se mantienen capacidades revocadas para preservar el formulario. El reporter actual no expresa por sí solo todos los gates de GET módulos, incluido PIN: el cliente no infiere acceso completo a partir de sus campos; el endpoint y la construcción autorizada del seed siguen siendo la autoridad.
 
 ### 4.2. Propiedad de promesas, mutaciones y abortos (R4)
 
@@ -116,9 +119,23 @@ El provider del documento posee las peticiones compartidas, con clave de recurso
 
 Una decisión Inbox invalida el ticket anterior antes de aplicar su respuesta, conserva `operationId`/versiones y garantiza que el refresco posterior no se adhiera al GET previo a esa decisión. Mantener como máximo un transporte vigente y un refresco pendiente por recurso; una petición vieja invalidada se cancela o se drena con resultado descartado antes del transporte pendiente, sin iniciar fan-out. No esperar a una promesa de otra identidad para limpiar datos privados. Los temporizadores de vencimiento/recordatorio/preparing y la cola durante mutación se conservan. Checklist usa el mismo régimen de suscripciones: el AbortController de un efecto no cancela una lectura usada por otro.
 
+### 4.3. Vincular peticiones al ámbito visible — propuesta pendiente (U1)
+
+Los tickets locales evitan carreras conocidas por el provider, pero no detectan por sí solos una cookie cambiada en otra pestaña. No garantizar aislamiento entre el contexto visible y la operación usando únicamente una generación del navegador.
+
+Propuesta contractual: el seed incluye `scopeKey`, marca opaca estable para sesión Better Auth, usuario y negocio seleccionados. Calcularla en servidor mediante HMAC-SHA256 con el secreto existente de auth, mensaje canónico exacto `JSON.stringify(["backoffice.scope.v1", session.id, user.id, business.id])` y salida hexadecimal minúscula de 64 caracteres. Validar que esas identidades proceden de la sesión/contexto íntegros; no firmar valores ausentes. No serializar sesión/id de sesión, token o secreto; no usar `bootId` como sustituto de esta marca. Renovación ordinaria de una misma sesión no cambia el ámbito; un nuevo login que crea otra sesión sí. No añadir estado persistido ni consulta extra para construirla: todos los datos proceden del contexto autenticado.
+
+Los transportes adoptados por el provider envían `X-Backoffice-Scope` con la marca **capturada al iniciar la intención**. No toman otra marca de una variable global después de un await ni la sustituyen en un reintento. La clave de petición compartida incluye esa marca además de época/generación. El servidor primero valida la cookie y todos los gates existentes; después valida longitud/formato y compara la marca esperada con la del contexto actual en tiempo constante y antes de cualquier lectura de dominio, exposición o escritura. No usa la cabecera para seleccionar usuario/negocio, evitar un guard o conceder permisos. Si no coincide o está mal formada, responder 409 con `{code:'backoffice_context_changed', error:'Tu sesión cambió. Actualiza el panel para continuar.'}` sin revelar el ámbito actual, ejecutar dominio ni reintentar la escritura. El cliente invalida datos y vuelve una sola vez al backoffice; requiere una intención nueva antes de escribir en el nuevo ámbito. Respuestas privadas adoptadas y 409 usan `Cache-Control: private, no-store`; no introducir caché HTTP de contexto privado ni guardar marcas en logs/HAR de entrega.
+
+La cabecera es opt-in por compatibilidad: clientes existentes sin ella mantienen el contrato actual y sus guards, sin garantía nueva de vinculación a una pantalla previa. Los consumidores migrados de Inbox GET/acciones, módulos GET/toggle y checklist GET/acciones de tours deben enviarla siempre tras obtener el seed; no enviar una operación adoptada sin su ámbito listo. Contexto y cabecera no son credenciales adicionales: omitir/forjar la marca nunca evita la autenticación o autorización ordinarias. GET sesión y endpoints de auth quedan exentos para descubrir/cerrar la sesión actual.
+
+El helper servidor se ubica en la ruta común de los guards HTTP afectados, con inventario de consumidores y regresión de los no adoptados; el reporter conserva su comportamiento. Nuevos clientes no suponen que una API soporta la marca sin cobertura de su guard. Respuestas tardías se comparan además con el ticket local original. La protección no promete detectar instantáneamente una cookie cambiada sin interacción/señal; sí impide atribuir una respuesta o escritura del ámbito B a una intención del ámbito A en las superficies adoptadas.
+
+Esta sección amplía de forma explícita el contrato HTTP de la propuesta y permanece **pendiente de aceptación**; no fue revisada por el agente en su dictamen sobre 20e81dfb. Si no se adopta, se debe retirar esa garantía del plan y documentar la limitación, sin presentarla como resuelta por deduplicación.
+
 ## 5. Contratos HTTP y ciclo del Inbox
 
-No se agrega endpoint bootstrap ni cambia el contrato público de GET sesión, GET módulos, GET checklist o acciones del Inbox.
+No se agrega endpoint bootstrap. JSON de éxito, autorización y contratos de clientes sin cabecera permanecen iguales. La propuesta opt-in de §4.3 añade la cabecera de ámbito y el 409 indicado para peticiones adoptadas; no afirmar que todos los códigos HTTP permanecen idénticos en ese caso.
 
 | Superficie | Compatibilidad requerida |
 | --- | --- |
@@ -127,6 +144,8 @@ No se agrega endpoint bootstrap ni cambia el contrato público de GET sesión, G
 | `GET /api/onboarding/checklist` | Misma forma, estados de error y exclusividad owner; contexto de sesión compartido dentro del Request |
 | `GET /api/analytics/inbox` | Contrato 2 intacto: ready/preparing, timezone, preparedAt, nextReminderAt, refreshAfterMs y cards; mismos códigos de error |
 | `POST /api/analytics/inbox/:id/:decision` | Versiones, operationId, idempotencia, carreras, decisiones, privacidad y límites de recordatorio de 0237 sin cambios |
+
+Si se acepta §4.3, añadir al contrato del toggle `PUT /api/modules/:moduleId` y tours `POST /api/onboarding/tours/:tourId` la misma comprobación antes del writer, sin cambiar su dominio. Una denegación de un guard actual sigue precediendo al 409 de ámbito; `operationId` no se reutiliza automáticamente en otro ámbito.
 
 El GET Inbox permanece iniciado por componente visible. SSR/prefetch del shell no llama a `readInbox`, no dispara evaluación diaria ni registra exposición. Deduplicar GET simultáneos no los convierte en un caché persistente: un refresco intencional posterior hace una lectura nueva. Mantener expiración local, recordatorios, fallback de 3 s, try-lock sin espera, decisiones optimistas vigentes y protección frente a respuestas tardías. No trasladar efectos a `useMemo`, render, cálculo de navegación ni un layout prefetcheado.
 
@@ -140,20 +159,23 @@ El GET Inbox permanece iniciado por componente visible. SSR/prefetch del shell n
 - Seed sin GET auxiliares, un Inbox/un checklist por montaje; focos/eventos simultáneos, errores y reintento, logout y respuesta tardía; compatibilidad con las carreras de `inbox-state` ya cubiertas.
 - Inbox real protegido con 0 y con hasta 5 tarjetas: mismo contenido/acciones, exposición una vez por reglas existentes, recordatorio, expiración, contención/preparing y acciones conservadas. Sin skips/retries para declarar PASS.
 - Falla exclusiva de la lectura que referencia suscripción: permiso/email/estado denegados conservan precedencia; caller autorizado que necesita billing sigue fallando; PIN no se adelanta; fallback usa misma selección y no mezcla filas. Distinguirla de una caída total de DB.
-- Navegación interna con layout persistente, reporter con membresía/negocio nulos, cambio de rol/permisos, restricted→ready con misma identidad, seed/RSC tardío tras mutación y cambios estructurales con una sola navegación completa.
+- Navegación interna con layout persistente, reporter con membresía/negocio nulos, cambio de rol/permisos, restricted→ready con misma identidad y seed/RSC tardío tras mutación. Formularios todavía autorizados conservan su edición tras trial→subscribed, cambio de nombre, módulo y permiso no relacionado; cambios de ámbito sí retiran datos anteriores. Sin bucles de refresh.
 - GET Inbox lento→decisión confirmada→remount/foco→respuesta vieja; reintento después de rechazo produce petición real nueva. Desmontaje de un consumidor checklist no aborta al que permanece. Módulos lentos/rechazados no bloquean el Inbox ni dejan rechazo sin observar.
+- Protocolo de ámbito propuesto: cookie A→B sin foco entre render/fetch; nuevo login de la misma cuenta; payload tardío y callbacks de intención anterior; actor con membresía staff en A y owner en B; toggle/acción de tours/Inbox con marca A y cookie B. No operaciones de dominio en 409, sin reintento de escritura en B, marca sin autoridad y clientes sin cabecera compatibles.
 
 ### Rendimiento del conjunto
 
 La [ficha](../factory/0238-plan-carga-backoffice.md) fija receta y recursos antes de correr. Referencia y candidato: build de entrega, mismo host/runtime/config/dataset, política, observador y red. Nunca PROD ni cookie/sessionstorage del navegador del owner. La referencia comparable se captura **antes del código**, como preparación del experimento; la medición de resultado se hace **después de integrar 1 + 2 + 3**, sin evaluaciones parciales para escoger un resultado favorable.
 
-Por revisión/caso: primera entrada conservada separada y 30 recargas con rutas ya usadas, sin descartes por tiempo ni retries. Separar ready vacío, ready con 5 tarjetas, preparing ycontención. La distribución cuantitativa requerida corresponde a los 2 casos ready; preparing/contención requieren recorrido completo y contrato temporal correcto, sin mezclarlos en su percentil. Incluir TTFB/pintura, comienzo/respuestaInbox, momento de contenido utilizable, número de HTTP/SQL, etapas de acceso/conexión/transacción y tamaño serializado. Medir carga conjunta de auxiliares y efectos, no solo el SQL más rápido.
+Por revisión/caso: primera entrada conservada separada y 30 recargas con rutas ya usadas, sin descartes por tiempo ni retries. Separar ready vacío, ready con 5 tarjetas, preparing y contención. La distribución cuantitativa requerida corresponde a los 2 casos ready; preparing/contención requieren recorrido completo y contrato temporal correcto, sin mezclarlos en su percentil. Incluir TTFB/pintura, comienzo/respuesta Inbox, momento de contenido utilizable, número de HTTP/SQL, etapas de acceso/conexión/transacción y tamaño serializado. Medir carga conjunta de auxiliares y efectos, no solo el SQL más rápido.
 
 Aceptar rendimiento solo si: (a) se cumplen conteos/semántica anteriores; (b) mediana y p95 del tiempo hasta Inbox utilizable mejoran en **ambos casos ready**, con trazas que vinculen la reducción al trabajo eliminado; (c) TTFB y primera pintura no empeoran en mediana o p95. Sin margen de regresión inventado ni SLA absoluto nuevo. Si hay ruido o falla, resultado no demostrado/FAIL; conservarlo y corregir causa/método antes de una nueva tanda justificada. No cambiar fixture, sacar red o asumir que falló la DB por duración HTTP. No se exige 30 renders de contención ni 30 generaciones diarias para inflar el experimento.
 
 El FAIL anterior `evaluateBusiness`1817,621042 ms>1000 ms mide otro contrato. Esta spec no lo sustituye, reabre ni acepta. No comparar base en desarrollo con candidato con build de entrega ni el mínimo de una tanda contra el promedio de otra.
 
 **Control del experimento (R1/R2).** M0 congela receta, estimadores y estado temporal; M1 incluye también la base sin optimizar ejecutada en la misma ventana que el candidato, con bloques A/B predeterminados, no solo una comparación contra mediciones de días anteriores. La ficha concreta orden, percentiles, incertidumbre y manifiesto de fixtures. Los percentiles no demuestran por sí solos causalidad; si las condiciones o la incertidumbre no permiten sostener mejora/no regresión, el resultado es no demostrado. Primera exposición, exposición de recarga y cambios de día/vencimiento se distinguen; restauraciones solo fuera del reloj y en datos sintéticos protegidos, sin sacar efectos del tiempo medido.
+
+El observador se instala antes de la navegación y marca Inbox utilizable mientras el stream puede seguir abierto; `load`, DOMContentLoaded, networkidle y EOF son métricas separadas y no condiciones para empezar a observar. La revalidación adversarial de `20e81dfb` cerró B1/B2 y comprobó R1–R4; el [informe](../factory/0238-adversarial-review.md) distingue ese cierre documental de cualquier futura aceptación de producto/rendimiento.
 
 ## 7. Archivos, dependencias y checks
 
@@ -167,7 +189,7 @@ Pruebas focales de guards/reporters/billing/tenant, datos/consultas y browser de
 
 ## 8. Definition of Done
 
-- [ ] Spec y ADR revisados y cerrados/aceptados; reserva documental local antes del código.
+- [ ] Spec y ADR revisados y cerrados/aceptados, incluida decisión explícita sobre el contrato de ámbito propuesto de §4.3; reserva documental local antes del código.
 - [ ] Las 3 mejoras integradas con contrato inicial versionado y sin cambios de acceso/ciclo.
 - [ ] Matriz de aislamiento/precedencia y negativos reales PASS; guards compartidos revisados en todos sus consumidores afectados.
 - [ ] Conteos de página/API/navegador comprobados en app real y Strict Mode sin ocultar duplicación.
