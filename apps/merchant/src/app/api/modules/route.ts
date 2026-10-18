@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { apiOwnerFailureResponse } from "../../../server/api-owner";
 import { requireApiMember } from "../../../server/api-member";
-import { listModules } from "../../../modules/activation";
+import { listModulesWithCategory } from "../../../modules/activation";
+import { getBackofficeRequestContext } from "../../../server/backoffice-context";
 import { moduleErrorResponse } from "../../../modules/errors";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +21,17 @@ export async function GET(request: Request) {
   });
   if ("failure" in auth) return apiOwnerFailureResponse(auth.failure);
   try {
-    return NextResponse.json({ modules: await listModules(auth.business.id) });
+    const selection =
+      await getBackofficeRequestContext(request).readSelection("active-member");
+    if (selection.state === "recovered") throw selection.error;
+    if (!selection.data || selection.data.member.id !== auth.business.id)
+      throw new Error("Modules guard and selection disagree");
+    return NextResponse.json({
+      modules: await listModulesWithCategory(
+        auth.business.id,
+        selection.data.member.categoryGcid,
+      ),
+    });
   } catch (error) {
     return moduleErrorResponse(error, "No pudimos leer los módulos.");
   }

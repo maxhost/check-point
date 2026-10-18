@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ModuleError } from "./errors";
+import { MODULES } from "./registry";
 
 /**
  * Spec 0220 / ADR 0141 §4 — EL TOGGLE CORRE `beforeDisable` SOLO AL APAGAR, bajo su lock y DESPUES
@@ -14,6 +15,7 @@ const h = vi.hoisted(() => ({
   calls: [] as string[],
   posRule: vi.fn(),
   tablesRule: vi.fn(),
+  reads: vi.fn(),
 }));
 
 vi.mock("@mi-pasaporte/db", async (importOriginal) => {
@@ -22,17 +24,20 @@ vi.mock("@mi-pasaporte/db", async (importOriginal) => {
       h.calls.push("lock");
       return { rows: [] };
     },
-    select: () => ({
-      from: () => ({
-        where: () => {
-          const rows = h.enabled.map((id) => ({ id, enabled: true }));
-          return {
-            limit: async () => [{ gcid: null }],
-            then: (resolve: (value: unknown) => unknown) => resolve(rows),
-          };
-        },
-      }),
-    }),
+    select: () => {
+      h.reads();
+      return {
+        from: () => ({
+          where: () => {
+            const rows = h.enabled.map((id) => ({ id, enabled: true }));
+            return {
+              limit: async () => [{ gcid: null }],
+              then: (resolve: (value: unknown) => unknown) => resolve(rows),
+            };
+          },
+        }),
+      };
+    },
     insert: () => ({
       values: () => ({
         onConflictDoUpdate: async () => {
@@ -43,6 +48,7 @@ vi.mock("@mi-pasaporte/db", async (importOriginal) => {
   };
   return {
     ...(await importOriginal<typeof import("@mi-pasaporte/db")>()),
+    getDb: () => tx,
     withDbTransaction: async (work: (t: unknown) => Promise<unknown>) =>
       work(tx),
   };
@@ -63,13 +69,15 @@ vi.mock("./server-registry", () => ({
   },
 }));
 
-const { setModuleEnabled } = await import("./activation");
+const { setModuleEnabled, listModulesWithCategory, listModules } =
+  await import("./activation");
 
 const refusal = new ModuleError(409, "pos_has_open_orders", "x", {
   openCount: 2,
 });
 
 beforeEach(() => {
+  h.reads.mockClear();
   h.enabled = [];
   h.calls = [];
   h.posRule.mockReset().mockResolvedValue(null);
@@ -118,5 +126,25 @@ describe("toggle con beforeDisable (ADR 0141 §4)", () => {
     await setModuleEnabled("b1", "tables", { enabled: false });
     expect(h.tablesRule).toHaveBeenCalledWith(expect.anything(), "b1");
     expect(h.posRule).not.toHaveBeenCalled();
+  });
+});
+
+describe("preloaded module category", () => {
+  it("uses the supplied category for suggestions without another category read", async () => {
+    const category = MODULES.flatMap((m) => m.suggestedFor)[0];
+    expect(category).toBeDefined();
+    const modules = await listModulesWithCategory("b1", category!);
+    expect(modules.map((m) => [m.id, m.suggested])).toEqual(
+      MODULES.map((m) => [m.id, m.suggestedFor.includes(category!)]),
+    );
+    expect(h.reads).toHaveBeenCalledTimes(1);
+  });
+  it("keeps the legacy DTO and registry order with one read instead of two", async () => {
+    h.enabled = ["pos"];
+    const expected = await listModules("b1");
+    expect(h.reads).toHaveBeenCalledTimes(2);
+    h.reads.mockClear();
+    expect(await listModulesWithCategory("b1", null)).toEqual(expected);
+    expect(h.reads).toHaveBeenCalledTimes(1);
   });
 });

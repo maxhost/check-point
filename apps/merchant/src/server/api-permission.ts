@@ -3,6 +3,7 @@ import {
   getBackofficeRequestContext,
   type BackofficeDataContext,
 } from "./backoffice-context";
+import { memberEmailFailure } from "./member-email-gate";
 import { pinChangeFailure } from "./pin-change-gate";
 // Desde la HOJA pura, igual que `api-owner.ts`: `DEFAULT_MESSAGES` no esta entre lo que ese
 // modulo re-exporta, y traerlo de acá evita una re-exportacion nueva en un archivo que la
@@ -122,15 +123,12 @@ export async function memberLadder(
 
   // PASO 4 — el email, y SOLO para el owner. `!== true` y no `!`: un `undefined` cierra en
   // vez de abrir (fail-closed en el dato).
-  if (resolved.role === "owner" && resolved.emailVerified !== true) {
-    return {
-      failure: {
-        status: 403,
-        code: API_OWNER_CODES.emailNotVerified,
-        message: messages.emailNotVerified ?? DEFAULT_MESSAGES.emailNotVerified,
-      },
-    };
-  }
+  const email = memberEmailFailure(
+    resolved.role,
+    resolved.emailVerified,
+    messages.emailNotVerified,
+  );
+  if (email) return { failure: email };
 
   return await statusStep(resolved, getBackofficeRequestContext(request));
 }

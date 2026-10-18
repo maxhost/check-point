@@ -94,6 +94,15 @@ export async function enabledModuleList(businessId: string): Promise<string[]> {
   return MODULES.filter((m) => enabled.has(m.id)).map((m) => m.id);
 }
 
+/** Server context already selected category: one enabled-module read, same DTO constructor. */
+export async function listModulesWithCategory(
+  businessId: string,
+  categoryGcid: string | null,
+): Promise<ModuleDTO[]> {
+  const enabled = await enabledSet(getDb(), businessId);
+  return MODULES.map((manifest) => toDTO(manifest, enabled, categoryGcid));
+}
+
 /** `GET /api/modules` — todos los del registro, en su orden. */
 export async function listModules(businessId: string): Promise<ModuleDTO[]> {
   const db = getDb();
