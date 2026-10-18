@@ -1,0 +1,1190 @@
+{
+  "method": "M0 descriptive:18independent flows,3per role/variant; no causal A/B or p95 confidence claim;3separate smokes; growing history, no ledger resets",
+  "source": "29b716cb2682a01ab8970c9a9af4ee19f03769a1",
+  "buildSource": "6f8e1e9cecdd33930c5f055db43641d805dbe3c2",
+  "buildId": "VLV2fFFeM_dUWKnxvv7iY",
+  "freezeSha256": "d2649514130f2a2afd60ff58e7dd78b165da6900e7f4f5b448f872157bd19119",
+  "flowFixtureSha256": "dcef2dae9e58645f210a239fc93c66538c0af328b1bf11e430b5b77b3085cdb4",
+  "startedAt": "2026-10-18T19:33:48.078Z",
+  "finishedAt": "2026-10-18T19:38:14.840Z",
+  "camera": "deterministic synthetic BarcodeDetector/media stream; not physical decode latency",
+  "totals": {
+    "validCampaign": 18,
+    "validSeparateSmokes": 3,
+    "failedBrowserAttempts": 1,
+    "browserErrors": 0,
+    "browserExternalRequests": 0,
+    "sqlStarts": 2856,
+    "sqlEnds": 2856,
+    "sqlErrors": 0,
+    "commits": 108,
+    "requestStarts": 669,
+    "requestEnds": 651
+  },
+  "cells": [
+    {
+      "role": "owner",
+      "variant": "none",
+      "n": 3,
+      "medianMs": {
+        "catalogInteractiveMs": 1479.7000000476837,
+        "saveConfirmedMs": 1892.2999999523163,
+        "qrResolvedMs": 2362.5,
+        "paymentReadyMs": 1864.3000000715256,
+        "closeConfirmedMs": 3408,
+        "observedFirstCloseWSBeginToCommitEndMs": 2030.5009765625,
+        "firstCloseCommitDriverMs": 109.32520900003146,
+        "closeRequestMs": 2972.417708999943
+      }
+    },
+    {
+      "role": "owner",
+      "variant": "discount",
+      "n": 3,
+      "medianMs": {
+        "catalogInteractiveMs": 1546.3999999761581,
+        "saveConfirmedMs": 1897.6000000238419,
+        "qrResolvedMs": 2371.2000000476837,
+        "paymentReadyMs": 1890.2999999523163,
+        "closeConfirmedMs": 4479.300000071526,
+        "observedFirstCloseWSBeginToCommitEndMs": 3288.490478515625,
+        "firstCloseCommitDriverMs": 108.47754200000782,
+        "closeRequestMs": 4288.920207999996
+      }
+    },
+    {
+      "role": "owner",
+      "variant": "zero",
+      "n": 3,
+      "medianMs": {
+        "catalogInteractiveMs": 1526.2999999523163,
+        "saveConfirmedMs": 1889,
+        "qrResolvedMs": 2382.7000000476837,
+        "paymentReadyMs": 1389.1999999284744,
+        "closeConfirmedMs": 4494,
+        "observedFirstCloseWSBeginToCommitEndMs": 2990.892822265625,
+        "firstCloseCommitDriverMs": 110.37845800002106,
+        "closeRequestMs": 3956.5992500000284
+      }
+    },
+    {
+      "role": "staff",
+      "variant": "none",
+      "n": 3,
+      "medianMs": {
+        "catalogInteractiveMs": 1525,
+        "saveConfirmedMs": 1905.5,
+        "qrResolvedMs": 2398,
+        "paymentReadyMs": 1874.5,
+        "closeConfirmedMs": 3442.8000000715256,
+        "observedFirstCloseWSBeginToCommitEndMs": 2049.337646484375,
+        "firstCloseCommitDriverMs": 112.50216699996963,
+        "closeRequestMs": 3025.171207999985
+      }
+    },
+    {
+      "role": "staff",
+      "variant": "discount",
+      "n": 3,
+      "medianMs": {
+        "catalogInteractiveMs": 1543.8000000715256,
+        "saveConfirmedMs": 1905.7999999523163,
+        "qrResolvedMs": 2384.5,
+        "paymentReadyMs": 1892.5,
+        "closeConfirmedMs": 4504,
+        "observedFirstCloseWSBeginToCommitEndMs": 3331.848388671875,
+        "firstCloseCommitDriverMs": 110.46358300000429,
+        "closeRequestMs": 4299.0212089999695
+      }
+    },
+    {
+      "role": "staff",
+      "variant": "zero",
+      "n": 3,
+      "medianMs": {
+        "catalogInteractiveMs": 1520.2000000476837,
+        "saveConfirmedMs": 1900.0999999046326,
+        "qrResolvedMs": 2398.2999999523163,
+        "paymentReadyMs": 1381.6999999284744,
+        "closeConfirmedMs": 4468.299999952316,
+        "observedFirstCloseWSBeginToCommitEndMs": 2969.204345703125,
+        "firstCloseCommitDriverMs": 108.59941699996125,
+        "closeRequestMs": 3961.171915999963
+      }
+    }
+  ],
+  "perAttempt": [
+    {
+      "role": "owner",
+      "variant": "none",
+      "index": 0,
+      "catalogInteractiveMs": 1526.1999999284744,
+      "saveConfirmedMs": 2401.7999999523163,
+      "qrResolvedMs": 2362.5,
+      "paymentReadyMs": 1869.3999999761581,
+      "closeConfirmedMs": 3400.399999976158,
+      "closeBodySha256": "ff5eb0f93ca025ca21f656c3d3ac2a0deb278cb609316aedc6425d5e83a233e1",
+      "payments": 1,
+      "httpRequests": 11,
+      "sql": {
+        "sqlStarts": 146,
+        "sqlEnds": 146,
+        "sqlErrors": 0,
+        "commits": 6
+      },
+      "observedFirstCloseWSBeginToCommitEndMs": 2012.6220703125,
+      "firstCloseCommitDriverMs": 108.41775000002235,
+      "closeRequestMs": 2941.0909589999937,
+      "transactionPhaseMs": null,
+      "closeGuardMs": [
+        468.8392500000191
+      ],
+      "afterGrantScheduleMs": [
+        0.1394589999690652
+      ],
+      "moduleEventsAftercommitMs": [
+        3041.729457999987
+      ],
+      "longTasks": 0
+    },
+    {
+      "role": "owner",
+      "variant": "none",
+      "index": 1,
+      "catalogInteractiveMs": 1479.7000000476837,
+      "saveConfirmedMs": 1881.1000000238419,
+      "qrResolvedMs": 2366,
+      "paymentReadyMs": 1864.3000000715256,
+      "closeConfirmedMs": 3408,
+      "closeBodySha256": "89b558a397aa05063e22261be3246f70f6d92d0164f734a2298f4346c9199e08",
+      "payments": 1,
+      "httpRequests": 11,
+      "sql": {
+        "sqlStarts": 146,
+        "sqlEnds": 146,
+        "sqlErrors": 0,
+        "commits": 6
+      },
+      "observedFirstCloseWSBeginToCommitEndMs": 2030.915283203125,
+      "firstCloseCommitDriverMs": 110.08183300000383,
+      "closeRequestMs": 2972.417708999943,
+      "transactionPhaseMs": null,
+      "closeGuardMs": [
+        458.84070800000336
+      ],
+      "afterGrantScheduleMs": [
+        0.49870900000678375
+      ],
+      "moduleEventsAftercommitMs": [
+        3060.626292000001
+      ],
+      "longTasks": 0
+    },
+    {
+      "role": "owner",
+      "variant": "none",
+      "index": 2,
+      "catalogInteractiveMs": 1467,
+      "saveConfirmedMs": 1892.2999999523163,
+      "qrResolvedMs": 2356.2999999523163,
+      "paymentReadyMs": 1860.6000000238419,
+      "closeConfirmedMs": 3444.4000000953674,
+      "closeBodySha256": "8b513617fd0afe5c4951e9faf00cb3fe2ab2ff76f1c9844765f77836c83bd1db",
+      "payments": 1,
+      "httpRequests": 11,
+      "sql": {
+        "sqlStarts": 146,
+        "sqlEnds": 146,
+        "sqlErrors": 0,
+        "commits": 6
+      },
+      "observedFirstCloseWSBeginToCommitEndMs": 2030.5009765625,
+      "firstCloseCommitDriverMs": 109.32520900003146,
+      "closeRequestMs": 3003.06479199999,
+      "transactionPhaseMs": null,
+      "closeGuardMs": [
+        470.77370900003007
+      ],
+      "afterGrantScheduleMs": [
+        0.4980830000131391
+      ],
+      "moduleEventsAftercommitMs": [
+        3107.967874999973
+      ],
+      "longTasks": 0
+    },
+    {
+      "role": "owner",
+      "variant": "discount",
+      "index": 0,
+      "catalogInteractiveMs": 1495.8999999761581,
+      "saveConfirmedMs": 1892.6000000238419,
+      "qrResolvedMs": 2355.899999976158,
+      "paymentReadyMs": 1872.3999999761581,
+      "closeConfirmedMs": 4447.799999952316,
+      "closeBodySha256": "df624f02ce97ef6e84ef14a9a721dca65e5fbf80b7b1e4a430e24b9dfd2b35a0",
+      "payments": 1,
+      "httpRequests": 11,
+      "sql": {
+        "sqlStarts": 172,
+        "sqlEnds": 172,
+        "sqlErrors": 0,
+        "commits": 6
+      },
+      "observedFirstCloseWSBeginToCommitEndMs": 3219.919677734375,
+      "firstCloseCommitDriverMs": 107.59112499997718,
+      "closeRequestMs": 4174.644874999998,
+      "transactionPhaseMs": null,
+      "closeGuardMs": [
+        470.1663749999716
+      ],
+      "afterGrantScheduleMs": [
+        0.4794580000452697
+      ],
+      "moduleEventsAftercommitMs": [
+        4850.098750000005
+      ],
+      "longTasks": 0
+    },
+    {
+      "role": "owner",
+      "variant": "discount",
+      "index": 1,
+      "catalogInteractiveMs": 1546.3999999761581,
+      "saveConfirmedMs": 1897.6000000238419,
+      "qrResolvedMs": 2399.600000023842,
+      "paymentReadyMs": 1890.2999999523163,
+      "closeConfirmedMs": 4479.300000071526,
+      "closeBodySha256": "e59a74e42d0c785b5e52ae365b5ecdde16e39ead52755059799c15eaa39c8d84",
+      "payments": 1,
+      "httpRequests": 11,
+      "sql": {
+        "sqlStarts": 172,
+        "sqlEnds": 172,
+        "sqlErrors": 0,
+        "commits": 6
+      },
+      "observedFirstCloseWSBeginToCommitEndMs": 3288.490478515625,
+      "firstCloseCommitDriverMs": 115.80841699999291,
+      "closeRequestMs": 4288.920207999996,
+      "transactionPhaseMs": null,
+      "closeGuardMs": [
+        462.2412079999922
+      ],
+      "afterGrantScheduleMs": [
+        0.6421659999759868
+      ],
+      "moduleEventsAftercommitMs": [
+        4584.800625000033
+      ],
+      "longTasks": 0
+    },
+    {
+      "role": "owner",
+      "variant": "discount",
+      "index": 2,
+      "catalogInteractiveMs": 1550.6999999284744,
+      "saveConfirmedMs": 1920.2999999523163,
+      "qrResolvedMs": 2371.2000000476837,
+      "paymentReadyMs": 1905,
+      "closeConfirmedMs": 4490.899999976158,
+      "closeBodySha256": "8f3fa91d3a0d0ec57aa6052ceeea433739071a883ee45db102ecd094210c1026",
+      "payments": 1,
+      "httpRequests": 11,
+      "sql": {
+        "sqlStarts": 172,
+        "sqlEnds": 172,
+        "sqlErrors": 0,
+        "commits": 6
+      },
+      "observedFirstCloseWSBeginToCommitEndMs": 3300.906982421875,
+      "firstCloseCommitDriverMs": 108.47754200000782,
+      "closeRequestMs": 4294.725791999954,
+      "transactionPhaseMs": null,
+      "closeGuardMs": [
+        470.7807080000057
+      ],
+      "afterGrantScheduleMs": [
+        0.7992500000400469
+      ],
+      "moduleEventsAftercommitMs": [
+        4725.45745799999
+      ],
+      "longTasks": 0
+    },
+    {
+      "role": "owner",
+      "variant": "zero",
+      "index": 0,
+      "catalogInteractiveMs": 1526.2999999523163,
+      "saveConfirmedMs": 1889,
+      "qrResolvedMs": 2382.7000000476837,
+      "paymentReadyMs": 1374.8999999761581,
+      "closeConfirmedMs": 4515.199999928474,
+      "closeBodySha256": "77e45bcae52925b476568ee5789905a6aa1420b500e0d17d6c6ed4bba89debef",
+      "payments": 0,
+      "httpRequests": 10,
+      "sql": {
+        "sqlStarts": 164,
+        "sqlEnds": 164,
+        "sqlErrors": 0,
+        "commits": 6
+      },
+      "observedFirstCloseWSBeginToCommitEndMs": 2990.892822265625,
+      "firstCloseCommitDriverMs": 114.9120830000029,
+      "closeRequestMs": 3971.884665999969,
+      "transactionPhaseMs": null,
+      "closeGuardMs": [
+        460.5758330000099
+      ],
+      "afterGrantScheduleMs": [
+        0.43399999995017424
+      ],
+      "moduleEventsAftercommitMs": [
+        4287.387792000023
+      ],
+      "longTasks": 0
+    },
+    {
+      "role": "owner",
+      "variant": "zero",
+      "index": 1,
+      "catalogInteractiveMs": 1518.0999999046326,
+      "saveConfirmedMs": 1898.7999999523163,
+      "qrResolvedMs": 2383.6999999284744,
+      "paymentReadyMs": 1389.1999999284744,
+      "closeConfirmedMs": 4008.6999999284744,
+      "closeBodySha256": "2529230d60593bed1c1800ee335eb848d54a5db16c1f1fad7f890ea883200b57",
+      "payments": 0,
+      "httpRequests": 10,
+      "sql": {
+        "sqlStarts": 164,
+        "sqlEnds": 164,
+        "sqlErrors": 0,
+        "commits": 6
+      },
+      "observedFirstCloseWSBeginToCommitEndMs": 2965.8583984375,
+      "firstCloseCommitDriverMs": 110.37845800002106,
+      "closeRequestMs": 3944.1067079999484,
+      "transactionPhaseMs": null,
+      "closeGuardMs": [
+        461.8932919999934
+      ],
+      "afterGrantScheduleMs": [
+        0.8986250000307336
+      ],
+      "moduleEventsAftercommitMs": [
+        4721.596666999976
+      ],
+      "longTasks": 0
+    },
+    {
+      "role": "owner",
+      "variant": "zero",
+      "index": 2,
+      "catalogInteractiveMs": 1552.1000000238419,
+      "saveConfirmedMs": 1877.8999999761581,
+      "qrResolvedMs": 2354.7000000476837,
+      "paymentReadyMs": 1391.8999999761581,
+      "closeConfirmedMs": 4494,
+      "closeBodySha256": "48bfdad2dc761b228be031fb05f60c825a040d7ca02fde6377c0d2f0831f48ff",
+      "payments": 0,
+      "httpRequests": 10,
+      "sql": {
+        "sqlStarts": 164,
+        "sqlEnds": 164,
+        "sqlErrors": 0,
+        "commits": 6
+      },
+      "observedFirstCloseWSBeginToCommitEndMs": 2992.9580078125,
+      "firstCloseCommitDriverMs": 109.953125,
+      "closeRequestMs": 3956.5992500000284,
+      "transactionPhaseMs": null,
+      "closeGuardMs": [
+        457.86954200000037
+      ],
+      "afterGrantScheduleMs": [
+        0.13774999999441206
+      ],
+      "moduleEventsAftercommitMs": [
+        4379.84066700004
+      ],
+      "longTasks": 0
+    },
+    {
+      "role": "staff",
+      "variant": "none",
+      "index": 0,
+      "catalogInteractiveMs": 1513,
+      "saveConfirmedMs": 1907.2000000476837,
+      "qrResolvedMs": 2409,
+      "paymentReadyMs": 1874.5,
+      "closeConfirmedMs": 3438.5,
+      "closeBodySha256": "d42596331fa58f08a125f238e0452204944b87f483f059285b2d6b67e855ddfd",
+      "payments": 1,
+      "httpRequests": 10,
+      "sql": {
+        "sqlStarts": 142,
+        "sqlEnds": 142,
+        "sqlErrors": 0,
+        "commits": 6
+      },
+      "observedFirstCloseWSBeginToCommitEndMs": 2030.845703125,
+      "firstCloseCommitDriverMs": 116.8450840000296,
+      "closeRequestMs": 3025.171207999985,
+      "transactionPhaseMs": null,
+      "closeGuardMs": [
+        474.89158400002634
+      ],
+      "afterGrantScheduleMs": [
+        0.9671659999876283
+      ],
+      "moduleEventsAftercommitMs": [
+        3156.0949580000015
+      ],
+      "longTasks": 0
+    },
+    {
+      "role": "staff",
+      "variant": "none",
+      "index": 1,
+      "catalogInteractiveMs": 1581.1000000238419,
+      "saveConfirmedMs": 1905.5,
+      "qrResolvedMs": 2398,
+      "paymentReadyMs": 1868.6999999284744,
+      "closeConfirmedMs": 3502.2000000476837,
+      "closeBodySha256": "61611efddb75ddb582d0fc4244a941df545a06243a35d3de78f8e52f326b8037",
+      "payments": 1,
+      "httpRequests": 10,
+      "sql": {
+        "sqlStarts": 142,
+        "sqlEnds": 142,
+        "sqlErrors": 0,
+        "commits": 6
+      },
+      "observedFirstCloseWSBeginToCommitEndMs": 2065.80615234375,
+      "firstCloseCommitDriverMs": 112.50216699996963,
+      "closeRequestMs": 3067.446082999988,
+      "transactionPhaseMs": null,
+      "closeGuardMs": [
+        475.37945800001035
+      ],
+      "afterGrantScheduleMs": [
+        0.967000000004191
+      ],
+      "moduleEventsAftercommitMs": [
+        3226.5392909999937
+      ],
+      "longTasks": 0
+    },
+    {
+      "role": "staff",
+      "variant": "none",
+      "index": 2,
+      "catalogInteractiveMs": 1525,
+      "saveConfirmedMs": 1897.6999999284744,
+      "qrResolvedMs": 2395.100000023842,
+      "paymentReadyMs": 1893.2999999523163,
+      "closeConfirmedMs": 3442.8000000715256,
+      "closeBodySha256": "fa1b79f5222e39a4d1bd70acfb9398721f3d577e7b19e25a37635abf93e2bd1c",
+      "payments": 1,
+      "httpRequests": 10,
+      "sql": {
+        "sqlStarts": 142,
+        "sqlEnds": 142,
+        "sqlErrors": 0,
+        "commits": 6
+      },
+      "observedFirstCloseWSBeginToCommitEndMs": 2049.337646484375,
+      "firstCloseCommitDriverMs": 110.09049999999115,
+      "closeRequestMs": 3014.04800000001,
+      "transactionPhaseMs": null,
+      "closeGuardMs": [
+        460.6588750000228
+      ],
+      "afterGrantScheduleMs": [
+        0.7159589999937452
+      ],
+      "moduleEventsAftercommitMs": [
+        3160.1743750000023
+      ],
+      "longTasks": 0
+    },
+    {
+      "role": "staff",
+      "variant": "discount",
+      "index": 0,
+      "catalogInteractiveMs": 1575.3999999761581,
+      "saveConfirmedMs": 1912.7000000476837,
+      "qrResolvedMs": 2384.5,
+      "paymentReadyMs": 1877.5,
+      "closeConfirmedMs": 4504,
+      "closeBodySha256": "c9c774612051285050010c8484e502a63dbf076bcae403990487080828cf9832",
+      "payments": 1,
+      "httpRequests": 10,
+      "sql": {
+        "sqlStarts": 168,
+        "sqlEnds": 168,
+        "sqlErrors": 0,
+        "commits": 6
+      },
+      "observedFirstCloseWSBeginToCommitEndMs": 3331.848388671875,
+      "firstCloseCommitDriverMs": 110.46358300000429,
+      "closeRequestMs": 4295.2974580000155,
+      "transactionPhaseMs": null,
+      "closeGuardMs": [
+        455.2380000000121
+      ],
+      "afterGrantScheduleMs": [
+        0.9506660000188276
+      ],
+      "moduleEventsAftercommitMs": [
+        4701.545125000004
+      ],
+      "longTasks": 0
+    },
+    {
+      "role": "staff",
+      "variant": "discount",
+      "index": 1,
+      "catalogInteractiveMs": 1543.8000000715256,
+      "saveConfirmedMs": 1905.7999999523163,
+      "qrResolvedMs": 2392.3000000715256,
+      "paymentReadyMs": 1899.6999999284744,
+      "closeConfirmedMs": 4490.899999976158,
+      "closeBodySha256": "bf38d4586b2dcdc67895ec9be4a0b8e15b1ba94b2a68ea2cdf332c03fcc110b8",
+      "payments": 1,
+      "httpRequests": 10,
+      "sql": {
+        "sqlStarts": 168,
+        "sqlEnds": 168,
+        "sqlErrors": 0,
+        "commits": 6
+      },
+      "observedFirstCloseWSBeginToCommitEndMs": 3326.01171875,
+      "firstCloseCommitDriverMs": 113.247583999997,
+      "closeRequestMs": 4299.0212089999695,
+      "transactionPhaseMs": null,
+      "closeGuardMs": [
+        462.68612500000745
+      ],
+      "afterGrantScheduleMs": [
+        0.4655829999828711
+      ],
+      "moduleEventsAftercommitMs": [
+        4584.9027910000295
+      ],
+      "longTasks": 0
+    },
+    {
+      "role": "staff",
+      "variant": "discount",
+      "index": 2,
+      "catalogInteractiveMs": 1537.6000000238419,
+      "saveConfirmedMs": 1897.5,
+      "qrResolvedMs": 2356.2999999523163,
+      "paymentReadyMs": 1892.5,
+      "closeConfirmedMs": 4515.399999976158,
+      "closeBodySha256": "9164bacff13309e20699eb7a80b534e48864efd0083c086f44b25b8b4bd38e08",
+      "payments": 1,
+      "httpRequests": 10,
+      "sql": {
+        "sqlStarts": 168,
+        "sqlEnds": 168,
+        "sqlErrors": 0,
+        "commits": 6
+      },
+      "observedFirstCloseWSBeginToCommitEndMs": 3375.939453125,
+      "firstCloseCommitDriverMs": 108.88933399994858,
+      "closeRequestMs": 4370.419041999965,
+      "transactionPhaseMs": null,
+      "closeGuardMs": [
+        473.0815409999341
+      ],
+      "afterGrantScheduleMs": [
+        0.5922500001033768
+      ],
+      "moduleEventsAftercommitMs": [
+        4585.062042000005
+      ],
+      "longTasks": 0
+    },
+    {
+      "role": "staff",
+      "variant": "zero",
+      "index": 0,
+      "catalogInteractiveMs": 1517.5,
+      "saveConfirmedMs": 1899.8999999761581,
+      "qrResolvedMs": 2892.899999976158,
+      "paymentReadyMs": 1359.7000000476837,
+      "closeConfirmedMs": 4470.5,
+      "closeBodySha256": "e15c5af91e6647ecf95d0b526303532a7cb8e1c413688a5ac512b64ed81550fb",
+      "payments": 0,
+      "httpRequests": 9,
+      "sql": {
+        "sqlStarts": 160,
+        "sqlEnds": 160,
+        "sqlErrors": 0,
+        "commits": 6
+      },
+      "observedFirstCloseWSBeginToCommitEndMs": 2969.204345703125,
+      "firstCloseCommitDriverMs": 108.29795800009742,
+      "closeRequestMs": 3944.613040999975,
+      "transactionPhaseMs": null,
+      "closeGuardMs": [
+        465.38395799999125
+      ],
+      "afterGrantScheduleMs": [
+        0.19787500007078052
+      ],
+      "moduleEventsAftercommitMs": [
+        4724.786332999938
+      ],
+      "longTasks": 0
+    },
+    {
+      "role": "staff",
+      "variant": "zero",
+      "index": 1,
+      "catalogInteractiveMs": 1538.3999999761581,
+      "saveConfirmedMs": 1926.1000000238419,
+      "qrResolvedMs": 2387.7999999523163,
+      "paymentReadyMs": 1381.6999999284744,
+      "closeConfirmedMs": 4468.299999952316,
+      "closeBodySha256": "687c682f91a7d3818a27ad9aee92a705a0908dc61483b31093152fd4dd88cd97",
+      "payments": 0,
+      "httpRequests": 9,
+      "sql": {
+        "sqlStarts": 160,
+        "sqlEnds": 160,
+        "sqlErrors": 0,
+        "commits": 6
+      },
+      "observedFirstCloseWSBeginToCommitEndMs": 3027.611328125,
+      "firstCloseCommitDriverMs": 109.81429199990816,
+      "closeRequestMs": 4027.105582999997,
+      "transactionPhaseMs": null,
+      "closeGuardMs": [
+        481.3862080000108
+      ],
+      "afterGrantScheduleMs": [
+        0.790500000002794
+      ],
+      "moduleEventsAftercommitMs": [
+        4672.662459000014
+      ],
+      "longTasks": 0
+    },
+    {
+      "role": "staff",
+      "variant": "zero",
+      "index": 2,
+      "catalogInteractiveMs": 1520.2000000476837,
+      "saveConfirmedMs": 1900.0999999046326,
+      "qrResolvedMs": 2398.2999999523163,
+      "paymentReadyMs": 1392.5,
+      "closeConfirmedMs": 4459.899999976158,
+      "closeBodySha256": "a8fd51054f3666d4767c805821b84968dbcd1b6b48e4728df1aa2bee129c4925",
+      "payments": 0,
+      "httpRequests": 9,
+      "sql": {
+        "sqlStarts": 160,
+        "sqlEnds": 160,
+        "sqlErrors": 0,
+        "commits": 6
+      },
+      "observedFirstCloseWSBeginToCommitEndMs": 2965.009765625,
+      "firstCloseCommitDriverMs": 108.59941699996125,
+      "closeRequestMs": 3961.171915999963,
+      "transactionPhaseMs": null,
+      "closeGuardMs": [
+        475.9386659999145
+      ],
+      "afterGrantScheduleMs": [
+        0.5766249999869615
+      ],
+      "moduleEventsAftercommitMs": [
+        4727.545041000005
+      ],
+      "longTasks": 0
+    }
+  ],
+  "byRequestPath": {
+    "/_next/static/chunks/1970-400b74e62f4e5023.js": {
+      "sqlStarts": 0,
+      "sqlEnds": 0,
+      "sqlErrors": 0,
+      "commits": 0,
+      "requestStarts": 18,
+      "requestEnds": 18,
+      "startsWithoutObservedFinish": 0,
+      "requestStatuses": {
+        "200": 18
+      }
+    },
+    "/_next/static/chunks/2322-930d97eda5e86834.js": {
+      "sqlStarts": 0,
+      "sqlEnds": 0,
+      "sqlErrors": 0,
+      "commits": 0,
+      "requestStarts": 18,
+      "requestEnds": 18,
+      "startsWithoutObservedFinish": 0,
+      "requestStatuses": {
+        "200": 18
+      }
+    },
+    "/_next/static/chunks/292-4b4c4b649041eaad.js": {
+      "sqlStarts": 0,
+      "sqlEnds": 0,
+      "sqlErrors": 0,
+      "commits": 0,
+      "requestStarts": 18,
+      "requestEnds": 18,
+      "startsWithoutObservedFinish": 0,
+      "requestStatuses": {
+        "200": 18
+      }
+    },
+    "/_next/static/chunks/3530-ecfa8353612752a5.js": {
+      "sqlStarts": 0,
+      "sqlEnds": 0,
+      "sqlErrors": 0,
+      "commits": 0,
+      "requestStarts": 18,
+      "requestEnds": 18,
+      "startsWithoutObservedFinish": 0,
+      "requestStatuses": {
+        "200": 18
+      }
+    },
+    "/_next/static/chunks/366-1e7ee26c05fad4c5.js": {
+      "sqlStarts": 0,
+      "sqlEnds": 0,
+      "sqlErrors": 0,
+      "commits": 0,
+      "requestStarts": 18,
+      "requestEnds": 18,
+      "startsWithoutObservedFinish": 0,
+      "requestStatuses": {
+        "200": 18
+      }
+    },
+    "/_next/static/chunks/4915-76a427f0c33f6390.js": {
+      "sqlStarts": 0,
+      "sqlEnds": 0,
+      "sqlErrors": 0,
+      "commits": 0,
+      "requestStarts": 18,
+      "requestEnds": 18,
+      "startsWithoutObservedFinish": 0,
+      "requestStatuses": {
+        "200": 18
+      }
+    },
+    "/_next/static/chunks/516-90564d74b21e7a22.js": {
+      "sqlStarts": 0,
+      "sqlEnds": 0,
+      "sqlErrors": 0,
+      "commits": 0,
+      "requestStarts": 18,
+      "requestEnds": 18,
+      "startsWithoutObservedFinish": 0,
+      "requestStatuses": {
+        "200": 18
+      }
+    },
+    "/_next/static/chunks/5410-6fd6d1ff84a455b3.js": {
+      "sqlStarts": 0,
+      "sqlEnds": 0,
+      "sqlErrors": 0,
+      "commits": 0,
+      "requestStarts": 18,
+      "requestEnds": 18,
+      "startsWithoutObservedFinish": 0,
+      "requestStatuses": {
+        "200": 18
+      }
+    },
+    "/_next/static/chunks/6048.64895bbb0b99dca4.js": {
+      "sqlStarts": 0,
+      "sqlEnds": 0,
+      "sqlErrors": 0,
+      "commits": 0,
+      "requestStarts": 18,
+      "requestEnds": 18,
+      "startsWithoutObservedFinish": 0,
+      "requestStatuses": {
+        "200": 18
+      }
+    },
+    "/_next/static/chunks/871-019c2f8f8d8b0004.js": {
+      "sqlStarts": 0,
+      "sqlEnds": 0,
+      "sqlErrors": 0,
+      "commits": 0,
+      "requestStarts": 18,
+      "requestEnds": 18,
+      "startsWithoutObservedFinish": 0,
+      "requestStatuses": {
+        "200": 18
+      }
+    },
+    "/_next/static/chunks/8811-443a1e3c3d47a49b.js": {
+      "sqlStarts": 0,
+      "sqlEnds": 0,
+      "sqlErrors": 0,
+      "commits": 0,
+      "requestStarts": 18,
+      "requestEnds": 18,
+      "startsWithoutObservedFinish": 0,
+      "requestStatuses": {
+        "200": 18
+      }
+    },
+    "/_next/static/chunks/888-6ed4feab25db89c1.js": {
+      "sqlStarts": 0,
+      "sqlEnds": 0,
+      "sqlErrors": 0,
+      "commits": 0,
+      "requestStarts": 18,
+      "requestEnds": 18,
+      "startsWithoutObservedFinish": 0,
+      "requestStatuses": {
+        "200": 18
+      }
+    },
+    "/_next/static/chunks/8a373515-2472ff86d7e0ed40.js": {
+      "sqlStarts": 0,
+      "sqlEnds": 0,
+      "sqlErrors": 0,
+      "commits": 0,
+      "requestStarts": 18,
+      "requestEnds": 18,
+      "startsWithoutObservedFinish": 0,
+      "requestStatuses": {
+        "200": 18
+      }
+    },
+    "/_next/static/chunks/8ae03caa-077005624ef6de6b.js": {
+      "sqlStarts": 0,
+      "sqlEnds": 0,
+      "sqlErrors": 0,
+      "commits": 0,
+      "requestStarts": 18,
+      "requestEnds": 18,
+      "startsWithoutObservedFinish": 0,
+      "requestStatuses": {
+        "200": 18
+      }
+    },
+    "/_next/static/chunks/915-c70ab01b5e453053.js": {
+      "sqlStarts": 0,
+      "sqlEnds": 0,
+      "sqlErrors": 0,
+      "commits": 0,
+      "requestStarts": 18,
+      "requestEnds": 18,
+      "startsWithoutObservedFinish": 0,
+      "requestStatuses": {
+        "200": 18
+      }
+    },
+    "/_next/static/chunks/9781-bb914b4569b34e51.js": {
+      "sqlStarts": 0,
+      "sqlEnds": 0,
+      "sqlErrors": 0,
+      "commits": 0,
+      "requestStarts": 18,
+      "requestEnds": 18,
+      "startsWithoutObservedFinish": 0,
+      "requestStatuses": {
+        "200": 18
+      }
+    },
+    "/_next/static/chunks/app/backoffice/%5Bmodule%5D/%5B%5B...path%5D%5D/page-c3a3fe737ee0f60d.js": {
+      "sqlStarts": 0,
+      "sqlEnds": 0,
+      "sqlErrors": 0,
+      "commits": 0,
+      "requestStarts": 18,
+      "requestEnds": 18,
+      "startsWithoutObservedFinish": 0,
+      "requestStatuses": {
+        "200": 18
+      }
+    },
+    "/_next/static/chunks/app/backoffice/layout-87a49086e2c25978.js": {
+      "sqlStarts": 0,
+      "sqlEnds": 0,
+      "sqlErrors": 0,
+      "commits": 0,
+      "requestStarts": 18,
+      "requestEnds": 18,
+      "startsWithoutObservedFinish": 0,
+      "requestStatuses": {
+        "200": 18
+      }
+    },
+    "/_next/static/chunks/app/global-error-7f92ad1c849681c7.js": {
+      "sqlStarts": 0,
+      "sqlEnds": 0,
+      "sqlErrors": 0,
+      "commits": 0,
+      "requestStarts": 18,
+      "requestEnds": 18,
+      "startsWithoutObservedFinish": 0,
+      "requestStatuses": {
+        "200": 18
+      }
+    },
+    "/_next/static/chunks/main-app-fa45f4ea22765022.js": {
+      "sqlStarts": 0,
+      "sqlEnds": 0,
+      "sqlErrors": 0,
+      "commits": 0,
+      "requestStarts": 18,
+      "requestEnds": 18,
+      "startsWithoutObservedFinish": 0,
+      "requestStatuses": {
+        "200": 18
+      }
+    },
+    "/_next/static/chunks/webpack-6b9694beb531ad1c.js": {
+      "sqlStarts": 0,
+      "sqlEnds": 0,
+      "sqlErrors": 0,
+      "commits": 0,
+      "requestStarts": 18,
+      "requestEnds": 18,
+      "startsWithoutObservedFinish": 0,
+      "requestStatuses": {
+        "200": 18
+      }
+    },
+    "/_next/static/css/8f1a7f62934340ab.css": {
+      "sqlStarts": 0,
+      "sqlEnds": 0,
+      "sqlErrors": 0,
+      "commits": 0,
+      "requestStarts": 18,
+      "requestEnds": 18,
+      "startsWithoutObservedFinish": 0,
+      "requestStatuses": {
+        "200": 18
+      }
+    },
+    "/api/merchant/session": {
+      "sqlStarts": 72,
+      "sqlEnds": 72,
+      "sqlErrors": 0,
+      "commits": 0,
+      "requestStarts": 18,
+      "requestEnds": 18,
+      "startsWithoutObservedFinish": 0,
+      "requestStatuses": {
+        "200": 18
+      }
+    },
+    "/api/modules/pos/catalog": {
+      "sqlStarts": 144,
+      "sqlEnds": 144,
+      "sqlErrors": 0,
+      "commits": 0,
+      "requestStarts": 18,
+      "requestEnds": 18,
+      "startsWithoutObservedFinish": 0,
+      "requestStatuses": {
+        "200": 18
+      }
+    },
+    "/api/modules/pos/coupon-state": {
+      "sqlStarts": 156,
+      "sqlEnds": 156,
+      "sqlErrors": 0,
+      "commits": 0,
+      "requestStarts": 18,
+      "requestEnds": 18,
+      "startsWithoutObservedFinish": 0,
+      "requestStatuses": {
+        "200": 18
+      }
+    },
+    "/api/modules/pos/orders": {
+      "sqlStarts": 540,
+      "sqlEnds": 540,
+      "sqlErrors": 0,
+      "commits": 18,
+      "requestStarts": 54,
+      "requestEnds": 36,
+      "startsWithoutObservedFinish": 18,
+      "requestStatuses": {
+        "200": 18,
+        "201": 18
+      }
+    },
+    "/api/modules/pos/orders/:id/close": {
+      "sqlStarts": 1350,
+      "sqlEnds": 1350,
+      "sqlErrors": 0,
+      "commits": 90,
+      "requestStarts": 18,
+      "requestEnds": 18,
+      "startsWithoutObservedFinish": 0,
+      "requestStatuses": {
+        "200": 18
+      }
+    },
+    "/api/modules/pos/payment-methods": {
+      "sqlStarts": 60,
+      "sqlEnds": 60,
+      "sqlErrors": 0,
+      "commits": 0,
+      "requestStarts": 12,
+      "requestEnds": 12,
+      "startsWithoutObservedFinish": 0,
+      "requestStatuses": {
+        "200": 12
+      }
+    },
+    "/api/modules/pos/resolve": {
+      "sqlStarts": 300,
+      "sqlEnds": 300,
+      "sqlErrors": 0,
+      "commits": 0,
+      "requestStarts": 18,
+      "requestEnds": 18,
+      "startsWithoutObservedFinish": 0,
+      "requestStatuses": {
+        "200": 18
+      }
+    },
+    "/api/modules/pos/ticket": {
+      "sqlStarts": 90,
+      "sqlEnds": 90,
+      "sqlErrors": 0,
+      "commits": 0,
+      "requestStarts": 18,
+      "requestEnds": 18,
+      "startsWithoutObservedFinish": 0,
+      "requestStatuses": {
+        "200": 18
+      }
+    },
+    "/api/onboarding/checklist": {
+      "sqlStarts": 36,
+      "sqlEnds": 36,
+      "sqlErrors": 0,
+      "commits": 0,
+      "requestStarts": 9,
+      "requestEnds": 9,
+      "startsWithoutObservedFinish": 0,
+      "requestStatuses": {
+        "200": 9
+      }
+    },
+    "/backoffice": {
+      "sqlStarts": 0,
+      "sqlEnds": 0,
+      "sqlErrors": 0,
+      "commits": 0,
+      "requestStarts": 36,
+      "requestEnds": 36,
+      "startsWithoutObservedFinish": 0,
+      "requestStatuses": {
+        "200": 36
+      }
+    },
+    "/backoffice/counter": {
+      "sqlStarts": 0,
+      "sqlEnds": 0,
+      "sqlErrors": 0,
+      "commits": 0,
+      "requestStarts": 18,
+      "requestEnds": 18,
+      "startsWithoutObservedFinish": 0,
+      "requestStatuses": {
+        "200": 18
+      }
+    },
+    "/backoffice/pos": {
+      "sqlStarts": 108,
+      "sqlEnds": 108,
+      "sqlErrors": 0,
+      "commits": 0,
+      "requestStarts": 36,
+      "requestEnds": 36,
+      "startsWithoutObservedFinish": 0,
+      "requestStatuses": {
+        "200": 36
+      }
+    }
+  },
+  "durable": {
+    "ownClosedOrders": 21,
+    "saleEvents": 21,
+    "payments": 14,
+    "couponRedemptions": 14,
+    "ledgerOrdersPerMembership": {
+      "1": 21
+    },
+    "deliveries": {
+      "applied": 21,
+      "skipped": 21
+    },
+    "walletOutbox": {
+      "suppressed": 21
+    },
+    "crossDecisions": {
+      "no_origin": 21
+    }
+  },
+  "exceptions": [
+    {
+      "artifact": "flow-smoke-01.json",
+      "source": "7c4a7d5d2f99f5c545c24199b29846ec7ac0295c",
+      "valid": false,
+      "completed": false,
+      "attempts": [
+        {
+          "role": "owner",
+          "variant": "none",
+          "stage": "catalog",
+          "valid": false,
+          "failure": "TimeoutError",
+          "writes": 0
+        }
+      ],
+      "reason": "Early mobile action before real list; preserved, excluded from successful population"
+    },
+    {
+      "artifact": "flows-inspect-smoke-02.log",
+      "valid": false,
+      "reason": "Oracle expected decimal string but PostgreSQL JSONB emitted numeric14.4; SQL::text fixed representation; same3closed IDs reinspected read-only in02b, no repeated sales"
+    }
+  ],
+  "limits": [
+    "18post-close GETlist requests have no observed response-finish before context close;144SQL completed, cancellation reason not instrumented; no claim of zero pending/cancelled requests",
+    "Transaction phase hook absent:null; first observed WS BEGIN→first COMMIT-end is an observed bracket, not exclusive function CPU",
+    "SQL totals by request include aftercommit work with the same request context; all COMMITs do not count sales",
+    "afterGrant hook measures scheduling only; wallet/cross end-to-end delivery latency unobserved:null",
+    "Wallet outbox suppressed, no physical push/device-delivery claim; recipes skipped because disabled is a durable business outcome, not a skipped required test",
+    "Resource waterfalls/bytes/longtasks/navigation retained in private RAW; browser external count does not measure server egress",
+    "Prepared warm CI DB and persistent local build/start process; synthetic unit fixtures; no weight control or hostingPROD claim"
+  ],
+  "artifacts": {
+    "m0-flows-01.json": "530a4c60ac03df7cd5407726cfd0ce327fa7ca784fc2a06ef80c39fe84237d86",
+    "flow-smoke-02.json": "2480e48443d8ca586209976bf2751d3e3fcd57801e515ac509068f4693e581a8",
+    "flow-smoke-01.json": "c43f42d08d3531bff8a2f78b3916b7fb68a7086951fb270c4f900500a91e4cb4",
+    "flow-fixture.json": "dcef2dae9e58645f210a239fc93c66538c0af328b1bf11e430b5b77b3085cdb4",
+    "fixture.json": "02d4035d414d17df89b5e203d99f04366beacc536f8f8884a3f98f6a7ffa933d",
+    "server-trace.jsonl": "2229711d41791bb1b7514685548cbd0de0b3f2db564d4277b788f6d412b58702",
+    "freeze.json": "d2649514130f2a2afd60ff58e7dd78b165da6900e7f4f5b448f872157bd19119",
+    "control-build-6f.tar.gz": "54cbc567143f7d3e2af43309810c14da6bea647ab50926534ecb4b78109ec5fe",
+    "flows-setup-01.log": "39ecd193f25f0e992efe144d4cd80e424f04d9a7a4c0bb1a5195f9e06ac95f99",
+    "flows-inspect-smoke-02.log": "f3d094c7d6ea2d64c5f067c4216cca05069a07c5845397c765e196427138a136",
+    "flows-inspect-smoke-02b.log": "53c8994bf53a17e7b800142f24eb76991b5ea199688245479178b742ae1ab9f1",
+    "flows-inspect-campaign-01.log": "e56c422ae4470740f1187362f26bc095ea0eb52afd0c7d6803946ea17b7efbb9",
+    "flow-inspection-1792352311534.json": "ad9b95880e40c6dab2244184e26d32f07ad9c6094b41fca91dab33061e3cebbf"
+  }
+}
