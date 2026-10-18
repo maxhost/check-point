@@ -31,3 +31,5 @@ Node24, tipos domain/db/merchant y estáticos/focales/guardias pertinentes. CI e
 Importación real conserva nuevo unit1 e idempotencia/replay sin duplicados ni incrementos en productos omitidos. Reutilizar regresiones legacy compatibles, sin R2 real/proveedor externo ni fullverify/browser/build/M0/M1 por ceremonia. Pruebas de modo mass/unidad en uso/publicación y contratoHTTPv2 quedan en entregas posteriores, no alegarlas aquí.
 
 Handoff SHA/config/runtime/resultados/fallos/skips/límites, commit limpio/0procesos; QA independiente de candidato congelado y factory/integración del coordinador. Sin push/PROD. Correcciones con su autor; siguiente contrato medido con autor nuevo.
+
+Autorización de test DDL por coordinador: función en esquema propio único y trigger de nombre único sobre core.product_location, filtrado estrictamente a productId/locationId exclusivos del fixture, para RAISE controlado tras header. Solo tools/neon-test.sh con CI exclusiva/serial; finally/afterAll elimina trigger, función/esquema y fixtures incluso fallo. No constraints debilitadas, migración canónica ni datos ajenos.
