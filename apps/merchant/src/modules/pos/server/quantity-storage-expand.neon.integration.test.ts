@@ -16,7 +16,7 @@ import {
 const migrationName = "0103_quantity_legacy_storage_expand";
 const migration = readFileSync(
   new URL(
-    `../../../../../../../packages/db/drizzle/${migrationName}.sql`,
+    `../../../../../../packages/db/drizzle/${migrationName}.sql`,
     import.meta.url,
   ),
   "utf8",
@@ -24,7 +24,7 @@ const migration = readFileSync(
 const journal = JSON.parse(
   readFileSync(
     new URL(
-      "../../../../../../../packages/db/drizzle/meta/_journal.json",
+      "../../../../../../packages/db/drizzle/meta/_journal.json",
       import.meta.url,
     ),
     "utf8",
