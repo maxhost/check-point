@@ -116,7 +116,7 @@
     });
     await context.addCookies(cookies);
     await context.addInitScript(
-      ({ count, labels }) => {
+      ({ count, rows, locations }) => {
         const state = (window.__posMeasurement = {
           readyAt: null,
           longTasks: [],
@@ -171,15 +171,35 @@
             e.getAttribute("aria-label")?.startsWith("Abrir M0 "),
           );
           const text = document.body.textContent;
+          const selection = [...document.querySelectorAll("button")].find((b) =>
+            b.getAttribute("aria-label")?.startsWith("Seleccionar local: "),
+          );
+          const selectedName = selection
+            ?.getAttribute("aria-label")
+            ?.slice("Seleccionar local: ".length);
+          const location = locations.find((l) => l.name === selectedName);
+          const expected = location
+            ? rows.filter((row) => row.locationId === location.id)
+            : [];
+          const visible = buttons.map((button) =>
+            rows.find(
+              (row) =>
+                button.getAttribute("aria-label") === `Abrir ${row.label}`,
+            ),
+          );
           const valid = count
-            ? buttons.length === count &&
-              labels.every((l) =>
-                buttons.some(
-                  (b) => b.getAttribute("aria-label") === `Abrir ${l}`,
-                ),
-              )
+            ? !!location &&
+              buttons.length === expected.length &&
+              visible.every(Boolean) &&
+              new Set(visible.map((row) => row.id)).size === expected.length &&
+              expected.every((row) => visible.some((v) => v.id === row.id)) &&
+              buttons.every((button) => !button.disabled)
             : text.includes("No hay órdenes abiertas.");
-          if (valid) state.readyAt = performance.now();
+          if (valid) {
+            state.readyAt = performance.now();
+            state.selectedLocationId = location?.id ?? null;
+            state.visibleOrderIds = visible.map((row) => row?.id ?? null);
+          }
         }
         new MutationObserver(inspect).observe(document, {
           subtree: true,
@@ -190,9 +210,15 @@
       },
       {
         count: fixture.orders.length,
-        labels: fixture.orders.map(
-          (_, i) => `M0 ${String(i).padStart(3, "0")}`,
-        ),
+        rows: fixture.orders.map((id, i) => ({
+          id,
+          label: `M0 ${String(i).padStart(3, "0")}`,
+          locationId: fixture.locations[i % 2],
+        })),
+        locations: fixture.locations.map((id, i) => ({
+          id,
+          name: i ? "Norte" : "Centro",
+        })),
       },
     );
     const page = await context.newPage(),
@@ -279,6 +305,12 @@
             data.open.every(
               (o) =>
                 fixture.orders.includes(o.id) &&
+                o.location?.id ===
+                  fixture.locations[fixture.orders.indexOf(o.id) % 2] &&
+                o.location?.name ===
+                  (fixture.orders.indexOf(o.id) % 2 ? "Norte" : "Centro") &&
+                o.tableLabel ===
+                  `M0 ${String(fixture.orders.indexOf(o.id)).padStart(3, "0")}` &&
                 o.status === "open" &&
                 o.itemCount === fixture.linesPerOrder &&
                 o.total === `${fixture.linesPerOrder * 2}.00`,
@@ -303,6 +335,7 @@
       };
       const a = current;
       report.attempts.push(a);
+      save(); // retain an in-progress attempt if the campaign is interrupted
       await page.setExtraHTTPHeaders({ "x-pos-measurement": a.tag });
       try {
         if (i === 0)
@@ -370,6 +403,7 @@
         a.pageErrors === 0 &&
         a.externalBlocked === 0;
       save();
+      if (!a.valid) break; // preserve failure; require a corrected recipe before further samples
     }
     await context.close();
     report.completed = true;
