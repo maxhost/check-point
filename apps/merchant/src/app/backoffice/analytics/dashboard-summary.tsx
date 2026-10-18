@@ -6,7 +6,7 @@ import { useBackofficeContext } from "../backoffice-context";
 
 const reasons = {
   closed_month:
-    "Faltan datos de gastos como referencia para la estimación mensual.",
+    "Faltan ventas con costos completos como referencia para estimar el mes.",
   expense_history:
     "Faltan referencias de gastos para completar la estimación mensual.",
   cost_coverage:
