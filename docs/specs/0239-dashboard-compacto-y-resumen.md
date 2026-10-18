@@ -23,7 +23,7 @@ El owner pide reemplazar las tarjetas enormes por un Inbox tipo correo y mostrar
 
 ## Datos y contrato HTTP
 
-Nuevo `GET /api/analytics/summary`, lectura privada independiente. Resuelve permiso `analytics` y todos los gates existentes; valida `X-Backoffice-Scope` capturado antes de la intención tras guards y antes de leer dominio. No usa la marca para seleccionar negocio. Reutiliza el protocolo 0238, legacy sin header compatible, mismatch409 `backoffice_context_changed`. Todas sus respuestas `Cache-Control: private, no-store`; no cachear permisos entre peticiones.
+Nuevo `GET /api/analytics/summary`, lectura privada independiente. Resuelve permiso `analytics` mediante `requireApiPermissionSinGateDeEmail`, igual que Inbox e histórico de Analíticas, y conserva los demás gates/precedencia existentes; valida `X-Backoffice-Scope` capturado antes de la intención tras guards y antes de leer dominio. No usa la marca para seleccionar negocio. Reutiliza el protocolo 0238, legacy sin header compatible, mismatch409 `backoffice_context_changed`. Todas sus respuestas `Cache-Control: private, no-store`; no cachear permisos entre peticiones.
 
 Respuesta200 mínima version1: `date`, `timezone`, `currencyCode`, `minorUnit`, `readAt`, `monthBreakEvenMinor`, `dailyBreakEvenMinor`, `todayRevenueMinor`, `estimated` y motivo cerrado de indisponibilidad del equilibrio. Los importes son enteros seguros en unidades menores; mensual/diario admiten null. Tipo puro y builder en dominio, sin imports servidor en UI. El servidor obtiene una sola `readInput` para los tres valores, sin llamar a `readHistory`/`readDay` ni devolver métricas/conceptos/filas completas. Lectura fallida devuelve error operativo local, sin falsos ceros.
 
