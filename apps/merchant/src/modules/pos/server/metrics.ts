@@ -7,7 +7,8 @@ import {
   originalMoney,
   toMinor,
 } from "@mi-pasaporte/domain/financial/rational";
-import { decodeSaleClosedEvent } from "../../../server/module-events/decode";
+import { exactGrams } from "@mi-pasaporte/domain/measures";
+import { decodeMeasuredSaleClosedEvent } from "../../../server/module-events/decode";
 export type OrderVoided = {
   eventVersion: 1;
   sourceOrderId: string;
@@ -29,7 +30,10 @@ export const metricTranslators: readonly MetricTranslator[] = [
   {
     eventType: "sale.closed",
     translate(event) {
-      const p = decodeSaleClosedEvent(event.payload);
+      const p = decodeMeasuredSaleClosedEvent(
+        event.payload,
+        event.eventVersion,
+      );
       const rows: MetricRow[] = [];
       const additionalSources: MetricSource[] = [];
       if (p.eventVersion !== 1) {
@@ -112,7 +116,22 @@ export const metricTranslators: readonly MetricTranslator[] = [
               count: countedProducts.has(line.productId) ? 0 : 1,
               ...money(line.money.net),
             },
-            { ...base, metric: "units_sold", quantity: String(line.quantity) },
+            p.eventVersion === 4 &&
+              "measure" in line &&
+              line.measure.kind === "mass"
+              ? {
+                  ...base,
+                  metric: "mass_sold_g",
+                  quantity: exactGrams({
+                    quantity: line.quantity,
+                    quantityUnit: line.measure.quantityUnit,
+                  }),
+                }
+              : {
+                  ...base,
+                  metric: "units_sold",
+                  quantity: String(line.quantity),
+                },
           );
           countedProducts.add(line.productId);
         }

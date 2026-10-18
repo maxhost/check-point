@@ -7,14 +7,17 @@ import {
   analyticsCustomerId,
   analyticsMoney,
 } from "../server/counter/analytics-events";
-const translate = (eventType: string, payload: unknown) =>
+const translate = <T extends { eventVersion: number }>(
+  eventType: string,
+  payload: T,
+) =>
   [...coreMetricTranslators, ...pos]
     .find((t) => t.eventType === eventType)!
     .translate({
       id: "f9b25355-e805-428b-95ad-f46de558109a",
       businessId: randomUUID(),
       eventType,
-      eventVersion: 1,
+      eventVersion: payload.eventVersion,
       payload,
     });
 describe("AN3 pure captured translators", () => {
