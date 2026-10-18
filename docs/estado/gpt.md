@@ -3,7 +3,19 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — 0241 IMPLEMENTADA Y QA CONFORME; SOLO LOCAL (2026-10-18 UTC)
+## ESTADO — 0242 POS: MAPA/SPEC/PLAN, UNA DECISIÓN MONETARIA PENDIENTE (2026-10-18 UTC)
+
+Owner pidió mapear con agentes el POS actual, compararlo con laboratorio y preparar spec/plan antes de implementar con dos workers+QA. Producto base5f9cb2b2; reserva documental spec0242/ADR0155/INDEX commiteada ec454681. Mapeo read-only por2agentes y QA documental independiente: sin código/DB/worktrees/servidores de producto, sin push/PROD. Laboratorio persistido en docs/design-explorations/2026-10-18-mostrador, v001–v004 y decisiones. POS único con listado abierto/cerrado/anulado y ciclo entero, Mostrador modalidad, Retiro/Delivery etiqueta obligatoria y cobro solo al cierre. Peso checkbox en catálogo y unidades kg/lb/g habilitadas en business; captura manual sin balanza; exactitud y snapshots toda cadena.
+
+Scope actualizado explícitamente: PWA/emisión/políticas de premios fuera; owner eligió «Dejar de ofrecer ese canje por ahora» al retirar Mostrador. Preservar saldos/historia, no crear canje dentro POS. Reglas de cupón como texto para operador, sin parseo/exclusiones nuevas por contenerpeso. Pregunta monetaria única pendiente: cantidad bonificada para gratis/2x1 de masa (operador indica /1unidadtarifaria/diferir); NO asumir respuesta. Spec está en borrador técnico por ese punto.
+
+Docs: specs/0242-pos-unificado-y-venta-por-peso.md +0242-contratos-pos-y-medidas.md; adr/0155-pos-unificado-cantidades-y-cupones-de-premio.md (nombre reservado antes del recorte de PWA, contenido ya acotado); factory/0242-{mapa-actual,performance,plan-implementacion,qa-documental,handoff}.md. QA inicial FAIL por decisión de bono sin aprobación y contrato business impreciso. Business corregido a /api/business/sales-units, revisión/mutex regional-fiscal compartidos, catalogRevision/salesRevision y header v2. QA segunda revisión focal PASS de ese bloqueo; global pendiente solo bono de masa. Leer handoff antes de clear/implementar; no confundir spec con producto certificado.
+
+0238/ADR0154 es la mejora previa: provider/contexto porRequest, seed y scope. POS aún reporter→orders y no scope en endpoints ordinarios; plan adopta protocolo completo sin cookieCache ni cambios globales de cookies/pool. Eventos actuales V3; medidas V4 replay1–3; core/POS quantityint y demás consumidores deben migrar juntos. M0/M1 y pruebas reales pendientes; no extrapolar49→18SQL ni20%Inbox al POS. Core counter también Clientes/accesosstaff: inventario/migración antes retiro; no borrar dominio común.
+
+Checks documentales: números sin duplicados, formato y enlaces nuevos conformes; no testsproducto/DB/M0. CI remoto consultado sigue ROJO90ebe18f verifyUnit+Neon; no reparado por documentación. Diferidos previos y demo/3201/túnel intactos. .impeccable/config.json tiene excepciones puntuales de turnos anteriores, no mezclar con producto; artefactos ajenos .agents/.claude/.codex/.github/public/consumer preservados. Servidor propio de laboratorio4387 efímero; index local persistido. Cada push/operaciónPROD requiere autorización nueva.
+
+## HISTÓRICO — 0241 IMPLEMENTADA Y QA CONFORME; SOLO LOCAL (2026-10-18 UTC)
 
 Owner autorizó revisar gastos/equilibrio y eligió «Aún no podemos estimarlo» con motivo breve cuando faltan costos o referencias. [Spec0241](../specs/0241-gastos-y-equilibrio-mensual.md) e INDEX reservados antes de código; contrato compartido34263158. Dos implementadores en WT propios y QA independiente: datos88df2147d404b5931855a0e6a8e6e7a218e51934, UI0d216d609863f34b18c2b290e441741c6f4ebfd0; producto combinado6fbd0b68fd5ebb0f712e69cbf124800a1998b381. [QA](../factory/0241-qa.md)9e3b05d0e0078e60dfbe33ab4eb82090871c35e9 conforme. Integración y main exclusivamente locales tras QA; sin push/PROD.
 

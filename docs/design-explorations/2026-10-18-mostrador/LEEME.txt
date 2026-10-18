@@ -1,0 +1,19 @@
+CheckPass · Exploración de venta y atención · 2026-10-18
+
+Abre index.html en un navegador. No requiere instalación ni internet.
+“Leer investigación” contiene el análisis, fuentes, alternativas y guion de prueba.
+Elige A/B/C, un rubro y “Cargar tarea de prueba”.
+Prioridad confirmada: teléfono; acceso directo a beneficios sin cobro.
+
+Todo es ficticio y se ejecuta en memoria. No modifica la plataforma ni realiza pagos.
+Exploración aislada: no modifica módulos de producto, kit, índices ni trabajo ajeno.
+
+Registro vigente: decisiones.html (acuerdos, requisitos, propuestas, pendientes e historial).
+Versión inicial conservada: versiones/v001/index.html.
+Antes de cada cambio funcional se conserva la versión anterior y se actualiza el registro.
+
+v002: B abre el selector de tipo de venta en Panaderia. Mesa/Retiro/Delivery confirman una orden pendiente de cobro. Mostrador cobra directamente. Otros rubros siguen abiertos. Consultar decisiones.html.
+
+v003: servicios con agenda eligen Cita agendada o Venta rapida. Cita agendada abre el dia antes de elegir una cita; puede identificarse cliente y anadirse productos. Cobrar marca la cita como realizada. No hay cancelacion de citas. Gimnasio pendiente. Movil conserva total final y accion solo en pie fijo.
+
+v004: POS inicia en listado de abiertas. Crear, identificar, confirmar, retomar/editar y cobrar/cerrar; historial simulado. Retiro/Delivery requieren referencia. Opciones del laboratorio incluyen unidades del negocio, producto por peso y cupon del pase ya emitido desde PWA. Todo es efimero. No se altero POS real ni la PWA.

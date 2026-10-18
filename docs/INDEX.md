@@ -79,7 +79,7 @@ desactualizado es peor que no tenerlo.
 | 0153 | 2026-10-17 | **Analíticas se alimenta solo de eventos.** **Que es:** todo dato de Analíticas nace como `module_event` en la tx de su origen (como `sale.closed`), los traductores a métricas son funciones puras sobre el evento y Analíticas no lee tablas de origen. **Por que importa:** patrón único y resúmenes recalculables desde el log; corrige atajos del borrador de la 0237. | **aceptada** (owner 2026-10-17) | `adr/0153-analiticas-solo-de-eventos.md` |
 | 0154 | 2026-10-17 | Contexto del backoffice por petición: compartir lecturas, entregar estado inicial al navegador y unir membresía/negocio con facturación; conservar guards y ciclo del Inbox, sin caché de autorización entre peticiones. | aceptada; scopeKey aceptado, implementación local por checkpoints en curso; sin publicación | `adr/0154-contexto-del-backoffice-por-peticion.md` |
 
-| 0155 | 2026-10-18 | POS unificado: tipos de venta, cantidades medidas y cupones de premio PWA; retiro de Mostrador y acceso/rendimiento por peticion. | propuesta; reserva de mapeo y spec0242 | `adr/0155-pos-unificado-cantidades-y-cupones-de-premio.md` |
+| 0155 | 2026-10-18 | POS unificado y cantidades medidas; retiro de Mostrador y acceso/rendimiento por peticion. PWA y canje directo fuera. | aceptada para especificacion; sin implementacion | `adr/0155-pos-unificado-cantidades-y-cupones-de-premio.md` |
 
 ## Specs — que se construye
 
@@ -489,4 +489,4 @@ técnica, Definition of Done y plan de pruebas antes de que su estado pase a `ce
 
 | 0241 | 2026-10-18 | Conciliación de gastos y equilibrio mensual; reglas de previsión, moneda y calidad antes de rediseñar el cálculo. | implementada localmente; QA independiente conforme, sin push/PROD | no; cálculo compartido Histórico/resumen/Inbox | `specs/0241-gastos-y-equilibrio-mensual.md` |
 
-| 0242 | 2026-10-18 | POS unificado con ciclo completo de ordenes, Mostrador integrado, peso configurable y cupones de premio PWA; mapa, contratos y plan con rendimiento/auth. | borrador; mapeo con agentes, sin implementacion | no; POS/catalogo/fidelizacion/auth/eventos | `specs/0242-pos-unificado-y-venta-por-peso.md` |
+| 0242 | 2026-10-18 | POS unificado con ciclo completo de ordenes, Mostrador integrado y peso configurable; mapa, contratos, auth/performance y retiro legacy. PWA fuera y canje directo suspendido. | borrador tecnico; QA focal de business conforme, pendiente cantidad bonificada peso, sin implementacion | no; POS/catalogo/fidelizacion/auth/eventos | `specs/0242-pos-unificado-y-venta-por-peso.md` |

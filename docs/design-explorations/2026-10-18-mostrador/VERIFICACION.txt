@@ -1,0 +1,25 @@
+Verificación de maqueta · 2026-10-18
+Node 24.20.0, Chromium Playwright, servidor estático local. No backend ni DB.
+11 grupos de comprobaciones conformes en la versión final:
+- Ejemplo panadería, identificación tardía y cupón: 8,00 → 7,20 USD.
+- Peso inválido rechazado; 750 g convierten a 0,750 kg.
+- Quitar cliente retira cupón y conserva líneas; cancelar conserva asociación.
+- Cobro insuficiente, fallo antes del registro, reintento y nueva venta.
+- Pausar y retomar tres líneas.
+- Alternar A/B/C conserva borrador.
+- Plan requiere titular y fecha.
+- Compra externa desde Solo beneficios sin nueva venta.
+- Spa, consultorio y taller cargan persona y conceptos desde atención ficticia.
+- Sin desborde de página a 320, 390 y 1440 px; documento de investigación incluido.
+- Sin errores JavaScript de navegador.
+
+Se corrigió un fallo inicial de cierre de diálogos; hubo dos fallos posteriores de selectores/visibilidad del harness, corregidos antes de las corridas finales completas. Chromium necesitó ejecución fuera del sandbox por restricción MachPort de macOS.
+Las capturas se revisaron a teléfono y escritorio; se corrigieron separación de textos y acción fija contextual.
+Evidencia y harness efímeros: /private/tmp/checkpass-atencion-ux-2026-10-18/.
+No constituye QA de la plataforma, validación con operadores ni prueba en teléfono físico.
+
+Iteracion v002: Chromium conforme a 390 y 1440 px. Selector previo; Mesa exige asignacion al confirmar; Retiro/Delivery sin mesa; confirmar separado de cobrar; Mostrador directo; editar exige reconfirmar; pausa conserva contexto; cambio de tipo conserva lineas y retira mesa; beneficios directo; Spa conserva exploracion anterior. Sin errores JS ni overflow de pagina. No prueba de producto real ni telefono fisico.
+
+v003: Chromium conforme a 390/1440 px. Agenda intermedia de tres citas; cita sin cliente permite identificar; extras de catalogo; cliente vinculado y pausa conservados; fallo no realiza cita; cobro simulado la marca realizada. Venta rapida de jabon sin cita/cliente obligatorio. Taller y veterinaria ofrecen agenda. Gimnasio queda pendiente. Regresion focal Mesa conforme. Total final y accion del cuerpo ocultos en movil; visibles en escritorio. Sin errores JS. Capturas revisadas. No se certifica producto real ni telefono fisico.
+
+v004: Chromium conforme a 390/1440 px. Listado inicial de 3 abiertas; alta Mesa/Retiro/Delivery con identificador obligatorio; confirmar crea/actualiza sin cobrar ni duplicar; cierre fallido conserva abierta, cierre exitoso mueve a historial; cafe gratis con cupon del pase genera venta cero sin medio monetario. Precio 4 USD/lb y 2lb producen 8 USD; conversion a gramos conserva masa/importe; cambiar catalogo no reprecifica orden guardada; precio 0,01 USD/g y 250g producen 2,50 USD. Sin errores JS. Capturas abiertas. No es certificacion de calculo monetario real, backend, stock ni PWA.
