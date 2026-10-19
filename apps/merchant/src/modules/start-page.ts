@@ -1,5 +1,5 @@
 import { MODULES } from "./registry";
-import { moduleHref } from "./navigation";
+import { moduleNavigation, moduleHref } from "./navigation";
 
 /**
  * Spec 0220 / ADR 0141 §2 — LA PAGINA DE INICIO QUE APORTAN LOS MODULOS (`startPage`), pura. El
@@ -31,4 +31,19 @@ export function staffStartPage(
 ): string | null {
   if (effective.length !== 1) return null;
   return startPageFor(enabled, { isOwner: false, permissions: effective });
+}
+
+/** First authorized module entry; a module without a start page may still expose navigation. */
+export function moduleDestinationFor(
+  enabled: ReadonlySet<string>,
+  viewer: { isOwner: boolean; permissions: readonly string[] },
+): string | null {
+  return (
+    startPageFor(enabled, viewer) ??
+    moduleNavigation(
+      MODULES.map((module) => ({ ...module, enabled: enabled.has(module.id) })),
+      viewer,
+    )[0]?.href ??
+    null
+  );
 }

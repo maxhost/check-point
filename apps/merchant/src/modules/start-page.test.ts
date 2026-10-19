@@ -1,10 +1,16 @@
-import { describe, expect, it } from "vitest";
+const entryQuery = vi.hoisted(() => ({ location: "" }));
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => new URLSearchParams({ location: entryQuery.location }),
+}));
+vi.mock("./pos/ui/measured-console", () => ({ MeasuredConsole: () => null }));
+import { PosEntry } from "./pos/ui/pos-entry";
+import { describe, expect, it, vi } from "vitest";
 import {
   STAFF_LANDING_PANEL,
   effectiveStaffPermissions,
   staffLanding,
 } from "../server/staff-landing";
-import { startPageFor } from "./start-page";
+import { moduleDestinationFor, startPageFor } from "./start-page";
 
 /**
  * Spec 0218 §landing y spec 0220 / ADR 0141 §2 — LA PAGINA DE INICIO: el destino del integrante
@@ -73,5 +79,54 @@ describe("donde abre la PWA (startPageFor)", () => {
     expect(
       startPageFor(none, { isOwner: false, permissions: ["pos"] }),
     ).toBeNull();
+  });
+});
+
+describe("fallback operativo del registro", () => {
+  it("staff migrado con counter y pos conserva panel de ingreso y resuelve POS al hacer fallback", () => {
+    expect(land(["counter", "pos"], posOn)).toBe(STAFF_LANDING_PANEL);
+    expect(
+      moduleDestinationFor(posOn, {
+        isOwner: false,
+        permissions: ["counter", "pos"],
+      }),
+    ).toBe(POS_PAGE);
+  });
+  it("ni permiso revocado ni módulo apagado vuelven al POS", () => {
+    expect(
+      moduleDestinationFor(posOn, { isOwner: false, permissions: ["counter"] }),
+    ).toBeNull();
+    expect(
+      moduleDestinationFor(none, { isOwner: false, permissions: ["pos"] }),
+    ).toBeNull();
+  });
+  it("un módulo sin startPage usa su navegación autorizada", () => {
+    expect(
+      moduleDestinationFor(new Set(["stock"]), {
+        isOwner: false,
+        permissions: ["stock"],
+      }),
+    ).toBe("/backoffice/stock");
+  });
+});
+
+describe("entrada normal V2 y local del redirect", () => {
+  const locations = [
+    { id: "north", name: "Norte" },
+    { id: "south", name: "Sur" },
+  ];
+  it("selecciona un local activo sin mutar las ubicaciones del servidor", () => {
+    entryQuery.location = "south";
+    const element = PosEntry({ locations });
+    expect(
+      element.props.locations.map((location: { id: string }) => location.id),
+    ).toEqual(["south", "north"]);
+    expect(locations[0].id).toBe("north");
+  });
+  it("query ausente, archivada o ajena conserva el primer local autorizado", () => {
+    for (const invalid of ["", "archived", "foreign"]) {
+      entryQuery.location = invalid;
+      expect(PosEntry({ locations }).props.locations).toBe(locations);
+    }
   });
 });

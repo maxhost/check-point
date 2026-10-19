@@ -1,19 +1,17 @@
 import { NextResponse } from "next/server";
-import { grantAccrual } from "../../../../server/counter";
-import { counterError, readJson, requireOperator } from "../_auth";
+import { privateBackofficeResponse } from "../../../../server/backoffice-scope-http";
+import { requireOperator } from "../_auth";
 
 export const runtime = "nodejs";
 
-/** Grants points/stamps for a sale, atomic and idempotent by `clientRequestId`.
- * A retry with the same id returns the same order without re-granting. */
+/** Retired public Counter entry point; preserve the complete operator guard. */
 export async function POST(request: Request) {
   const auth = await requireOperator(request);
-  if ("response" in auth) return auth.response;
-  try {
-    const body = await readJson(request);
-    const result = await grantAccrual(auth.business, auth.userId, body);
-    return NextResponse.json(result);
-  } catch (error) {
-    return counterError(error, "No pudimos acreditar.");
-  }
+  if ("response" in auth) return privateBackofficeResponse(auth.response);
+  return privateBackofficeResponse(
+    NextResponse.json(
+      { code: "feature_retired", error: "Esta función ya no está disponible." },
+      { status: 410 },
+    ),
+  );
 }

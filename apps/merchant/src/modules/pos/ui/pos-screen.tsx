@@ -18,10 +18,7 @@ export async function PosScreen() {
     .orderBy(asc(locations.name));
   return (
     <Suspense>
-      <PosEntry
-        locations={locationList}
-        previewEnabled={process.env.NODE_ENV === "development"}
-      />
+      <PosEntry locations={locationList} />
     </Suspense>
   );
 }

@@ -26,9 +26,15 @@ vi.mock("./backoffice-membership", async (importOriginal) => {
 });
 
 vi.mock("next/navigation", () => ({
+  notFound: () => {
+    throw new Error("NEXT_NOT_FOUND");
+  },
   redirect: (to: string) => {
     throw new Redirected(to);
   },
+}));
+vi.mock("../modules/activation", () => ({
+  enabledModuleIds: async () => new Set<string>(),
 }));
 vi.mock("next/headers", () => ({ headers: async () => new Headers() }));
 
@@ -227,7 +233,7 @@ describe("backoffice guards by role (ADR 0044)", () => {
     expect(deletes).toEqual([]);
   });
 
-  it("active staff passes the session guard but requireOwner sends it to the counter", async () => {
+  it("active staff passes the session guard but requireOwner sends it to authorized customers", async () => {
     sessionValue = { user: { id: "u1", name: "Ana", emailVerified: true } };
     membershipRow = {
       ...owner,
@@ -242,7 +248,19 @@ describe("backoffice guards by role (ADR 0044)", () => {
       permissions: ["counter"],
     });
     expect(deletes).toEqual([]);
-    expect(await destinationOf(requireOwner)).toBe("/backoffice/counter");
+    expect(await destinationOf(requireOwner)).toBe("/backoffice/customers");
+    expect(deletes).toEqual([]);
+  });
+
+  it("staff without any authorized destination stops without a redirect loop", async () => {
+    sessionValue = { user: { id: "u1", name: "Ana", emailVerified: true } };
+    membershipRow = {
+      ...owner,
+      role: "staff",
+      status: "active",
+      permissions: [],
+    };
+    await expect(requireOwner()).rejects.toThrow("NEXT_NOT_FOUND");
     expect(deletes).toEqual([]);
   });
 

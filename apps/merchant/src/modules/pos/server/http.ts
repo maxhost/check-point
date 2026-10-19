@@ -25,13 +25,14 @@ export function posErrorResponse(error: unknown): NextResponse | null {
   );
 }
 
-/** Una ruta del POS: el handler con la traduccion de `CounterError` puesta. */
+/** Cutover: dispatcher guard → required scope → contract2 → body/domain. */
 export function posRoute(route: ModuleRoute): ModuleRoute {
   return {
     ...route,
-    backofficeScope: "optional",
+    backofficeScope: "required",
     handler: async (context) => {
       try {
+        posReadContract(context.request);
         return await route.handler(context);
       } catch (error) {
         const response = posErrorResponse(error);
@@ -62,13 +63,12 @@ export async function readPosBody(
 }
 
 /** Called inside the route handler, after dispatcher guard and scope validation. */
-export function posReadContract(request: Request): 1 | 2 {
+export function posReadContract(request: Request): 2 {
   const value = request.headers.get("X-Pos-Contract");
-  if (value === null || value === "1") return 1;
   if (value === "2") return 2;
   throw new CounterError(
     409,
     "pos_client_upgrade_required",
-    "Actualiza la aplicación para leer esta venta.",
+    "Actualiza la aplicación para continuar con el POS.",
   );
 }

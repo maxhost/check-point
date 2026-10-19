@@ -198,26 +198,26 @@ describe("POS trusted measured projections", () => {
     expect(persistedSaleType(null, "table-id")).toBe("table");
     expect(persistedSaleType("pickup", null)).toBe("pickup");
   });
-  it("selects only absent/1/2 contracts and rejects unknown capabilities", () => {
-    for (const [version, expected] of [
-      [undefined, 1],
-      ["1", 1],
-      ["2", 2],
-    ] as const)
-      expect(
-        posReadContract(
-          new Request("http://localhost", {
-            headers: version ? { "X-Pos-Contract": version } : {},
-          }),
-        ),
-      ).toBe(expected);
-    for (const version of ["", "3", "02", "2, 1"])
+  it("cutover accepts only contract2 and rejects absent/legacy/unknown capabilities", () => {
+    expect(
+      posReadContract(
+        new Request("http://localhost", {
+          headers: { "X-Pos-Contract": "2" },
+        }),
+      ),
+    ).toBe(2);
+    for (const version of [undefined, "1", "", "3", "02", "2, 1"])
       expect(() =>
         posReadContract(
           new Request("http://localhost", {
-            headers: { "X-Pos-Contract": version },
+            headers: version === undefined ? {} : { "X-Pos-Contract": version },
           }),
         ),
-      ).toThrowError(expect.objectContaining({ status: 409 }));
+      ).toThrowError(
+        expect.objectContaining({
+          status: 409,
+          code: "pos_client_upgrade_required",
+        }),
+      );
   });
 });

@@ -750,6 +750,13 @@
       "when": 1792367005545,
       "tag": "0106_pos_order_intent",
       "breakpoints": true
+    },
+    {
+      "idx": 107,
+      "version": "7",
+      "when": 1792370000000,
+      "tag": "0107_pos_staff_cutover",
+      "breakpoints": true
     }
   ]
 }
