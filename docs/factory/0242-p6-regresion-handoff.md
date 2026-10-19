@@ -29,44 +29,44 @@ Base `01445a86bdec433e8d7bc75b94dfca1ce8184c19`, WT/ref `pos-ui-card-0242`. Cort
 
 | Archivo real | Tratamiento |
 | --- | --- |
-| `apps/merchant/src/modules/analytics-an3-events.neon.integration.test.ts` | Ampliación futura necesaria: HTTP POS positivo/cierre obsoleto; V2 explícito y negativos intactos |
-| `apps/merchant/src/modules/brand-fiscal-inert.neon.integration.test.ts` | Ampliación futura necesaria: HTTP POS positivo/cierre obsoleto; V2 explícito y negativos intactos |
-| `apps/merchant/src/modules/negocio-retirement.neon.integration.test.ts` | Ampliación futura necesaria: HTTP POS positivo/cierre obsoleto; V2 explícito y negativos intactos |
+| `apps/merchant/src/modules/analytics-an3-events.neon.integration.test.ts` | Residual8 actualizado, checks offline PASS; DB pendiente de devolución |
+| `apps/merchant/src/modules/brand-fiscal-inert.neon.integration.test.ts` | Residual8 actualizado, checks offline PASS; DB pendiente de devolución |
+| `apps/merchant/src/modules/negocio-retirement.neon.integration.test.ts` | Residual8 actualizado, checks offline PASS; DB pendiente de devolución |
 | `apps/merchant/src/modules/pos/server/business-access.neon.integration.test.ts` | Compatible por lectura: usa sólo seed/módulo o caller nativo/raw de cutover explícito; no cambiar por el soporte |
-| `apps/merchant/src/modules/pos/server/business-failures.neon.integration.test.ts` | Requiere V2 por dependencia indirecta business-core-support.close; autorizado b6375774, en corte dinero |
-| `apps/merchant/src/modules/pos/server/business-financial.neon.integration.test.ts` | Ampliación futura necesaria: HTTP POS positivo/cierre obsoleto; V2 explícito y negativos intactos |
+| `apps/merchant/src/modules/pos/server/business-failures.neon.integration.test.ts` | PASS DB compatible por corte660add97/25bc5a27/d9d0b8bd; ver resultados y límites abajo |
+| `apps/merchant/src/modules/pos/server/business-financial.neon.integration.test.ts` | PASS DB compatible por corte660add97/25bc5a27/d9d0b8bd; ver resultados y límites abajo |
 | `apps/merchant/src/modules/pos/server/business-sales-units.neon.integration.test.ts` | Compatible por lectura: usa sólo seed/módulo o caller nativo/raw de cutover explícito; no cambiar por el soporte |
-| `apps/merchant/src/modules/pos/server/catalog-measure-storage.neon.integration.test.ts` | Ampliación futura necesaria: montaje histórico SQL/proyección interna, HTTP positivo V2 explícito; preservar DDL/hash/constraints, DDL aislado |
-| `apps/merchant/src/modules/pos/server/catalog-storage-expand.neon.integration.test.ts` | Ampliación futura necesaria: montaje histórico SQL/proyección interna, HTTP positivo V2 explícito; preservar DDL/hash/constraints, DDL aislado |
+| `apps/merchant/src/modules/pos/server/catalog-measure-storage.neon.integration.test.ts` | Histórico6 actualizado; SQL canónico/clones/constraints de origen conservados y shape0108 activo separado; DB serial pendiente |
+| `apps/merchant/src/modules/pos/server/catalog-storage-expand.neon.integration.test.ts` | Histórico6 actualizado; SQL canónico/clones/constraints de origen conservados y shape0108 activo separado; DB serial pendiente |
 | `apps/merchant/src/modules/pos/server/close-api-v2.neon.integration.test.ts` | Corte inicial PASS DB en afe7060d |
 | `apps/merchant/src/modules/pos/server/console-native.neon.integration.test.ts` | Compatible por lectura: usa sólo seed/módulo o caller nativo/raw de cutover explícito; no cambiar por el soporte |
 | `apps/merchant/src/modules/pos/server/legacy-cutover.neon.integration.test.ts` | Compatible por lectura: usa sólo seed/módulo o caller nativo/raw de cutover explícito; no cambiar por el soporte |
 | `apps/merchant/src/modules/pos/server/measured-create.neon.integration.test.ts` | Corte inicial PASS DB en afe7060d |
 | `apps/merchant/src/modules/pos/server/measured-read.neon.integration.test.ts` | Corte inicial PASS DB en afe7060d |
-| `apps/merchant/src/modules/pos/server/measured-summary.neon.integration.test.ts` | Ampliación futura necesaria: HTTP POS positivo/cierre obsoleto; V2 explícito y negativos intactos |
+| `apps/merchant/src/modules/pos/server/measured-summary.neon.integration.test.ts` | PASS DB compatible por corte660add97/25bc5a27/d9d0b8bd; ver resultados y límites abajo |
 | `apps/merchant/src/modules/pos/server/measured-update.neon.integration.test.ts` | Corte inicial PASS DB en afe7060d |
-| `apps/merchant/src/modules/pos/server/order-intent-storage.neon.integration.test.ts` | Ampliación futura necesaria: montaje histórico SQL/proyección interna, HTTP positivo V2 explícito; preservar DDL/hash/constraints, DDL aislado |
+| `apps/merchant/src/modules/pos/server/order-intent-storage.neon.integration.test.ts` | Histórico6 actualizado; SQL canónico/clones/constraints de origen conservados y shape0108 activo separado; DB serial pendiente |
 | `apps/merchant/src/modules/pos/server/payment-methods.neon.integration.test.ts` | Ampliación5 PASS DB en afe7060d |
 | `apps/merchant/src/modules/pos/server/pos-access.neon.integration.test.ts` | Ampliación5 PASS DB en afe7060d |
-| `apps/merchant/src/modules/pos/server/pos-best-sellers.neon.integration.test.ts` | Ampliación futura necesaria: HTTP POS positivo/cierre obsoleto; V2 explícito y negativos intactos |
-| `apps/merchant/src/modules/pos/server/pos-close-races.neon.integration.test.ts` | Ampliación futura necesaria: HTTP POS positivo/cierre obsoleto; V2 explícito y negativos intactos |
-| `apps/merchant/src/modules/pos/server/pos-close-reuse.neon.integration.test.ts` | Ampliación futura necesaria: HTTP POS positivo/cierre obsoleto; V2 explícito y negativos intactos |
-| `apps/merchant/src/modules/pos/server/pos-close.neon.integration.test.ts` | Ampliación futura necesaria: HTTP POS positivo/cierre obsoleto; V2 explícito y negativos intactos |
+| `apps/merchant/src/modules/pos/server/pos-best-sellers.neon.integration.test.ts` | Residual8 actualizado, checks offline PASS; DB pendiente de devolución |
+| `apps/merchant/src/modules/pos/server/pos-close-races.neon.integration.test.ts` | PASS DB compatible por corte660add97/25bc5a27/d9d0b8bd; ver resultados y límites abajo |
+| `apps/merchant/src/modules/pos/server/pos-close-reuse.neon.integration.test.ts` | PASS DB compatible por corte660add97/25bc5a27/d9d0b8bd; ver resultados y límites abajo |
+| `apps/merchant/src/modules/pos/server/pos-close.neon.integration.test.ts` | PASS DB compatible por corte660add97/25bc5a27/d9d0b8bd; ver resultados y límites abajo |
 | `apps/merchant/src/modules/pos/server/pos-context-native.neon.integration.test.ts` | Compatible por lectura: usa sólo seed/módulo o caller nativo/raw de cutover explícito; no cambiar por el soporte |
-| `apps/merchant/src/modules/pos/server/pos-disable-tables.neon.integration.test.ts` | Ampliación futura necesaria: HTTP POS positivo/cierre obsoleto; V2 explícito y negativos intactos |
-| `apps/merchant/src/modules/pos/server/pos-disable.neon.integration.test.ts` | Ampliación futura necesaria: HTTP POS positivo/cierre obsoleto; V2 explícito y negativos intactos |
+| `apps/merchant/src/modules/pos/server/pos-disable-tables.neon.integration.test.ts` | Residual8 actualizado, checks offline PASS; DB pendiente de devolución |
+| `apps/merchant/src/modules/pos/server/pos-disable.neon.integration.test.ts` | Residual8 actualizado, checks offline PASS; DB pendiente de devolución |
 | `apps/merchant/src/modules/pos/server/pos-ladder.neon.integration.test.ts` | Ampliación5 PASS DB en afe7060d |
-| `apps/merchant/src/modules/pos/server/pos-migration-0079.neon.integration.test.ts` | Ampliación futura necesaria: montaje histórico SQL/proyección interna, HTTP positivo V2 explícito; preservar DDL/hash/constraints, DDL aislado |
-| `apps/merchant/src/modules/pos/server/pos-orders.neon.integration.test.ts` | Ampliación futura necesaria: HTTP POS positivo/cierre obsoleto; V2 explícito y negativos intactos |
+| `apps/merchant/src/modules/pos/server/pos-migration-0079.neon.integration.test.ts` | Histórico6 actualizado; SQL canónico/clones/constraints de origen conservados y shape0108 activo separado; DB serial pendiente |
+| `apps/merchant/src/modules/pos/server/pos-orders.neon.integration.test.ts` | Residual8 actualizado, checks offline PASS; DB pendiente de devolución |
 | `apps/merchant/src/modules/pos/server/pos-scope.neon.integration.test.ts` | Compatible por lectura: usa sólo seed/módulo o caller nativo/raw de cutover explícito; no cambiar por el soporte |
 | `apps/merchant/src/modules/pos/server/pos-staff-entry.neon.integration.test.ts` | Compatible por lectura: usa sólo seed/módulo o caller nativo/raw de cutover explícito; no cambiar por el soporte |
-| `apps/merchant/src/modules/pos/server/quantity-storage-expand.neon.integration.test.ts` | Ampliación futura necesaria: montaje histórico SQL/proyección interna, HTTP positivo V2 explícito; preservar DDL/hash/constraints, DDL aislado |
+| `apps/merchant/src/modules/pos/server/quantity-storage-expand.neon.integration.test.ts` | Histórico6 actualizado; SQL canónico/clones/constraints de origen conservados y shape0108 activo separado; DB serial pendiente |
 | `apps/merchant/src/modules/pos/server/read-api-v2.neon.integration.test.ts` | Corte inicial PASS DB en afe7060d |
-| `apps/merchant/src/modules/pos/server/settlement.neon.integration.test.ts` | Ampliación futura necesaria: HTTP POS positivo/cierre obsoleto; V2 explícito y negativos intactos |
+| `apps/merchant/src/modules/pos/server/settlement.neon.integration.test.ts` | PASS DB compatible por corte660add97/25bc5a27/d9d0b8bd; ver resultados y límites abajo |
 | `apps/merchant/src/modules/pos/server/ticket-settings.neon.integration.test.ts` | Ampliación5 PASS DB en afe7060d |
-| `apps/merchant/src/modules/pos/server/unit-expand-compat.neon.integration.test.ts` | Ampliación futura necesaria: montaje histórico SQL/proyección interna, HTTP positivo V2 explícito; preservar DDL/hash/constraints, DDL aislado |
+| `apps/merchant/src/modules/pos/server/unit-expand-compat.neon.integration.test.ts` | Histórico6 actualizado; SQL canónico/clones/constraints de origen conservados y shape0108 activo separado; DB serial pendiente |
 | `apps/merchant/src/modules/pos/server/void-api-v2.neon.integration.test.ts` | Corte inicial PASS DB en afe7060d |
-| `apps/merchant/src/modules/stock-local.neon.integration.test.ts` | Ampliación futura necesaria: HTTP POS positivo/cierre obsoleto; V2 explícito y negativos intactos |
+| `apps/merchant/src/modules/stock-local.neon.integration.test.ts` | Residual8 actualizado, checks offline PASS; DB pendiente de devolución |
 | `apps/merchant/src/modules/tables/server/tables.neon.integration.test.ts` | Ampliación5 PASS DB en afe7060d |
 
 ## Checks e intentos
@@ -112,3 +112,11 @@ El teardown de ese intento abortado no completó sus raíces/identidades y no ha
 Evidencia compatible acumulada por corte:75casos/11suites enafe7060d;17casos/4suites dinero sin cambios en660add97;11casos/2suites corregidas en25bc5a27;4casos/1suite DDL end9d0b8bd. Son107casos distintos en18suites, no una corrida global niQA final. LosFAILs/interrupción anteriores siguen documentados. El límite de raíces/identidades sinIDs del intento DDL abortado permanece declarado; sin barridos. Logs privados `p6-business-failures-attempt2.log`, `p6-money2-attempt2.log` y anteriores conservados.
 
 DB puede volver al coordinador/M1 sólo tras su transferencia explícita. Residual8 e históricos6 permanecen en patches privados propios (`p6-residual8-offline.patch`, `p6-historical6-offline.patch`); siguiente paso autorizado: aplicar/checks offline mientras M1 operaDB, congelar y esperar devolución para suites seriales/DDL separados.
+
+## Residual14 preparado offline tras transferencia a M1
+
+Los8HTTP/toggles/eventos y6históricos autorizados están aplicados. No cambia ningún soporte/producto de los18archivos yaPASS. Casos originales conservados; DTO exacto de orden/línea/medida ahoraV2, payloads negativos explícitos sin arreglos silenciosos. Legacy ranking/centavos siguen comprobándose mediante lectores internos y snapshotsSQL controlados. El antiguo inputV1 quantity:'1.000000000' se conserva raw409 sin efectos; capturas nuevas usan límitesV2 y snapshots2147483647 se siembran históricamente, sin ampliar parser. Precio repetido captura revisiones comerciales reales, nunca unitPrice arbitrario HTTP.
+
+Históricos: SQL0102/0103/0105 canónico, hashes y clones privados conservados; los negativos temporales de masa dormante/tarifa cents quedan en el checkpoint de origen y los shape0108 activos se prueban por separado, incluyendo ausencia de barreras retiradas. Único DROP CONSTRAINT sigue siendo sobre cloneproductTable propio; nada se retira de core/pos reales. Todos los DDL se correrán seriales con teardown y reservaCI. IDs propios de nuevas fixtures se capturan y retiran localmente después de negocios/órdenes, con evidencia de owner/consumer/sesiones; no cambia cleanup Counter global.
+
+Checks offline residual: ESLint14 y Prettier14 PASS. Typecheck intento1 FAIL2errores propios (find potencialmenteundefined y timezone no parte deOperatorBusiness); intento2 FAIL por firma real listPosOrders(segundoargDate); corregido para usar lector autoritativo interno y tercer intento typecheck merchant PASS. Lint privado después de mejorarcleanup tuvo3imports inArray sobrantes, retirados; siguiente privado14 PASS. No se ejecutóDB de este grupo durante la ventanaM1. Pendientes su congelado final, suites8 y suites6DDL aisladas tras devoluciónDB, y QA independiente sobre candidato congelado.

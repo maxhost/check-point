@@ -1,3 +1,6 @@
+import { inArray } from "drizzle-orm";
+import { consumerAccounts, users, sessions } from "@mi-pasaporte/db/schema";
+import { randomUUID } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { getDb } from "@mi-pasaporte/db";
@@ -79,16 +82,26 @@ vi.mock("../../server-registry", async (importOriginal) => {
   };
 });
 
-const { dropPosWorld, posIntegrationEnabled, pos, seedPosWorld, setModuleRow } =
-  await import("./pos-integration-support");
+const {
+  dropPosWorld,
+  posIntegrationEnabled,
+  pos,
+  capturePosScope,
+  scopedPos,
+  seedPosWorld,
+  setModuleRow,
+} = await import("./pos-integration-support");
 type PosWorld = Awaited<ReturnType<typeof seedPosWorld>>;
 
 let w: PosWorld;
+let scope: string;
 beforeAll(async () => {
   w = await seedPosWorld("POS apagar Mesas");
+  scope = await capturePosScope(w.ownerCookie, w.seed.business.id);
 }, 240_000);
 afterAll(async () => {
   await dropPosWorld(w);
+  await retireFixtureIdentities([w], []);
 }, 240_000);
 
 const businessId = () => w.seed.business.id;
@@ -170,7 +183,15 @@ describe.skipIf(!posIntegrationEnabled)(
       h.tablesRule = l;
       const off = pos.setModule(w.ownerCookie, false, "tables");
       await reached; // la regla de Mesas ya conto 0 ordenes con mesa, con el lock EXCLUSIVO
-      const created = pos.create(w.ownerCookie, { tableId: table, items: [] });
+      const created = scopedPos(w.ownerCookie, scope).create({
+        createRequestId: randomUUID(),
+        saleType: "table",
+        orderLabel: "Mesa",
+        locationId: null,
+        tableId: table,
+        note: null,
+        items: [],
+      });
       await untilBlockedOrDone(created);
       l.release();
       const [offRes, createdRes] = await Promise.all([off, created]);
@@ -189,7 +210,15 @@ describe.skipIf(!posIntegrationEnabled)(
       const table = await newDiningTable("Mesa carrera B");
       const { latch: l, reached } = latch();
       h.tablesLock = l;
-      const created = pos.create(w.ownerCookie, { tableId: table, items: [] });
+      const created = scopedPos(w.ownerCookie, scope).create({
+        createRequestId: randomUUID(),
+        saleType: "table",
+        orderLabel: "Mesa",
+        locationId: null,
+        tableId: table,
+        note: null,
+        items: [],
+      });
       // Cableado: la apertura con mesa TIENE que releer Mesas bajo el lock (`lockTablesEnabled`).
       expect(await withTimeout(reached, 8_000)).toBe("llego");
       const off = pos.setModule(w.ownerCookie, false, "tables");
@@ -207,3 +236,40 @@ describe.skipIf(!posIntegrationEnabled)(
     }, 120_000);
   },
 );
+
+/** Retire only identities created by these fixtures, after their business roots are gone. */
+async function retireFixtureIdentities(
+  targets: { seed: { userId: string }; extraUsers: string[] }[],
+  consumers: string[] = [],
+) {
+  if (consumers.length) {
+    await getDb()
+      .delete(consumerAccounts)
+      .where(inArray(consumerAccounts.id, consumers));
+    expect(
+      await getDb()
+        .select({ id: consumerAccounts.id })
+        .from(consumerAccounts)
+        .where(inArray(consumerAccounts.id, consumers)),
+    ).toEqual([]);
+  }
+  const owners = targets.flatMap((target) => [
+    target.seed.userId,
+    ...target.extraUsers,
+  ]);
+  if (owners.length) {
+    await getDb().delete(users).where(inArray(users.id, owners));
+    expect(
+      await getDb()
+        .select({ id: users.id })
+        .from(users)
+        .where(inArray(users.id, owners)),
+    ).toEqual([]);
+    expect(
+      await getDb()
+        .select({ id: sessions.id })
+        .from(sessions)
+        .where(inArray(sessions.userId, owners)),
+    ).toEqual([]);
+  }
+}

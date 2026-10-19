@@ -1,10 +1,16 @@
+import { inArray } from "drizzle-orm";
+import { consumerAccounts, users, sessions } from "@mi-pasaporte/db/schema";
 import { randomUUID } from "node:crypto";
 import * as recipeSnapshot from "./recipes/server/model/captured";
 import {
   readComposition,
   saveComposition,
 } from "./recipes/server/compositions";
-import { dropPosWorld, openOrder } from "./pos/server/pos-integration-support";
+import {
+  dropPosWorld,
+  openOrderV2,
+  capturePosScope,
+} from "./pos/server/pos-integration-support";
 import { closeWithCash } from "./pos/server/pos-payment-integration-support";
 import { scannedCustomer } from "../server/counter/coupon-cycle-support";
 import {
@@ -288,16 +294,27 @@ describe.skipIf(!modulesIntegrationEnabled)(
     it("sale with customer pass accrues normally and consumes normalized recipe once", async () => {
       holdImmediateRetry();
       const withPass = await preparePassWorld();
+      const consumerIds: string[] = [];
+      const scope = await capturePosScope(
+        withPass.ownerCookie,
+        withPass.seed.business.id,
+      );
       try {
         const customer = await scannedCustomer(withPass);
-        const order = await openOrder(withPass, [
+        consumerIds.push(customer.consumerId);
+        const order = await openOrderV2(withPass, scope, [
           { productId: withPass.medialuna, quantity: 3 },
         ]);
-        const response = await closeWithCash(withPass.ownerCookie, order.id, {
-          version: order.version,
-          clientRequestId: randomUUID(),
-          membershipId: customer.membershipId,
-        });
+        const response = await closeWithCash(
+          withPass.ownerCookie,
+          order.id,
+          {
+            version: order.version,
+            clientRequestId: randomUUID(),
+            membershipId: customer.membershipId,
+          },
+          { scope: scope },
+        );
         expect(response.status).toBe(200);
         const sale = await response.json();
         expect(sale.status).toBe("closed");
@@ -325,7 +342,45 @@ describe.skipIf(!modulesIntegrationEnabled)(
           .toEqual(["-750.000"]);
       } finally {
         await dropPosWorld(withPass);
+        await retireFixtureIdentities([withPass], consumerIds);
       }
     }, 30_000);
   },
 );
+
+/** Retire only identities created by these fixtures, after their business roots are gone. */
+async function retireFixtureIdentities(
+  targets: { seed: { userId: string }; extraUsers: string[] }[],
+  consumers: string[] = [],
+) {
+  if (consumers.length) {
+    await getDb()
+      .delete(consumerAccounts)
+      .where(inArray(consumerAccounts.id, consumers));
+    expect(
+      await getDb()
+        .select({ id: consumerAccounts.id })
+        .from(consumerAccounts)
+        .where(inArray(consumerAccounts.id, consumers)),
+    ).toEqual([]);
+  }
+  const owners = targets.flatMap((target) => [
+    target.seed.userId,
+    ...target.extraUsers,
+  ]);
+  if (owners.length) {
+    await getDb().delete(users).where(inArray(users.id, owners));
+    expect(
+      await getDb()
+        .select({ id: users.id })
+        .from(users)
+        .where(inArray(users.id, owners)),
+    ).toEqual([]);
+    expect(
+      await getDb()
+        .select({ id: sessions.id })
+        .from(sessions)
+        .where(inArray(sessions.userId, owners)),
+    ).toEqual([]);
+  }
+}

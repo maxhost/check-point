@@ -1,3 +1,5 @@
+import { inArray } from "drizzle-orm";
+import { consumerAccounts, users, sessions } from "@mi-pasaporte/db/schema";
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { and, eq } from "drizzle-orm";
@@ -20,14 +22,15 @@ import {
   posIntegrationEnabled,
   seedPosWorld,
   dropPosWorld,
-  openOrder,
-  pos,
+  openOrderV2,
+  capturePosScope,
+  scopedPos,
   seedProduct,
   type PosWorld,
 } from "./pos/server/pos-integration-support";
 import { closeWithCash } from "./pos/server/pos-payment-integration-support";
 import {
-  scannedCustomer,
+  scannedCustomer as seedScannedCustomer,
   welcomeCoupon,
   choose,
 } from "../server/counter/coupon-cycle-support";
@@ -51,13 +54,20 @@ describe.runIf(posIntegrationEnabled)(
   { timeout: 120_000 },
   () => {
     let world: PosWorld, cop: PosWorld;
+    const scopes = new Map<string, string>();
     beforeAll(async () => {
       world = await seedPosWorld("AN3 events");
       cop = await seedPosWorld("AN3 COP", "CO", "COP");
+      for (const w of [world, cop])
+        scopes.set(
+          w.ownerCookie,
+          await capturePosScope(w.ownerCookie, w.seed.business.id),
+        );
     }, 240_000);
     afterAll(async () => {
       await dropPosWorld(world);
       await dropPosWorld(cop);
+      await retireFixtureIdentities([world, cop], consumerIds);
     }, 240_000);
     const events = (w = world) =>
       getDb()
@@ -186,7 +196,7 @@ describe.runIf(posIntegrationEnabled)(
       ]);
     });
     it("void is atomic, idempotent and captured with user/lines; the authenticated destination filters historical voids and tenants", async () => {
-      const order = await openOrder(world, [
+      const order = await openOrderV2(world, scopes.get(world.ownerCookie)!, [
         { productId: world.cafe, quantity: 2 },
       ]);
       // Force append failure using the real unique source invariant: the status update must roll back.
@@ -200,7 +210,14 @@ describe.runIf(posIntegrationEnabled)(
           payload: { eventVersion: 1 },
         }),
       );
-      expect((await pos.void(world.ownerCookie, order.id)).status).toBe(503);
+      expect(
+        (
+          await scopedPos(
+            world.ownerCookie,
+            scopes.get(world.ownerCookie)!,
+          ).void(order.id)
+        ).status,
+      ).toBe(503);
       expect(
         (
           await getDb()
@@ -212,9 +229,29 @@ describe.runIf(posIntegrationEnabled)(
       await getDb()
         .delete(moduleEvents)
         .where(eq(moduleEvents.id, planted.eventId));
-      expect((await pos.void(cop.ownerCookie, order.id)).status).toBe(404);
-      expect((await pos.void(world.ownerCookie, order.id)).status).toBe(200);
-      expect((await pos.void(world.ownerCookie, order.id)).status).toBe(200);
+      expect(
+        (
+          await scopedPos(cop.ownerCookie, scopes.get(cop.ownerCookie)!).void(
+            order.id,
+          )
+        ).status,
+      ).toBe(404);
+      expect(
+        (
+          await scopedPos(
+            world.ownerCookie,
+            scopes.get(world.ownerCookie)!,
+          ).void(order.id)
+        ).status,
+      ).toBe(200);
+      expect(
+        (
+          await scopedPos(
+            world.ownerCookie,
+            scopes.get(world.ownerCookie)!,
+          ).void(order.id)
+        ).status,
+      ).toBe(200);
       const [event] = (await events()).filter(
         (e) => e.eventType === "pos.order.voided" && e.sourceId === order.id,
       );
@@ -228,8 +265,8 @@ describe.runIf(posIntegrationEnabled)(
           {
             productId: world.cafe,
             productLabel: "Café",
-            quantity: 2,
-            unitPrice: "2.00",
+            quantity: "2",
+            unitPrice: "2",
           },
         ],
       });
@@ -288,11 +325,14 @@ describe.runIf(posIntegrationEnabled)(
             productId: world.cafe,
           });
         await choose(customer, couponId);
-        const order = await openOrder(world, [
+        const order = await openOrderV2(world, scopes.get(world.ownerCookie)!, [
           { productId: world.cafe, quantity: 1 },
           { productId: world.medialuna, quantity: 2 },
         ]);
-        const failed = await pos.close(world.ownerCookie, order.id, {
+        const failed = await scopedPos(
+          world.ownerCookie,
+          scopes.get(world.ownerCookie)!,
+        ).close(order.id, {
           clientRequestId: randomUUID(),
           version: order.version,
           membershipId: customer.membershipId,
@@ -309,12 +349,17 @@ describe.runIf(posIntegrationEnabled)(
             .from(couponRedemptions)
             .where(eq(couponRedemptions.couponId, couponId)),
         ).toHaveLength(0);
-        const response = await closeWithCash(world.ownerCookie, order.id, {
-          clientRequestId: randomUUID(),
-          version: order.version,
-          membershipId: customer.membershipId,
-          coupon: { couponId },
-        });
+        const response = await closeWithCash(
+          world.ownerCookie,
+          order.id,
+          {
+            clientRequestId: randomUUID(),
+            version: order.version,
+            membershipId: customer.membershipId,
+            coupon: { couponId },
+          },
+          { scope: scopes.get(world.ownerCookie)! },
+        );
         expect(response.status).toBe(200);
         const captured = await events(),
           sale = captured.find(
@@ -379,13 +424,20 @@ describe.runIf(posIntegrationEnabled)(
           discountValue: "0.60",
         });
       await choose(customer, couponId);
-      const order = await openOrder(cop, [{ productId: product, quantity: 1 }]);
-      const response = await closeWithCash(cop.ownerCookie, order.id, {
-        clientRequestId: randomUUID(),
-        version: order.version,
-        membershipId: customer.membershipId,
-        coupon: { couponId },
-      });
+      const order = await openOrderV2(cop, scopes.get(cop.ownerCookie)!, [
+        { productId: product, quantity: 1 },
+      ]);
+      const response = await closeWithCash(
+        cop.ownerCookie,
+        order.id,
+        {
+          clientRequestId: randomUUID(),
+          version: order.version,
+          membershipId: customer.membershipId,
+          coupon: { couponId },
+        },
+        { scope: scopes.get(cop.ownerCookie)! },
+      );
       expect(response.status).toBe(200);
       const captured = await events(cop),
         coupon = captured.find(
@@ -549,14 +601,12 @@ describe.runIf(posIntegrationEnabled)(
       const startsAt = new Date(
         yesterdayDate.getTime() - 7 * 86400000,
       ).toISOString();
-      await getDb()
-        .insert(analyticsEvaluationRuns)
-        .values({
-          businessId: world.seed.business.id,
-          day: today,
-          status: "ready",
-          preparedAt: now,
-        });
+      await getDb().insert(analyticsEvaluationRuns).values({
+        businessId: world.seed.business.id,
+        day: today,
+        status: "ready",
+        preparedAt: now,
+      });
       const read = () =>
         getDb()
           .select()
@@ -685,3 +735,49 @@ describe.runIf(posIntegrationEnabled)(
     });
   },
 );
+
+const consumerIds: string[] = [];
+async function scannedCustomer(
+  target: Parameters<typeof seedScannedCustomer>[0],
+) {
+  const customer = await seedScannedCustomer(target);
+  consumerIds.push(customer.consumerId);
+  return customer;
+}
+
+/** Retire only identities created by these fixtures, after their business roots are gone. */
+async function retireFixtureIdentities(
+  targets: { seed: { userId: string }; extraUsers: string[] }[],
+  consumers: string[] = [],
+) {
+  if (consumers.length) {
+    await getDb()
+      .delete(consumerAccounts)
+      .where(inArray(consumerAccounts.id, consumers));
+    expect(
+      await getDb()
+        .select({ id: consumerAccounts.id })
+        .from(consumerAccounts)
+        .where(inArray(consumerAccounts.id, consumers)),
+    ).toEqual([]);
+  }
+  const owners = targets.flatMap((target) => [
+    target.seed.userId,
+    ...target.extraUsers,
+  ]);
+  if (owners.length) {
+    await getDb().delete(users).where(inArray(users.id, owners));
+    expect(
+      await getDb()
+        .select({ id: users.id })
+        .from(users)
+        .where(inArray(users.id, owners)),
+    ).toEqual([]);
+    expect(
+      await getDb()
+        .select({ id: sessions.id })
+        .from(sessions)
+        .where(inArray(sessions.userId, owners)),
+    ).toEqual([]);
+  }
+}
