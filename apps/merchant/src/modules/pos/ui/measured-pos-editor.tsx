@@ -8,6 +8,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { EditPencil, Printer } from "iconoir-react";
+import { ConfirmationToast } from "../../../app/components/confirmation-toast";
 import {
   Alert,
   Button,
@@ -103,6 +104,7 @@ export function MeasuredPosEditor({
     editor: QuantityEditor;
   } | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [saveNotice, setSaveNotice] = useState<string | null>(null);
   const state = session.commands.getSnapshot();
   const blocked = session.blocked;
   const units = catalog?.salesMassUnits ?? [];
@@ -194,6 +196,7 @@ export function MeasuredPosEditor({
     const result = await session.save(prepare, retry);
     if (!result || live.current !== session) return;
     onSaved(result.order);
+    if (!result.prepare) setSaveNotice("Orden guardada");
     if (result.prepare && session.commands.getSnapshot().status !== "retired")
       onPrepare(result.order);
   }
@@ -253,8 +256,11 @@ export function MeasuredPosEditor({
     ],
   );
   const printing = useMeasuredPrinting({
-    order: session.order && !session.dirty ? session.order : null,
-    buildDocument: draftDocument,
+    order:
+      draft.lines.length && session.order && !session.dirty
+        ? session.order
+        : null,
+    buildDocument: draft.lines.length ? draftDocument : undefined,
     client: session.client,
     context:
       accessEnabled && state.status !== "retired" ? context.identity : null,
@@ -281,6 +287,7 @@ export function MeasuredPosEditor({
       {!printing.busy && <Printer className="size-5" aria-hidden="true" />}
     </Button>
   );
+  const readyToCharge = !!session.order && !session.dirty;
   const confirmation = (
     <Button
       className="min-w-0 flex-1"
@@ -289,15 +296,24 @@ export function MeasuredPosEditor({
         !!validation ||
         unavailable ||
         !!pending ||
-        (draft.saleType === "counter" && !draft.lines.length)
+        ((readyToCharge || draft.saleType === "counter") && !draft.lines.length)
       }
-      onPress={() => void save(draft.saleType === "counter")}
+      onPress={() => {
+        if (readyToCharge && session.order) {
+          onSaved(session.order);
+          onPrepare(session.order);
+        } else void save(draft.saleType === "counter");
+      }}
     >
       {state.status === "pending"
         ? "Guardando…"
-        : draft.saleType === "counter"
-          ? "Continuar al cobro"
-          : "Confirmar orden"}
+        : readyToCharge
+          ? "Cobrar"
+          : draft.saleType === "counter"
+            ? "Continuar al cobro"
+            : session.order
+              ? "Guardar cambios"
+              : "Confirmar orden"}
     </Button>
   );
   const totalLabel =
@@ -726,6 +742,10 @@ export function MeasuredPosEditor({
         </div>
       )}
       <PosPrintFeedback printing={printing} />
+      <ConfirmationToast
+        message={saveNotice}
+        onDismiss={() => setSaveNotice(null)}
+      />
       {pending && (
         <MeasuredQuantityDialog
           name={pending.product.name}
