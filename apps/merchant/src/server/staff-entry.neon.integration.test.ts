@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { inArray, and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 // better-auth necesita estas dos para construirse; valores de test sobre la rama aislada.
@@ -14,6 +14,8 @@ import {
 } from "./counter-integration-support";
 import { getDb } from "@mi-pasaporte/db";
 import {
+  users,
+  sessions,
   consumerAccounts,
   memberships,
   programMemberships,
@@ -58,6 +60,7 @@ describe.skipIf(!integrationEnabled)(
   "ingreso del equipo y PIN temporal obligatorio (spec 0218)",
   () => {
     let a: Seed;
+    const ownedUsers: string[] = [];
     let consumerId: string;
     let couponUrl: string;
 
@@ -69,8 +72,14 @@ describe.skipIf(!integrationEnabled)(
         grant: 1,
         blockAmount: null,
       });
-      // Un pase del negocio, para que el mostrador conteste 200 cuando la escalera deja pasar.
+      ownedUsers.push(a.userId);
+      console.info("P6 staff fixture identity", {
+        businessId: a.business.id,
+        userId: a.userId,
+      });
+      // Un pase real del negocio; el endpoint retirado conserva primero la escalera.
       consumerId = (await seedConsumer()).id;
+      console.info("P6 staff consumer identity", { consumerId });
       const [membership] = await getDb()
         .insert(programMemberships)
         .values({
@@ -87,14 +96,37 @@ describe.skipIf(!integrationEnabled)(
       await getDb()
         .delete(consumerAccounts)
         .where(eq(consumerAccounts.id, consumerId));
+      await getDb().delete(users).where(inArray(users.id, ownedUsers));
+      expect(
+        await getDb()
+          .select({ id: users.id })
+          .from(users)
+          .where(inArray(users.id, ownedUsers)),
+      ).toEqual([]);
+      expect(
+        await getDb()
+          .select({ id: sessions.id })
+          .from(sessions)
+          .where(inArray(sessions.userId, ownedUsers)),
+      ).toEqual([]);
+      expect(
+        await getDb()
+          .select({ id: consumerAccounts.id })
+          .from(consumerAccounts)
+          .where(eq(consumerAccounts.id, consumerId)),
+      ).toEqual([]);
     }, 30_000);
 
-    const newStaff = (name: string, permissions: string[]) =>
-      createStaff(
+    const newStaff = async (name: string, permissions: string[]) => {
+      const result = await createStaff(
         { id: a.business.id, slug: a.slug },
         { name, permissions },
         "owner",
       );
+      ownedUsers.push(result.staff.userId);
+      console.info("P6 staff identity", { userId: result.staff.userId });
+      return result;
+    };
 
     const routes = (cookie: string) =>
       Promise.all([
@@ -102,7 +134,7 @@ describe.skipIf(!integrationEnabled)(
         COUPON_STATE(get(couponUrl, cookie)),
       ]);
 
-    it("con pin_must_change: la API da 403 pin_change_required; despues del cambio, 200", async () => {
+    it("con pin_must_change: la API da 403 pin_change_required; despues del cambio, API200 y Counter410", async () => {
       const { staff, pin } = await newStaff("Caja y Mostrador", [
         "counter",
         "catalog",
@@ -135,9 +167,13 @@ describe.skipIf(!integrationEnabled)(
       expect(change.status).toBe(200);
       expect(await change.json()).toEqual({ ok: true, mustChangePin: false });
 
-      for (const response of await routes(cookie)) {
-        expect(response.status).toBe(200);
-      }
+      const [modulesResponse, counterResponse] = await routes(cookie);
+      expect(modulesResponse.status).toBe(200);
+      expect(counterResponse.status).toBe(410);
+      expect(await counterResponse.json()).toEqual({
+        code: "feature_retired",
+        error: "Esta función ya no está disponible.",
+      });
     }, 90_000);
 
     it("el owner nunca recibe el 403, aunque su fila diga pin_must_change = true", async () => {
@@ -154,9 +190,13 @@ describe.skipIf(!integrationEnabled)(
       expect(row.pinMustChange).toBe(true);
 
       const cookie = (await openMerchantSession(a.userId)).split(";")[0];
-      for (const response of await routes(cookie)) {
-        expect(response.status).toBe(200);
-      }
+      const [modulesResponse, counterResponse] = await routes(cookie);
+      expect(modulesResponse.status).toBe(200);
+      expect(counterResponse.status).toBe(410);
+      expect(await counterResponse.json()).toEqual({
+        code: "feature_retired",
+        error: "Esta función ya no está disponible.",
+      });
     }, 60_000);
   },
 );

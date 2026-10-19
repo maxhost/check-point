@@ -20,7 +20,9 @@ import { getBackofficeRequestContext } from "../../../server/backoffice-context"
 import { closeWithCash } from "./pos-payment-integration-support";
 import {
   dropPosWorld,
-  pos,
+  capturePosScope,
+  seedLegacyOrder,
+  scopedPos,
   posIntegrationEnabled,
   posStaff,
   seedPosWorld,
@@ -28,6 +30,7 @@ import {
   setModuleRow,
   type PosWorld,
 } from "./pos-integration-support";
+const scopes = new Map<string, string>();
 let a: PosWorld, b: PosWorld, denied: string, allowed: string, scope: string;
 function request(
   id: string,
@@ -52,11 +55,17 @@ async function call(
   value: unknown,
   cookie = a.ownerCookie,
   contract: string | null = "2",
-  scopeKey?: string,
+  scopeKey?: string | null,
 ) {
   const response = await dispatchModuleRequest(
     "PUT",
-    request(id, value, cookie, contract, scopeKey),
+    request(
+      id,
+      value,
+      cookie,
+      contract,
+      scopeKey === undefined ? scopes.get(cookie) : (scopeKey ?? undefined),
+    ),
     { moduleId: "pos", path: ["orders", id] },
   );
   expect(response.headers.get("cache-control")).toBe("private, no-store");
@@ -68,14 +77,7 @@ async function body(response: Response, status = 200) {
   return value;
 }
 async function open(productId = a.cafe, quantity = 2) {
-  return body(
-    await pos.create(a.ownerCookie, {
-      tableLabel: "Histórica",
-      locationId: a.seed.locationId,
-      items: [{ productId, quantity }],
-    }),
-    201,
-  );
+  return seedLegacyOrder(a, [{ productId, quantity }]);
 }
 type ReadLine = {
   lineId: string;
@@ -137,6 +139,14 @@ describe.skipIf(!posIntegrationEnabled)(
         },
         process.env.BETTER_AUTH_SECRET,
       );
+      for (const [cookie, businessId] of [
+        [a.ownerCookie, a.seed.business.id],
+        [b.ownerCookie, b.seed.business.id],
+        [allowed, a.seed.business.id],
+        [denied, a.seed.business.id],
+      ]) {
+        scopes.set(cookie, await capturePosScope(cookie, businessId));
+      }
     }, 240000);
     afterAll(async () => {
       const worlds = [a, b].filter(Boolean);
@@ -167,7 +177,7 @@ describe.skipIf(!posIntegrationEnabled)(
           .where(inArray(sessions.userId, ids)),
       ).toEqual([]);
     }, 240000);
-    it("guard/scope precede contract, tenant and status stay private; V1 remains available", async () => {
+    it("guard/scope precede contract, tenant and status stay private; V1 is rejected without effects", async () => {
       const order = await open();
       const input = command(order);
       const before = await row(order.id);
@@ -184,41 +194,57 @@ describe.skipIf(!posIntegrationEnabled)(
       expect(
         (await body(await call(order.id, input, b.ownerCookie), 404)).code,
       ).toBe("unknown_pos_order");
+      expect(
+        (await body(await call(order.id, input, a.ownerCookie, "2", null), 409))
+          .code,
+      ).toBe("backoffice_context_changed");
       expect(await row(order.id)).toEqual(before);
       expect(
         (await body(await call(order.id, input, allowed))).contractVersion,
       ).toBe(2);
       const v1 = await open();
-      expect(
-        (
-          await body(
-            await call(
-              v1.id,
-              {
-                version: v1.version,
-                tableLabel: v1.tableLabel,
-                items: v1.items.map((line: ReadLine) => ({
-                  lineId: line.lineId,
-                  productId: line.productId,
-                  quantity: line.quantity,
-                })),
-              },
-              a.ownerCookie,
-              null,
-            ),
-          )
-        ).items[0].quantity,
-      ).toBe(2);
-      await pos.void(a.ownerCookie, order.id);
+      const legacyBefore = await row(v1.id),
+        legacyLines = await lines(v1.id);
+      for (const contract of [null, "1"]) {
+        expect(
+          (
+            await body(
+              await call(
+                v1.id,
+                {
+                  version: v1.version,
+                  tableLabel: v1.tableLabel,
+                  items: v1.items.map((line: ReadLine) => ({
+                    lineId: line.lineId,
+                    productId: line.productId,
+                    quantity: Number(line.quantity),
+                  })),
+                },
+                a.ownerCookie,
+                contract,
+              ),
+              409,
+            )
+          ).code,
+        ).toBe("pos_client_upgrade_required");
+        expect(await row(v1.id)).toEqual(legacyBefore);
+        expect(await lines(v1.id)).toEqual(legacyLines);
+      }
+      await scopedPos(a.ownerCookie, scopes.get(a.ownerCookie)!).void(order.id);
       expect((await body(await call(order.id, input), 409)).code).toBe(
         "pos_order_not_open",
       );
       const closed = await open();
       await body(
-        await closeWithCash(a.ownerCookie, closed.id, {
-          version: closed.version,
-          clientRequestId: randomUUID(),
-        }),
+        await closeWithCash(
+          a.ownerCookie,
+          closed.id,
+          {
+            version: closed.version,
+            clientRequestId: randomUUID(),
+          },
+          { scope: scopes.get(a.ownerCookie)! },
+        ),
       );
       expect(
         (await body(await call(closed.id, command(closed)), 409)).code,
@@ -438,13 +464,8 @@ describe.skipIf(!posIntegrationEnabled)(
       const order = await open(product, 1000000000);
       await getDb().delete(products).where(eq(products.id, product));
       const read = await body(
-        await dispatchModuleRequest(
-          "GET",
-          new Request(
-            `http://localhost:3001/api/modules/pos/orders/${order.id}`,
-            { headers: { cookie: a.ownerCookie, "X-Pos-Contract": "2" } },
-          ),
-          { moduleId: "pos", path: ["orders", order.id] },
+        await scopedPos(a.ownerCookie, scopes.get(a.ownerCookie)!).read(
+          order.id,
         ),
       );
       const updated = await body(
@@ -460,7 +481,13 @@ describe.skipIf(!posIntegrationEnabled)(
       bad.items[0].quantity = "1000000001";
       expect((await call(order.id, bad)).status).toBe(422);
       expect(
-        (await body(await pos.read(a.ownerCookie, order.id))).version,
+        (
+          await body(
+            await scopedPos(a.ownerCookie, scopes.get(a.ownerCookie)!).read(
+              order.id,
+            ),
+          )
+        ).version,
       ).toBe(updated.version);
     });
     it("editing has no core order, payment, event or consumption effects", async () => {

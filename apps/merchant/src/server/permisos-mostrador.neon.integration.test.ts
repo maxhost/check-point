@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { inArray, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import {
@@ -11,7 +11,12 @@ import {
 } from "./counter-integration-support";
 import { conCookie, cookieDe } from "./permissions-integration-support";
 import { getDb } from "@mi-pasaporte/db";
-import { memberships, users } from "@mi-pasaporte/db/schema";
+import {
+  memberships,
+  users,
+  sessions,
+  consumerAccounts,
+} from "@mi-pasaporte/db/schema";
 import { POST as RESOLVE } from "../app/api/counter/resolve/route";
 import { POST as GRANT } from "../app/api/counter/grant/route";
 import { POST as REDEEM } from "../app/api/counter/redeem/route";
@@ -67,6 +72,7 @@ describe.skipIf(!enabled)(
     let cookieSinCounter = "";
     let cookieCajero = "";
     let qrToken = "";
+    let consumerId: string;
 
     beforeAll(async () => {
       a = await seedBusiness({
@@ -87,7 +93,14 @@ describe.skipIf(!enabled)(
       extras.push(sinCounter, cajero);
       cookieSinCounter = await cookieDe(sinCounter);
       cookieCajero = await cookieDe(cajero);
-      qrToken = (await seedConsumer()).qrToken;
+      const consumer = await seedConsumer();
+      qrToken = consumer.qrToken;
+      consumerId = consumer.id;
+      console.info("P6 counter permission identities", {
+        businessId: a.business.id,
+        userIds: [a.userId, ...extras],
+        consumerId,
+      });
     }, 240_000);
 
     afterAll(async () => {
@@ -100,6 +113,28 @@ describe.skipIf(!enabled)(
           .delete(users)
           .where(eq(users.id, userId as string));
       }
+      await getDb()
+        .delete(consumerAccounts)
+        .where(eq(consumerAccounts.id, consumerId));
+      const ownedUsers = [...extras, a.userId];
+      expect(
+        await getDb()
+          .select({ id: users.id })
+          .from(users)
+          .where(inArray(users.id, ownedUsers)),
+      ).toEqual([]);
+      expect(
+        await getDb()
+          .select({ id: sessions.id })
+          .from(sessions)
+          .where(inArray(sessions.userId, ownedUsers)),
+      ).toEqual([]);
+      expect(
+        await getDb()
+          .select({ id: consumerAccounts.id })
+          .from(consumerAccounts)
+          .where(eq(consumerAccounts.id, consumerId)),
+      ).toEqual([]);
     }, 180_000);
 
     /** **EL CAMBIO DE COMPORTAMIENTO DEL §6**: hasta esta spec CUALQUIER integrante activo
@@ -115,23 +150,17 @@ describe.skipIf(!enabled)(
       120_000,
     );
 
-    /** CONTROL POSITIVO de las CUATRO: con el toggle puesto, el guard deja pasar. `resolve`
-     * llega a 200 de verdad; las otras tres fallan en el DOMINIO por su cuerpo vacío —y eso es
-     * lo que se asevera: que el `code` YA NO es `missing_permission` y el status ya no es 403—.
-     * Medir un 200 en las tres exigiría montar una acreditación entera, que es lo que miden
-     * `counter-*.neon.integration` con el owner. */
+    /** El permiso conserva la escalera; una vez autorizado, Counter está retirado. */
     it.each(MOSTRADOR)(
       "mostrador/%s: un STAFF CON `counter` pasa el guard",
-      async (name, call) => {
+      async (_name, call) => {
         const response = await call(cookieCajero, qrToken);
         const body = await response.json();
-        expect(body.code).not.toBe("missing_permission");
-        if (name === "resolve") {
-          expect(response.status).toBe(200);
-          expect(body.consumer).toBeDefined();
-        } else {
-          expect(response.status).not.toBe(403);
-        }
+        expect(response.status).toBe(410);
+        expect(body).toEqual({
+          code: "feature_retired",
+          error: "Esta función ya no está disponible.",
+        });
       },
       120_000,
     );

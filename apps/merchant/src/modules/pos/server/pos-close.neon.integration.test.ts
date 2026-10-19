@@ -1,27 +1,33 @@
 import { closeWithCash } from "./pos-payment-integration-support";
 import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   type PosWorld,
   dropPosWorld,
-  openOrder,
+  openOrderV2,
+  capturePosScope,
+  scopedPos,
   ordersWithItems,
-  pos,
   posIntegrationEnabled,
   posRow,
   pushesOf,
   seedPosWorld,
 } from "./pos-integration-support";
 import { getDb } from "@mi-pasaporte/db";
-import { campaignCoupons } from "@mi-pasaporte/db/schema";
+import {
+  campaignCoupons,
+  consumerAccounts,
+  users,
+  sessions,
+} from "@mi-pasaporte/db/schema";
 import { readBalances } from "../../../server/counter-integration-support";
 import {
   type Customer,
   type Reward,
   choose,
   redemptionsOf,
-  scannedCustomer,
+  scannedCustomer as seedScannedCustomer,
   selectionOf,
   sell,
   welcomeCoupon,
@@ -36,13 +42,47 @@ import {
  */
 
 let world: PosWorld;
+let scope: string;
+const consumerIds: string[] = [];
+async function scannedCustomer(target: PosWorld) {
+  const customer = await seedScannedCustomer(target);
+  consumerIds.push(customer.consumerId);
+  return customer;
+}
 
 beforeAll(async () => {
   world = await seedPosWorld("POS cierre");
+  scope = await capturePosScope(world.ownerCookie, world.seed.business.id);
 }, 180_000);
 
 afterAll(async () => {
   await dropPosWorld(world);
+  if (consumerIds.length) {
+    await getDb()
+      .delete(consumerAccounts)
+      .where(inArray(consumerAccounts.id, consumerIds));
+    expect(
+      await getDb()
+        .select({ id: consumerAccounts.id })
+        .from(consumerAccounts)
+        .where(inArray(consumerAccounts.id, consumerIds)),
+    ).toEqual([]);
+  }
+  if (world) {
+    await getDb().delete(users).where(eq(users.id, world.seed.userId));
+    expect(
+      await getDb()
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.id, world.seed.userId)),
+    ).toEqual([]);
+    expect(
+      await getDb()
+        .select({ id: sessions.id })
+        .from(sessions)
+        .where(eq(sessions.userId, world.seed.userId)),
+    ).toEqual([]);
+  }
 }, 180_000);
 
 /** 2 medialunas (7.00) + 1 cafe (2.00) = 9.00 bruto. */
@@ -55,13 +95,34 @@ async function closeWithPass(
   customer: Customer,
   coupon?: { couponId: string },
 ) {
-  const order = await openOrder(world, cart(), "Mesa 4");
-  const response = await closeWithCash(world.ownerCookie, order.id, {
-    clientRequestId: randomUUID(),
-    version: order.version,
-    membershipId: customer.membershipId,
-    ...(coupon ? { coupon } : {}),
+  // V2 stores the caller's literal note; the legacy automatic prefix is now explicit fixture intent.
+  const opened = await scopedPos(world.ownerCookie, scope).create({
+    createRequestId: randomUUID(),
+    saleType: "table",
+    orderLabel: "Mesa 4",
+    locationId: world.seed.locationId,
+    tableId: null,
+    note: "Mesa: Mesa 4",
+    items: cart().map((item) => ({
+      productId: item.productId,
+      quantity: String(item.quantity),
+      quantityUnit: "unit",
+      catalogRevision: "1",
+    })),
   });
+  expect(opened.status).toBe(201);
+  const order = await opened.json();
+  const response = await closeWithCash(
+    world.ownerCookie,
+    order.id,
+    {
+      clientRequestId: randomUUID(),
+      version: order.version,
+      membershipId: customer.membershipId,
+      ...(coupon ? { coupon } : {}),
+    },
+    { scope },
+  );
   return { order, response };
 }
 
@@ -80,11 +141,16 @@ describe.skipIf(!posIntegrationEnabled)(
   "POS: cerrar la venta (spec 0169)",
   () => {
     it("CASO 3 — sin pase: `closed`, `order_id` null, ninguna `core.order`", async () => {
-      const order = await openOrder(world, cart());
-      const response = await closeWithCash(world.ownerCookie, order.id, {
-        clientRequestId: randomUUID(),
-        version: order.version,
-      });
+      const order = await openOrderV2(world, scope, cart());
+      const response = await closeWithCash(
+        world.ownerCookie,
+        order.id,
+        {
+          clientRequestId: randomUUID(),
+          version: order.version,
+        },
+        { scope },
+      );
       expect(response.status).toBe(200);
       const body = await response.json();
       expect(body).toMatchObject({
@@ -97,19 +163,26 @@ describe.skipIf(!posIntegrationEnabled)(
         status: "closed",
         orderId: null,
       });
-      const { closedToday } = await (await pos.list(world.ownerCookie)).json();
+      const { closedToday } = await (
+        await scopedPos(world.ownerCookie, scope).list()
+      ).json();
       expect(closedToday).toContainEqual(
-        expect.objectContaining({ id: order.id, saleTotal: null }),
+        expect.objectContaining({ id: order.id, saleTotal: "9.00" }),
       );
     }, 120_000);
 
     it("un cupon SIN pase → 422 `invalid_input`, y la orden sigue abierta", async () => {
-      const order = await openOrder(world, cart());
-      const response = await closeWithCash(world.ownerCookie, order.id, {
-        clientRequestId: randomUUID(),
-        version: order.version,
-        coupon: { couponId: randomUUID() },
-      });
+      const order = await openOrderV2(world, scope, cart());
+      const response = await closeWithCash(
+        world.ownerCookie,
+        order.id,
+        {
+          clientRequestId: randomUUID(),
+          version: order.version,
+          coupon: { couponId: randomUUID() },
+        },
+        { scope },
+      );
       expect(response.status).toBe(422);
       expect((await response.json()).code).toBe("invalid_input");
       expect(await posRow(order.id)).toMatchObject({ status: "open" });

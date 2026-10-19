@@ -1,15 +1,20 @@
+import { inArray } from "drizzle-orm";
+import { consumerAccounts, users, sessions } from "@mi-pasaporte/db/schema";
+import { readPosCatalog } from "./measured-catalog";
+import { products } from "@mi-pasaporte/db/schema";
 import { closeWithCash } from "./pos-payment-integration-support";
 import { randomUUID } from "node:crypto";
 import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { getDb } from "@mi-pasaporte/db";
 import { locations, posOrders } from "@mi-pasaporte/db/schema";
-import { scannedCustomer } from "../../../server/counter/coupon-cycle-support";
+import { scannedCustomer as seedScannedCustomer } from "../../../server/counter/coupon-cycle-support";
 import {
   type PosWorld,
   dropPosWorld,
-  openOrder,
-  pos,
+  openOrderV2,
+  capturePosScope,
+  scopedPos,
   posIntegrationEnabled,
   seedPosWorld,
   seedProduct,
@@ -21,32 +26,46 @@ import {
  * orden que NO debe contar trae mas unidades que el ganador: si el filtro se cae, el orden cambia.
  */
 let a: PosWorld;
+let scope: string;
 beforeAll(async () => {
   a = await seedPosWorld("POS BEST");
+  scope = await capturePosScope(a.ownerCookie, a.seed.business.id);
 }, 240_000);
 afterAll(async () => {
   await dropPosWorld(a);
+  await retireFixtureIdentities([a], consumerIds);
 }, 240_000);
 
 async function closeOrder(
   items: { productId: string; quantity: number; unitPrice?: string }[],
   membershipId?: string,
 ): Promise<string> {
-  const order = await openOrder(a, items);
-  const response = await closeWithCash(a.ownerCookie, order.id, {
-    clientRequestId: randomUUID(),
-    version: order.version,
-    ...(membershipId ? { membershipId } : {}),
-  });
+  const order = await openOrderV2(a, scope, items);
+  const response = await closeWithCash(
+    a.ownerCookie,
+    order.id,
+    {
+      clientRequestId: randomUUID(),
+      version: order.version,
+      ...(membershipId ? { membershipId } : {}),
+    },
+    { scope: scope },
+  );
   if (response.status !== 200)
     throw new Error(`close: ${response.status} ${await response.text()}`);
   return order.id;
 }
 
+// Preserve the historical unit-sales ranking through its internal reader after HTTP V1 retirement.
 async function catalog() {
-  const response = await pos.catalog(a.ownerCookie, a.seed.locationId);
-  expect(response.status).toBe(200);
-  return response.json();
+  const projection = await readPosCatalog(
+    a.seed.business.id,
+    a.seed.locationId,
+    1,
+  );
+  if (!("bestSellingProductIds" in projection))
+    throw new Error("Expected historical unit ranking");
+  return projection;
 }
 
 describe.skipIf(!posIntegrationEnabled)(
@@ -71,9 +90,13 @@ describe.skipIf(!posIntegrationEnabled)(
       );
 
       // Lo que no cuenta: anulada, abierta, cerrada hace 31 dias, cerrada en otro local.
-      const voided = await openOrder(a, [{ productId: torta, quantity: 9 }]);
-      expect((await pos.void(a.ownerCookie, voided.id)).status).toBe(200);
-      await openOrder(a, [{ productId: torta, quantity: 9 }]);
+      const voided = await openOrderV2(a, scope, [
+        { productId: torta, quantity: 9 },
+      ]);
+      expect(
+        (await scopedPos(a.ownerCookie, scope).void(voided.id)).status,
+      ).toBe(200);
+      await openOrderV2(a, scope, [{ productId: torta, quantity: 9 }]);
       const old = await closeOrder([{ productId: vieja, quantity: 9 }]);
       await getDb()
         .update(posOrders)
@@ -109,18 +132,26 @@ describe.skipIf(!posIntegrationEnabled)(
     it("sin precio (null) no llega al POS ni al ranking; precio 0 si", async () => {
       const sinPrecio = await seedProduct(a, "Sin precio", null);
       const gratis = await seedProduct(a, "Gratis", "0.00");
-      // El mas vendido de todos, cobrado con precio escrito: igual no aparece.
+      // A real captured tariff remains historical after the catalog price is withdrawn.
+      await getDb()
+        .update(products)
+        .set({ unitPrice: "2.00", salesRevision: 2 })
+        .where(eq(products.id, sinPrecio));
       await closeOrder([
-        { productId: sinPrecio, quantity: 20, unitPrice: "2.00" },
+        { productId: sinPrecio, quantity: 20 },
         { productId: gratis, quantity: 1 },
       ]);
 
+      await getDb()
+        .update(products)
+        .set({ unitPrice: null, salesRevision: 3 })
+        .where(eq(products.id, sinPrecio));
       const body = await catalog();
       const ids = body.products.map((p: { id: string }) => p.id);
       expect(ids).not.toContain(sinPrecio);
       expect(ids).toContain(gratis);
       expect(
-        body.products.find((p: { id: string }) => p.id === gratis).unitPrice,
+        body.products.find((p: { id: string }) => p.id === gratis)!.unitPrice,
       ).toBe(0);
       expect(
         body.products.every(
@@ -135,3 +166,49 @@ describe.skipIf(!posIntegrationEnabled)(
     }, 240_000);
   },
 );
+
+const consumerIds: string[] = [];
+async function scannedCustomer(
+  target: Parameters<typeof seedScannedCustomer>[0],
+) {
+  const customer = await seedScannedCustomer(target);
+  consumerIds.push(customer.consumerId);
+  return customer;
+}
+
+/** Retire only identities created by these fixtures, after their business roots are gone. */
+async function retireFixtureIdentities(
+  targets: { seed: { userId: string }; extraUsers: string[] }[],
+  consumers: string[] = [],
+) {
+  if (consumers.length) {
+    await getDb()
+      .delete(consumerAccounts)
+      .where(inArray(consumerAccounts.id, consumers));
+    expect(
+      await getDb()
+        .select({ id: consumerAccounts.id })
+        .from(consumerAccounts)
+        .where(inArray(consumerAccounts.id, consumers)),
+    ).toEqual([]);
+  }
+  const owners = targets.flatMap((target) => [
+    target.seed.userId,
+    ...target.extraUsers,
+  ]);
+  if (owners.length) {
+    await getDb().delete(users).where(inArray(users.id, owners));
+    expect(
+      await getDb()
+        .select({ id: users.id })
+        .from(users)
+        .where(inArray(users.id, owners)),
+    ).toEqual([]);
+    expect(
+      await getDb()
+        .select({ id: sessions.id })
+        .from(sessions)
+        .where(inArray(sessions.userId, owners)),
+    ).toEqual([]);
+  }
+}

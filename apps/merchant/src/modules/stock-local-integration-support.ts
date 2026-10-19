@@ -13,14 +13,19 @@ import {
   seedPosWorld,
   setModuleRow,
   dropPosWorld,
+  capturePosScope,
+  scopedPos,
 } from "./pos/server/pos-integration-support";
 import { closeWithCash } from "./pos/server/pos-payment-integration-support";
 import { initializePaymentMethods } from "../server/business/payment-catalog";
 import { randomUUID } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { getDb, withDbTransaction } from "@mi-pasaporte/db";
 import {
   locations,
+  users,
+  sessions,
+  products,
   moduleEvents,
   moduleEventDeliveries,
   stockItems,
@@ -40,6 +45,13 @@ export let other: ModuleWorld;
 export let localId: string;
 export let productId: string;
 export let flourId: string;
+let posScope: string | undefined;
+/** Opt-in owner caller; generic route() below deliberately stays raw for every module. */
+export function stockPos() {
+  if (posScope === undefined)
+    throw new Error("Stock POS fixture requires explicit V2 setup");
+  return scopedPos(world.cookie, posScope);
+}
 export const route = (
   method: "GET" | "POST" | "PUT" | "DELETE",
   path: string,
@@ -76,11 +88,39 @@ export const create = async (
   tableId?: string,
   id = productId,
 ) => {
-  const response = await route("POST", "pos/orders", {
-    tableLabel: "Mesa de prueba",
-    items: [{ productId: id, quantity }],
-    ...(tableId ? { tableId } : {}),
-  });
+  let response: Response;
+  if (posScope === undefined) {
+    response = await route("POST", "pos/orders", {
+      tableLabel: "Mesa de prueba",
+      items: [{ productId: id, quantity }],
+      ...(tableId ? { tableId } : {}),
+    });
+  } else {
+    // Positive fixture: capture a real revision, never translate an arbitrary route body.
+    const [product] = await getDb()
+      .select({ revision: products.salesRevision })
+      .from(products)
+      .where(
+        and(eq(products.id, id), eq(products.businessId, world.businessId)),
+      );
+    if (!product) throw new Error("Stock POS fixture requires its own product");
+    response = await stockPos().create({
+      createRequestId: randomUUID(),
+      saleType: tableId ? "table" : "pickup",
+      orderLabel: "Mesa de prueba",
+      locationId: tableId ? null : localId,
+      tableId: tableId ?? null,
+      note: null,
+      items: [
+        {
+          productId: id,
+          quantity: String(quantity),
+          quantityUnit: "unit",
+          catalogRevision: String(product.revision),
+        },
+      ],
+    });
+  }
   if (response.status !== 201)
     throw new Error(`create: ${response.status} ${await response.text()}`);
   return response.json();
@@ -89,10 +129,15 @@ export const close = (
   order: { id: string; version: number },
   key = randomUUID(),
 ) =>
-  closeWithCash(world.cookie, order.id, {
-    version: order.version,
-    clientRequestId: key,
-  });
+  closeWithCash(
+    world.cookie,
+    order.id,
+    {
+      version: order.version,
+      clientRequestId: key,
+    },
+    posScope === undefined ? undefined : { scope: posScope },
+  );
 export const eventOf = async (
   orderId: string,
   businessId = world.businessId,
@@ -104,6 +149,7 @@ export const eventOf = async (
       and(
         eq(moduleEvents.businessId, businessId),
         eq(moduleEvents.sourceId, orderId),
+        eq(moduleEvents.eventType, "sale.closed"),
       ),
     );
   if (!event) throw new Error("Sale event not persisted");
@@ -127,9 +173,14 @@ export const movements = (orderId: string) =>
       ),
     );
 
-export async function setupStockLocalWorld() {
+export async function setupStockLocalWorld(options?: { posContract: 2 }) {
   world = await seedModuleWorld("0227 integration");
   other = await seedModuleWorld("0227 foreign");
+  if (options?.posContract === 2)
+    console.info("P6 stock fixture identities", {
+      businessIds: [world.businessId, other.businessId],
+      ownerIds: [world.ownerId, other.ownerId],
+    });
   await enableModules(world, ["stock", "recipes", "pos", "tables"]);
   await withDbTransaction((tx) =>
     initializePaymentMethods(tx, { businessId: world.businessId }),
@@ -145,10 +196,29 @@ export async function setupStockLocalWorld() {
     .values({ businessId: world.businessId, name: "Harina", unit: "g" })
     .returning({ id: stockItems.id });
   flourId = flour.id;
+  posScope =
+    options?.posContract === 2
+      ? await capturePosScope(world.cookie, world.businessId)
+      : undefined;
 }
 export async function cleanupStockLocalWorld() {
+  const identities = [world, other]
+    .filter(Boolean)
+    .flatMap((target) => target.users);
   await dropModuleWorld(world);
   await dropModuleWorld(other);
+  if (posScope !== undefined && identities.length) {
+    const remainingUsers = await getDb()
+      .select({ id: users.id })
+      .from(users)
+      .where(inArray(users.id, identities));
+    const remainingSessions = await getDb()
+      .select({ id: sessions.id })
+      .from(sessions)
+      .where(inArray(sessions.userId, identities));
+    if (remainingUsers.length || remainingSessions.length)
+      throw new Error("Owned Stock V2 fixture identities were not retired");
+  }
 }
 export async function resetProduct() {
   productId = await seedProduct(world, "Pizza posterior", "10.00");

@@ -6,7 +6,8 @@ import {
   type PosWorld,
   dropPosWorld,
   posIntegrationEnabled,
-  pos,
+  capturePosScope,
+  scopedPos,
   posStaff,
   seedPosWorld,
   setPosModule,
@@ -20,11 +21,13 @@ import {
 
 /** Spec 0220: las mismas tres rutas, ahora del despachador — el ajuste del owner es
  * `…/pos/ticket-settings` (`owner: true`) y la lectura del POS `…/pos/ticket` (permiso `pos`). */
+const scopes = new Map<string, string>();
+const caller = (cookie: string) => scopedPos(cookie, scopes.get(cookie) ?? "");
 const ticket = {
-  ownerRead: (cookie: string) => pos.ticketSettings(cookie),
+  ownerRead: (cookie: string) => caller(cookie).ticketSettings(),
   ownerSave: (cookie: string, body: unknown) =>
-    pos.saveTicketSettings(cookie, body),
-  posRead: (cookie: string) => pos.ticket(cookie),
+    caller(cookie).saveTicketSettings(body),
+  posRead: (cookie: string) => caller(cookie).ticket(),
 };
 
 let world: PosWorld;
@@ -33,6 +36,11 @@ let other: PosWorld;
 beforeAll(async () => {
   world = await seedPosWorld("Ticket");
   other = await seedPosWorld("Ticket ajeno");
+  for (const w of [world, other])
+    scopes.set(
+      w.ownerCookie,
+      await capturePosScope(w.ownerCookie, w.seed.business.id),
+    );
 }, 240_000);
 
 afterAll(async () => {
@@ -141,6 +149,10 @@ describe.skipIf(!posIntegrationEnabled)("Ajuste del ticket (spec 0184)", () => {
 
   it("staff con `pos` lee por el POS pero no edita (403 `not_owner`); sin `pos` → 403 `missing_permission`", async () => {
     const mozo = await posStaff(world, ["pos"]);
+    scopes.set(
+      mozo.cookie,
+      await capturePosScope(mozo.cookie, world.seed.business.id),
+    );
     expect((await ticket.posRead(mozo.cookie)).status).toBe(200);
     const save = await ticket.ownerSave(mozo.cookie, {
       printingEnabled: true,
@@ -151,6 +163,10 @@ describe.skipIf(!posIntegrationEnabled)("Ajuste del ticket (spec 0184)", () => {
     expect((await save.json()).code).toBe("not_owner");
 
     const otro = await posStaff(world, ["counter"]);
+    scopes.set(
+      otro.cookie,
+      await capturePosScope(otro.cookie, world.seed.business.id),
+    );
     const read = await ticket.posRead(otro.cookie);
     expect(read.status).toBe(403);
     expect((await read.json()).code).toBe("missing_permission");

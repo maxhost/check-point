@@ -1,9 +1,11 @@
+import type { MeasuredSaleClosedEvent } from "../server/module-events/types";
 import { createPaymentMethod } from "../server/business/payment-methods";
 import { randomUUID } from "node:crypto";
 import {
   afterAll,
   afterEach,
   beforeAll,
+  beforeEach,
   describe,
   expect,
   it,
@@ -41,14 +43,12 @@ const readSaleCommissions = (
   location: unknown,
 ) => readCoreSaleCommissions(businessId, id, location, "pos");
 import { businessHttp } from "../server/business/http";
-import {
-  publishSaleClosed,
-  setResourceVersion,
-  type SaleClosedEvent,
-} from "../server/module-events";
+import { publishSaleClosed, setResourceVersion } from "../server/module-events";
 import {
   setupModuleEventWorld,
+  moduleEventPos,
   cleanupModuleEventWorld,
+  settleModuleEventWork,
   world,
   other,
   itemId,
@@ -56,16 +56,28 @@ import {
   cashId,
   foreignCashId,
   state,
-  post,
   open,
   eventOf,
   movements,
   drain,
   holdAcceleration,
 } from "./module-events-integration-support";
-beforeAll(setupModuleEventWorld, 120000);
+beforeAll(() => setupModuleEventWorld({ posContract: 2 }), 120000);
 afterAll(cleanupModuleEventWorld, 120000);
-afterEach(() => vi.restoreAllMocks());
+beforeEach(async () => {
+  await settleModuleEventWork();
+  holdAcceleration();
+});
+afterEach(async () => {
+  const settled = await settleModuleEventWork();
+  vi.restoreAllMocks();
+  const failed = settled.filter((result) => result.status === "rejected");
+  if (failed.length)
+    throw new AggregateError(
+      failed.map((result) => result.reason),
+      "Owned module event retry failed",
+    );
+});
 async function sqlState(query: Promise<unknown>, code: string) {
   let actual: string | null = null;
   try {
@@ -78,8 +90,7 @@ async function sqlState(query: Promise<unknown>, code: string) {
 describe.skipIf(!modulesIntegrationEnabled)(
   "P1 actual POS provider, R1 compatibility and schema negatives",
   () => {
-    it("real v2 freezes composition/rate in one close while Stock keeps its own application valuation", async () => {
-      holdAcceleration();
+    it("real V4 freezes composition/rate in one close while Stock keeps its own application valuation", async () => {
       const a = await createRecipe(world.businessId, {
           name: "Actual recipe A",
           lines: [{ itemId, quantity: "1.000" }],
@@ -107,18 +118,27 @@ describe.skipIf(!modulesIntegrationEnabled)(
       );
       const order = await open(productId, 2);
       state.closedId = order.id;
-      const response = await post(`orders/${order.id}/close`, {
+      const response = await moduleEventPos().close(order.id, {
         version: order.version,
         clientRequestId: randomUUID(),
         payments: [{ methodId: method.id, amount: "18.00" }],
       });
       expect(response.status).toBe(200);
       const event = await eventOf(order.id),
-        payload = event.payload as SaleClosedEvent;
-      expect(payload.eventVersion).toBe(3);
-      if (payload.eventVersion !== 3)
+        payload = event.payload as MeasuredSaleClosedEvent;
+      expect(payload.eventVersion).toBe(4);
+      if (payload.eventVersion !== 4)
         throw new Error("expected financial event");
       expect(payload.money.collected).toBe("18.00");
+      expect(payload.lines[0]).toMatchObject({
+        quantity: "2",
+        measure: {
+          kind: "unit",
+          quantityUnit: "unit",
+          priceUnit: "unit",
+          conversionVersion: "mass-si-1",
+        },
+      });
       expect(payload.lines[0].resourceVersions).toContainEqual({
         providerId: "recipes",
         slot: "composition",
@@ -191,97 +211,135 @@ describe.skipIf(!modulesIntegrationEnabled)(
       ).toMatchObject({ knownCost: "12.00" });
     }, 60000);
     it("legacy v1 still applies its captured recipe and never fabricates commission data", async () => {
-      const legacyProduct = await seedProduct(
-          world,
-          "Legacy event recipe",
-          "1.00",
-        ),
-        sourceOrderId = randomUUID(),
-        sourceLineId = randomUUID();
-      const event = await withDbTransaction(async (tx) => {
-        const [revision] = await tx
-          .insert(recipeRevisions)
-          .values({
+      const [before] = await getDb()
+        .select({ cost: stockItemLocations.weightedAverageUnitCost })
+        .from(stockItemLocations)
+        .where(
+          and(
+            eq(stockItemLocations.businessId, world.businessId),
+            eq(stockItemLocations.itemId, itemId),
+            eq(stockItemLocations.locationId, world.locationId),
+          ),
+        );
+      // This historical oracle explicitly values0.250g×2 at7, independent of prior cases.
+      await getDb()
+        .update(stockItemLocations)
+        .set({ weightedAverageUnitCost: "7.000000" })
+        .where(
+          and(
+            eq(stockItemLocations.businessId, world.businessId),
+            eq(stockItemLocations.itemId, itemId),
+            eq(stockItemLocations.locationId, world.locationId),
+          ),
+        );
+      try {
+        const legacyProduct = await seedProduct(
+            world,
+            "Legacy event recipe",
+            "1.00",
+          ),
+          sourceOrderId = randomUUID(),
+          sourceLineId = randomUUID();
+        const event = await withDbTransaction(async (tx) => {
+          const [revision] = await tx
+            .insert(recipeRevisions)
+            .values({
+              businessId: world.businessId,
+              productId: legacyProduct,
+              lines: [{ itemId, unit: "g", quantity: "0.250" }],
+            })
+            .returning();
+          await setResourceVersion(tx, {
             businessId: world.businessId,
-            productId: legacyProduct,
-            lines: [{ itemId, unit: "g", quantity: "0.250" }],
-          })
-          .returning();
-        await setResourceVersion(tx, {
-          businessId: world.businessId,
-          resourceType: "product",
-          resourceId: legacyProduct,
-          providerId: "recipes",
-          slot: "recipe",
-          versionId: revision.id,
+            resourceType: "product",
+            resourceId: legacyProduct,
+            providerId: "recipes",
+            slot: "recipe",
+            versionId: revision.id,
+          });
+          return publishSaleClosed(tx, {
+            businessId: world.businessId,
+            sourceOrderId,
+            locationId: world.locationId,
+            closedAt: new Date(),
+            userId: world.ownerId,
+            lines: [{ sourceLineId, productId: legacyProduct, quantity: 2 }],
+          });
         });
-        return publishSaleClosed(tx, {
-          businessId: world.businessId,
-          sourceOrderId,
-          locationId: world.locationId,
-          closedAt: new Date(),
-          userId: world.ownerId,
-          lines: [{ sourceLineId, productId: legacyProduct, quantity: 2 }],
+        expect((await eventOf(sourceOrderId)).eventVersion).toBe(1);
+        const deliveries = () =>
+          getDb()
+            .select({
+              subscriberId: moduleEventDeliveries.subscriberId,
+              state: moduleEventDeliveries.state,
+              appliedAt: moduleEventDeliveries.appliedAt,
+            })
+            .from(moduleEventDeliveries)
+            .where(eq(moduleEventDeliveries.eventId, event!.eventId));
+        // Module consumption and core analytics are independent durable deliveries.
+        expect(
+          (await deliveries()).filter(
+            (d) => d.subscriberId !== "core.analytics",
+          ),
+        ).toEqual([
+          { subscriberId: "recipes", state: "pending", appliedAt: null },
+        ]);
+        expect(await drain(event!.eventId)).toEqual({
+          claimed: 2,
+          applied: 2,
+          pending: 0,
+          failed: 0,
         });
-      });
-      expect((await eventOf(sourceOrderId)).eventVersion).toBe(1);
-      const deliveries = () =>
-        getDb()
-          .select({
-            subscriberId: moduleEventDeliveries.subscriberId,
-            state: moduleEventDeliveries.state,
-            appliedAt: moduleEventDeliveries.appliedAt,
-          })
-          .from(moduleEventDeliveries)
-          .where(eq(moduleEventDeliveries.eventId, event!.eventId));
-      // Module consumption and core analytics are independent durable deliveries.
-      expect(
-        (await deliveries()).filter((d) => d.subscriberId !== "core.analytics"),
-      ).toEqual([
-        { subscriberId: "recipes", state: "pending", appliedAt: null },
-      ]);
-      expect(await drain(event!.eventId)).toEqual({
-        claimed: 2,
-        applied: 2,
-        pending: 0,
-        failed: 0,
-      });
-      expect(
-        (await deliveries()).filter((d) => d.subscriberId !== "core.analytics"),
-      ).toEqual([
-        {
-          subscriberId: "recipes",
-          state: "applied",
-          appliedAt: expect.any(Date),
-        },
-      ]);
-      expect(await movements(sourceOrderId)).toMatchObject([
-        { quantity: "-0.500" },
-      ]);
-      expect(
-        await readSaleConsumptionCost({
-          businessId: world.businessId,
-          locationId: world.locationId,
-          sourceOrderId,
-        }),
-      ).toMatchObject({ state: "completo", knownCost: "3.50" });
-      expect(
+        expect(
+          (await deliveries()).filter(
+            (d) => d.subscriberId !== "core.analytics",
+          ),
+        ).toEqual([
+          {
+            subscriberId: "recipes",
+            state: "applied",
+            appliedAt: expect.any(Date),
+          },
+        ]);
+        expect(await movements(sourceOrderId)).toMatchObject([
+          { quantity: "-0.500" },
+        ]);
+        expect(
+          await readSaleConsumptionCost({
+            businessId: world.businessId,
+            locationId: world.locationId,
+            sourceOrderId,
+          }),
+        ).toMatchObject({ state: "completo", knownCost: "3.50" });
+        expect(
+          await getDb()
+            .select()
+            .from(recipeConsumptionSources)
+            .where(eq(recipeConsumptionSources.sourceOrderId, sourceOrderId)),
+        ).toEqual([]);
+        expect(
+          await readSaleCommissions(
+            world.businessId,
+            sourceOrderId,
+            world.locationId,
+          ),
+        ).toMatchObject({
+          state: "incompleto",
+          total: null,
+          reasons: ["commission_legacy_event"],
+        });
+      } finally {
         await getDb()
-          .select()
-          .from(recipeConsumptionSources)
-          .where(eq(recipeConsumptionSources.sourceOrderId, sourceOrderId)),
-      ).toEqual([]);
-      expect(
-        await readSaleCommissions(
-          world.businessId,
-          sourceOrderId,
-          world.locationId,
-        ),
-      ).toMatchObject({
-        state: "incompleto",
-        total: null,
-        reasons: ["commission_legacy_event"],
-      });
+          .update(stockItemLocations)
+          .set({ weightedAverageUnitCost: before.cost })
+          .where(
+            and(
+              eq(stockItemLocations.businessId, world.businessId),
+              eq(stockItemLocations.itemId, itemId),
+              eq(stockItemLocations.locationId, world.locationId),
+            ),
+          );
+      }
     }, 30000);
     it("real persisted zero is readable with POS off and without its permission; positive absence stays unknown", async () => {
       const free = await seedProduct(world, "Actual zero sale", "0.00"),
@@ -290,7 +348,7 @@ describe.skipIf(!modulesIntegrationEnabled)(
       try {
         expect(
           (
-            await post(`orders/${zero.id}/close`, {
+            await moduleEventPos().close(zero.id, {
               version: zero.version,
               clientRequestId: randomUUID(),
               payments: [],
@@ -299,17 +357,21 @@ describe.skipIf(!modulesIntegrationEnabled)(
         ).toBe(200);
         expect(
           (
-            await post(`orders/${positive.id}/close`, {
+            await moduleEventPos().close(positive.id, {
               version: positive.version,
               clientRequestId: randomUUID(),
               payments: [{ methodId: cashId, amount: "9.00" }],
             })
           ).status,
         ).toBe(200);
-        expect((await eventOf(zero.id)).eventVersion).toBe(3);
-        expect((await eventOf(positive.id)).eventVersion).toBe(3);
+        expect((await eventOf(zero.id)).eventVersion).toBe(4);
+        expect((await eventOf(positive.id)).eventVersion).toBe(4);
         await setModuleEnabled(world.businessId, "pos", { enabled: false });
         const staff = await moduleStaff(world, ["business"]);
+        console.info("P6 module event staff identity", {
+          businessId: world.businessId,
+          userId: world.users.at(-1),
+        });
         const response = await businessHttp(
           new Request(
             `http://localhost:3001/api/business/sale-commissions/pos/${zero.id.toUpperCase()}?locationId=${world.locationId.toUpperCase()}`,
@@ -426,8 +488,8 @@ describe.skipIf(!modulesIntegrationEnabled)(
     }, 30000);
     it("a persisted contradictory zero never becomes known commission zero", async () => {
       const real = await eventOf(state.closedId),
-        payload = structuredClone(real.payload) as SaleClosedEvent;
-      if (payload.eventVersion !== 3)
+        payload = structuredClone(real.payload) as MeasuredSaleClosedEvent;
+      if (payload.eventVersion !== 4)
         throw new Error("expected financial event");
       const sourceOrderId = randomUUID();
       payload.sourceOrderId = sourceOrderId;

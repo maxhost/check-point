@@ -20,7 +20,8 @@ import {
 } from "./measured-summary";
 import {
   dropPosWorld,
-  openOrder,
+  openOrderV2,
+  capturePosScope,
   posIntegrationEnabled,
   posStaff,
   seedPosWorld,
@@ -30,6 +31,7 @@ import {
 import { closeWithCash } from "./pos-payment-integration-support";
 
 const worlds: PosWorld[] = [];
+let scope: string;
 const now = new Date("2026-11-01T06:30:00.000Z"); // New York fall DST day, second 01:30.
 let staffId: string;
 let productId: string;
@@ -48,6 +50,10 @@ describe.skipIf(!posIntegrationEnabled)(
     beforeAll(async () => {
       worlds.push(await seedPosWorld("Summary A"));
       worlds.push(await seedPosWorld("Summary B"));
+      scope = await capturePosScope(
+        worlds[0].ownerCookie,
+        worlds[0].seed.business.id,
+      );
       staffId = (await posStaff(worlds[0], ["pos"])).userId;
       productId = await seedProduct(
         worlds[0],
@@ -128,8 +134,9 @@ describe.skipIf(!posIntegrationEnabled)(
           });
       }
       // A real paid close without a customer; no fabricated payment rows or discount.
-      const netOrder = await openOrder(
+      const netOrder = await openOrderV2(
         worlds[0],
+        scope,
         [{ productId, quantity: 2 }],
         "Cash without customer",
       );
@@ -137,6 +144,7 @@ describe.skipIf(!posIntegrationEnabled)(
         worlds[0].ownerCookie,
         netOrder.id,
         { clientRequestId: randomUUID(), version: netOrder.version },
+        { scope },
       );
       expect(closedResponse.status).toBe(200);
       const closedBody = await closedResponse.json();
@@ -161,8 +169,9 @@ describe.skipIf(!posIntegrationEnabled)(
         .set({ currencyCode: "COP" })
         .where(eq(businesses.id, worlds[0].seed.business.id));
       try {
-        const copOrder = await openOrder(
+        const copOrder = await openOrderV2(
           worlds[0],
+          scope,
           [{ productId: copProduct, quantity: 2 }],
           "COP without customer",
         );
@@ -170,6 +179,7 @@ describe.skipIf(!posIntegrationEnabled)(
           worlds[0].ownerCookie,
           copOrder.id,
           { clientRequestId: randomUUID(), version: copOrder.version },
+          { scope },
         );
         expect(response.status).toBe(200);
         expect((await response.json()).settlement).toMatchObject({
