@@ -15,6 +15,7 @@ import {
 import { readPosCatalog } from "./measured-catalog";
 import { createPosOrderV2 } from "./measured-create";
 import { updatePosOrderV2 } from "./measured-update";
+import { resolveMeasuredScan } from "./measured-resolve";
 import type { ModuleRoute, ModuleServer } from "../../route-table";
 import { closePosOrder } from "./close";
 import { posOrderId } from "./errors";
@@ -76,11 +77,14 @@ const routes: readonly ModuleRoute[] = [
     path: "orders",
     failure: "No pudimos leer las órdenes.",
     handler: async ({ business, request }) => {
+      const contract = posReadContract(request);
       const status = query(request, "status");
       if (status !== null && status !== "voided")
         throw new CounterError(422, "invalid_input", "El estado no es válido.");
       return NextResponse.json(
-        await listPosOrders(business.id, new Date(), status ?? undefined),
+        await (contract === 2
+          ? listPosOrders(business.id, new Date(), status ?? undefined, 2)
+          : listPosOrders(business.id, new Date(), status ?? undefined)),
       );
     },
   }),
@@ -160,9 +164,10 @@ const routes: readonly ModuleRoute[] = [
     path: "resolve",
     failure: "No pudimos resolver el código.",
     handler: async ({ request, business }) => {
+      const contract = posReadContract(request);
       const body = await readPosBody(request);
       return NextResponse.json(
-        await resolveScan(
+        await (contract === 2 ? resolveMeasuredScan : resolveScan)(
           business,
           body.qrToken as string,
           optionalLocationId(body.locationId),
