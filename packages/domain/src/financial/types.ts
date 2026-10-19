@@ -63,8 +63,15 @@ export type FinancialInput = {
   }[];
   discount: { amount: string; origin: DiscountOrigin } | null;
 };
+/** Internal V2 decision, never a trusted HTTP discount body. Exact amounts are
+ * canonical rational cents, like the originals produced by this kernel. */
+export type FinancialDiscountV2 = (
+  | { amount: string; originalAmount?: never }
+  | { originalAmount: ExactAmount; amount?: never }
+) & { origin: DiscountOrigin };
 /** New captures require explicit measures and strict decimal strings. */
-export type FinancialInputV2 = Omit<FinancialInput, "lines"> & {
+export type FinancialInputV2 = Omit<FinancialInput, "lines" | "discount"> & {
+  discount: FinancialDiscountV2 | null;
   lines: readonly {
     sourceLineId: string;
     position: number;
