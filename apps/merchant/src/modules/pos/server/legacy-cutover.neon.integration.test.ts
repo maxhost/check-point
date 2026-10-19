@@ -157,6 +157,7 @@ async function cleanup() {
 }
 describe.skipIf(!posIntegrationEnabled)(
   "P3a cutover: native guards, scope and no legacy effects",
+  { timeout: 120000 },
   () => {
     beforeAll(async () => {
       try {
