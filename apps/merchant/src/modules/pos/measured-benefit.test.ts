@@ -97,6 +97,37 @@ describe("shared measured benefit decision", () => {
       expect(small.originals.discount).toEqual(exact(rational(1n)));
     },
   );
+  it("preserves trusted numeric(12,2) integer percentages without Number", () => {
+    for (const currencyCode of ["USD", "COP"]) {
+      expect(
+        result(
+          [mass, unit],
+          { ...coupon, discountValue: "10.00" },
+          currencyCode,
+        ),
+      ).toEqual(
+        result([mass, unit], { ...coupon, discountValue: "10" }, currencyCode),
+      );
+      expect(
+        result(
+          [mass, unit],
+          { ...coupon, discountValue: "10.0" },
+          currencyCode,
+        ),
+      ).toEqual(
+        result([mass, unit], { ...coupon, discountValue: "10" }, currencyCode),
+      );
+      expect(
+        result(
+          [mass, unit],
+          { ...coupon, discountValue: "100.00" },
+          currencyCode,
+        ),
+      ).toEqual(
+        result([mass, unit], { ...coupon, discountValue: "100" }, currencyCode),
+      );
+    }
+  });
   it("preserves legacy null currency and rejects a different specific currency", () => {
     expect(() =>
       result([mass], { ...coupon, discountUnit: "amount", discountValue: "1" }),
@@ -240,7 +271,7 @@ describe("shared measured benefit decision", () => {
     result(lines, frozen);
     expect({ lines, frozen }).toEqual(before);
   });
-  it.each(["0", "101", "01", "1.0", "1e2", "-1", null, 50])(
+  it.each(["0", "101", "01", "1.01", "1e2", "-1", null, 50])(
     "rejects malformed percentage %s",
     (discountValue) => {
       expect(() =>
