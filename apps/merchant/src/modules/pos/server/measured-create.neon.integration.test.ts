@@ -431,9 +431,13 @@ describe.skipIf(!posIntegrationEnabled)(
       stale.items.push({ ...stale.items[0], catalogRevision: "2" });
       const conflict = await body(await call(stale), 409);
       expect(conflict.code).toBe("catalog_changed");
-      expect(Object.keys(conflict.product).sort()).toEqual([
+      expect(conflict).not.toHaveProperty("product");
+      expect(conflict.products).toHaveLength(1);
+      expect(Object.keys(conflict.products[0]).sort()).toEqual([
         "catalogRevision",
+        "categoryId",
         "id",
+        "imagePath",
         "name",
         "pricingUnit",
         "soldByWeight",
