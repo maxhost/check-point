@@ -6,10 +6,10 @@ import {
   retireMeasuredVoidIdentity,
 } from "./measured-void-action";
 import { PosError } from "./pos-types";
-import { connectedOrder } from "../../../../../../tests/e2e/support/pos-connected-console-fixture";
+import { actionOpen } from "../../../../../../tests/e2e/support/pos-console-actions-fixture";
 import type { PosClient } from "./pos-context";
 import { historyKey } from "./pos-cache";
-const order = structuredClone(connectedOrder);
+const order = structuredClone(actionOpen);
 const terminal = {
   ...order,
   status: "voided" as const,
@@ -17,14 +17,18 @@ const terminal = {
 };
 function setup(timeout = 15000) {
   const request = vi.fn<PosClient["request"]>();
-  const capture = vi.fn(() => request);
+  const transport: PosClient["request"] = <T>(
+    ...args: Parameters<PosClient["request"]>
+  ) => request(...args) as Promise<T>;
+  const capture = vi.fn(() => transport);
+  const client: PosClient = { request: transport, capture };
   const action = new MeasuredVoidAction(
     "test",
-    { request, capture },
+    client,
     "America/Guayaquil",
     timeout,
   );
-  return { action, request, capture };
+  return { action, request, capture, client };
 }
 describe("console void owner", () => {
   it("captures once before awaiting, double tap shares promise, canonical result patches history without reads", async () => {
@@ -107,8 +111,7 @@ describe("console void owner", () => {
     });
   });
   it("same identity remount keeps owner/cache; another identity retires late callback", async () => {
-    const { request, capture } = setup();
-    const client = { request, capture };
+    const { request, client } = setup();
     const action = measuredVoidOwner("remount-a", client, "UTC");
     const unmount = mountMeasuredVoidOwner(action);
     let release!: (value: typeof terminal) => void;

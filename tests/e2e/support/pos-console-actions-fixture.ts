@@ -2,11 +2,13 @@ import type { PosOrderV2 } from "../../../apps/merchant/src/modules/pos/contract
 import { connectedOrder } from "./pos-connected-console-fixture";
 export const actionOpen: PosOrderV2 = {
   ...connectedOrder,
+  total: "4.00",
   id: "action-open",
   orderLabel: "Pedido abierto",
 };
 export const actionClosed: PosOrderV2 = {
   ...connectedOrder,
+  total: "4.00",
   id: "action-closed",
   orderLabel: "Pedido cerrado",
   status: "closed",

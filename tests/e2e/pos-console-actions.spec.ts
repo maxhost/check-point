@@ -262,6 +262,46 @@ test("failed selection never prints and late selection cannot affect another ord
   ).toBe(0);
   expect(writes(state)).toEqual([]);
 });
+test("changing selection retires late printer feedback and old browser document", async ({
+  page,
+}) => {
+  const state = await setup(page);
+  await open(page);
+  await page
+    .getByRole("button", { name: "Imprimir precuenta", exact: true })
+    .click();
+  await page.evaluate(() => {
+    window.consoleActions.delay = 200;
+  });
+  await page
+    .getByRole("button", { name: "Elegir impresora", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Volver al listado", exact: true })
+    .click();
+  await selectStatus(page, "Cerradas hoy");
+  await page
+    .getByRole("button", { name: "Abrir Pedido cerrado", exact: true })
+    .click();
+  await page.waitForTimeout(250);
+  await expect(
+    page.getByText("Impresora lista. Vuelve a imprimir el ticket.", {
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("region", { name: "Ticket de impresión", exact: true }),
+  ).toContainText("Pedido cerrado");
+  await expect(
+    page.getByRole("region", { name: "Ticket de impresión", exact: true }),
+  ).not.toContainText("Pedido abierto");
+  expect(
+    await page.evaluate(
+      () => window.consoleActions.browsers + window.consoleActions.writes,
+    ),
+  ).toBe(0);
+  expect(writes(state)).toEqual([]);
+});
 test("result and closed reprint preserve canonical closed sale without another close", async ({
   page,
 }) => {
@@ -349,7 +389,7 @@ test("cancel does not write; double confirm applies canonical void to same list 
     .getByRole("button", { name: "Confirmar anulación", exact: true })
     .dblclick();
   await expect(
-    page.getByRole("heading", { name: "Orden anulada", exact: true }),
+    page.getByRole("heading", { name: "Orden anulada", exact: true, level: 2 }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Cobrar", exact: true }),
@@ -365,7 +405,7 @@ test("cancel does not write; double confirm applies canonical void to same list 
     .getByRole("button", { name: "Abrir Pedido abierto", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Orden anulada", exact: true }),
+    page.getByRole("heading", { name: "Orden anulada", exact: true, level: 2 }),
   ).toBeVisible();
   expect(writes(state).map((r) => r.body)).toEqual([
     { version: actionOpen.version },
@@ -424,7 +464,7 @@ test("lost void response retains same intent through remount and 403 until expli
     .getByRole("button", { name: "Reintentar la misma anulación", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Orden anulada", exact: true }),
+    page.getByRole("heading", { name: "Orden anulada", exact: true, level: 2 }),
   ).toBeVisible();
   const attempts = writes(state);
   expect(attempts).toHaveLength(3);
@@ -476,7 +516,11 @@ for (const mode of [
         })
         .click();
       await expect(
-        page.getByRole("heading", { name: "Orden anulada", exact: true }),
+        page.getByRole("heading", {
+          name: "Orden anulada",
+          exact: true,
+          level: 2,
+        }),
       ).toBeVisible();
       expect(writes(state)[0].body).toEqual(writes(state)[1].body);
     } else if (mode === "missing") {
@@ -496,7 +540,11 @@ for (const mode of [
         page.getByRole("button", { name: "Nueva orden", exact: true }),
       ).toBeEnabled();
       await expect(
-        page.getByRole("heading", { name: "Orden anulada", exact: true }),
+        page.getByRole("heading", {
+          name: "Orden anulada",
+          exact: true,
+          level: 2,
+        }),
       ).toHaveCount(0);
     } else {
       await expect(
