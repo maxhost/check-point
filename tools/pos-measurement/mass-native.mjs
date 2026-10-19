@@ -6,7 +6,7 @@ import {
   lstatSync,
   realpathSync,
 } from "node:fs";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { spawn, execFileSync } from "node:child_process";
 const run = process.env.POS_MASS_NATIVE_RUN;
 if (run !== undefined && !/^[a-z0-9-]{1,48}$/.test(run))
@@ -124,13 +124,67 @@ if (["fixture", "domain", "server"].includes(mode)) {
     configSha256: hash(readFileSync(selected)),
     lockSha256: hash(readFileSync("pnpm-lock.yaml")),
     requests: [],
+    responses: [],
+    requestFailures: [],
+    pageErrors: [],
+    stage: "launch",
+    valid: false,
   };
-  const browser = await chromium.launch();
-  const context = await browser.newContext({
-    viewport: { width: 1280, height: 950 },
-    serviceWorkers: "block",
+  const attemptFile = `${directory}/browser-attempt-${randomUUID()}.json`;
+  writeFileSync(attemptFile, JSON.stringify(report, null, 2), {
+    mode: 0o600,
+    flag: "wx",
   });
+  const sanitize = (value) =>
+    String(value)
+      .replaceAll(fixture.qrToken, "[private-token]")
+      .replaceAll(fixture.cookie, "[private-cookie]")
+      .replaceAll(
+        fixture.cookie.slice(fixture.cookie.indexOf("=") + 1),
+        "[private-cookie-value]",
+      );
+  const save = () =>
+    writeFileSync(attemptFile, JSON.stringify(report, null, 2), {
+      mode: 0o600,
+    });
+  let browser, context, page;
+  const snapshot = async () => {
+    if (!page || page.isClosed()) return;
+    const state = await page.evaluate(() => ({
+      buttons: [...document.querySelectorAll("button")]
+        .slice(0, 120)
+        .map((b) => ({
+          text: b.textContent?.trim().slice(0, 160),
+          label: b.getAttribute("aria-label"),
+          disabled: b.disabled || b.getAttribute("aria-disabled") === "true",
+          visible: !!(
+            b.getClientRects().length &&
+            getComputedStyle(b).visibility !== "hidden"
+          ),
+        })),
+      dialogs: [...document.querySelectorAll('[role="dialog"]')].map((d) => ({
+        label: d.getAttribute("aria-label"),
+        labelledBy: d.getAttribute("aria-labelledby"),
+        visible: !!d.getClientRects().length,
+      })),
+      alerts: [...document.querySelectorAll('[role="alert"]')].map((a) =>
+        a.textContent?.slice(0, 500),
+      ),
+    }));
+    report.snapshots ??= [];
+    report.snapshots.push({
+      stage: report.stage,
+      at: new Date().toISOString(),
+      state: JSON.parse(sanitize(JSON.stringify(state))),
+    });
+    save();
+  };
   try {
+    browser = await chromium.launch();
+    context = await browser.newContext({
+      viewport: { width: 1280, height: 950 },
+      serviceWorkers: "block",
+    });
     const at = fixture.cookie.indexOf("=");
     await context.addCookies([
       {
@@ -143,7 +197,7 @@ if (["fixture", "domain", "server"].includes(mode)) {
         sameSite: "Lax",
       },
     ]);
-    const page = await context.newPage();
+    page = await context.newPage();
     page.setDefaultTimeout(60000);
     page.setDefaultNavigationTimeout(60000);
     page.on("request", (r) => {
@@ -157,6 +211,29 @@ if (["fixture", "domain", "server"].includes(mode)) {
           scoped: !!r.headers()["x-backoffice-scope"],
           contract: r.headers()["x-pos-contract"],
         });
+      save();
+    });
+    page.on("response", (r) => {
+      const path = new URL(r.url()).pathname;
+      if (path.startsWith("/api/modules/pos/"))
+        report.responses.push({
+          path,
+          method: r.request().method(),
+          status: r.status(),
+        });
+      save();
+    });
+    page.on("requestfailed", (r) => {
+      report.requestFailures.push({
+        path: new URL(r.url()).pathname,
+        method: r.method(),
+        error: sanitize(r.failure()?.errorText ?? "unknown"),
+      });
+      save();
+    });
+    page.on("pageerror", (error) => {
+      report.pageErrors.push(sanitize(error.message));
+      save();
     });
     const expectReceipt = async () => {
       await expect(
@@ -178,6 +255,8 @@ if (["fixture", "domain", "server"].includes(mode)) {
         .click();
       await expectReceipt();
     };
+    report.stage = "navigation";
+    save();
     await page.goto("http://localhost:43252/backoffice/pos");
     if (mode === "history") {
       const name = process.argv[3];
@@ -216,6 +295,8 @@ if (["fixture", "domain", "server"].includes(mode)) {
         { mode: 0o600, flag: "wx" },
       );
     } else {
+      report.stage = "editor";
+      save();
       await page
         .getByRole("button", { name: "Nueva orden", exact: true })
         .click();
@@ -245,15 +326,18 @@ if (["fixture", "domain", "server"].includes(mode)) {
       await identify
         .getByRole("textbox", { name: "Código del pase", exact: true })
         .fill(fixture.qrToken);
-      const resolved = page.waitForResponse(
-        (r) =>
-          new URL(r.url()).pathname.endsWith("/resolve") &&
-          r.request().method() === "POST",
-      );
-      await identify
-        .getByRole("button", { name: "Identificar", exact: true })
-        .click();
-      const resolveResponse = await resolved;
+      report.stage = "resolve";
+      await snapshot();
+      const [resolveResponse] = await Promise.all([
+        page.waitForResponse(
+          (r) =>
+            new URL(r.url()).pathname.endsWith("/resolve") &&
+            r.request().method() === "POST",
+        ),
+        identify
+          .getByRole("button", { name: "Identificar", exact: true })
+          .click(),
+      ]);
       expect(resolveResponse.status()).toBe(200);
       expect(await resolveResponse.json()).toMatchObject({
         membership: { id: fixture.membershipId },
@@ -261,17 +345,22 @@ if (["fixture", "domain", "server"].includes(mode)) {
       });
       await expect(identify).toBeHidden();
       const writeStart = report.requests.length;
-      const created = page.waitForResponse(
-        (r) =>
-          new URL(r.url()).pathname === "/api/modules/pos/orders" &&
-          r.request().method() === "POST",
-      );
-      await page
-        .getByRole("button", { name: "Continuar al cobro", exact: true })
-        .click();
-      const createResponse = await created;
+      report.stage = "create";
+      await snapshot();
+      const [createResponse] = await Promise.all([
+        page.waitForResponse(
+          (r) =>
+            new URL(r.url()).pathname === "/api/modules/pos/orders" &&
+            r.request().method() === "POST",
+        ),
+        page
+          .getByRole("button", { name: "Continuar al cobro", exact: true })
+          .click(),
+      ]);
       expect(createResponse.status()).toBe(201);
       const order = await createResponse.json();
+      report.orderId = order.id;
+      save();
       expect(order).toMatchObject({
         total: "3.09",
         status: "open",
@@ -292,15 +381,19 @@ if (["fixture", "domain", "server"].includes(mode)) {
         name: `Cobrar ${order.orderLabel}`,
         exact: true,
       });
-      const closed = page.waitForResponse(
-        (r) =>
-          new URL(r.url()).pathname ===
-          `/api/modules/pos/orders/${order.id}/close`,
-      );
-      await payment
-        .getByRole("button", { name: "Confirmar cobro", exact: true })
-        .click();
-      const closeResponse = await closed;
+      report.stage = "close";
+      await snapshot();
+      const [closeResponse] = await Promise.all([
+        page.waitForResponse(
+          (r) =>
+            new URL(r.url()).pathname ===
+              `/api/modules/pos/orders/${order.id}/close` &&
+            r.request().method() === "POST",
+        ),
+        payment
+          .getByRole("button", { name: "Confirmar cobro", exact: true })
+          .click(),
+      ]);
       expect(closeResponse.status()).toBe(200);
       expect(await closeResponse.json()).toMatchObject({
         id: order.id,
@@ -324,6 +417,8 @@ if (["fixture", "domain", "server"].includes(mode)) {
             r.method === "GET" && r.path.startsWith("/api/modules/pos/orders"),
         ).length;
       expect(report.postWriteOrderGets).toBe(0);
+      report.stage = "history";
+      save();
       await page
         .getByRole("button", { name: "Volver al historial", exact: true })
         .click();
@@ -341,9 +436,13 @@ if (["fixture", "domain", "server"].includes(mode)) {
     }
   } catch (error) {
     report.valid = false;
-    report.failure = String(error.message)
-      .replaceAll(fixture.qrToken, "[private-token]")
-      .replaceAll(fixture.cookie, "[private-cookie]");
+    report.failure = sanitize(error.message);
+    try {
+      await snapshot();
+    } catch {
+      report.failureSnapshotUnavailable = true;
+    }
+    save();
     writeFileSync(
       `${directory}/browser-failure-${Date.now()}.json`,
       JSON.stringify(report, null, 2),
@@ -351,7 +450,9 @@ if (["fixture", "domain", "server"].includes(mode)) {
     );
     throw Error(report.failure);
   } finally {
-    await context.close();
-    await browser.close();
+    await context?.close();
+    await browser?.close();
+    report.finishedAt = new Date().toISOString();
+    save();
   }
 } else throw Error("Unknown mass smoke operation");
