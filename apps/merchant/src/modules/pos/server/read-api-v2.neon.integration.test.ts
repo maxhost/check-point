@@ -8,11 +8,11 @@ import {
   diningTables,
   locations,
   posOrders,
-  products,
   programMemberships,
   sessions,
   users,
 } from "@mi-pasaporte/db/schema";
+import { CounterError } from "@mi-pasaporte/domain/server/counter/core";
 import * as rewards from "@mi-pasaporte/domain/server/loyalty-program/persistence";
 import * as catalog from "../../../server/counter/resolve-catalog";
 import { seedConsumer } from "../../../server/counter-integration-support";
@@ -482,29 +482,34 @@ describe.skipIf(!posIntegrationEnabled)(
         expect(await identity(c.id)).toEqual([
           { business_id: a.seed.business.id, scanned: true, visited: false },
         ]);
-        // Valid unit product precision is representable in expanded storage, incompatible with legacy cents.
-        const precise = await seedProduct(a, "Three decimals", "0.499");
-        try {
-          expect(
-            (await call("resolve", allowed, "2", { qrToken: c.qrToken }))
-              .status,
-          ).toBe(200);
-          expect(catalogSpy).not.toHaveBeenCalled();
-          expect(shortcutSpy).not.toHaveBeenCalled();
-          expect(rewardSpy).not.toHaveBeenCalled();
-          expect(
-            (
-              await body(
-                await call("resolve", a.ownerCookie, "1", {
-                  qrToken: c.qrToken,
-                }),
-                409,
-              )
-            ).code,
-          ).toBe("pos_client_upgrade_required");
-        } finally {
-          await getDb().delete(products).where(eq(products.id, precise));
-        }
+        // Fault injection only: canonical legacy catalog remains guarded by the DB's
+        // cents constraint. Minimal HTTP must not call this failing legacy reader.
+        catalogSpy.mockRejectedValue(
+          new CounterError(
+            409,
+            "pos_client_upgrade_required",
+            "Catálogo incompatible de prueba.",
+          ),
+        );
+        expect(
+          (await call("resolve", allowed, "2", { qrToken: c.qrToken })).status,
+        ).toBe(200);
+        expect(catalogSpy).not.toHaveBeenCalled();
+        expect(shortcutSpy).not.toHaveBeenCalled();
+        expect(rewardSpy).not.toHaveBeenCalled();
+        expect(
+          (
+            await body(
+              await call("resolve", a.ownerCookie, "1", { qrToken: c.qrToken }),
+              409,
+            )
+          ).code,
+        ).toBe("pos_client_upgrade_required");
+        expect(catalogSpy).toHaveBeenCalledTimes(1);
+        expect(await memberships(c.id)).toHaveLength(1);
+        expect(await identity(c.id)).toEqual([
+          { business_id: a.seed.business.id, scanned: true, visited: false },
+        ]);
       } finally {
         vi.restoreAllMocks();
       }
