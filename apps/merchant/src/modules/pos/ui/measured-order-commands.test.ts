@@ -36,8 +36,11 @@ const order = (overrides: Partial<PosOrderV2> = {}): PosOrderV2 => ({
   total: "2.50",
   createdAt: "2026-10-18",
   createdBy: "u",
-  closedAt: null,
-  closedBy: null,
+  closedAt:
+    overrides.status && overrides.status !== "open"
+      ? "2026-10-18T12:00:00Z"
+      : null,
+  closedBy: overrides.status && overrides.status !== "open" ? "u" : null,
   sale: null,
   settlement: null,
   ...overrides,
@@ -329,3 +332,33 @@ it("reports a newer cached summary for explicit review rather than confirming an
   expect(cache.peek(detailKey("o"))).toBeNull();
   expect(fetcher).toHaveBeenCalledTimes(1);
 });
+
+it.each(["closed", "voided"] as const)(
+  "reports review without an authoritative detail for same-version %s summary",
+  async (status) => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(Response.json(order({ version: 3 })));
+    vi.stubGlobal("fetch", fetcher);
+    const { commands, cache } = setup();
+    const summary = {
+      ...order({ version: 3, status }),
+      lineCount: 0,
+      saleTotal: status === "closed" ? "2.50" : null,
+    };
+    cache.put(historyKey, { open: [], closedToday: [summary] });
+    const result = await commands.create(draft);
+    expect(result.status).toBe("conflict");
+    if (result.status === "conflict") {
+      expect((result.error as PosError).code).toBe("cache_revision_ahead");
+      expect((result.error as PosError).payload).toEqual({
+        receivedOrder: order({ version: 3 }),
+        summary,
+      });
+      expect((result.error as PosError).order).toBeUndefined();
+    }
+    expect(cache.peek(detailKey("o"))).toBeNull();
+    expect(cache.peek<PosOrderV2>(detailKey("o"), true)?.status).toBe("open");
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  },
+);

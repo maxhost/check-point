@@ -1,6 +1,6 @@
 # 0242 CP2d.3 — comandos V2
 
-Autor NUEVO A, base `75bbd1774105a68ed4ec9f70e3dfbd8190524c5c`, worktree `/private/tmp/checkpass-pos-0242/measured-order-commands-0242`. Revisión entregada: commit que contiene este handoff; SHA exacto e identidad de configuración en `/private/tmp/checkpass-pos-0242/order-commands-evidence/identity.log`. Solo los cinco paths reservados, sin dependencias nuevas ni cambios de transporte/contrato/legacy. API propuesta y aprobada por coordinador antes de código.
+Autor NUEVO A, base `75bbd1774105a68ed4ec9f70e3dfbd8190524c5c`, worktree `/private/tmp/checkpass-pos-0242/measured-order-commands-0242`. Revisión entregada: commit que contiene este handoff; SHA exacto e identidad de configuración en `/private/tmp/checkpass-pos-0242/order-commands-evidence/identity-fixes.log`. Solo los cinco paths reservados, sin dependencias nuevas ni cambios de transporte/contrato/legacy. API propuesta y aprobada por coordinador antes de código.
 
 ## Consumo
 
@@ -20,9 +20,9 @@ Si historial ya observó versión superior al detalle recibido, conserva histori
 
 ## Evidencia focal
 
-Logs fuera WT: `/private/tmp/checkpass-pos-0242/order-commands-evidence/`. Node24.20.0, pnpm11.4.0, hooks `.githooks`. Config/lockfile hashes en identity.log.
+Logs fuera WT: `/private/tmp/checkpass-pos-0242/order-commands-evidence/`. Node24.20.0, pnpm11.4.0, hooks `.githooks`. Config/lockfile hashes en identity-fixes.log; identity.log conserva entrega inicial rechazada.
 
-- `pnpm exec vitest run apps/merchant/src/modules/pos/ui/measured-order-commands.test.ts apps/merchant/src/modules/pos/ui/measured-order-cache.test.ts`: EXIT0,35 tests/2 archivos,0 skips. Transporte real createPosClient→posRequest→panelRequest→fetch mocked; sin DB/auth nativa.
+- `pnpm exec vitest run apps/merchant/src/modules/pos/ui/measured-order-commands.test.ts apps/merchant/src/modules/pos/ui/measured-order-cache.test.ts`: EXIT0,46 tests/2 archivos,0 skips (qa-fixes-tests.log). Transporte real createPosClient→posRequest→panelRequest→fetch mocked; sin DB/auth nativa.
 - `pnpm --filter @mi-pasaporte/merchant typecheck`: EXIT0.
 - `pnpm exec eslint apps/merchant/src/modules/pos/ui/measured-order-{commands,cache}{,.test}.ts`: EXIT0.
 - `node tools/ui-guard.ts --base 75bbd1774105a68ed4ec9f70e3dfbd8190524c5c`: EXIT0,2 archivos producción,sin aumentos. Advertencia existente MODULE_TYPELESS_PACKAGE_JSON.
@@ -33,3 +33,17 @@ Fallos iniciales honestos: tres casos compartían fixture y la mutaban entre tes
 Casos observados: create perdido/recovery misma UUID/body/headers y mutación posterior; double click; recuperación closed/voided; PUTconflictos completos y sin retries; PUT perdido→409 sin inferir éxito;403/412/422 vs408/500/503; éxito sin JSON/DTO; scopeA→B antes/después await, retire y cacheepoch; detalle versionmonotónica/lectura antigua descartada; summary adelantado; lineCount mixto sin sumar masa/unidades; ausencia GET extra; filtro explícito de anuladas.
 
 Sin DB/env/wrapper/browser/build/fullverify/M0/M1, servidor/túnel/3201 ni push/PROD. Estas pruebas no certifican idempotencia de servidor/auth real; reutilizan contratos y transporte aceptados. Sin procesos persistentes iniciados. QA NUEVO independiente pendiente; autor conserva fixes. Factory/integración/cleanup corresponden al coordinador.
+
+## Corrección tras QA independiente FAIL
+
+La entrega inicial f157a57d fue rechazada por QA 808cb7a5b11752ae48b5b46cfb83f682c8e5e80e sobre candidato combinado f0c67a29. No se atribuye aceptación al PASS de35 tests original. Se leyeron informe y reproducción originales; sin editar sus artefactos ni incorporar su ref.
+
+Los tres hallazgos se corrigieron solo en facade/tests propios:
+
+1. El historial closed proyecta `total = saleTotal = settlement.collected`, con fallback legacy `sale.total`, luego `order.total`. Open/voided proyectan bruto `settlement.gross ?? order.total`, saleTotal:null. Detalle conserva DTO canónico sin cambiar importes. Regresiones usan settlement generado por kernel puro, sin afirmar elegibilidad comercial de descuento anónimo ni cierre HTTP.
+2. En empate de version gana estado terminal: open < closed < voided. Detalle terminal conocido se conserva; si solo historial acredita estado posterior, se conserva historial y se publica cache_revision_ahead con receivedOrder/summary, guardando detalle inválido sin construir una orden autoritativa del resumen. Dos regresiones también verifican ese resultado a través del manager/transporterealfetchmock.
+3. Cada accept invalida generation de historyKey antes de cualquier retorno, aun sin snapshot: lectura pendiente iniciada después de beginWrite termina DiscardedPosRead. No hay GET ni fabricación de historial.
+
+Regresiones agregadas antes del fix:7FAIL/9PASS en cache (qa-regressions-before.log), confirmando los tres problemas. Tras fix:46/46 tests,2 archivos,0 skips,EXIT0 (qa-fixes-tests.log). Merchanttypecheck, lint, UIguard y formato EXIT0 (qa-fixes-types/lint/guard/format.log). Config y comandos en identity-fixes.log. Gates amplios no ejecutados.
+
+También se ejecutó sin modificar el diagnóstico externo de QA: `node /private/tmp/checkpass-pos-0242/order-commands-qa-evidence/reproduce.cjs`, log propio qa-fixes-reproduce.log. Ahora observa10/10,8/8,closed/voided preservados en version3 y DiscardedPosRead. Su EXIT0 solo indica ejecución; las aserciones vinculantes están en las regresiones. El FAIL original y sus logs siguen conservados. Nuevo QA independiente del candidato combinado pendiente; autor conserva fixes.

@@ -2,6 +2,15 @@ import type { PosHistoryV2, PosOrderV2, PosSummaryV2 } from "../contracts";
 import { PosError } from "./pos-types";
 import { detailKey, historyKey, type PosCache } from "./pos-cache";
 
+// Close/void do not necessarily increment version; a terminal snapshot wins ties.
+const statusRank = { open: 0, closed: 1, voided: 2 } as const;
+const ahead = (
+  a: Pick<PosOrderV2, "version" | "status">,
+  b: Pick<PosOrderV2, "version" | "status">,
+) =>
+  a.version > b.version ||
+  (a.version === b.version && statusRank[a.status] > statusRank[b.status]);
+
 /** V2 writes share the console's PosCache and its epoch/generation guards. */
 export class MeasuredOrderCache {
   constructor(
@@ -12,8 +21,7 @@ export class MeasuredOrderCache {
   accept(order: PosOrderV2): PosOrderV2 {
     const key = detailKey(order.id);
     const previous = this.cache.peek<PosOrderV2>(key, true);
-    const result =
-      previous && previous.version > order.version ? previous : order;
+    const result = previous && ahead(previous, order) ? previous : order;
     const history = this.cache.peek<PosHistoryV2>(historyKey, true);
     const existing =
       history &&
@@ -21,9 +29,10 @@ export class MeasuredOrderCache {
         (item) => item.id === result.id,
       );
     this.cache.invalidate(key);
-    if (existing && existing.version > result.version) {
+    // Also retire reads started after beginWrite, even without a cached list.
+    this.cache.invalidate(historyKey, false);
+    if (existing && ahead(existing, result)) {
       this.cache.put(key, result, false);
-      this.cache.invalidate(historyKey, false);
       throw new PosError(
         "Revisa la versión actual del pedido.",
         "cache_revision_ahead",
@@ -36,6 +45,12 @@ export class MeasuredOrderCache {
     this.cache.put(key, result);
     if (!history) return result;
     const valid = this.cache.peek(historyKey) !== null;
+    // Match list V2's frozenSummaryTotals without importing server code or arithmetic.
+    const gross = result.settlement?.gross ?? result.total;
+    const net =
+      result.status === "closed"
+        ? (result.settlement?.collected ?? result.sale?.total ?? result.total)
+        : null;
     const summary: PosSummaryV2 = {
       id: result.id,
       status: result.status,
@@ -46,9 +61,9 @@ export class MeasuredOrderCache {
       location: result.location,
       createdAt: result.createdAt,
       closedAt: result.closedAt,
-      total: result.total,
+      total: net ?? gross,
       lineCount: result.items.length,
-      saleTotal: result.sale?.total ?? null,
+      saleTotal: net,
     };
     const open = history.open.filter((item) => item.id !== result.id);
     const closedToday = history.closedToday.filter(
@@ -63,7 +78,6 @@ export class MeasuredOrderCache {
       history.closedToday.some((item) => item.id === result.id)
     )
       closedToday.push(summary);
-    this.cache.invalidate(historyKey, false);
     this.cache.put(
       historyKey,
       {
