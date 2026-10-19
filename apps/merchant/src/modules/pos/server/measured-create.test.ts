@@ -1,6 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { DbTransaction } from "@mi-pasaporte/db";
 import { captureMeasuredLines } from "./measured-capture";
+
+// Availability/tenant SQL is exercised by the real integration suite. This suite
+// supplies already-selected catalog rows to isolate exact capture projection.
+vi.mock("../../../server/counter/catalog-visibility", () => ({
+  availableAtCounter: () => undefined,
+}));
 
 /** Pure capture projection only: deliberately does not certify canonical mass writes. */
 function transaction(
