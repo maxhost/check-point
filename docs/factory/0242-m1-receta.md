@@ -1,5 +1,10 @@
-# 0242 M1 — receta R1.1, listado real contemporáneo
+# 0242 M1 — receta R1.2, listado real contemporáneo
 
+Revisión R1.2 previa a datos; la ejecución3c07 se detuvo antes de iniciar
+browser/servidor/warmup/muestras por metadata pnpm previa a build. No se cambia
+tamaño/orden/estimadores ni se reemplaza ninguna muestra (hubo cero).
+R1.2 fija prepare-metadata como provenance y freeze-metadata FINAL como identidad
+de ejecución, con versiones/lock/realpaths estrictos y copias privadas comparables.
 Revisión R1.1 previa a datos; sustituye R1 del commit1c39815c, rechazada por QA
 sin ejecutar datos. Corrige adaptador OPEN, marcador de revisión, bytes desconocidos
 y verificación durable de cleanup. Receta previa a datos. Este primer corte mide listado; no cierra0242 ni sustituye
@@ -26,7 +31,16 @@ actuales del control archivado frente al build propio del candidato.
 
 Node24, pnpm11.4.0, Next build webpack/start, mismo host, transporte HTTP/WS y
 configuración seleccionada CI privada. Runtime scratch por fuente, dependencias
-del WT asignado, con paths reales y hashes/versiones manifestados. No Nextdev.
+del WT asignado, con paths reales y hashes/versiones manifestados. No Nextdev. Build candidato usa Node directamente sobre el CLI Next fijado por
+versión/realpath; no pnpmexec dentro de scratch con node_modules compartido.
+El prepare conserva modules-prepare.yaml exclusivo0600 y hash de provenance;
+freeze, DESPUÉS de setup/login/build, conserva modules-execution.yaml0600 y
+hash final de ejecución. Se comparan copias reales y registran changedKeys/hashes;
+no se inventa un diff si falta baseline histórico. Lock fuente/installed-lock,
+versiones/packageJSON de Next/React/BetterAuth/drivers/Playwright/TypeScript,
+Node/pnpm y realpaths deben seguir idénticos entre prepare y freeze. Durante
+TODOS los intentos se exige ese metadataFINAL exacto, además de la identidad
+real de dependencias: ningún cambio pnpm incidental se permite ya en campaña.
 La instrumentación real existente preload/SQL/fases no cambia; registrar su hash
 actual separado de hashes de instrumentación compilada del control.
 

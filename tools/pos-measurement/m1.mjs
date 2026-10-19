@@ -63,6 +63,70 @@ const PRIVATE = "/private/tmp/checkpass-pos-0242/private";
 export const hash = (value) => createHash("sha256").update(value).digest("hex");
 export const git = (...args) =>
   execFileSync("git", args, { cwd: ROOT, encoding: "utf8" }).trim();
+export function metadataProvenance(prepare, execution) {
+  let before, after;
+  try {
+    before = JSON.parse(prepare);
+    after = JSON.parse(execution);
+  } catch {
+    throw Error("Private pnpm metadata must be comparable JSON");
+  }
+  return {
+    prepareSha256: hash(prepare),
+    executionSha256: hash(execution),
+    changedKeys: [...new Set([...Object.keys(before), ...Object.keys(after)])]
+      .sort()
+      .filter(
+        (key) => JSON.stringify(before[key]) !== JSON.stringify(after[key]),
+      ),
+  };
+}
+export function assertMetadataIdentity(expected, current) {
+  if (hash(current) !== expected)
+    throw Error("Dependency execution metadata drift");
+}
+export function assertDependencyIdentity(expected, current) {
+  if (JSON.stringify(expected) !== JSON.stringify(current))
+    throw Error("Installed dependency identity drift");
+}
+function dependencyIdentity() {
+  const pnpm = realpathSync(
+    execFileSync("which", ["pnpm"], { encoding: "utf8" }).trim(),
+  );
+  const packages = [
+    "node_modules/@playwright/test/package.json",
+    "node_modules/typescript/package.json",
+    "node_modules/drizzle-orm/package.json",
+    "node_modules/@neondatabase/serverless/package.json",
+    ...["next", "react", "react-dom", "better-auth"].map(
+      (name) => `apps/merchant/node_modules/${name}/package.json`,
+    ),
+  ];
+  return {
+    node: process.version,
+    nodePath: realpathSync(process.execPath),
+    pnpmPath: pnpm,
+    pnpmBinarySha256: hash(readFileSync(pnpm)),
+    lockSha256: hash(readFileSync(join(ROOT, "pnpm-lock.yaml"))),
+    installedLockSha256: hash(
+      readFileSync(join(ROOT, "node_modules/.pnpm/lock.yaml")),
+    ),
+    packages: packages.map((path) => {
+      const raw = readFileSync(join(ROOT, path));
+      return {
+        path,
+        realpath: realpathSync(join(ROOT, path)),
+        version: JSON.parse(raw).version,
+        sha256: hash(raw),
+      };
+    }),
+    paths: git("ls-files", "*package.json")
+      .split("\n")
+      .map((file) => join(ROOT, dirname(file), "node_modules"))
+      .filter((file) => existsSync(file))
+      .map((path) => ({ path, realpath: realpathSync(path) })),
+  };
+}
 export function privateDirectory(path) {
   const full = realpathSync(path),
     s = lstatSync(path);
@@ -346,6 +410,16 @@ function prepare(directory) {
     readFileSync(join(controlNext, "BUILD_ID"), "utf8").trim() !== CONTROL_BUILD
   )
     throw Error("Archived BUILD_ID mismatch");
+  const pnpmVersion = execFileSync("pnpm", ["--version"], {
+    cwd: ROOT,
+    encoding: "utf8",
+  }).trim();
+  const dependencies = dependencyIdentity(),
+    prepareMetadata = readFileSync(join(ROOT, "node_modules/.modules.yaml"));
+  writeFileSync(join(directory, "modules-prepare.yaml"), prepareMetadata, {
+    flag: "wx",
+    mode: 0o600,
+  });
   exclusive(join(directory, "plan.json"), {
     kind: "pos-m1-list-plan-v1",
     buildHashPolicy: BUILD_HASH_POLICY,
@@ -354,21 +428,13 @@ function prepare(directory) {
       readFileSync(join(ROOT, "docs/factory/0242-m1-receta.md")),
     ),
     node: process.version,
-    pnpm: execFileSync("pnpm", ["--version"], {
-      cwd: ROOT,
-      encoding: "utf8",
-    }).trim(),
+    pnpm: pnpmVersion,
     next: JSON.parse(
       readFileSync(join(ROOT, "apps/merchant/node_modules/next/package.json")),
     ).version,
-    dependencyMetadataSha256: hash(
-      readFileSync(join(ROOT, "node_modules/.modules.yaml")),
-    ),
-    dependencyPaths: git("ls-files", "*package.json")
-      .split("\n")
-      .map((file) => join(ROOT, dirname(file), "node_modules"))
-      .filter((file) => existsSync(file))
-      .map((file) => ({ path: file, realpath: realpathSync(file) })),
+    dependencyMetadataSha256: hash(prepareMetadata),
+    dependencyIdentity: dependencies,
+    dependencyPaths: dependencies.paths,
     configSha256: selected().sha256,
     lockSha256: hash(readFileSync(join(ROOT, "pnpm-lock.yaml"))),
     control: {
@@ -443,11 +509,19 @@ export function verifyFreeze(directory) {
   for (const [file, digest] of Object.entries(f.cookies))
     if (hash(privateFile(join(directory, file))) !== digest)
       throw Error("Frozen real-login cookies drift");
-  if (
-    plan.dependencyMetadataSha256 !==
-    hash(readFileSync(join(ROOT, "node_modules/.modules.yaml")))
-  )
-    throw Error("Dependency metadata drift");
+  assertDependencyIdentity(plan.dependencyIdentity, dependencyIdentity());
+  assertMetadataIdentity(
+    f.dependencyMetadataSha256,
+    readFileSync(join(ROOT, "node_modules/.modules.yaml")),
+  );
+  assertMetadataIdentity(
+    f.dependencyMetadataSha256,
+    privateFile(join(directory, "modules-execution.yaml")),
+  );
+  assertMetadataIdentity(
+    plan.dependencyMetadataSha256,
+    privateFile(join(directory, "modules-prepare.yaml")),
+  );
   return { freeze: f, plan, runtimeDeltas, currentRuntimeFiles };
 }
 async function main() {
@@ -480,17 +554,14 @@ async function main() {
   if (mode === "build") {
     authorization(directory, "build");
     await run(
-      "pnpm",
+      process.execPath,
       [
-        "--filter",
-        "@mi-pasaporte/merchant",
-        "exec",
-        "next",
+        join(ROOT, "apps/merchant/node_modules/next/dist/bin/next"),
         "build",
         "--webpack",
       ],
       {
-        cwd: plan.candidate.runtime,
+        cwd: join(plan.candidate.runtime, "apps/merchant"),
         env: { ...environment(directory), NODE_ENV: "production" },
         stdio: "inherit",
       },
@@ -500,6 +571,25 @@ async function main() {
   }
   if (mode === "freeze") {
     authorization(directory, "freeze");
+    const pnpmVersion = execFileSync("pnpm", ["--version"], {
+      cwd: ROOT,
+      encoding: "utf8",
+    }).trim();
+    if (pnpmVersion !== plan.pnpm) throw Error("pnpm version drift");
+    assertDependencyIdentity(plan.dependencyIdentity, dependencyIdentity());
+    const prepareMetadata = privateFile(
+        join(directory, "modules-prepare.yaml"),
+      ),
+      executionMetadata = readFileSync(
+        join(ROOT, "node_modules/.modules.yaml"),
+      );
+    assertMetadataIdentity(plan.dependencyMetadataSha256, prepareMetadata);
+    const metadata = metadataProvenance(prepareMetadata, executionMetadata);
+    writeFileSync(
+      join(directory, "modules-execution.yaml"),
+      executionMetadata,
+      { flag: "wx", mode: 0o600 },
+    );
     const files = git(
       "ls-files",
       "apps",
@@ -514,6 +604,8 @@ async function main() {
     const report = {
       kind: "pos-m1-list-freeze-v1",
       buildHashPolicy: BUILD_HASH_POLICY,
+      dependencyMetadataSha256: metadata.executionSha256,
+      metadataProvenance: metadata,
       runnerSHA: clean(),
       recipeSha256: hash(
         readFileSync(join(ROOT, "docs/factory/0242-m1-receta.md")),

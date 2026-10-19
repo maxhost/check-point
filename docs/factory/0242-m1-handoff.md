@@ -1,3 +1,55 @@
+# 0242 M1R1.2 — fallo de identidad previo a muestras y corrección offline
+
+Sobre runner3c07ff93 y namespace `/private/tmp/checkpass-pos-0242/m1-r1-3c07ff93`:
+setup1PASS/0skips43.9s; inspectinicial1PASS/0skips31.8s; login realOTP/PIN
+1PASS/0skips44.7s. Build propio webpackproduction EXIT0, BUILD_ID
+`jkkbjmrA74A1y1VG_oJTw`, buildSource3c07. Control6f/BUILD_IDoriginal intacto.
+Freeze SHA256 `8107325fa1bfe863d3fce83f52428d17e8fb00c0aceb8705271b056db5973afa`,
+recipeSHA `45a112985ed98c70910e3649c63fec5a69493f0bdba84c340483f1d9cf5ffc75`;
+2274sourcehashes,814control/822candidatocompilados,6cookies proveedor.
+
+Primer intento de launcher setup omitió namespace y no llegó a DB; logargvfail
+privado preservado antes de corregir argumentos. La única llamada measure3c07
+falló por Dependency metadata drift ANTES de importar/lanzar Chromium, servidor,
+warmup o muestra. No existe list-results.json; measure.log se conserva. CERO
+observaciones temporales, noM1PASS ni conclusión de producto. No se repite ni
+sustituye muestra alguna. No hubo servidor propio que detener;43242sinlistener.
+
+Plan tenía `.modules.yaml` SHA aed8958f6e21343c52ee5d09df070ae41728ade96e17ee724e97d5f7a81cd8a6,
+observado previo a medida 1d3474e311314209e7d753904ae414d3944baa96e6298eedd92aea47ff20740f.
+Lockfuente se conservó `4cfe18864f12af4fe3b0cd84ab477e936ecd52d96847579cc087e6e13b020821`.
+Se copió metadataobservado0600: JSON con prunedAt de build, storeDir de candidate
+scratch y virtualStoreDir pasando por su symlink a node_modules del WT. El plan
+NO guardó bytes iniciales de metadata: no hay diff histórico atribuible, sólo
+hashes y contenido observado. Tras cleanup wrapperROOT volvió a cambiar metadata
+(hash4b03b10eeeb55917de02ec9395969a3d67a0d6f835c6c8a9e865b278aeb46f7c).
+No se atribuye a cambio de paquetes ni se usa para rebajar identidad.
+
+Antes de cualquier edición se hizo cleanup MISMO3c07:1PASS/0skips9.05s,14tablas
+propias con SELECT/assert0 y phasecleaned; cleanup.jsonSHA256
+`1308b8f17025ac00c0dd7ec0969281d46638cdf63d0871b69beec0f8f31f9604`.
+DBtransferida por coordinador de vuelta a regresión; sinDB/build/freeze nuevos
+hasta otra asignación. Nunca tocar3201/PID927/túnel/M0/tenants ajenos.
+
+Basales wx0600 conservadas ANTESfreeze, sin postinspect que las sobrescriba:
+schema-preflight.baseline.jsonSHA25969cbc24fdb0485fe2d188f816121c1f18b56684928348517fb64abd946879;
+fixture.baseline.jsonSHA c4a27aa4cbb9d78a946241bcce9d29e262d837b3ba7f8615033cedb5ee035237.
+El archivo fixture.json posterior sólo cambia al estado cleaned; la copia basal
+retiene el hash original. Recursos/auth/config/cookies/logs/freeze anteriores
+permanecen privados. Setup/inspect/login/build/freeze PASS no son PASSM1.
+
+Delta offline R1.2: copia metadataPREPARE sólo provenance y metadataEJECUCIÓN en
+freezeFINAL después de wrapper/build, con hashes y changedKeys de copias reales.
+Verificación exacta de ese snapshotfinal durante campaña, nunca contra timestamp
+prebuild. Identidad de Node/binpnpm/packageJSON/versiones/realpaths/lockfuente y
+installedlock estricta en prepare/freeze/ejecución. Build directo Node/Next evita
+que pnpmexec en scratch reconfigure metadatos compartidos. Se añade test negativo
+significativo de baselinefinal, cambio durante campaña y drift de dependencias.
+No cambia tamaño/orden/estimadores ni marcadores. Total once pruebas offline,
+ceroskips; corrección y nueva receta pendientes de QA antes de otros datos.
+
+---
+
 # 0242 P6B — preparación offline M1R1
 
 Prepare offline ee97e93d EXIT0 en namespace

@@ -4,6 +4,11 @@ import { compare, median, p95, decision, analyze, rng } from "./m1-analyze.mjs";
 import { schedule, validateEndpoint, hash } from "./m1.mjs";
 import { validateOpenDetail } from "./m1-browser.mjs";
 import { snapshotBuild, compareBuildIdentity } from "./m1.mjs";
+import {
+  metadataProvenance,
+  assertMetadataIdentity,
+  assertDependencyIdentity,
+} from "./m1.mjs";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
@@ -261,5 +266,49 @@ test("runtime cache changes remain observed; server/manifests and unknown caches
     );
   } finally {
     rmSync(dir, { recursive: true });
+  }
+});
+test("execution metadata binds final freeze, while prepare delta remains observable and dependencies stay strict", () => {
+  const prepare = Buffer.from(
+    JSON.stringify({ prunedAt: "prepare", virtualStoreDir: "base" }),
+  );
+  const execution = Buffer.from(
+    JSON.stringify({ prunedAt: "built", virtualStoreDir: "scratch" }),
+  );
+  const provenance = metadataProvenance(prepare, execution);
+  assert.deepEqual(provenance.changedKeys, ["prunedAt", "virtualStoreDir"]);
+  assert.notEqual(provenance.prepareSha256, provenance.executionSha256);
+  assert.doesNotThrow(() =>
+    assertMetadataIdentity(provenance.executionSha256, execution),
+  );
+  assert.throws(() =>
+    assertMetadataIdentity(provenance.prepareSha256, execution),
+  );
+  assert.throws(() =>
+    assertMetadataIdentity(
+      provenance.executionSha256,
+      Buffer.from(
+        JSON.stringify({
+          prunedAt: "changed-during-campaign",
+          virtualStoreDir: "scratch",
+        }),
+      ),
+    ),
+  );
+  const baseline = {
+    node: "24.20.0",
+    lock: "locked",
+    realpath: "/actual/package",
+    version: "16.3.0",
+  };
+  assert.doesNotThrow(() =>
+    assertDependencyIdentity(baseline, structuredClone(baseline)),
+  );
+  for (const field of Object.keys(baseline)) {
+    const changed = { ...baseline, [field]: "drift" };
+    assert.throws(
+      () => assertDependencyIdentity(baseline, changed),
+      /Installed dependency identity drift/,
+    );
   }
 });
