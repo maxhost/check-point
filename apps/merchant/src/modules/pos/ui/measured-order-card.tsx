@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Archive, Bag, DeliveryTruck, Shop, Table } from "iconoir-react";
+import { Archive, Bag, DeliveryTruck, Eye, Shop, Table } from "iconoir-react";
 import { Button, Card, Heading, Text } from "../../../ui";
 import type { PosOrderV2, PosSummaryV2, SaleType } from "../contracts";
 
@@ -117,7 +117,7 @@ function OrderCard({
       aria-labelledby={titleId}
       className="relative flex h-full min-w-0 flex-row items-center gap-3 rounded-2xl p-4! sm:p-4! md:flex-col md:items-stretch md:gap-4 md:p-6!"
     >
-      <div className="flex min-w-0 flex-1 items-center gap-3 md:flex-none">
+      <div className="flex min-w-0 flex-1 items-center gap-3 pr-14 md:flex-none md:pr-0">
         <div className={`shrink-0 rounded-xl p-3 ${saleType.color}`}>
           {saleType.icon}
         </div>
@@ -143,11 +143,11 @@ function OrderCard({
           {formatTotal(order.total, currencyCode)}
         </Text>
       </div>
-      <div className="relative hidden md:block">
+      <div className="relative hidden items-center gap-3 md:flex">
         <Button
           variant="quiet"
-          className="rounded-full bg-info-soft! text-info!"
-          aria-label={`Ver productos de ${order.orderLabel}`}
+          className="size-11 shrink-0 rounded-full! border border-primary bg-primary-soft! p-0! text-primary!"
+          aria-label={`Ver ${order.lineCount} ${order.lineCount === 1 ? "producto" : "productos"} de ${order.orderLabel}`}
           aria-expanded={expanded}
           aria-controls={expanded ? productsId : undefined}
           isDisabled={disabled || !onLoadProducts}
@@ -156,7 +156,16 @@ function OrderCard({
             if (event.key === "Escape") closeProducts();
           }}
         >
-          {order.lineCount} {order.lineCount === 1 ? "producto" : "productos"}
+          {order.lineCount}
+        </Button>
+        <Button
+          variant="secondary"
+          className="min-w-0 flex-1"
+          aria-label={`Abrir ${order.orderLabel}`}
+          isDisabled={disabled}
+          onPress={() => onOpen(order.id)}
+        >
+          Abrir
         </Button>
         {expanded && !disabled && (
           <div
@@ -211,12 +220,12 @@ function OrderCard({
       </div>
       <Button
         variant="secondary"
-        className="shrink-0 md:w-full"
+        className="absolute right-4 top-4 size-11 shrink-0 p-0! md:hidden"
         aria-label={`Abrir ${order.orderLabel}`}
         isDisabled={disabled}
         onPress={() => onOpen(order.id)}
       >
-        Abrir
+        <Eye className="size-5" aria-hidden="true" />
       </Button>
     </Card>
   );
