@@ -5,6 +5,7 @@ import { posRequest, PosError, type PosSession } from "./pos-types";
 
 export class DiscardedPosIntent extends Error {}
 export type PosRequest = typeof posRequest;
+export type PosClientOptions = Readonly<{ contractVersion?: 1 | 2 }>;
 export type PosClient = { capture: () => PosRequest; request: PosRequest };
 
 /** Captured transport remains tied to its original intention across awaits/retries. */
@@ -14,25 +15,30 @@ export function createPosClient(
     scopeKey?: string;
     retire?: () => void;
   },
+  options?: PosClientOptions,
 ): PosClient {
   const capture = (): PosRequest => {
-    const intent = read();
+    const { identity, scopeKey, retire } = read();
+    const contractVersion = options?.contractVersion ?? 1;
     return async <T,>(url: string, method = "GET", body?: unknown) => {
-      if (!intent.identity || read().identity !== intent.identity)
+      if (!identity || read().identity !== identity)
         throw new DiscardedPosIntent();
       try {
         const result = await posRequest<T>(url, method, body, {
-          scopeKey: intent.scopeKey,
+          scopeKey,
+          ...(contractVersion === 2
+            ? { headers: { "X-Pos-Contract": "2" } }
+            : {}),
         });
-        if (read().identity !== intent.identity) throw new DiscardedPosIntent();
+        if (read().identity !== identity) throw new DiscardedPosIntent();
         return result;
       } catch (error) {
-        if (read().identity !== intent.identity) throw new DiscardedPosIntent();
+        if (read().identity !== identity) throw new DiscardedPosIntent();
         if (
           error instanceof PosError &&
           (error.status === 401 || error.code === "backoffice_context_changed")
         )
-          intent.retire?.();
+          retire?.();
         throw error;
       }
     };
@@ -43,7 +49,8 @@ export function createPosClient(
   };
 }
 
-export function usePosContext() {
+export function usePosContext(options?: PosClientOptions) {
+  const contractVersion = options?.contractVersion ?? 1;
   const provider = useOptionalBackofficeContext();
   const active = useRef(true);
   useLayoutEffect(() => {
@@ -56,18 +63,21 @@ export function usePosContext() {
   current.current = provider;
   const client = useMemo(
     () =>
-      createPosClient(() => {
-        if (!active.current) return { identity: null };
-        const value = current.current;
-        if (!value) return { identity: "legacy" };
-        const ticket = value.captureTicket("session");
-        return {
-          identity: ticket ? `${ticket.epoch}:${ticket.scopeKey}` : null,
-          scopeKey: ticket?.scopeKey,
-          retire: value.retire,
-        };
-      }),
-    [],
+      createPosClient(
+        () => {
+          if (!active.current) return { identity: null };
+          const value = current.current;
+          if (!value) return { identity: "legacy" };
+          const ticket = value.captureTicket("session");
+          return {
+            identity: ticket ? `${ticket.epoch}:${ticket.scopeKey}` : null,
+            scopeKey: ticket?.scopeKey,
+            retire: value.retire,
+          };
+        },
+        { contractVersion },
+      ),
+    [contractVersion],
   );
   const core = provider?.state.core;
   const modules = provider?.state.modules;

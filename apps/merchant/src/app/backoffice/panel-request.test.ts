@@ -122,3 +122,113 @@ describe("0238 panel transport opt-in", () => {
     expect(fetchMock).toHaveBeenCalledOnce();
   });
 });
+
+describe("additional request headers", () => {
+  it.each([
+    { "X-Example-Contract": "2", "x-backoffice-scope": "other" },
+    new Headers({ "X-Example-Contract": "2", "X-BACKOFFICE-SCOPE": "other" }),
+    [
+      ["X-Example-Contract", "2"],
+      ["x-backoffice-scope", "other"],
+      ["X-Backoffice-Scope", "another"],
+    ] as [string, string][],
+  ])(
+    "overwrites caller scope case-insensitively without joining values: %s",
+    async (headers) => {
+      const fetcher = vi.fn().mockResolvedValue(reply({ ok: true }));
+      vi.stubGlobal("fetch", fetcher);
+      const signal = new AbortController().signal;
+      await panelRequest(
+        "/api/example",
+        "POST",
+        { value: "1.250" },
+        {
+          headers,
+          scopeKey: "a".repeat(64),
+          signal,
+        },
+      );
+      const init = fetcher.mock.calls[0][1];
+      const effective = new Headers(init.headers);
+      expect(effective.get("x-example-contract")).toBe("2");
+      expect(effective.get("x-backoffice-scope")).toBe("a".repeat(64));
+      expect(
+        [...effective.keys()].filter((name) => name === "x-backoffice-scope"),
+      ).toHaveLength(1);
+      expect(effective.get("content-type")).toBe("application/json");
+      expect(init).toMatchObject({
+        method: "POST",
+        cache: "no-store",
+        body: '{"value":"1.250"}',
+        signal,
+      });
+      expect(fetcher).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("preserves caller headers without scope and snapshots them before await", async () => {
+    let resolve!: (response: Response) => void;
+    const fetcher = vi.fn().mockReturnValue(
+      new Promise<Response>((done) => {
+        resolve = done;
+      }),
+    );
+    vi.stubGlobal("fetch", fetcher);
+    const headers = new Headers({ "x-example-contract": "2" });
+    const pending = panelRequest("/api/example", "GET", undefined, { headers });
+    headers.set("x-example-contract", "3");
+    resolve(reply({ ok: true }));
+    await pending;
+    expect(
+      new Headers(fetcher.mock.calls[0][1].headers).get("x-example-contract"),
+    ).toBe("2");
+    expect(
+      new Headers(fetcher.mock.calls[0][1].headers).has("content-type"),
+    ).toBe(false);
+  });
+
+  it("keeps JSON content-type and FormData boundaries with additional headers", async () => {
+    const fetcher = vi.fn().mockImplementation(async () => reply({ ok: true }));
+    vi.stubGlobal("fetch", fetcher);
+    const headers = { "content-type": "text/plain", "x-example-contract": "2" };
+    await panelRequest("/api/example", "POST", {}, { headers });
+    expect(
+      new Headers(fetcher.mock.calls[0][1].headers).get("content-type"),
+    ).toBe("application/json");
+    const body = new FormData();
+    body.set("fixture", "value");
+    await panelRequest("/api/example", "POST", body, {
+      headers,
+      scopeKey: "a".repeat(64),
+    });
+    const init = fetcher.mock.calls[1][1];
+    expect(init.body).toBe(body);
+    expect(init.cache).toBe("no-store");
+    expect(new Headers(init.headers).has("content-type")).toBe(false);
+    expect(new Headers(init.headers).get("x-example-contract")).toBe("2");
+    expect(new Headers(init.headers).get("x-backoffice-scope")).toBe(
+      "a".repeat(64),
+    );
+    expect(headers["content-type"]).toBe("text/plain");
+  });
+
+  it("still validates captured scope before fetching with additional headers", async () => {
+    const fetcher = vi.fn();
+    vi.stubGlobal("fetch", fetcher);
+    await expect(
+      panelRequest(
+        "/api/example",
+        "POST",
+        {},
+        {
+          scopeKey: "invalid",
+          headers: {
+            "X-Backoffice-Scope": "a".repeat(64),
+            "X-Example-Contract": "2",
+          },
+        },
+      ),
+    ).rejects.toBeInstanceOf(BackofficeScopeRequestError);
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+});

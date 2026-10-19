@@ -2,7 +2,7 @@ import type { BackofficeContextChanged } from "../../backoffice-context-contract
 
 export type BackofficeScopeOptions = Readonly<{ scopeKey?: string }>;
 export type BackofficeRequestOptions = BackofficeScopeOptions &
-  Readonly<{ signal?: AbortSignal }>;
+  Readonly<{ signal?: AbortSignal; headers?: HeadersInit }>;
 
 export class BackofficeScopeRequestError extends Error {
   readonly code = "backoffice_scope_invalid";
