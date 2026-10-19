@@ -7,6 +7,8 @@ import {
   businessConfiguration,
   products,
   posOrders,
+  posOrderItems,
+  diningTables,
   users,
 } from "@mi-pasaporte/db/schema";
 import { dispatchModuleRequest } from "../../dispatch";
@@ -229,6 +231,7 @@ describe.skipIf(!posIntegrationEnabled)(
             name: "Tarifa antigua",
             quantity: "1",
             unitPrice: "9999999999.99",
+            financialSnapshot: null,
             measure: {
               kind: "unit",
               quantityUnit: "unit",
@@ -252,6 +255,37 @@ describe.skipIf(!posIntegrationEnabled)(
       expect(
         (await body(await call(a.ownerCookie, `orders/${order.id}`))).saleType,
       ).toBe("pickup");
+      const [table] = await getDb()
+        .insert(diningTables)
+        .values({
+          businessId: a.seed.business.id,
+          locationId: a.seed.locationId,
+          name: "Mesa real",
+        })
+        .returning({ id: diningTables.id });
+      await getDb()
+        .update(posOrders)
+        .set({ saleType: null, diningTableId: table.id })
+        .where(eq(posOrders.id, order.id));
+      expect(
+        await body(await call(a.ownerCookie, `orders/${order.id}`)),
+      ).toMatchObject({
+        saleType: "table",
+        tableId: table.id,
+        orderLabel: "Mesa literal no FK",
+      });
+      const zero = await seedProduct(a, "Cantidad antigua", "0.00");
+      const many = await openOrder(a, [
+        { productId: zero, quantity: 2147483647 },
+      ]);
+      expect(
+        await body(await call(a.ownerCookie, `orders/${many.id}`)),
+      ).toMatchObject({
+        total: "0.00",
+        items: [
+          { quantity: "2147483647", unitPrice: "0", financialSnapshot: null },
+        ],
+      });
       const empty = await openOrder(a, []);
       expect(
         await body(await call(a.ownerCookie, `orders/${empty.id}`)),
@@ -312,6 +346,11 @@ describe.skipIf(!posIntegrationEnabled)(
         collected: "1.00",
         discount: "1.00",
       });
+      // Partial historical capture: settlement's matching sourceLineId remains authoritative.
+      await getDb()
+        .update(posOrderItems)
+        .set({ financialSnapshot: null })
+        .where(eq(posOrderItems.posOrderId, order.id));
       await getDb()
         .update(businesses)
         .set({ currencyCode: "COP" })
@@ -340,15 +379,59 @@ describe.skipIf(!posIntegrationEnabled)(
           .where(eq(businesses.id, a.seed.business.id));
       }
     }, 180000);
+    it("preserves closed and voided legacy COP cents without financial captures", async () => {
+      const product = await seedProduct(a, "Centavos históricos", "0.49");
+      const historicalOrders = [
+        await openOrder(a, [{ productId: product, quantity: 2 }]),
+        await openOrder(a, [{ productId: product, quantity: 2 }]),
+      ];
+      await getDb()
+        .update(businesses)
+        .set({ currencyCode: "COP" })
+        .where(eq(businesses.id, a.seed.business.id));
+      try {
+        for (const [index, status] of ["closed", "voided"].entries()) {
+          const order = historicalOrders[index];
+          await getDb()
+            .update(posOrders)
+            .set({
+              status,
+              closedAt: new Date(),
+              closedByUserId: a.seed.userId,
+            })
+            .where(eq(posOrders.id, order.id));
+          const legacy = await body(
+            await call(a.ownerCookie, `orders/${order.id}`, "1"),
+          );
+          const measured = await body(
+            await call(a.ownerCookie, `orders/${order.id}`),
+          );
+          expect(measured).toMatchObject({
+            status,
+            settlement: null,
+            total: "0.98",
+            items: [{ lineTotal: "0.98", financialSnapshot: null }],
+          });
+          expect(measured.total).toBe(legacy.total);
+        }
+      } finally {
+        await getDb()
+          .update(businesses)
+          .set({ currencyCode: "USD" })
+          .where(eq(businesses.id, a.seed.business.id));
+      }
+    }, 120000);
     it("frequency counts distinct closed orders, not duplicate lines or units; excludes old/local/hidden/null products", async () => {
       const first = await seedProduct(a, "Frecuente A", "1.00"),
         second = await seedProduct(a, "Frecuente B", "1.00");
-      await closed([
+      await closed([{ productId: second, quantity: 1 }]);
+      await closed([{ productId: second, quantity: 1 }]);
+      // Most recent duplicated product would win a faulty COUNT(*) tie.
+      const duplicate = await closed([
         { productId: first, quantity: 20 },
         { productId: first, quantity: 20 },
       ]);
-      await closed([{ productId: second, quantity: 1 }]);
-      await closed([{ productId: second, quantity: 1 }]);
+      expect(duplicate.items).toHaveLength(2);
       const ids = (
         await body(
           await call(a.ownerCookie, `catalog?locationId=${a.seed.locationId}`),
