@@ -83,25 +83,20 @@ export const products = core.table(
       "product_unit_cost_check",
       sql`${table.unitCost} is null or ${table.unitCost} >= 0`,
     ),
-    // Temporary expand barrier: precise tariffs remain disabled until compatible cutover.
+    // Capture bounds plus the exact historical numeric(12,2) unit range.
     check(
-      "product_unit_price_legacy_check",
-      sql`${table.unitPrice} is null or (${table.unitPrice} <= 9999999999.99 and ${table.unitPrice} = trunc(${table.unitPrice}, 2))`,
+      "product_unit_price_shape_check",
+      sql`${table.unitPrice} is null or (${table.unitPrice} <= 999999999.999999999 or (not ${table.soldByWeight} and ${table.unitPrice} <= 9999999999.99 and ${table.unitPrice} = trunc(${table.unitPrice}, 2)))`,
     ),
     check(
-      "product_unit_cost_legacy_check",
-      sql`${table.unitCost} is null or (${table.unitCost} <= 9999999999.99 and ${table.unitCost} = trunc(${table.unitCost}, 2))`,
+      "product_unit_cost_shape_check",
+      sql`${table.unitCost} is null or (${table.unitCost} <= 999999999.999999999 or (not ${table.soldByWeight} and ${table.unitCost} <= 9999999999.99 and ${table.unitCost} = trunc(${table.unitCost}, 2)))`,
     ),
     check(
       "product_sale_measure_check",
       sql`(not ${table.soldByWeight} and ${table.pricingUnit} = 'unit') or (${table.soldByWeight} and ${table.pricingUnit} in ('kg', 'lb', 'g'))`,
     ),
     check("product_sales_revision_check", sql`${table.salesRevision} > 0`),
-    // Temporary expand barrier: mass products stay disabled until compatible CP2c activation.
-    check(
-      "product_sale_measure_legacy_check",
-      sql`not ${table.soldByWeight} and ${table.pricingUnit} = 'unit'`,
-    ),
     check("product_image_version_check", sql`${table.imageVersion} >= 0`),
   ],
 );
