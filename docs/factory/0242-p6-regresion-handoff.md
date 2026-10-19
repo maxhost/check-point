@@ -191,3 +191,12 @@ Timeouts: sin fase registrada en50e02098, causa aún no demostrada. Se conserva3
 Teardown del intento terminado:afterAll sinerror/assertions ownvacías; PIDs4093,4578,4580,4587ausentes. Inspectorreadonly `p6-an3-stock-attempt2-diagnostic.log`:waiters0,actividadtx=[];8testsomitidos diagnósticos no sonPASS. Fuente permaneciólimpia50e02098 hasta cierre; ninguna6nueva/DDL ni másDB tras transferir a M1R1.3. Compatibles completos26suites/140casos(25/133+AN3/7), sin sumar Stockparcial. Pendientes13suites:Stock1+nuevas6+históricas6;7compatiblesporlectura.
 
 Checks congelado diagnóstico Stock: typecheckmerchant inicial/final PASS, ESLint2 PASS, Prettier3 PASS y diff whitespace PASS. Sin DB sobre nueva fuente; el siguiente resultado con30s seguirá siendo intento diagnóstico, no aprobación por relajación.
+
+
+## Corrección lifecycle tras QA10482e3d, sin DB
+
+QA detectó que el único pendingCase podía sobrescribirse si afterEach agotaba120s mientras el callback seguía vivo. El siguiente trackedCase ahora rechaza empezar antes de cambiar nombre/mocks o ejecutar cuerpo mientras exista ownerpendiente. Una colección ownedCases retiene todas las promesas propias; cada hook espera todas antes de restaurar mocks y afterAll antes de retirar raíces. El hook captura su identidad al entrar y sólo borra/restaura si sigue siendo ese owner; un hook tardío no puede limpiar un caso posterior. El callback arranca en microtask después de registrar su owner. Rechazo original se vuelve a await en afterEach y el guard falla explícitamente: no se convierte timeout/rechazo enPASS ni se oculta el fallo del hook.
+
+Se mantienen30s de los4casos,120s hookdefault,180s teardown; sin nuevos retries/polls ni causa atribuida a los timeouts. eventOf sale.closed exacto y todas las aserciones previas intactos. Únicamente Stocktest/handoff cambiados; ninguna DB durante reservaM1.
+
+Checks lifecycle: typecheckmerchant PASS, ESLint1 PASS, Prettier2 PASS y diff whitespace PASS. Ningún testDB/reintento ejecutado sobre esta revisión.

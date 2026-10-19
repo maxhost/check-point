@@ -64,20 +64,28 @@ import {
   cleanupStockLocalWorld,
 } from "./stock-local-integration-support";
 let pendingCase: Promise<void> | undefined;
+const ownedCases = new Set<Promise<void>>();
 let caseName = "";
 function trackedCase(name: string, run: () => Promise<void>) {
   return () => {
+    if (pendingCase !== undefined)
+      throw new Error(
+        "Previous Stock fixture work is still owned by its lifecycle hook",
+      );
     caseName = name;
     const started = performance.now();
     console.info("P6 Stock case begin", { name, businessId: world.businessId });
-    const promise = run().finally(() => {
-      console.info("P6 Stock case settled", {
-        name,
-        businessId: world.businessId,
-        elapsedMs: Math.round(performance.now() - started),
+    const promise = Promise.resolve()
+      .then(run)
+      .finally(() => {
+        console.info("P6 Stock case settled", {
+          name,
+          businessId: world.businessId,
+          elapsedMs: Math.round(performance.now() - started),
+        });
       });
-    });
     pendingCase = promise;
+    ownedCases.add(promise);
     // Vitest can time out before the async callback settles; afterEach owns this promise.
     void promise.catch(() => undefined);
     return promise;
@@ -133,16 +141,25 @@ const expireLeaseForRecovery = (
 
 beforeAll(() => setupStockLocalWorld({ posContract: 2 }), 180_000);
 afterAll(async () => {
-  if (pendingCase) await Promise.allSettled([pendingCase]);
-  await cleanupStockLocalWorld();
-}, 180_000);
-afterEach(async () => {
-  try {
-    if (pendingCase) await pendingCase;
-  } finally {
+  const owned = pendingCase;
+  await Promise.allSettled([...ownedCases]);
+  if (pendingCase === owned) {
     pendingCase = undefined;
     vi.restoreAllMocks();
   }
+  await cleanupStockLocalWorld();
+}, 180_000);
+afterEach(async () => {
+  const owned = pendingCase;
+  // A timed-out hook can resume later. It must neither clear a newer owner nor
+  // restore its mocks; all callbacks remain retained for the final teardown.
+  await Promise.allSettled([...ownedCases]);
+  if (owned !== undefined && pendingCase === owned) {
+    pendingCase = undefined;
+    vi.restoreAllMocks();
+  }
+  // Keep callback rejection visible even when Vitest already reported a timeout.
+  if (owned) await owned;
 });
 describe.skipIf(!modulesIntegrationEnabled)(
   "0227 sale → captured recipe → local stock",
