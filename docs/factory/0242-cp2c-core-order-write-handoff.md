@@ -22,6 +22,8 @@ Fixture CI: unit canónico real con originales/metadatos/neto/units/balance/push
 
 CI requiere transferencia exclusiva del coordinador y `tools/neon-test.sh` con env seleccionado; no abrir otra corrida durante setup/teardown. QA independiente debe comprobar candidato congelado y evidencia. Los tests son del writer interno, no acreditan auth HTTP ni cierre conectado.
 
+Primera corrida CI en `f2cd3253`: FAIL de setup, seis casos skipped, porque el fixture intentó un programa points/per_purchase que la constraint vigente rechaza. Se corrigió a points/per_amount con bloque1.00; units17 continúan siendo una decisión explícita del dominio enviada al writer. El negocio/owner parcialmente creados se identificaron por IDs exactos del log para recuperación acotada mediante wrapper y setup temporal fueraWT. No se desactivó ninguna constraint ni se contó esa corrida como PASS.
+
 ## Límites explícitos
 
 Mass y precisión se serializan/prueban en puro, pero las constraints0103 siguen bloqueando escrituras canónicas incompatibles. No se desactivan constraints/triggers ni se fabrica historia imposible. Sin browser/build/M0/M1/fullverify, producción, push, túneles, puerto3201 ni cierre E2E. Una entrega de esta pieza no activa venta medida ni V4. Revisión de combinación queda al coordinador tras QA.

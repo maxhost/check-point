@@ -137,9 +137,9 @@ describe.skipIf(!integrationEnabled)(
           await seedBusiness({
             name: label,
             kind: "points",
-            mode: "per_purchase",
+            mode: "per_amount",
             grant: 17,
-            blockAmount: null,
+            blockAmount: "1.00",
           }),
         );
       const consumer = await seedConsumer();
