@@ -76,3 +76,12 @@ Conservar oráculos monetarios/durables y carreras reales, errores antes/despué
 commit, orden de locks y UUID/cuerpo/versiones. No sustituirlos por assertions de
 status aisladas ni mocks. Preparación offline permitida; DB sigue pendiente de
 transferencia exclusiva al terminar QA nativa y teardown.
+
+## Ampliación de soporte indirecto previa a código
+
+Asignados `apps/merchant/src/modules/pos/server/business-core-support.ts` y
+`apps/merchant/src/modules/pos/server/business-failures.neon.integration.test.ts`.
+El soporte contiene writersHTTPV1 indirectos: adoptar V2 mediante opción explícita
+capturada en setup, conservar default raw y negativos/carreras/rollback. Corregir
+la clasificación de compatibilidad del inventario; no contar lectura estática como
+PASS. DBCI transferida al autor P6A sólo tras teardownQA confirmado29b8592c.
