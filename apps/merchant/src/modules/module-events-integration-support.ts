@@ -35,6 +35,24 @@ export let world: ModuleWorld,
   foreignCashId: string;
 export const state = { closedId: "" };
 const posScopes = new Map<string, string>();
+const ownedRetryWork = new Set<Promise<unknown>>();
+function ownRetry<T>(work: Promise<T>): Promise<T> {
+  if (posScopes.size) {
+    ownedRetryWork.add(work);
+    void work.catch(() => undefined);
+  }
+  return work;
+}
+/** Await actual owned actors before restoring spies or removing their aggregate roots. */
+export async function settleModuleEventWork() {
+  let size: number;
+  let settled: PromiseSettledResult<unknown>[];
+  do {
+    size = ownedRetryWork.size;
+    settled = await Promise.allSettled([...ownedRetryWork]);
+  } while (ownedRetryWork.size !== size);
+  return settled;
+}
 export function moduleEventPos(owner = world) {
   const scope = posScopes.get(owner.businessId);
   if (!scope)
@@ -42,6 +60,8 @@ export function moduleEventPos(owner = world) {
   return scopedPos(owner.cookie, scope);
 }
 export async function setupModuleEventWorld(options?: { posContract: 2 }) {
+  await settleModuleEventWork();
+  ownedRetryWork.clear();
   posScopes.clear();
   world = await seedModuleWorld("P1 real event");
   other = await seedModuleWorld("P1 schema foreign");
@@ -103,9 +123,15 @@ export async function setupModuleEventWorld(options?: { posContract: 2 }) {
     }
 }
 export async function cleanupModuleEventWorld() {
+  await settleModuleEventWork();
   const identities = [world, other]
     .filter(Boolean)
     .flatMap((owner) => owner.users);
+  if (posScopes.size)
+    console.info("P6 event fixture retiring identities", {
+      businessIds: [world.businessId, other.businessId],
+      userIds: identities,
+    });
   await dropModuleWorld(world);
   await dropModuleWorld(other);
   if (posScopes.size && identities.length) {
@@ -172,6 +198,7 @@ export async function eventOf(id: string) {
       and(
         eq(moduleEvents.businessId, world.businessId),
         eq(moduleEvents.sourceId, id),
+        eq(moduleEvents.eventType, "sale.closed"),
       ),
     );
   return event;
@@ -187,17 +214,21 @@ export const movements = (id: string) =>
       ),
     );
 export const drain = (eventId: string) =>
-  retryModuleEvents({
-    businessId: world.businessId,
-    eventIds: [eventId],
-    force: true,
-    budgetMs: 20000,
-  });
+  ownRetry(
+    retryModuleEvents({
+      businessId: world.businessId,
+      eventIds: [eventId],
+      force: true,
+      budgetMs: 20000,
+    }),
+  );
 export function holdAcceleration() {
   const actual = retry.retryModuleEvents;
   vi.spyOn(retry, "retryModuleEvents").mockImplementation((options) =>
-    options?.force === true
-      ? actual(options)
-      : Promise.resolve({ claimed: 0, applied: 0, pending: 0, failed: 0 }),
+    ownRetry(
+      options?.force === true
+        ? actual(options)
+        : Promise.resolve({ claimed: 0, applied: 0, pending: 0, failed: 0 }),
+    ),
   );
 }
