@@ -1,6 +1,6 @@
 import { closeWithCash } from "./pos-payment-integration-support";
 import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   type PosWorld,
@@ -14,7 +14,12 @@ import {
   seedProduct,
 } from "./pos-integration-support";
 import { getDb } from "@mi-pasaporte/db";
-import { posOrders, products } from "@mi-pasaporte/db/schema";
+import {
+  businesses,
+  posOrders,
+  products,
+  users,
+} from "@mi-pasaporte/db/schema";
 import { scannedCustomer } from "../../../server/counter/coupon-cycle-support";
 
 /**
@@ -30,7 +35,32 @@ beforeAll(async () => {
 }, 180_000);
 
 afterAll(async () => {
+  if (!world) return;
+  const userIds = [world.seed.userId, ...world.extraUsers];
   await dropPosWorld(world);
+  await getDb().delete(users).where(inArray(users.id, userIds));
+  expect(
+    await getDb()
+      .select({ id: businesses.id })
+      .from(businesses)
+      .where(eq(businesses.id, world.seed.business.id)),
+  ).toEqual([]);
+  expect(
+    await getDb()
+      .select({ id: users.id })
+      .from(users)
+      .where(inArray(users.id, userIds)),
+  ).toEqual([]);
+  expect(
+    (
+      await getDb().execute(
+        sql`select id from merchant_auth.session where user_id in (${sql.join(
+          userIds.map((id) => sql`${id}`),
+          sql`, `,
+        )})`,
+      )
+    ).rows,
+  ).toEqual([]);
 }, 180_000);
 
 describe.skipIf(!posIntegrationEnabled)(
@@ -270,7 +300,7 @@ describe.skipIf(!posIntegrationEnabled)(
         expect.objectContaining({
           productId: null,
           nameSnapshot: "Plato del dia",
-          unitPrice: "8.00",
+          unitPrice: "8.000000000",
         }),
       ]);
       expect(sale.unitsGranted).toBe(80);
