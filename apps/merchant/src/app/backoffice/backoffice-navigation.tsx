@@ -19,7 +19,7 @@ import {
   StatsUpSquare,
   Xmark,
 } from "iconoir-react";
-import { useSelectedLayoutSegment } from "next/navigation";
+import { useSearchParams, useSelectedLayoutSegment } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { SignOutButton } from "../components/sign-out-button";
 import { Button, Text } from "../../ui";
@@ -242,6 +242,7 @@ function HelpButton({ onOpen }: { onOpen?: () => void }) {
 export function BackofficeNavigation() {
   const { state } = useBackofficeContext();
   const segment = useSelectedLayoutSegment();
+  const currentQuery = useSearchParams().toString();
   const core = state.core;
   const businessName = core?.business.name ?? "";
   const isOwner = core?.membership.role === "owner";
@@ -257,6 +258,14 @@ export function BackofficeNavigation() {
       icon: moduleIcon(entry.icon),
     }),
   );
+  const operationAccess = moduleLinks.find((entry) =>
+    MODULES.some((module) => module.id === entry.moduleId && module.operation),
+  );
+  const OperationAccessIcon = operationAccess?.icon;
+  const operationAccessHref =
+    operationAccess && operationAccess.segment === segment && currentQuery
+      ? `${operationAccess.href}?${currentQuery}`
+      : operationAccess?.href;
   const links = [...businessLinks, ...moduleLinks];
   const delegados = [...delegatedLinks(permissions), ...moduleLinks];
   const operationModule = MODULES.find(
@@ -451,16 +460,24 @@ export function BackofficeNavigation() {
             )}
 
             <div className="backoffice-sidebar-footer">
-              {permissions.includes("counter") && (
-                <Link
-                  aria-current={segment === "counter" ? "page" : undefined}
-                  className="counter-access"
-                  href="/backoffice/counter"
-                >
-                  <QrCode aria-hidden="true" width={22} height={22} />
-                  <span>Abrir mostrador</span>
-                </Link>
-              )}
+              {operationAccess &&
+                operationAccessHref &&
+                OperationAccessIcon && (
+                  <Link
+                    aria-current={
+                      segment === operationAccess.segment ? "page" : undefined
+                    }
+                    className="counter-access"
+                    href={operationAccessHref}
+                  >
+                    <OperationAccessIcon
+                      aria-hidden="true"
+                      width={22}
+                      height={22}
+                    />
+                    <span>Abrir {operationAccess.label}</span>
+                  </Link>
+                )}
               <SignOutButton />
             </div>
           </div>
@@ -469,7 +486,7 @@ export function BackofficeNavigation() {
 
       <nav
         aria-label="Navegación principal"
-        className={`backoffice-mobile-nav print:hidden ${mobileNavigationHidden ? "hidden!" : ""} ${operation ? "grid-cols-3" : ""}`}
+        className={`backoffice-mobile-nav print:hidden ${mobileNavigationHidden ? "hidden!" : ""} ${operation ? "grid-cols-2" : ""}`}
         data-owner={isOwner || undefined}
       >
         {operation ? (
@@ -478,6 +495,11 @@ export function BackofficeNavigation() {
               <NavLink
                 {...entry}
                 key={entry.href}
+                href={
+                  entry.segment === segment && currentQuery
+                    ? `${entry.href}?${currentQuery}`
+                    : entry.href
+                }
                 selectedSegment={segment}
                 onNavigate={closeMenu}
               />
@@ -508,16 +530,6 @@ export function BackofficeNavigation() {
                 </span>
                 {operation.primaryAction.label}
               </Link>
-            )}
-            {permissions.includes("counter") && (
-              <NavLink
-                href="/backoffice/counter"
-                icon={QrCode}
-                label="Mostrador"
-                segment="counter"
-                selectedSegment={segment}
-                onNavigate={closeMenu}
-              />
             )}
           </>
         ) : (
