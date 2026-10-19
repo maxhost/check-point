@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { getDb, withDbTransaction } from "@mi-pasaporte/db";
+import * as database from "@mi-pasaporte/db";
 import {
   businesses,
   diningTables,
@@ -10,6 +11,7 @@ import {
   posOrderItems,
   posOrders,
   products,
+  sessions,
   users,
 } from "@mi-pasaporte/db/schema";
 import { lockBusiness } from "@mi-pasaporte/domain/server/catalog/measured-contract";
@@ -138,6 +140,12 @@ describe.skipIf(!posIntegrationEnabled)(
           .select({ id: users.id })
           .from(users)
           .where(inArray(users.id, ids)),
+      ).toEqual([]);
+      expect(
+        await getDb()
+          .select({ id: sessions.id })
+          .from(sessions)
+          .where(inArray(sessions.userId, ids)),
       ).toEqual([]);
     }, 240000);
     it("guard/scope precede invalid contract/body; denied calls have no writes", async () => {
@@ -467,6 +475,80 @@ describe.skipIf(!posIntegrationEnabled)(
       const before = await inspect();
       await body(await call(command()));
       expect(await inspect()).toEqual(before);
+    });
+    it("rolls back an injected SQL failure after a real header and first line INSERT", async () => {
+      const value = command();
+      value.items.push({ ...value.items[0], quantity: "1" });
+      const before = await rows();
+      let insertedLine: string | undefined;
+      let headerSeen = false;
+      const original = database.withDbTransaction;
+      const injected = vi
+        .spyOn(database, "withDbTransaction")
+        .mockImplementation((work, options) =>
+          original(
+            async (tx) =>
+              work(
+                new Proxy(tx, {
+                  get(target, property, receiver) {
+                    if (property === "insert")
+                      return (table: unknown) => {
+                        if (table !== posOrderItems)
+                          return Reflect.apply(target.insert, target, [table]);
+                        return {
+                          values: async (
+                            values: (typeof posOrderItems.$inferInsert)[],
+                          ) => {
+                            const [header] = await target
+                              .select({ id: posOrders.id })
+                              .from(posOrders)
+                              .where(
+                                and(
+                                  eq(posOrders.businessId, a.seed.business.id),
+                                  eq(
+                                    posOrders.createRequestId,
+                                    value.createRequestId,
+                                  ),
+                                ),
+                              );
+                            headerSeen = Boolean(header);
+                            await target
+                              .insert(posOrderItems)
+                              .values(values[0]);
+                            insertedLine = values[0].id as string;
+                            // Fault injection is real SQL on the same connection, without DDL,
+                            // impossible rows or changing the production implementation.
+                            await target.execute(sql`select 1 / 0`);
+                          },
+                        };
+                      };
+                    const member = Reflect.get(target, property, receiver);
+                    return typeof member === "function"
+                      ? member.bind(target)
+                      : member;
+                  },
+                }),
+              ),
+            options,
+          ),
+        );
+      try {
+        expect((await call(value)).status).toBe(503);
+      } finally {
+        injected.mockRestore();
+      }
+      expect(headerSeen).toBe(true);
+      expect(insertedLine).toBeDefined();
+      expect(await rows()).toEqual(before);
+      expect(
+        await getDb()
+          .select({ id: posOrderItems.id })
+          .from(posOrderItems)
+          .where(eq(posOrderItems.id, insertedLine!)),
+      ).toEqual([]);
+      const recovered = await body(await call(value));
+      expect(recovered.items).toHaveLength(2);
+      expect(await body(await call(value))).toEqual(recovered);
     });
     it("commercial lock waits deterministically and cannot mix old revision with new price", async () => {
       let release!: () => void;
