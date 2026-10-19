@@ -245,3 +245,23 @@ Negativos útiles: quiescencia añade fallo tardío y no se ejecuta primera acci
 mutante; fallo status/pageerror/requestfailed original preservado; positivo limpio
 habilita exactamente la acción prevista. Tests/lint/diff/recetaSHA+QA source antes
 COPY nuevo; reusar tsc8181 si JSonly. No DB/OTP/browserreal/build/install aquí.
+
+## Ajuste focal de cobertura del snapshot mass (setup00749 detenido)
+
+COPY00749 fue verificado QAe773115d/proofa0b9371f. Único setup PID18266 EXIT1
+antes manifest/loyalty/cookie/OTP: equality schema-preflight. Log05df297d conserva
+expected109ledger/816columns y received109ledger/730columns. Root extrajo ambos
+JSON del diff guardado: ledger iguales y columnas iguales exactamente al filtrar
+las86 de consumer del expected. El snapshot real proviene de
+m1-fixture.test-support.ts:354 e incluye pos/core/consumer/merchant_auth; la query
+mass heredada sólo consultaba pos/core/merchant_auth. No hay deriva demostrada.
+
+Se autoriza al MISMO autor MASA en sus cuatro paths existentes corregir únicamente
+esa query a los mismos cuatro schemas, conservando orden/columnas y la igualdad
+estricta total. Esto amplía cobertura a consumer, sin filtrar snapshots ni tocar
+origen/freeze/producto. Documentar fallo, comparación y nueva receta; lint/diff y
+tsc focal por cambio TS literal, reutilizar23unitJS sin semántica cambiada. QA
+focal de esa línea y prueba savedexpected/savedreceived. Luego namespace/authCOPY
+NUEVOS ligados al SHA final; preservar00749 completo, sin retry de setup ni
+alterar sus resultados. Nada fue asignado por ese setup, no limpieza por barrido.
+Sin DB adicional/browser/OTP hasta nueva autorización root posterior a COPY.
