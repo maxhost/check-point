@@ -6,6 +6,10 @@ Los dos handlers seleccionan X-Pos-Contract tras guard/scope; ausente/1 conserva
 
 Catálogo proyecta solo campos POS, tarifas string/revisión/imagen pública, sin costo/objectKey. Incluye salesMassUnits bajo permiso POS; defaultkg solo sin fila. Precio0 sí/null no, filtros locales/categorías vigentes. Frecuencia usa COUNT DISTINCT orden cerrada/producto,30d/local, desempate fecha/id y catálogo autorizado; ranking V1 preserva unidades y rechaza medidas incompatibles.
 
-Checks y SHA congelado: pendientes de completar con evidencia antes de entregar. Puros iniciales measured-read+lines24PASS; typecheck merchant inicial PASS. Un intento de Vitest desde raíz con --project merchant falló por nombre inexistente; comando corregido desde apps/merchant pasó. No se afirma PASS de ese intento.
+Revisión posterior corrige fallback histórico cerrado/anulado unit sin settlement (centavos legacy sin normalización por moneda actual) y mantiene financialSnapshot null en abiertas calculadas; settlement.lines es fuente congelada alternativa por sourceLineId. Añade regresiones COP0.98, combine abierto, FKmesa real/cantidad2147483647 y duplicados recientes en frecuencia.
+
+Checks y SHA final: pendientes de completar con evidencia antes de entregar. Puros iniciales measured-read+lines24PASS; typecheck merchant inicial PASS. Un intento de Vitest desde raíz con --project merchant falló por nombre inexistente; comando corregido desde apps/merchant pasó. No se afirma PASS de ese intento.
 
 Masa/precisión operativas siguen bloqueadas hastaCP2c: pruebas masa solo helper puro; no filas POS imposibles, cambios schema/barreras/eventos ni writers/UI. Sin browser/build/fullverify/M0/M1/3201/túnel/push/PROD. Factory/QA/integración del coordinador; autor retiene fixes.
+
+Corrida congelada inicial64815917258cb42870f399c7b0741aa2e7ad0a69: Neon4archivos18PASS/0skips/EXIT0, static tipos3/lint/formato+puros24PASS/EXIT0, app-boundary/UIguardtests17PASS, UIguard sin aumentos; guardias24PASS2FAIL por backlog exacto. Logs completos fueraWT en /private/tmp/checkpass-pos-0242/readers-evidence/64815917-*.log. Esta corrida no sustituye las nuevas regresiones.

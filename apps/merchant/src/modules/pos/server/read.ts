@@ -20,11 +20,11 @@ import {
   originalMoney,
   formatMinor,
   toMinor,
-  minorUnitForCurrency,
 } from "@mi-pasaporte/domain/financial/rational";
 import {
   assertLegacySnapshot,
   measuredItems,
+  measuredTotal,
   persistedSaleType,
 } from "./measured-read";
 import type { PosOrderV2 } from "../contracts";
@@ -208,7 +208,12 @@ export async function readPosOrder(
   if (contract !== 2) lines.forEach(assertLegacySnapshot);
   const items =
     contract === 2
-      ? measuredItems(lines, row.settlement?.currencyCode ?? row.currencyCode)
+      ? measuredItems(
+          lines,
+          row.settlement?.currencyCode ?? row.currencyCode,
+          row.status !== "open",
+          row.settlement,
+        )
       : lines.map((line) => ({
           lineId: line.id,
           productId: line.productId,
@@ -240,16 +245,7 @@ export async function readPosOrder(
     total:
       row.settlement?.gross ??
       (contract === 2
-        ? formatMinor(
-            toMinor(
-              items.reduce(
-                (sum, line) => add(sum, originalMoney(line.lineTotal)),
-                originalMoney("0.00"),
-              ),
-              minorUnitForCurrency(row.currencyCode),
-            ),
-            minorUnitForCurrency(row.currencyCode),
-          )
+        ? measuredTotal(items, row.currencyCode, row.status !== "open")
         : totalOf(items)),
     settlement: row.settlement,
     createdAt: row.createdAt.toISOString(),

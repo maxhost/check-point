@@ -3,9 +3,11 @@ import { buildFinancialAmountsFromSnapshots } from "@mi-pasaporte/domain/financi
 import {
   assertLegacySnapshot,
   measuredItems,
+  measuredTotal,
   persistedSaleType,
   type MeasuredSnapshot,
 } from "./measured-read";
+import { canCombinePosLines } from "../contracts";
 import { posReadContract } from "./http";
 const line = (extra: Partial<MeasuredSnapshot> = {}): MeasuredSnapshot => ({
   id: "line-1",
@@ -88,13 +90,33 @@ describe("POS trusted measured projections", () => {
           sourceLineId: item.lineId,
         })),
       });
-      expect(projected.map((item) => item.financialSnapshot)).toEqual(
-        expected.lines,
+      expect(projected.map((item) => item.lineTotal)).toEqual(
+        expected.lines.map((line) => line.money.gross),
+      );
+      expect(projected.every((item) => item.financialSnapshot === null)).toBe(
+        true,
       );
     }
   });
   it("preserves stored financial line objects without repricing", () => {
-    const frozen = measuredItems([line()], "USD")[0].financialSnapshot!;
+    const frozen = buildFinancialAmountsFromSnapshots({
+      currencyCode: "USD",
+      discount: null,
+      lines: [
+        {
+          sourceLineId: "line-1",
+          position: 0,
+          unitPrice: "2",
+          quantity: "1",
+          measure: {
+            kind: "unit",
+            quantityUnit: "unit",
+            priceUnit: "unit",
+            conversionVersion: "mass-si-1",
+          },
+        },
+      ],
+    }).lines[0];
     const actual = measuredItems(
       [line({ unitPrice: "99", financialSnapshot: frozen })],
       "USD",
@@ -102,6 +124,38 @@ describe("POS trusted measured projections", () => {
     expect(actual.financialSnapshot).toBe(frozen);
     expect(actual.lineTotal).toBe("2.00");
     expect(actual.unitPrice).toBe("99");
+  });
+  it("keeps open calculated amounts separate from persisted financial snapshots and permits combining", () => {
+    const [first, second] = measuredItems(
+      [
+        line({ productId: "product" }),
+        line({ id: "second", position: 1, productId: "product" }),
+      ],
+      "USD",
+    );
+    expect(first.lineTotal).toBe("2.00");
+    expect(first.financialSnapshot).toBeNull();
+    expect(canCombinePosLines(first, second)).toBe(true);
+  });
+  it("preserves exact historical unit cents instead of repricing in the current zero-minor currency", () => {
+    const rows = [line({ quantity: "2", unitPrice: "0.49" })];
+    const historical = measuredItems(rows, "COP", true);
+    expect(historical[0]).toMatchObject({
+      lineTotal: "0.98",
+      financialSnapshot: null,
+    });
+    expect(measuredTotal(historical, "COP", true)).toBe("0.98");
+    const twoLines = measuredItems(
+      [
+        line({ unitPrice: "0.49" }),
+        line({ id: "second", position: 1, unitPrice: "0.49" }),
+      ],
+      "COP",
+      true,
+    );
+    expect(twoLines.map((item) => item.lineTotal)).toEqual(["0.49", "0.49"]);
+    expect(measuredTotal(twoLines, "COP", true)).toBe("0.98");
+    expect(measuredTotal(measuredItems(rows, "COP"), "COP", false)).toBe("1");
   });
   it("uses only the real table FK for transitional sale type", () => {
     expect(persistedSaleType(null, null)).toBe("legacy");

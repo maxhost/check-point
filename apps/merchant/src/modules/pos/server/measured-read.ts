@@ -1,6 +1,7 @@
 import {
   buildFinancialAmountsFromSnapshots,
   type FinancialLine,
+  type FinancialSettlement,
 } from "@mi-pasaporte/domain/financial";
 import {
   parseMeasure,
@@ -9,7 +10,15 @@ import {
   trustedUnitSnapshotPrice,
   trustedUnitSnapshotQuantity,
   trustedUnitLegacyPrice,
+  trustedUnitLineCents,
 } from "@mi-pasaporte/domain/measures";
+import {
+  add,
+  formatMinor,
+  originalMoney,
+  toMinor,
+  minorUnitForCurrency,
+} from "@mi-pasaporte/domain/financial/rational";
 import { CounterError } from "@mi-pasaporte/domain/server/counter/core";
 import type { PosLineV2, SaleType } from "../contracts";
 
@@ -63,9 +72,15 @@ export function assertLegacySnapshot(line: MeasuredSnapshot): void {
 export function measuredItems(
   lines: readonly MeasuredSnapshot[],
   currencyCode: string,
+  historical = false,
+  settlement: FinancialSettlement | null = null,
 ): PosLineV2[] {
+  const settledLines = new Map(
+    settlement?.lines.map((line) => [line.sourceLineId, line]) ?? [],
+  );
   const items = lines.map((line) => {
     const measure = snapshotMeasure(line);
+    const frozen = line.financialSnapshot ?? settledLines.get(line.id) ?? null;
     return {
       lineId: line.id,
       productId: line.productId,
@@ -79,13 +94,17 @@ export function measuredItems(
           ? trustedUnitSnapshotPrice(line.unitPrice)
           : parsePrice(line.unitPrice),
       measure,
-      lineTotal: line.financialSnapshot?.money.gross ?? "",
-      financialSnapshot: line.financialSnapshot,
+      lineTotal:
+        frozen?.money.gross ??
+        (historical && measure.kind === "unit"
+          ? formatMinor(trustedUnitLineCents(line.quantity, line.unitPrice), 2)
+          : ""),
+      financialSnapshot: frozen,
     };
   });
   // Settled snapshots remain authoritative. Compute only missing financial lines,
   // using their stored tariff and measure, never today's product catalogue.
-  const missing = items.filter((line) => !line.financialSnapshot);
+  const missing = items.filter((line) => line.lineTotal === "");
   if (missing.length) {
     const amounts = buildFinancialAmountsFromSnapshots({
       currencyCode,
@@ -102,7 +121,6 @@ export function measuredItems(
     for (const line of missing) {
       const snapshot = financial.get(line.lineId)!;
       line.lineTotal = snapshot.money.gross;
-      line.financialSnapshot = snapshot;
     }
   }
   return items;
@@ -116,4 +134,20 @@ export function persistedSaleType(
   if (["table", "pickup", "delivery", "counter", "legacy"].includes(value))
     return value as SaleType;
   throw new Error("invalid_persisted_sale_type");
+}
+
+/** Historical unit orders had exact cent amounts even in zero-minor currencies.
+ * Only current open amounts normalize to today's currency; settled totals come from settlement.
+ */
+export function measuredTotal(
+  items: readonly Pick<PosLineV2, "lineTotal">[],
+  currencyCode: string,
+  historical: boolean,
+): string {
+  const sum = items.reduce(
+    (total, line) => add(total, originalMoney(line.lineTotal)),
+    originalMoney("0.00"),
+  );
+  const minorUnit = historical ? 2 : minorUnitForCurrency(currencyCode);
+  return formatMinor(toMinor(sum, minorUnit), minorUnit);
 }
