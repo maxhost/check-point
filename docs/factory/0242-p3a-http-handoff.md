@@ -3,7 +3,7 @@
 - Reserva continuada: `pos-ui-card-0242`; WT `/private/tmp/checkpass-pos-0242/pos-ui-card-0242`.
 - Base: `7feef6cc04312ec039a05b19d7fcb0c424742c95`.
 - Commit de implementación: `54fdc2789150f5af4ff9e7c11236780d27ceb240`.
-- Revisión de código final: `8752e955ed27f3322f949ad78d0450d5188426bf` (sólo añade timeout120000 explícito a la nueva suite DB, pedido por coordinador).
+- Revisión inicial de código: `8752e955ed27f3322f949ad78d0450d5188426bf` (sólo añade timeout120000 explícito a la nueva suite DB, pedido por coordinador).
 - Contrato: sección A de `0242-p3a-cutover.md`, spec0242/anexo HTTP. Ampliaciones de tests autorizadas por coordinador antes de editar.
 
 ## Comportamiento y archivos
@@ -44,3 +44,12 @@ Por decisión del coordinador, quedan para P6 seis suites HTTP Neon históricas 
 Sandbox bloqueó inicialmente crear `.git/worktrees/pos-ui-card-0242/index.lock`; se avisó inmediatamente y se resolvió con escalación acotada de git add/commit propios, aprobada automáticamente. Ninguna guardia/hook fue deshabilitada.
 
 Siguiente paso: coordinador registra entrega; QA sobre candidato congelado combinado ejecuta las suites Neon focales cuando B libere la DB protegida, siempre con `tools/neon-test.sh`. Esta entrega no certifica QA independiente ni autoriza publicación/mass. Sin procesos propios que detener.
+
+
+## Corrección tras QA real del candidato9c37dc6e
+
+El coordinador rechazó la entrega inicial `bcd5d1b6363a0b257523185fabc4d8c36c0e0aaf` después de QA independiente sobre `9c37dc6e`: `legacy-cutover.neon.integration.test.ts` **PASS4/4**; `pos-scope.neon.integration.test.ts` **FAIL en beforeAll,422 invalid_input, tres casos SKIPPED**. Esos skips no son aprobación ni evidencia de los casos no ejecutados.
+
+Causa: los tres payloads de creación V2 de `pos-scope` omitían `note`, que el parser requiere explícitamente como string o null. Corrección `9441f913662d235a3ce0d2c73ed4416693163476`: añade `note: null` al seed, al POST positivo y al POST válido con tenant/scope ajeno. Revisados los campos requeridos de `parsePosCreateV2`: `createRequestId`, `saleType`, `orderLabel`, `locationId`, `tableId`, `note`, `items`; los tres payloads ya los declaran todos. No cambia parser, producción ni aserciones negativas.
+
+Validación de autor sobre esta corrección con Node24.20.0: `pnpm exec vitest run apps/merchant/src/modules/pos/server/measured-input.test.ts` **PASS30/30, cero skips**; `pnpm --filter @mi-pasaporte/merchant typecheck`, ESLint y Prettier del archivo corregido y `git diff --check`: **PASS**. No se ha ejecutado DB en este worktree; DB sigue reservada a QA. La corrección aún requiere retest independiente de `pos-scope` sobre el candidato combinado corregido. Los PASS iniciales puros y los límites anteriores permanecen con sus identidades originales; no se convierten en PASS del gate DB corregido.
