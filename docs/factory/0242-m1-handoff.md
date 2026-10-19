@@ -1,3 +1,69 @@
+# 0242 P6B — preparación offline M1R1
+
+Nuevo autor/contexto fresco, WT/ref `pos-ui-grid-0242`, base exacta
+`b6375774a5b2f5c157df7aadc09b5f6820479c99`, después de QA funcional combinado
+`a9d32924` aceptado por coordinador. Este incremento implementa únicamente
+harness/receta offline. **No hay datos, build, Nextstart ni operacionesDB M1.**
+Tampoco conclusión de rendimiento, aceptaciónQA o cierre0242.
+
+Ocho paths de ficha: cuatro scripts `m1.mjs`, `m1-browser.mjs`, `m1-analyze.mjs`,
+`m1-analysis.test.mjs`; dos fixtures `m1-fixture.neon.integration.test.ts` y
+`m1-fixture.test-support.ts`; receta `0242-m1-receta.md` y este handoff. Ningún
+cambio de producto/kit/guard/schema/tooling compartido ni factory/estados/índices.
+
+RecetaR1 previa a datos:30paresABBA del listado normal por rol; diez primeras
+entradas con assets nuevos por fuente/rol; cinco pares por rol separados para
+empty, volume, lista→detalle y detalle→lista. Son240observaciones medidas,
+240warmups y20preparaciones de detalle, estas últimas dos fuera de las muestras.
+TransiciónRSCowner queda diagnóstico pendiente separado; staff sólo[pos] no
+tiene landing autorizada distinta equivalente. No se declara ese trayectoPASS.
+Control y candidato comparten doce filas visibles/24IDs normales, con primer
+localCentro y orden `[Centro,Norte]` manifestado, nunca24contra12.
+
+Launcher separa runnerSHA de buildSource/BUILD_ID, valida configuraciónCI y
+antiPROD incondicional, exige autorización de recursos del coordinador para
+fixture/build/freeze/measure y usa sólo wrapperNeon para DB. `prepare` construye
+scratchruntime sin cuartoWT y sin sobrescribir `.next`/M0: código original6f más
+archivecontrol original, candidato fuente congelada, dependencias/paths/hashes
+manifestados. Preparación real de scratch todavía no ejecutada en este incremento.
+El control NO se recompila. Uso serial del mismo43242 aprobado por coordinador,
+con proceso nuevo por observación y exactamente1warmup equivalente antes del
+reloj; assets nuevos son otro contexto después de ese warmup. DB preparada/caliente,
+sin afirmaciónDBfría ohostingPROD. Cookie login usa helper OTP/PIN existente.
+
+Browser observa todas las peticiones y sus initiators, incluidos proveedor,
+sesión/módulos globales. No oculta un GET global de primera entrada detrás de
+un smoke calentado: warmup también debe pasar gates funcionales/estructurales,
+se conserva por separado y su fallo detiene campaña. Marcador DOM exige datos
+reales y Nueva orden habilitada; responseassertions vinculan IDs/labels/local/
+líneas/total. Requests y bytes quedan finish/error/timeout; quietud500ms sin
+pendientes, máximo15s fuera de listUsable. No interceptacionesAPI, capturas,
+cookies fabricadas ni cuerpos/tokens en reportes. Rutas mutantes quedan fuera de
+R1: recetaR2 obligatoria antes de identidades/datos, con cámara sintética igual,
+auth/token/API/DB reales y tailpostclose fuera de closeConfirmed bajo la misma
+regla declarada de finalización. Las21identidades M0 no se consumen.
+
+Análisis calcula diferencias de medianas/p95 MARGINALES, p95nearest-rank,
+bootstrapPAREADO10000/seed24220261018 y ICpercentil95; no mediana de diferencias.
+Distingue PASS/FAIL/INCONCLUSIVE y no transforma incertidumbrep95 enPASS.
+Rechaza corte incompleto, duplicado, fallos y tamaños incompatibles; los diagnósticos
+se reportan separados y no acreditan rutas críticas ausentes. Instrumentación
+SQL/fases real existente se conserva, con artefacto privado/hash y resumen por tag.
+
+Checks offline en Node24.20.0/pnpm11.4.0: ESLint focal, Prettier, node--check y
+node--test estadístico (ocho pruebas, ceroskips); tscmerchant--noEmit
+--incrementalfalse EXIT0. El SHA definitivo y resultado final de checks se entregan
+al coordinador fuera de este archivo para evitar autorreferencia. No se ejecutó
+suite DB (no se cuenta un skip comoPASS), browser, build ni servidor. No procesos
+propios que detener. RecursosDB siguen reservados al autor de regresión hasta
+transferencia explícita. Revisión previa de receta/código por QA es el siguiente
+paso antes de cualquier dato M1. No factorydeliver por cuenta del worker.
+
+---
+
+El handoff histórico siguiente corresponde exclusivamente al diagnóstico nativo
+previo; sus datos no se reutilizan como M1.
+
 # 0242 P6B — incremento diagnóstico nativo previo a M1
 
 Entrega parcial: harness diagnóstico y una venta nativa nueva con inspección
