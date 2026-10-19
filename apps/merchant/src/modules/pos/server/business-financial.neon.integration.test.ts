@@ -1,8 +1,10 @@
 import { randomUUID } from "node:crypto";
-import { describe, expect, it } from "vitest";
-import { eq } from "drizzle-orm";
+import { afterAll, describe, expect, it } from "vitest";
+import { eq, inArray } from "drizzle-orm";
 import { getDb } from "@mi-pasaporte/db";
 import {
+  users,
+  sessions,
   businesses,
   moduleEvents,
   paymentCommissions,
@@ -10,6 +12,7 @@ import {
 } from "@mi-pasaporte/db/schema";
 import {
   openOrderV2,
+  dropPosWorld,
   seedProduct,
   scopedPos,
   posIntegrationEnabled,
@@ -21,13 +24,34 @@ import { readSaleCommissions } from "../../../server/business/commission-read";
 
 import {
   world,
+  other,
   worldScope,
   close,
   setupBusinessWorld,
 } from "./business-core-support";
 describe.skipIf(!posIntegrationEnabled)("0235 business-financial", () => {
   setupBusinessWorld({ posContract: 2 });
-  it("flagOFF still closes with core method and durable provisional0; retry keeps it after new configuration", async () => {
+  afterAll(async () => {
+    const fixtures = [world, other].filter(Boolean);
+    for (const target of fixtures) await dropPosWorld(target);
+    const owners = fixtures.map((target) => target.seed.userId);
+    if (owners.length) {
+      await getDb().delete(users).where(inArray(users.id, owners));
+      expect(
+        await getDb()
+          .select({ id: users.id })
+          .from(users)
+          .where(inArray(users.id, owners)),
+      ).toEqual([]);
+      expect(
+        await getDb()
+          .select({ id: sessions.id })
+          .from(sessions)
+          .where(inArray(sessions.userId, owners)),
+      ).toEqual([]);
+    }
+  }, 240000);
+  it("V2 closes with core method and durable provisional0; retry keeps it after new configuration", async () => {
     const method = await createPaymentMethod(world.seed.business.id, {
       name: "No tariff",
       chargeShape: "percent",
@@ -46,12 +70,15 @@ describe.skipIf(!posIntegrationEnabled)("0235 business-financial", () => {
       reasons: ["commission_unconfigured"],
       payments: [{ configured: false, commission: "0.00" }],
     });
-    expect(
-      await getDb()
-        .select()
-        .from(moduleEvents)
-        .where(eq(moduleEvents.sourceId, order.id)),
-    ).toHaveLength(0);
+    const firstEvents = await getDb()
+      .select()
+      .from(moduleEvents)
+      .where(eq(moduleEvents.sourceId, order.id));
+    expect(firstEvents).toHaveLength(1);
+    expect(firstEvents[0]).toMatchObject({
+      eventType: "sale.closed",
+      eventVersion: 4,
+    });
     await saveCommission(world.seed.business.id, method.id, {
       expectedRevisionId: null,
       percent: "10",
@@ -74,6 +101,12 @@ describe.skipIf(!posIntegrationEnabled)("0235 business-financial", () => {
       .where(eq(posOrderPayments.posOrderId, order.id));
     expect(rows).toHaveLength(1);
     expect(rows[0].methodProviderId).toBe("core");
+    expect(
+      await getDb()
+        .select()
+        .from(moduleEvents)
+        .where(eq(moduleEvents.sourceId, order.id)),
+    ).toEqual(firstEvents);
   }, 120000);
   it("revision A remains frozen after B; another close uses B; publication reuses captured core revision", async () => {
     const method = await createPaymentMethod(world.seed.business.id, {
@@ -171,7 +204,7 @@ describe.skipIf(!posIntegrationEnabled)("0235 business-financial", () => {
         .where(eq(businesses.id, world.seed.business.id));
     }
   }, 120000);
-  it("net0 flagOFF has an explicit durable core header and no fake payment; absence is unknown", async () => {
+  it("net0 V2 has an explicit durable core header and no fake payment; absence is unknown", async () => {
     const free = await seedProduct(world, "Free test", "0.00");
     const order = await openOrderV2(world, worldScope!, [
       { productId: free, quantity: 1 },

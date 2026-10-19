@@ -86,3 +86,13 @@ EXIT0,11/11 suites,75/75 casos,0skips/0retries,616.03s. SHA limpio antes/durante
 ## Pendiente
 
 DB transferida explícitamente y reservada incluyendo teardown. Continuar sólo wrapper `tools/neon-test.sh` y selección privada existente, sin mostrar/copiar secretos. Siguiente corte autorizado cbbb8c83/b6375774: siete suites dinero y business-core-support (opt-in). Residual8 autorizado b1867cad e histórico6 cbbce442 siguen sólo patches privados hasta cerrar siguiente congelado. Registrar cada intento y congelar para QA NUEVO independiente. closeWithCash sólo unit legacy; no certificar masa con ese helper. No factory/estados/índices/push/PROD.
+
+## Corte dinero en660add97: primer intento completo
+
+WrapperCI serial6, EXIT1:4/6 suites PASS,25/28 casos PASS,3fallos,0skips,430.71s. Log privado `p6-money6-attempt1.log`. PASS:measured-summary5,settlement7,pos-close-races3,pos-close-reuse2. Pos-close4/6 y business-financial4/5.
+
+Los tres fallos son oráculos/fixturesV1 demostrados: summary cerrado sin pase ahora saleTotal9.00 del settlement (esperaba null); V2 preserva note:null literal (esperaba prefijo Mesa automático del writer viejo); cierreV2 publica exactamente1SaleClosedV4 (esperaba0 por flag histórico). La corrección conserva todos los assertions de dinero/comisión/acreditación y añade identidad de evento tras replay; la nota Mesa esperada se declara explícitamente en comando de fixtureV2table. Sin producto cambiado.
+
+Límite de cleanup del primer intento dinero: soporte histórico elimina negocios/dominio/extraUsers, pero no todos los owner/consumerAccounts huérfanos. No se conservaron IDs exactos de esas identidades para retirarlas después del proceso; no se hizo barrido por patrón. Para siguiente revisión de pos-close/business-financial/business-failures se capturan IDs propios y se verifican consumidores/owners/sesiones vacíos tras eliminar sus negocios. Esto no invalida los75 iniciales compatibles ni los4archivosPASS dinero no cambiados.
+
+Checks de la corrección: primer typecheck FAIL por import `other` propio faltante; corregido. Segundo typecheck merchant PASS, ESLint3 PASS, Prettier4 PASS y diff whitespace PASS. Se repetirán sólo pos-close/business-financial; business-failures se prueba por primera vez en invocación DDL aislada.

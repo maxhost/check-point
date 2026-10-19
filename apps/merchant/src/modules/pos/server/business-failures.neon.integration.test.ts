@@ -1,11 +1,14 @@
 import * as publication from "../../../server/module-events/publish";
 import { setResourceVersion } from "../../../server/module-events/publish";
-import { scannedCustomer } from "../../../server/counter/coupon-cycle-support";
+import { scannedCustomer as seedScannedCustomer } from "../../../server/counter/coupon-cycle-support";
 import { randomUUID } from "node:crypto";
-import { describe, expect, it, vi } from "vitest";
-import { and, eq, sql } from "drizzle-orm";
+import { afterAll, describe, expect, it, vi } from "vitest";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { getDb } from "@mi-pasaporte/db";
 import {
+  consumerAccounts,
+  users,
+  sessions,
   commissionRevisions,
   moduleEvents,
   orders,
@@ -15,7 +18,11 @@ import {
   posOrderPayments,
   saleCommissions,
 } from "@mi-pasaporte/db/schema";
-import { posIntegrationEnabled } from "./pos-integration-support";
+import {
+  posIntegrationEnabled,
+  dropPosWorld,
+  type PosWorld,
+} from "./pos-integration-support";
 
 import {
   listPaymentMethods,
@@ -24,9 +31,54 @@ import {
 import { saveCommission } from "../../../server/business/commission-config";
 import { readSaleCommissions } from "../../../server/business/commission-read";
 
-import { world, close, setupBusinessWorld } from "./business-core-support";
+import {
+  world,
+  other,
+  close,
+  setupBusinessWorld,
+} from "./business-core-support";
+const consumerIds: string[] = [];
+async function scannedCustomer(target: PosWorld) {
+  const customer = await seedScannedCustomer(target);
+  consumerIds.push(customer.consumerId);
+  return customer;
+}
 describe.skipIf(!posIntegrationEnabled)("0235 business-failures", () => {
   setupBusinessWorld({ posContract: 2 });
+  afterAll(async () => {
+    // The support's teardown is idempotent; ensure all owned business roots are gone first.
+    for (const target of [world, other].filter(Boolean))
+      await dropPosWorld(target);
+    if (consumerIds.length) {
+      await getDb()
+        .delete(consumerAccounts)
+        .where(inArray(consumerAccounts.id, consumerIds));
+      expect(
+        await getDb()
+          .select({ id: consumerAccounts.id })
+          .from(consumerAccounts)
+          .where(inArray(consumerAccounts.id, consumerIds)),
+      ).toEqual([]);
+    }
+    const owners = [world, other]
+      .filter(Boolean)
+      .map((target) => target.seed.userId);
+    if (owners.length) {
+      await getDb().delete(users).where(inArray(users.id, owners));
+      expect(
+        await getDb()
+          .select({ id: users.id })
+          .from(users)
+          .where(inArray(users.id, owners)),
+      ).toEqual([]);
+      expect(
+        await getDb()
+          .select({ id: sessions.id })
+          .from(sessions)
+          .where(inArray(sessions.userId, owners)),
+      ).toEqual([]);
+    }
+  }, 240000);
   it("technical database write failure rolls back close, payment, header and accreditation", async () => {
     const cash = (await listPaymentMethods(world.seed.business.id))
       .defaultMethodId!;

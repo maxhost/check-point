@@ -1,6 +1,6 @@
 import { closeWithCash } from "./pos-payment-integration-support";
 import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   type PosWorld,
@@ -15,14 +15,19 @@ import {
   seedPosWorld,
 } from "./pos-integration-support";
 import { getDb } from "@mi-pasaporte/db";
-import { campaignCoupons } from "@mi-pasaporte/db/schema";
+import {
+  campaignCoupons,
+  consumerAccounts,
+  users,
+  sessions,
+} from "@mi-pasaporte/db/schema";
 import { readBalances } from "../../../server/counter-integration-support";
 import {
   type Customer,
   type Reward,
   choose,
   redemptionsOf,
-  scannedCustomer,
+  scannedCustomer as seedScannedCustomer,
   selectionOf,
   sell,
   welcomeCoupon,
@@ -38,6 +43,12 @@ import {
 
 let world: PosWorld;
 let scope: string;
+const consumerIds: string[] = [];
+async function scannedCustomer(target: PosWorld) {
+  const customer = await seedScannedCustomer(target);
+  consumerIds.push(customer.consumerId);
+  return customer;
+}
 
 beforeAll(async () => {
   world = await seedPosWorld("POS cierre");
@@ -46,6 +57,32 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await dropPosWorld(world);
+  if (consumerIds.length) {
+    await getDb()
+      .delete(consumerAccounts)
+      .where(inArray(consumerAccounts.id, consumerIds));
+    expect(
+      await getDb()
+        .select({ id: consumerAccounts.id })
+        .from(consumerAccounts)
+        .where(inArray(consumerAccounts.id, consumerIds)),
+    ).toEqual([]);
+  }
+  if (world) {
+    await getDb().delete(users).where(eq(users.id, world.seed.userId));
+    expect(
+      await getDb()
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.id, world.seed.userId)),
+    ).toEqual([]);
+    expect(
+      await getDb()
+        .select({ id: sessions.id })
+        .from(sessions)
+        .where(eq(sessions.userId, world.seed.userId)),
+    ).toEqual([]);
+  }
 }, 180_000);
 
 /** 2 medialunas (7.00) + 1 cafe (2.00) = 9.00 bruto. */
@@ -58,7 +95,23 @@ async function closeWithPass(
   customer: Customer,
   coupon?: { couponId: string },
 ) {
-  const order = await openOrderV2(world, scope, cart(), "Mesa 4");
+  // V2 stores the caller's literal note; the legacy automatic prefix is now explicit fixture intent.
+  const opened = await scopedPos(world.ownerCookie, scope).create({
+    createRequestId: randomUUID(),
+    saleType: "table",
+    orderLabel: "Mesa 4",
+    locationId: world.seed.locationId,
+    tableId: null,
+    note: "Mesa: Mesa 4",
+    items: cart().map((item) => ({
+      productId: item.productId,
+      quantity: String(item.quantity),
+      quantityUnit: "unit",
+      catalogRevision: "1",
+    })),
+  });
+  expect(opened.status).toBe(201);
+  const order = await opened.json();
   const response = await closeWithCash(
     world.ownerCookie,
     order.id,
@@ -114,7 +167,7 @@ describe.skipIf(!posIntegrationEnabled)(
         await scopedPos(world.ownerCookie, scope).list()
       ).json();
       expect(closedToday).toContainEqual(
-        expect.objectContaining({ id: order.id, saleTotal: null }),
+        expect.objectContaining({ id: order.id, saleTotal: "9.00" }),
       );
     }, 120_000);
 
