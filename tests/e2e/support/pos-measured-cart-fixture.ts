@@ -1,0 +1,81 @@
+import type {
+  PosCatalogProductV2,
+  PosLineV2,
+} from "../../../apps/merchant/src/modules/pos/contracts";
+import { UNIT_MEASURE } from "../../../packages/domain/src/measures";
+export const products: PosCatalogProductV2[] = [
+  {
+    id: "coffee",
+    name: "Café",
+    categoryId: null,
+    soldByWeight: false,
+    pricingUnit: "unit",
+    unitPrice: "3",
+    catalogRevision: "2",
+    imagePath: null,
+  },
+  {
+    id: "mass",
+    name: "Café en grano de origen, tostado artesanal",
+    categoryId: null,
+    soldByWeight: true,
+    pricingUnit: "lb",
+    unitPrice: "4.123456789",
+    catalogRevision: "3",
+    imagePath: null,
+  },
+  {
+    id: "free",
+    name: "Agua",
+    categoryId: null,
+    soldByWeight: false,
+    pricingUnit: "unit",
+    unitPrice: "0",
+    catalogRevision: "1",
+    imagePath: null,
+  },
+  {
+    id: "missing",
+    name: "Sin precio",
+    categoryId: null,
+    soldByWeight: true,
+    pricingUnit: "kg",
+    unitPrice: null,
+    catalogRevision: "1",
+    imagePath: null,
+  },
+];
+export const existing: PosLineV2[] = [
+  {
+    lineId: "old",
+    productId: "coffee",
+    name: "Café anterior",
+    quantity: "2",
+    unitPrice: "2",
+    measure: UNIT_MEASURE,
+    lineTotal: "4",
+  },
+  {
+    lineId: "deleted",
+    productId: null,
+    name: "Producto retirado",
+    quantity: "1",
+    unitPrice: "0",
+    measure: UNIT_MEASURE,
+    lineTotal: "0",
+  },
+  {
+    lineId: "grams",
+    productId: "mass",
+    name: "Grano guardado",
+    quantity: "1",
+    unitPrice: "4",
+    measure: {
+      kind: "mass",
+      quantityUnit: "g",
+      priceUnit: "lb",
+      conversionVersion: "mass-si-1",
+    },
+    lineTotal: "0.01",
+  },
+];
