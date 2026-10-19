@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FilterList } from "iconoir-react";
 import { Button, Heading, SelectField, Sheet, Text } from "../../../ui";
 import type { PosHistoryV2, PosLocationV2, PosOrderV2 } from "../contracts";
@@ -16,6 +16,7 @@ export function MeasuredOrderList({
   onLoadProducts,
   onNew,
   onChooseNew,
+  onLocationChange,
   onRefresh,
 }: {
   history: PosHistoryV2;
@@ -26,6 +27,7 @@ export function MeasuredOrderList({
   onLoadProducts?: (id: string) => Promise<PosOrderV2["items"]>;
   onNew: (locationId: string) => void;
   onChooseNew?: (locationId: string) => void;
+  onLocationChange?: (locationId: string) => void;
   onRefresh: () => void;
 }) {
   const [filters, setFilters] = useState<OrderFilters>({
@@ -34,6 +36,9 @@ export function MeasuredOrderList({
     saleType: "all",
   });
   const { status, location, saleType } = filters;
+  useEffect(() => {
+    onLocationChange?.(location === "all" ? "" : location);
+  }, [location, onLocationChange]);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [draftFilters, setDraftFilters] = useState(filters);
   const rows = (status === "open" ? history.open : history.closedToday).filter(
@@ -49,22 +54,16 @@ export function MeasuredOrderList({
     >
       <div className="flex flex-wrap items-center justify-between gap-4">
         <Heading level={1}>Pedidos</Heading>
-        <Button
-          className="md:hidden"
-          isDisabled={disabled}
-          onPress={() => onNew(location === "all" ? "" : location)}
-        >
-          Nueva orden
-        </Button>
-        <Button
-          className="hidden md:inline-flex"
-          isDisabled={disabled}
-          onPress={() =>
-            (onChooseNew ?? onNew)(location === "all" ? "" : location)
-          }
-        >
-          Nueva orden
-        </Button>
+        <div className="hidden md:block">
+          <Button
+            isDisabled={disabled}
+            onPress={() =>
+              (onChooseNew ?? onNew)(location === "all" ? "" : location)
+            }
+          >
+            Nueva orden
+          </Button>
+        </div>
       </div>
       <div className="md:hidden">
         <Button

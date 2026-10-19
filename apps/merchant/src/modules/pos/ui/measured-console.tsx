@@ -137,6 +137,11 @@ export function MeasuredConsoleContent({
   const cache = voidAction.cache;
   const [confirmVoid, setConfirmVoid] = useState(false);
   const [newOrderLocation, setNewOrderLocation] = useState<string | null>(null);
+  const [newOrderAsSheet, setNewOrderAsSheet] = useState(false);
+  const [newOrderSequence, setNewOrderSequence] = useState(0);
+  const [listLocationId, setListLocationId] = useState(
+    context.locations[0]?.id ?? "",
+  );
   const editors = useRef(new Set<MeasuredEditorSession>());
   const payments = useRef(new Map<string, MeasuredPaymentSession>());
   const customerSelections = useRef(new Map<string, EditorCustomerSelection>());
@@ -236,6 +241,24 @@ export function MeasuredConsoleContent({
     !voidAction.canLeave ||
     !!editor?.blocked ||
     [...payments.current.values()].some((s) => !s.canLeave);
+  useEffect(() => {
+    const onPrimary = (event: Event) => {
+      if (
+        (event as CustomEvent<{ moduleId: string }>).detail?.moduleId !==
+          "pos" ||
+        blocked ||
+        view !== "list" ||
+        window.matchMedia("(min-width: 768px)").matches
+      )
+        return;
+      setNewOrderAsSheet(true);
+      setNewOrderSequence((sequence) => sequence + 1);
+      setNewOrderLocation(listLocationId);
+    };
+    window.addEventListener("checkpass:module-primary", onPrimary);
+    return () =>
+      window.removeEventListener("checkpass:module-primary", onPrimary);
+  }, [blocked, view, listLocationId]);
   const tableLocations = JSON.stringify(context.locations.map((l) => l.id));
   useEffect(() => {
     if (view !== "list" || !accessEnabled || denied) return;
@@ -456,8 +479,13 @@ export function MeasuredConsoleContent({
             onNew={(locationId) => {
               if (!blocked) selectEditor(null, locationId);
             }}
+            onLocationChange={setListLocationId}
             onChooseNew={(locationId) => {
-              if (!blocked) setNewOrderLocation(locationId);
+              if (!blocked) {
+                setNewOrderAsSheet(false);
+                setNewOrderSequence((sequence) => sequence + 1);
+                setNewOrderLocation(locationId);
+              }
             }}
             onRefresh={() => {
               if (context.tablesEnabled) {
@@ -577,7 +605,8 @@ export function MeasuredConsoleContent({
         </section>
       )}
       <MeasuredNewOrderDialog
-        key={newOrderLocation ?? "closed"}
+        asSheet={newOrderAsSheet}
+        key={newOrderSequence}
         isOpen={newOrderLocation !== null && view === "list" && !blocked}
         initialLocationId={newOrderLocation ?? ""}
         context={context}

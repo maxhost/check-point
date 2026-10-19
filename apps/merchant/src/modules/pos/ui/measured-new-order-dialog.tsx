@@ -5,6 +5,7 @@ import {
   Alert,
   Button,
   Dialog,
+  Sheet,
   SelectField,
   Text,
   TextField,
@@ -52,6 +53,7 @@ const types = [
 
 export function MeasuredNewOrderDialog({
   isOpen,
+  asSheet = false,
   initialLocationId,
   context,
   client,
@@ -62,6 +64,7 @@ export function MeasuredNewOrderDialog({
   onError,
 }: {
   isOpen: boolean;
+  asSheet?: boolean;
   initialLocationId: string;
   context: MeasuredEditorContext;
   client: PosClient;
@@ -149,19 +152,12 @@ export function MeasuredNewOrderDialog({
         !tableUnavailable(tables.tables, tableId)));
   const selected = types.find((type) => type.id === saleType);
 
-  return (
-    <Dialog
-      title="Nueva orden"
-      description={
-        step === "type"
-          ? "Elige el tipo de orden que quieres crear."
-          : "Completa los datos para continuar con los productos."
-      }
-      isOpen={isOpen}
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
-    >
+  const description =
+    step === "type"
+      ? "Elige el tipo de orden que quieres crear."
+      : "Completa los datos para continuar con los productos.";
+  const content = (
+    <>
       {step === "type" ? (
         <div className="grid grid-cols-2 gap-3">
           {types
@@ -280,36 +276,68 @@ export function MeasuredNewOrderDialog({
           Preparando productos del local…
         </Text>
       )}
-      <div className="mt-5 flex justify-between gap-3">
-        <Button variant="quiet" onPress={onClose}>
-          Cancelar
-        </Button>
-        {step === "details" && (
-          <div className="flex gap-3">
-            <Button
-              variant="secondary"
-              isDisabled={disabled}
-              onPress={() => setStep("type")}
-            >
-              Atrás
-            </Button>
-            <Button
-              isDisabled={!canContinue}
-              onPress={() => {
-                if (canContinue && saleType)
-                  onContinue({
-                    saleType,
-                    locationId,
-                    tableId,
-                    orderLabel: orderLabel.trim(),
-                  });
-              }}
-            >
-              Continuar
-            </Button>
-          </div>
-        )}
-      </div>
+    </>
+  );
+  const footer = (
+    <div
+      className={
+        asSheet
+          ? "flex justify-between gap-3"
+          : "mt-5 flex justify-between gap-3"
+      }
+    >
+      <Button variant="quiet" onPress={onClose}>
+        Cancelar
+      </Button>
+      {step === "details" && (
+        <div className="flex gap-3">
+          <Button
+            variant="secondary"
+            isDisabled={disabled}
+            onPress={() => setStep("type")}
+          >
+            Atrás
+          </Button>
+          <Button
+            isDisabled={!canContinue}
+            onPress={() => {
+              if (canContinue && saleType)
+                onContinue({
+                  saleType,
+                  locationId,
+                  tableId,
+                  orderLabel: orderLabel.trim(),
+                });
+            }}
+          >
+            Continuar
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+  const onOpenChange = (open: boolean) => {
+    if (!open) onClose();
+  };
+  return asSheet ? (
+    <Sheet
+      title="Nueva orden"
+      description={description}
+      isOpen={isOpen}
+      onOpenChange={onOpenChange}
+      footer={footer}
+    >
+      {content}
+    </Sheet>
+  ) : (
+    <Dialog
+      title="Nueva orden"
+      description={description}
+      isOpen={isOpen}
+      onOpenChange={onOpenChange}
+    >
+      {content}
+      {footer}
     </Dialog>
   );
 }
