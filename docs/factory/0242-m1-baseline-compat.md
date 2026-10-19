@@ -386,3 +386,54 @@ Después proof, QA independiente lee filas/semánticaoriginal y coord decide arr
 acotado o bugreal; no relajar condición de delivery sin evidencia. Source0c590 y
 origenGRID6cee permanecen frozen, servidorpreservado hasta rootGOstop/cleanup.
 Nada autoriza reintento del RUN ni editar resultados false como PASS.
+
+## MASA0c590: continuación compuesta n0 y outbox explícito
+
+Inspector40064 EXIT0/1PASS2.11s/11SELECTs RR READONLY→ROLLBACK,
+proof87e9fd9f3a4d468e1d0cba4fc61fdca9deb7c608c354cbed244045c1179e306d/log27db2943e71d576c41940221a52ba949a8129f1de8694b61051494dfd44a1536.
+Actual: sale.closedV4 analytics applied1/recipes skipped0 modules_disabled; dos
+auxiliares core.analytics coupon.redeemedV1 yvisit.recordedV1 pending0/diagNULL/
+claimsNULL; wallet transactional suppressed0/no_channel/sentNULL. Finanzas2.78,
+2puntos,1redención/payment/V4. Estos datos son snapshot actual, no historial del
+instante de fallo. not_beforewallet=claimreclaimdeadline+5min, NOhora de supresión.
+
+QA trazó measured-close296–309: aceleración sólo sale.closed/recipes.consumption.applied/
+sale.commission.frozen; coupon-store yanalytics-events publican auxpending en outbox.
+Worker interno retry sinfilter aplica resto; ADR0153/spec0237§2.3 declaran cron/asíncrono.
+Push no_channel es supresión terminal normal (ADR0116/spec0139). No hay evidencia
+actual de bug de producto/scheduling; quietinstrumentado NOprueba0trabajoglobal.
+
+Se encarga MISMOautor cuatro paths MASA corregir guard y observabilidad: guardar
+rawobserved ANTESasserts; clasificar terminales saleV4 por evento/subscriber propios;
+sólo auxcoupon.redeemedV1(sourcecouponpropio/payloadordercorepropio/campaign/location)
+yvisit.recordedV1(sourcecoreorderpropio/payloadpropio), core.analytics, pueden estar
+pending0/diagNULL/claimsNULL/appliedNULL/terminalNULL o primera aplicación normal.
+No permitir pending/retry/claim/diagnostic arbitrarios, otros tipos/versiones/IDs.
+Wallet permite supresión no_channel/attempt0/sentNULL transaccional consumidorpropio;
+pending delegado sólo bajo condiciones reales de cola documentadas, sin afirmar
+claimownership universal. Registrar estado/IDs/not_before y límites explícitos.
+Guard replay compara finanzas/snapshots/eventos inmutables exactamente (incluido
+coreorder/corelines/counts de negocio propio, no sólo POSlink), separando transiciones
+legítimas de outbox en mismosIDs/payloads (pending→applied; walletpending→suppressed).
+Dos lecturas estables ysin claims observados, sin drenar/jobs artificiales.
+Checks focales reales de clasificador con proofSQL87e9 + negativos wrongtype/version/
+source/claim/attempt/diag/walletstatuserror, lint/diff/formato/tscFINAL por TS si cambia.
+NuevoSHAfixture/receta limpio y QA focal ANTES accionesDB/replay siguientes.
+
+QA confirmó cierreCOMPUESTO n0 viable por ficha cc468 y precedentes P3b: recorrido
+observado y replay mismaidentidad, sin exigencia de una corrida única PASS. Esto
+NOreinterpreta runresult0c590false ni crea otra venta/fixture. Tras sourceQA y authroot
+RECOVERYNUEVA ligada runtime0c590/build6cee/mZN/freeze58df/compiled26960e/owner/order
+79247a3f-1540-40dc-b638-9e57de73d005 +fixtureSHAcorregido/config/ci/cookievigente,
+autorizar separado: baselineRRreadonly propio; UNA repeticiónHTTP del cierreORIGINAL
+rawbody/content-type/scope/contract2/clientRequestId EXACTOS, cookielegítima misma
+sesión, URLliteral; sólo headerobservacionaltag nuevo. Transporte se predeclara
+como APIContext nuevo (original fue page.evaluate(fetch), browser ya cerrado),
+semánticaHTTP observada equivalente; NOclaimmismoPagecontext. Guardarrequestbytes/
+headersprivados/hash yresponse200/canónico/RID/intervalo; sincreate/OTP/drain/retry.
+Luego snapshotRRreadonly después/reconciliaciónfinancieraexacta/outboxcaracterizado,
+quiet500msmax15s instrumentado+localobservado, identidadfinal COPY/origin/metadata,
+stop sólo propios ycleanupSELECT0 mediante autorizacionesroot apropiadas. Originales
+false/errores/hashes intocables; nuevo artifactCOMPOSED referenciaSHA/intervalos/
+transportecambiado ycomponentes, n0/noR2/noPASSestricto niRUNúnicoPASS. Cada fase
+espera GOroot concreto posterior; este contrato sólo autoriza fixOFFLINE ahora.
