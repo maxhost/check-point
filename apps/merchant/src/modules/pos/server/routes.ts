@@ -12,16 +12,15 @@ import {
   removeCoupon,
   resolveScan,
 } from "../../../server/counter";
-import { businessCatalog } from "../../../server/counter/resolve-catalog";
+import { readPosCatalog } from "./measured-catalog";
 import type { ModuleRoute, ModuleServer } from "../../route-table";
-import { bestSellingProductIds } from "./best-sellers";
 import { closePosOrder } from "./close";
 import { posOrderId } from "./errors";
-import { posRoute, readPosBody } from "./http";
+import { posRoute, readPosBody, posReadContract } from "./http";
 import { listPosOrders } from "./list";
 import { posBeforeDisable } from "./module";
 import { createPosOrder, updatePosOrder, voidPosOrder } from "./orders";
-import { getPosOrder } from "./read";
+import { getPosOrder, getPosOrderV2 } from "./read";
 import { listPosTables } from "./tables";
 import {
   parseTicketSettings,
@@ -56,6 +55,7 @@ const routes: readonly ModuleRoute[] = [
     path: "catalog",
     failure: "No pudimos leer el catálogo.",
     handler: async ({ request, business }) => {
+      const contract = posReadContract(request);
       const raw = query(request, "locationId");
       const locationId = raw
         ? await assertLocationInBusiness(
@@ -63,17 +63,9 @@ const routes: readonly ModuleRoute[] = [
             parseUuid(raw, "locationId"),
           )
         : null;
-      const catalog = await businessCatalog(business.id, locationId);
-      const products = catalog.products.filter((p) => p.unitPrice !== null);
-      return NextResponse.json({
-        ...catalog,
-        products,
-        bestSellingProductIds: await bestSellingProductIds(
-          business.id,
-          locationId,
-          products.map((product) => product.id),
-        ),
-      });
+      return NextResponse.json(
+        await readPosCatalog(business.id, locationId, contract),
+      );
     },
   }),
   /** → `{ open, closedToday }`. */
@@ -106,8 +98,15 @@ const routes: readonly ModuleRoute[] = [
     method: "GET",
     path: "orders/:id",
     failure: "No pudimos leer la orden.",
-    handler: async ({ business, params }) =>
-      NextResponse.json(await getPosOrder(business.id, posOrderId(params.id))),
+    handler: async ({ business, params, request }) => {
+      const contract = posReadContract(request);
+      const id = posOrderId(params.id);
+      return NextResponse.json(
+        await (contract === 2
+          ? getPosOrderV2(business.id, id)
+          : getPosOrder(business.id, id)),
+      );
+    },
   }),
   /** La lista COMPLETA de lineas + `version`. */
   posRoute({

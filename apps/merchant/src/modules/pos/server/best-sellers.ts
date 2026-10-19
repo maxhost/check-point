@@ -1,4 +1,5 @@
 import { and, asc, desc, eq, gte, isNotNull, max, sql, sum } from "drizzle-orm";
+import { posUpgradeRequired } from "./measured-read";
 import { getDb } from "@mi-pasaporte/db";
 import { posOrderItems, posOrders } from "@mi-pasaporte/db/schema";
 
@@ -22,7 +23,10 @@ export async function bestSellingProductIds(
 ): Promise<string[]> {
   const units = sum(posOrderItems.quantity);
   const rows = await getDb()
-    .select({ productId: posOrderItems.productId })
+    .select({
+      productId: posOrderItems.productId,
+      incompatible: sql<boolean>`bool_or(${posOrderItems.measureKind} <> 'unit' or ${posOrderItems.quantityUnit} <> 'unit' or ${posOrderItems.priceUnit} <> 'unit' or ${posOrderItems.conversionVersion} <> 'mass-si-1' or ${posOrderItems.quantity} <> trunc(${posOrderItems.quantity}) or ${posOrderItems.quantity} > 2147483647 or ${posOrderItems.unitPriceSnapshot} <> trunc(${posOrderItems.unitPriceSnapshot}, 2))`,
+    })
     .from(posOrderItems)
     .innerJoin(posOrders, eq(posOrders.id, posOrderItems.posOrderId))
     .where(
@@ -43,8 +47,43 @@ export async function bestSellingProductIds(
       desc(max(posOrders.closedAt)),
       asc(posOrderItems.productId),
     );
+  if (rows.some((row) => row.incompatible)) posUpgradeRequired();
   const inCatalog = new Set(catalogIds);
   return rows
     .map((row) => row.productId as string)
     .filter((id) => inCatalog.has(id));
+}
+
+/** Frequency counts orders, irrespective of the line's physical dimension. */
+export async function frequentProductIds(
+  businessId: string,
+  locationId: string | null,
+  catalogIds: readonly string[],
+): Promise<string[]> {
+  const rows = await getDb()
+    .select({ productId: posOrderItems.productId })
+    .from(posOrderItems)
+    .innerJoin(posOrders, eq(posOrders.id, posOrderItems.posOrderId))
+    .where(
+      and(
+        eq(posOrders.businessId, businessId),
+        eq(posOrders.status, "closed"),
+        gte(
+          posOrders.closedAt,
+          sql`now() - make_interval(days => ${BEST_SELLERS_WINDOW_DAYS})`,
+        ),
+        locationId === null ? undefined : eq(posOrders.locationId, locationId),
+        isNotNull(posOrderItems.productId),
+      ),
+    )
+    .groupBy(posOrderItems.productId)
+    .orderBy(
+      desc(sql`count(distinct ${posOrders.id})`),
+      desc(max(posOrders.closedAt)),
+      asc(posOrderItems.productId),
+    );
+  const allowed = new Set(catalogIds);
+  return rows
+    .map((row) => row.productId as string)
+    .filter((id) => allowed.has(id));
 }

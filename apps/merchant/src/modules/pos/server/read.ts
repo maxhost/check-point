@@ -15,7 +15,19 @@ import {
   users,
 } from "@mi-pasaporte/db/schema";
 import { readOrderByRequest } from "../../../server/counter/orders";
-import { toResult } from "../../../server/counter/grant";
+import {
+  add,
+  originalMoney,
+  formatMinor,
+  toMinor,
+} from "@mi-pasaporte/domain/financial/rational";
+import {
+  assertLegacySnapshot,
+  measuredItems,
+  measuredTotal,
+  persistedSaleType,
+} from "./measured-read";
+import type { PosOrderV2 } from "../contracts";
 import { lineTotalOf, totalOf, unitQuantityOf, unitPriceOf } from "./lines";
 import { unknownPosOrder } from "./errors";
 
@@ -80,7 +92,7 @@ function operatorName(name: string | null, email: string | null): string {
 
 /** La venta de una orden cerrada CON pase: la `core.order` enlazada, releida por su clave de
  * idempotencia (`readOrderByRequest`, la misma lectura del reintento del mostrador). */
-async function readSale(
+export async function readSale(
   businessId: string,
   orderId: string,
   closeRequestId: string,
@@ -97,7 +109,20 @@ async function readSale(
     .innerJoin(consumerAccounts, eq(consumerAccounts.id, orders.consumerId))
     .where(eq(orders.id, orderId))
     .limit(1);
-  const { order } = toResult(granted);
+  const order = {
+    ...granted,
+    kind: granted.accrualKind,
+    grossTotal: formatMinor(
+      toMinor(
+        add(
+          originalMoney(granted.total),
+          originalMoney(granted.coupon?.discountAmount ?? "0.00"),
+        ),
+        2,
+      ),
+      2,
+    ),
+  };
   return {
     consumer: `${who?.firstName ?? ""} ${who?.lastName ?? ""}`.trim(),
     total: settlement?.collected ?? order.total,
@@ -118,7 +143,17 @@ async function readSale(
 export async function readPosOrder(
   businessId: string,
   id: string,
-): Promise<PosOrderDTO | null> {
+): Promise<PosOrderDTO | null>;
+export async function readPosOrder(
+  businessId: string,
+  id: string,
+  contract: 2,
+): Promise<PosOrderV2 | null>;
+export async function readPosOrder(
+  businessId: string,
+  id: string,
+  contract?: 2,
+): Promise<PosOrderDTO | PosOrderV2 | null> {
   const db = getDb();
   const [row] = await db
     .select({
@@ -126,6 +161,7 @@ export async function readPosOrder(
       status: posOrders.status,
       version: posOrders.version,
       tableLabel: posOrders.tableLabel,
+      saleType: posOrders.saleType,
       tableId: posOrders.diningTableId,
       note: posOrders.note,
       locationId: locations.id,
@@ -159,24 +195,38 @@ export async function readPosOrder(
       unitPrice: posOrderItems.unitPriceSnapshot,
       quantity: posOrderItems.quantity,
       financialSnapshot: posOrderItems.financialSnapshot,
+      position: posOrderItems.position,
+      measureKind: posOrderItems.measureKind,
+      quantityUnit: posOrderItems.quantityUnit,
+      priceUnit: posOrderItems.priceUnit,
+      conversionVersion: posOrderItems.conversionVersion,
     })
     .from(posOrderItems)
     .where(eq(posOrderItems.posOrderId, id))
     .orderBy(asc(posOrderItems.position), asc(posOrderItems.id));
 
-  const items = lines.map((line) => ({
-    lineId: line.id,
-    productId: line.productId,
-    name: line.name,
-    unitPrice: unitPriceOf(line.unitPrice),
-    quantity: unitQuantityOf(line.quantity),
-    lineTotal:
-      line.financialSnapshot?.money.gross ??
-      lineTotalOf(line.unitPrice, line.quantity),
-    financialSnapshot: line.financialSnapshot,
-  }));
+  if (contract !== 2) lines.forEach(assertLegacySnapshot);
+  const items =
+    contract === 2
+      ? measuredItems(
+          lines,
+          row.settlement?.currencyCode ?? row.currencyCode,
+          row.status !== "open",
+          row.settlement,
+        )
+      : lines.map((line) => ({
+          lineId: line.id,
+          productId: line.productId,
+          name: line.name,
+          unitPrice: unitPriceOf(line.unitPrice),
+          quantity: unitQuantityOf(line.quantity),
+          lineTotal:
+            line.financialSnapshot?.money.gross ??
+            lineTotalOf(line.unitPrice, line.quantity),
+          financialSnapshot: line.financialSnapshot,
+        }));
 
-  return {
+  const result = {
     id: row.id,
     status: row.status as PosOrderDTO["status"],
     version: row.version,
@@ -192,7 +242,11 @@ export async function readPosOrder(
       currencyCode: row.settlement?.currencyCode ?? row.currencyCode,
     },
     items,
-    total: row.settlement?.gross ?? totalOf(items),
+    total:
+      row.settlement?.gross ??
+      (contract === 2
+        ? measuredTotal(items, row.currencyCode, row.status !== "open")
+        : totalOf(items)),
     settlement: row.settlement,
     createdAt: row.createdAt.toISOString(),
     createdBy: operatorName(row.creatorName, row.creatorEmail),
@@ -210,6 +264,15 @@ export async function readPosOrder(
           )
         : null,
   };
+  return contract === 2
+    ? {
+        ...result,
+        contractVersion: 2,
+        saleType: persistedSaleType(row.saleType, row.tableId),
+        orderLabel: row.tableLabel,
+        items: items as PosOrderV2["items"],
+      }
+    : { ...result, items: items as PosOrderDTO["items"] };
 }
 
 /** {@link readPosOrder} o 404 `unknown_pos_order`. */
@@ -218,6 +281,15 @@ export async function getPosOrder(
   id: string,
 ): Promise<PosOrderDTO> {
   const order = await readPosOrder(businessId, id);
+  if (!order) throw unknownPosOrder();
+  return order;
+}
+
+export async function getPosOrderV2(
+  businessId: string,
+  id: string,
+): Promise<PosOrderV2> {
+  const order = await readPosOrder(businessId, id, 2);
   if (!order) throw unknownPosOrder();
   return order;
 }
