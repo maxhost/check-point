@@ -29,6 +29,7 @@ export type MeasuredEditorContext = {
   saleTypes: Exclude<SaleType, "legacy">[];
   tablesEnabled: boolean;
   lastLocationId?: string;
+  initialSaleType?: Exclude<SaleType, "legacy">;
 };
 export type MeasuredEditorDraft = {
   saleType: SaleType;
@@ -43,7 +44,12 @@ function draftFor(
   context: MeasuredEditorContext,
 ): MeasuredEditorDraft {
   return {
-    saleType: order?.saleType ?? context.saleTypes[0] ?? "counter",
+    saleType:
+      order?.saleType ??
+      (context.initialSaleType &&
+      context.saleTypes.includes(context.initialSaleType)
+        ? context.initialSaleType
+        : (context.saleTypes[0] ?? "counter")),
     locationId: order
       ? (order.location?.id ?? "")
       : context.locations.length === 1

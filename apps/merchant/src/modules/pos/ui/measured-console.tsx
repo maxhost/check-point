@@ -1,7 +1,13 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Bag, DeliveryTruck, Shop, Table } from "iconoir-react";
 import { Alert, Button, Dialog, Heading, Text } from "../../../ui";
-import type { PosHistoryV2, PosLocationV2, PosOrderV2 } from "../contracts";
+import type {
+  PosHistoryV2,
+  PosLocationV2,
+  PosOrderV2,
+  SaleType,
+} from "../contracts";
 import { DiscardedPosRead, detailKey, historyKey } from "./pos-cache";
 import {
   DiscardedPosIntent,
@@ -23,6 +29,33 @@ import {
   retireMeasuredVoidIdentity,
 } from "./measured-void-action";
 import type { MeasuredEditorContext } from "./measured-editor-model";
+
+const newOrderTypes = [
+  {
+    id: "table",
+    label: "Mesa",
+    icon: <Table className="size-6" aria-hidden="true" />,
+  },
+  {
+    id: "counter",
+    label: "Mostrador",
+    icon: <Shop className="size-6" aria-hidden="true" />,
+  },
+  {
+    id: "delivery",
+    label: "Delivery",
+    icon: <DeliveryTruck className="size-6" aria-hidden="true" />,
+  },
+  {
+    id: "pickup",
+    label: "Para retirar",
+    icon: <Bag className="size-6" aria-hidden="true" />,
+  },
+] satisfies {
+  id: Exclude<SaleType, "legacy">;
+  label: string;
+  icon: React.ReactNode;
+}[];
 
 export function MeasuredConsole({ locations }: { locations: PosLocationV2[] }) {
   const scope = usePosContext({ contractVersion: 2 });
@@ -117,6 +150,7 @@ export function MeasuredConsoleContent({
   );
   const cache = voidAction.cache;
   const [confirmVoid, setConfirmVoid] = useState(false);
+  const [newOrderLocation, setNewOrderLocation] = useState<string | null>(null);
   const editors = useRef(new Set<MeasuredEditorSession>());
   const payments = useRef(new Map<string, MeasuredPaymentSession>());
   const active = useRef(true);
@@ -218,9 +252,13 @@ export function MeasuredConsoleContent({
   function syncHistory() {
     setHistory(cache.peek<PosHistoryV2>(historyKey, true));
   }
-  function selectEditor(value: PosOrderV2 | null, locationId?: string) {
+  function selectEditor(
+    value: PosOrderV2 | null,
+    locationId?: string,
+    initialSaleType?: Exclude<SaleType, "legacy">,
+  ) {
     const next = new MeasuredEditorSession(
-      { ...context, lastLocationId: locationId },
+      { ...context, lastLocationId: locationId, initialSaleType },
       cache,
       client,
       value,
@@ -358,6 +396,9 @@ export function MeasuredConsoleContent({
             onNew={(locationId) => {
               if (!blocked) selectEditor(null, locationId);
             }}
+            onChooseNew={(locationId) => {
+              if (!blocked) setNewOrderLocation(locationId);
+            }}
             onRefresh={() => void load(true)}
           />
         ) : (
@@ -450,6 +491,41 @@ export function MeasuredConsoleContent({
           )}
         </section>
       )}
+      <Dialog
+        title="Nueva orden"
+        description="Elige el tipo de orden que quieres crear."
+        isOpen={newOrderLocation !== null && view === "list" && !blocked}
+        onOpenChange={(open) => {
+          if (!open) setNewOrderLocation(null);
+        }}
+      >
+        <div className="grid grid-cols-2 gap-3">
+          {newOrderTypes
+            .filter((type) => context.saleTypes.includes(type.id))
+            .map((type) => (
+              <Button
+                key={type.id}
+                variant="secondary"
+                className="min-h-28 flex-col gap-3"
+                isDisabled={blocked}
+                onPress={() => {
+                  if (blocked || newOrderLocation === null) return;
+                  const locationId = newOrderLocation;
+                  setNewOrderLocation(null);
+                  selectEditor(null, locationId, type.id);
+                }}
+              >
+                {type.icon}
+                {type.label}
+              </Button>
+            ))}
+        </div>
+        <div className="mt-4 flex justify-end">
+          <Button variant="quiet" onPress={() => setNewOrderLocation(null)}>
+            Cancelar
+          </Button>
+        </div>
+      </Dialog>
       <Dialog
         title="Anular pedido"
         isOpen={confirmVoid}

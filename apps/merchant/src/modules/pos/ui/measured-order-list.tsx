@@ -15,6 +15,7 @@ export function MeasuredOrderList({
   onOpen,
   onLoadProducts,
   onNew,
+  onChooseNew,
   onRefresh,
 }: {
   history: PosHistoryV2;
@@ -24,6 +25,7 @@ export function MeasuredOrderList({
   onOpen: (id: string) => void;
   onLoadProducts?: (id: string) => Promise<PosOrderV2["items"]>;
   onNew: (locationId: string) => void;
+  onChooseNew?: (locationId: string) => void;
   onRefresh: () => void;
 }) {
   const [filters, setFilters] = useState<OrderFilters>({
@@ -48,8 +50,18 @@ export function MeasuredOrderList({
       <div className="flex flex-wrap items-center justify-between gap-4">
         <Heading level={1}>Pedidos</Heading>
         <Button
+          className="md:hidden"
           isDisabled={disabled}
           onPress={() => onNew(location === "all" ? "" : location)}
+        >
+          Nueva orden
+        </Button>
+        <Button
+          className="hidden md:inline-flex"
+          isDisabled={disabled}
+          onPress={() =>
+            (onChooseNew ?? onNew)(location === "all" ? "" : location)
+          }
         >
           Nueva orden
         </Button>
