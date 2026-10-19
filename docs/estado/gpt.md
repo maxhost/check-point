@@ -5,6 +5,8 @@
 
 ## ESTADO VIGENTE — QA MANUAL DEL OWNER (2026-10-19)
 
+**PUBLICACIÓN AUTORIZADA EN CURSO:** owner aprobó ir Live, aplicar migraciones y push; después autorizó explícitamente `git push --no-verify` sólo para esta entrega, con los dos controles de arquitectura diferidos hasta después del deploy. No hubo correcciones nuevas de código. BackupPROD privado451088bytes/SHA032c85e05fa8344d60db3c11bfebedeb5f3adbd2d96abb98ae364b9c631aa13c/índicelegible. `pnpm db:migrate:prod` EXIT0,0102–0108 aplicadas. PostflightTCP109migraciones/0pendientes hashesexactos/local=PROD huellas;181productos/25órdenesPOS/4abiertas preservados,0sale_typeNULL/0legacyproductchecks. HTTPpostflightfallóEHOSTUNREACHantesresultados; fallbackTCPreadonlysinremigrar. Evidencia `/private/tmp/checkpass-release-0242-20261019/`; handoff `docs/factory/0242-publicacion.md`. Falta pushmain y confirmación de deploymentsVercel porSHA, luego corregir arquitectura. Servidor/túnel/ajenos preservados.
+
 Actualización: owner probó la venta con empleado y confirmó que funciona correctamente. Ese caso queda aprobado; cliente+descuento e impresión siguen pendientes, sin autorización nueva de push/PROD.
 
 Owner confirmó corregido el guardado por peso tras migración local. Resultados del QA manual y mejoras diferidas registrados en `mejoras.md`: unitarios/kg/decimales/validaciones/mezcla/cobro/importes/recarga sin duplicados y anulación de órdenes no cobradas funcionan según owner. Selector sólo kg (no pudo750g) y pérdida de filtro al volver quedan diferidos; cliente+descuento pendiente, impresión mañana, empleado pendiente. Entrada local de empleado `http://localhost:3201/acceso-equipo` verificada HTTP200, sin tocar túnel ni servidor. No declarar QA completo ni reversión de venta cobrada validada.
