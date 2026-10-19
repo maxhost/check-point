@@ -1,5 +1,25 @@
 # 0242 P6A — handoff de regresión HTTP
 
+## Estado actual para entrega
+
+Código congelado y último corte validado: `d67e3181a7b6b8ec6763e0bc0a2a76dd81fa7e9a`. Esta actualización sólo modifica el handoff. Base `01445a86bdec433e8d7bc75b94dfca1ce8184c19`, WT/ref `pos-ui-card-0242`;45paths propios =39suites+5soportes+este informe. Sin cambios de producto/guards/tooling/esquema/migraciones.
+
+Inventario dirigido46: **39suites completas/197casos distintos PASS compatibles por cortes +7suites compatibles por lectura**. No quedan suites asignadas pendientes de ejecución. No equivale a corrida global/exhaustividad de toda la app ni a QAfinal. Las7sinPASS nuevo son business-access,business-sales-units,console-native,legacy-cutover,pos-context-native,pos-scope,pos-staff-entry (todas `modules/pos/server`); motivo por archivo en matriz. LosPASSreutilizados conservan fuente compatible; no se repitieron37/189 por ceremonia.
+
+| Últimos gates sobre d67e3181 | Resultado |
+| --- | --- |
+| unit-expand-compat, selección aislada | EXIT0,6/6casos,0skips/retries,53.18s |
+| pos-migration-0079, OTRA selección aislada posterior | EXIT0,2/2casos,0skips/retries,20.28s |
+| Cierre | afterAll/identidades propias0; PIDs unit14235/14719/14721/14728 y0079 18186/18665/18667/18674ausentes; inspectorfinal0advisorywaiters y actividadnoidle/tx=[] |
+
+Ambas invocaciones sólo `NEON_TEST_ENV_FILE=/private/tmp/checkpass-pos-0242/private/ci.env tools/neon-test.sh src/modules/pos/server/<suite>.neon.integration.test.ts --no-file-parallelism`, en Node24.20.0/Vitest4.0.18. Logs privados `p6-unit-expand-attempt2.log`, `p6-unit-expand-attempt2-inspector.log`, `p6-ddl-migration0079-attempt1.log`, `p6-final-inspector.log`. Los8omitidos de cada inspector son harness diagnóstico, NO casosPASS. DDL serial sin otros writers; hashes/SQLoriginal/clones propios y rollback0079 conservados, ningún DROP0108real. Fuente permaneció congelada hasta cerrar DB.
+
+DB CI liberable comunicada al coordinador; ningún proceso/servidor/browser/escritura pendiente ni másDB tras inspectorfinal. Coordinador hará factorydeliver/QAfinal/integración; autor no operó factory ni estados/índices/push/PROD. Tipos/lint/formato/diff pertinentes PASS por cortes; último código d67e3181 tiene typecheckmerchant,ESLint1,Prettier2 y diffPASS. Se validará esta edición documental con formato/diff.
+
+Se conservan todos losFAILs:dinero1;DDLcarreraabortada;residual4;Stock intentos ytimeouts30s;module-events3FAIL+afterAll40P01;unitDDL5/2codeFAIL. Cada corrección/retest y cleanup adicional están ligados a suSHA abajo. Límite real todavía declarado: dinero1 y business-failuresabortado no conservaron todos los IDs históricos de raíces/identidades; no se afirma cero para esos residuos ni se hizo barrido por patrón. El40P01 posterior sí tuvo ownership capturado, cleanup autorizado exacto y SELECTpostcommit0. closeWithCash sigue limitado a fixtures unit/legacy; COP nuevo usa pago/oráculo explícitos, masa no se certifica con Number/centavos.
+
+Las secciones siguientes conservan estrategia, matriz y registro histórico de cada intento; esta cabecera resume el estado final.
+
 Base `01445a86bdec433e8d7bc75b94dfca1ce8184c19`, WT/ref `pos-ui-card-0242`. Corte inicial6+2 y ampliación5 autorizada por coordinador/contrato `613fbf1f`. Sin producto, guards, esquema, migraciones ni despachador genérico editados.
 
 ## Estrategia e invariantes
@@ -25,7 +45,7 @@ Base `01445a86bdec433e8d7bc75b94dfca1ce8184c19`, WT/ref `pos-ui-card-0242`. Cort
 
 ## Inventario directo y cierre recursivo de soportes
 
-39 consumidores directos únicos de ambos soportes: seis iniciales +33 fuera del corte inicial. El cierre recursivo posterior descubre40, agregando stock-local-recipes vía stock-local-integration-support;39 nunca fue el universo indirecto completo. Estado actual:18suites con107casos PASS compatibles por cortes;15suites residuales/históricas preparadas offline y pendientesDB;7consumidores noeditados compatibles por lectura. “Compatible por lectura” no significa PASS ejecutado.
+39 consumidores directos únicos de ambos soportes: seis iniciales +33 fuera del corte inicial. El cierre recursivo posterior descubre40, agregando stock-local-recipes vía stock-local-integration-support;39 nunca fue el universo indirecto completo. Primer inventario histórico:18suites/107casosPASS,15pendientes y7porlectura. El cierre dirigido final incorpora6writersHTTP independientes y queda46=39PASS+7porlectura, como resume la cabecera. “Compatible por lectura” no significa PASS ejecutado.
 
 | Archivo real | Tratamiento |
 | --- | --- |
@@ -56,7 +76,7 @@ Base `01445a86bdec433e8d7bc75b94dfca1ce8184c19`, WT/ref `pos-ui-card-0242`. Cort
 | `apps/merchant/src/modules/pos/server/pos-disable-tables.neon.integration.test.ts` | PASS retest DB2/2 en5d095652; dos direcciones con contención exacta/finally |
 | `apps/merchant/src/modules/pos/server/pos-disable.neon.integration.test.ts` | PASS DB6/6 en98ffe933 incluidas carreras, fuente compatible |
 | `apps/merchant/src/modules/pos/server/pos-ladder.neon.integration.test.ts` | Ampliación5 PASS DB en afe7060d |
-| `apps/merchant/src/modules/pos/server/pos-migration-0079.neon.integration.test.ts` | PendienteDB:grupo detenido trasunitFAIL, fuente histórica íntegra congelada |
+| `apps/merchant/src/modules/pos/server/pos-migration-0079.neon.integration.test.ts` | PASS DB2/2 en d67e3181; transacciónDDL original/rollback,historia/IDs/FKs íntegros |
 | `apps/merchant/src/modules/pos/server/pos-orders.neon.integration.test.ts` | PASS retest DB8/8 en5d095652; invalid_input422 y snapshot sin efectos |
 | `apps/merchant/src/modules/pos/server/pos-scope.neon.integration.test.ts` | Compatible por lectura: usa sólo seed/módulo o caller nativo/raw de cutover explícito; no cambiar por el soporte |
 | `apps/merchant/src/modules/pos/server/pos-staff-entry.neon.integration.test.ts` | Compatible por lectura: usa sólo seed/módulo o caller nativo/raw de cutover explícito; no cambiar por el soporte |
@@ -64,10 +84,10 @@ Base `01445a86bdec433e8d7bc75b94dfca1ce8184c19`, WT/ref `pos-ui-card-0242`. Cort
 | `apps/merchant/src/modules/pos/server/read-api-v2.neon.integration.test.ts` | Corte inicial PASS DB en afe7060d |
 | `apps/merchant/src/modules/pos/server/settlement.neon.integration.test.ts` | PASS DB compatible por corte660add97/25bc5a27/d9d0b8bd; ver resultados y límites abajo |
 | `apps/merchant/src/modules/pos/server/ticket-settings.neon.integration.test.ts` | Ampliación5 PASS DB en afe7060d |
-| `apps/merchant/src/modules/pos/server/unit-expand-compat.neon.integration.test.ts` | 469422e0 4/6,2codeFAIL;4oráculos V2/cuerpoexacto corregidosoffline, retestpendiente |
+| `apps/merchant/src/modules/pos/server/unit-expand-compat.neon.integration.test.ts` | PASS DB6/6 en d67e3181; cuerposV2exactos,rollback/header/version/noefectos y replay íntegros |
 | `apps/merchant/src/modules/pos/server/void-api-v2.neon.integration.test.ts` | Corte inicial PASS DB en afe7060d |
 | `apps/merchant/src/modules/stock-local-recipes.neon.integration.test.ts` | PASS DB2/2 en5d095652, fuente compatible |
-| `apps/merchant/src/modules/stock-local.neon.integration.test.ts` | 50e02098 1/4: recoveryPASS,2timeout30s y eventOfambiguo corregido; fases/promises diagnósticos offline, retest pendiente |
+| `apps/merchant/src/modules/stock-local.neon.integration.test.ts` | PASS DB4/4 en5f424040; V4/snapshots/consumo/recovery/replay y ownership íntegros |
 | `apps/merchant/src/modules/tables/server/tables.neon.integration.test.ts` | Ampliación5 PASS DB en afe7060d |
 
 ## Checks e intentos
@@ -84,7 +104,7 @@ Base `01445a86bdec433e8d7bc75b94dfca1ce8184c19`, WT/ref `pos-ui-card-0242`. Cort
 
 EXIT0,11/11 suites,75/75 casos,0skips/0retries,616.03s. SHA limpio antes/durante/tras ejecución; migraciones CI idempotentes y teardown completos. Log privado `p6-first11-attempt1.log`. Dos SQL22012 son inyecciones esperadas con rollback probado; warning consumerURL ausente no aplica a estos casos. Ningún fallo DB en este intento.
 
-## Pendiente
+## Pendiente en el corte0de105f0 (registro histórico)
 
 DB devuelta al coordinador/reservaM1 después del cierre d9d0b8bd/0de105f0. Candidato residual fuente ebb9ebd9, con checks offline PASS y sin nuevas corridasDB. Esperar devolución explícita antes de ejecutar9residuales y6históricosDDL seriales/aislados, exclusivamente wrapper `tools/neon-test.sh`/selección privada existente. QA NUEVO independiente sobre congelado, sin repetir107compatibles por ceremonia. closeWithCash sólo unit legacy; masa/precisión nueva exige pagos/oráculo exactos explícitos. No factory/estados/índices/push/PROD.
 
@@ -145,12 +165,12 @@ La cifra40 era el cierre recursivo de los4soportes POS/pagos/business/Stock, no 
 | Archivo adicional | Relevancia y clasificación |
 | --- | --- |
 | `apps/merchant/src/modules/module-events-integration-support.ts` | Soporte independiente writerV1 demostrado; setup opt-inV2 por owner real, open positivo completo con revisiónSQL real, caller explícito; post genérico/default intacto. Captura/logIDs y verifica retiro propio |
-| `apps/merchant/src/modules/module-events.neon.integration.test.ts` | Adaptado offline, DBpendiente: cierresV2→eventoV4 exacto, cantidadstring/medida, snapshots composición/comisión, stockcoste, tenant/FKs/inmutabilidad/zero contradictorio conservados; publishSaleClosedV1 interno histórico intacto |
-| `apps/merchant/src/modules/analytics-covered.neon.integration.test.ts` | Adaptado offline, DBpendiente:2cierresrealesV2/V4, comisiones2/18minorunits y skipmodules/analytics exactos preservados; eventoV1 interno anterior intacto |
-| `apps/merchant/src/modules/sale-publisher-v4.neon.integration.test.ts` | Adaptado offline, DBpendiente: sólo seedunit HTTPV2/revisiónreal; masa exacta sigue payload-only sin filas fabricadas. Publisher/replay/V1histórico y cleanupSQL originales conservados |
-| `apps/merchant/src/server/billing-guards.neon.integration.test.ts` | Adaptado offline, DBpendiente: positivo tras guards Counter410feature_retired frente APIs200; precedencia402billing/403suspensión conservada. Identidades propias registradas/retiradas/verificadas localmente |
-| `apps/merchant/src/server/permisos-mostrador.neon.integration.test.ts` | Adaptado offline, DBpendiente:5endpoints staffSINcounter403missing_permission intactos; staffCONcounter atraviesa guard y obtiene410exacto; owner/staff/consumer/sesiones propios retirados y comprobados |
-| `apps/merchant/src/server/staff-entry.neon.integration.test.ts` | Adaptado offline, DBpendiente:PINtemporal403exacto, posteriorAPI200/Counter410exacto y bypassowner conservados; cleanup sóloIDsowner/staff/consumer registrados |
+| `apps/merchant/src/modules/module-events.neon.integration.test.ts` | PASS DB5/5 en469422e0; cierresV2→eventoV4 exacto, cantidadstring/medida, snapshots composición/comisión, stockcoste, tenant/FKs/inmutabilidad/zero contradictorio conservados; publishSaleClosedV1 interno histórico intacto |
+| `apps/merchant/src/modules/analytics-covered.neon.integration.test.ts` | PASS DB2/2 en5f424040;2cierresrealesV2/V4, comisiones2/18minorunits y skipmodules/analytics exactos preservados; eventoV1 interno anterior intacto |
+| `apps/merchant/src/modules/sale-publisher-v4.neon.integration.test.ts` | PASS DB6/6 en5f424040; sólo seedunit HTTPV2/revisiónreal; masa exacta sigue payload-only sin filas fabricadas. Publisher/replay/V1histórico y cleanupSQL originales conservados |
+| `apps/merchant/src/server/billing-guards.neon.integration.test.ts` | PASS DB4/4 en5f424040; positivo tras guards Counter410feature_retired frente APIs200; precedencia402billing/403suspensión conservada. Identidades propias registradas/retiradas/verificadas localmente |
+| `apps/merchant/src/server/permisos-mostrador.neon.integration.test.ts` | PASS DB10/10 en5f424040;5endpoints staffSINcounter403missing_permission intactos; staffCONcounter atraviesa guard y obtiene410exacto; owner/staff/consumer/sesiones propios retirados y comprobados |
+| `apps/merchant/src/server/staff-entry.neon.integration.test.ts` | PASS DB2/2 en5f424040;PINtemporal403exacto, posteriorAPI200/Counter410exacto y bypassowner conservados; cleanup sóloIDsowner/staff/consumer registrados |
 
 Consultas de cierre: `rg -l '(api/(modules/)?pos|api/counter|pos/orders)' apps/merchant/src --glob '*test.ts' --glob '*support.ts'` y `rg -n 'api/counter|from.*counter/.*/route' apps/merchant/src --glob '*.neon.integration.test.ts' --glob '*support.ts'`; luego lectura de cuerpos/imports (no mera coincidencia textual). module-events support tiene exactamente2consumidores test, ambos opt-in. No otros positivosV1 demostrados en ese cierre dirigido.
 
@@ -263,3 +283,10 @@ Matriz completa compatible37suites/189casos(32/168+moduleevents5+DDL4/16);unit4p
 Chequeo offline del resto del MISMOcaso create tras fallo tempranooverflow detectó2oráculosinvalid_input obsoletos no alcanzados en ese intento:quantitynumérico1 ystring"1.0000000000". Cuerpos negativos literales se conservan sinbuilder/reparación. Coordinador autorizó4oráculos del mismo path. Flujo HTTPV2 trazado completo por lectura:routes.ts POSTorders→readPosBody JSONdecoder→createPosOrderV2→parsePosCreateV2/items→parseMeasuredLineInput→measured(captureQuantity)→parseQuantity/parseInput; tipo no-string yescala>9 disparanMeasureErrorinvalid_quantity. measured-line-input convierte aCounterError422 conservando código ytexto"La cantidad o la unidad no es válida."; posRoute/posErrorResponse serializa exactamente{error,code}. No se entró transacción para esos2negativos sintácticos. Las4filas ahora declaran respuestas exactas explícitas (2range/2quantity), sin alterar status422/snapshots/noefectos. Es evidenciaoffline de contrato, NO nuevosPASSDB; próximos QA/retest deben comprobar los4negativos reales.
 
 Checks congelado unit: typecheckmerchant inicial/final PASS, ESLint1 PASS, Prettier2 PASS y diff whitespace PASS; sólo unit-expand-compat y handoff. No DB posterior al inspector0; esperaQA/GO paraunit6y0079.
+
+
+## Cierre final unit6→0079 en d67e3181
+
+unit-expand-compat EXIT0,6/6casos,0skips/retries,53.18s:4negativoscreate con cuerpos exactos,overflowupdate completo/rollback,extremoslegacy/nota/lista y cierres/replay con/sinpase. afterAll verificóbusiness/owner/sessions/consumers0;PIDs14235,14719,14721,14728ausentes;inspector0waiters/actividadtx=[] antes de0079. Luego OTRA invocación aislada pos-migration-0079 EXIT0,2/2casos,0skips/retries,20.28s,DDL/rollbackoriginal e identidadhistórica preservados. afterAll propio completo yPIDs18186,18665,18667,18674ausentes;inspectorfinal0waiters/actividadtx=[]. Sin pendientesni procesos ni otrasDB después. Fuente permaneció limpia/congelada durante ambos gates; sólo esta actualización documental posterior.
+
+Matrizfinal46=39suites completas/197casosPASS compatibles por cortes+7lectura. LosFAILanteriores siguen arriba como intentos, sin resets/skips/retries para fabricarPASS. DB liberable comunicada al coordinador para QAfinal/factorydeliver propio; no aprobaciónfinal autodeclarada.
