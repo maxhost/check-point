@@ -2,9 +2,9 @@
 
 ## Situación vigente (2026-10-19)
 
-El owner probó sucesivamente las vistas en su navegador y dio por terminada la ronda visual; sus últimos encargos fueron dejar únicamente Nueva orden centrado en la barra móvil de POS y destacar el botón Nueva orden de desktop a la derecha con un + moderado. El sidebar ya muestra Abrir POS. Implementado; pendiente su comprobación final de esos accesos. Preview existente: `http://localhost:3201/backoffice/pos?posV2=1`. No tocar servidor/túnel por oficio.
+El owner probó sucesivamente las vistas en su navegador y dio por terminada la ronda visual; sus últimos encargos fueron dejar únicamente Nueva orden centrado en la barra móvil de POS y destacar el botón Nueva orden de desktop a la derecha con un + moderado. El sidebar ya muestra Abrir POS. **El owner aceptó explícitamente el punto 1 completo de UI el 2026-10-19**, incluidos los últimos ajustes. SHA de producto: `26222f50`. Preview existente: `http://localhost:3201/backoffice/pos?posV2=1`. No tocar servidor/túnel por oficio.
 
-Continuar **directamente, sin agentes ni QA independiente**. Este acuerdo posterior sustituye el pedido inicial de dos implementadores. El owner hace la revisión visual: **sin capturas ni comparaciones de imágenes**. Checks proporcionales; no DB, matrices amplias ni tests nuevos por ceremonia. Esperar el siguiente ajuste concreto; no iniciar otra auditoría general ni la siguiente fase funcional automáticamente.
+La ronda UI se completó **directamente, sin agentes ni QA independiente**. Este acuerdo posterior sustituye el pedido inicial de dos implementadores. El owner hace la revisión visual: **sin capturas ni comparaciones de imágenes**. Checks proporcionales; no DB, matrices amplias ni tests nuevos por ceremonia. No reabrir auditoría visual. El owner pide reorganizar el trabajo restante: la cola vigente está en [plan de implementación](0242-plan-implementacion.md), puntos 2–6. No reactivar agentes automáticamente; el próximo corte funcional debe respetar sus contratos y gates de aceptación, sin extrapolar la excepción de QA visual.
 
 ## UI entregada
 
@@ -36,10 +36,14 @@ Cada corte registra evidencia focal en el bloque superior de `docs/estado/gpt.md
 
 Último corte de navegación: tipos/lint/formato/UIguard focal y smoke real de navbar pasan; `modules/navigation.test.ts` 4/4. Barrido global `modules-boundary-literals.test.ts`: 8/9, falla por cinco archivos ajenos e idénticos al SHA base `3d21a3c9`, sin offender nuevo en navegación. No tocar guardias/baselines ni afirmar verde global. E2E antiguos pueden tener selectores de UI sustituida; no se certificaron suites generales.
 
-Conservar evidencias funcionales anteriores: `0242-cp2d-console-actions-{handoff,qa}.md`, `0242-cp2d-connected-console-qa.md`, plan `0242-plan-implementacion.md`. La siguiente fase (masa, retirada de escritores antiguos, pendientes de fidelización y regresión/rendimiento) requiere retomar ese plan y el encargo del owner; esta ronda no la certifica ni la inicia.
+Conservar evidencias funcionales anteriores: `0242-cp2d-console-actions-{handoff,qa}.md`, `0242-cp2d-connected-console-qa.md`, plan `0242-plan-implementacion.md`. El siguiente corte es el punto 2: validación focal de impresión/precuenta/reimpresión/anulación sobre el candidato actual. Después quedan masa, retirada funcional/accesos, escenarios reales de fidelización y regresión/M1 según el plan actualizado; la aceptación UI no los certifica.
 
 ## Operación
 
 Node24: `source ~/.nvm/nvm.sh && nvm use`. Checkout principal dev; no cambiarlo de rama. No push/PROD sin autorización explícita por operación. WTs factory entregados anteriores se conservan hasta aceptación/cleanup permitido; no retirar trabajo ajeno. Índices/estado solo coordinador.
 
 Preservar `.impeccable/config.json` modificado y untracked ajenos de skills/assets. Stage solo archivos propios explícitos. Sandbox gitdir/Chromium puede requerir escalación acotada propia; no confundirla con fallo del producto ni esperar en silencio.
+
+## Retomar después del clear
+
+> Retoma 0242 desde el bloque vigente de docs/estado/gpt.md, docs/factory/0242-plan-implementacion.md y docs/factory/0242-ui-handoff.md. El punto 1 de UI está aceptado: no reabrir diseño ni sacar capturas. Empieza por el corte focal del punto 2 y continúa los puntos 3–6 en entregas manejables, reutilizando evidencia aceptada. Reconcilia refs/factory antes de código; no reactives agentes automáticamente. Antes de writes mass deben bloquearse los writers antiguos. Conserva servidor 3201/túnel y cambios ajenos. Sin push ni PROD.

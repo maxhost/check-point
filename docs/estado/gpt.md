@@ -3,7 +3,14 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — 0242: RONDA UI COMPLETA EN PREVIEW; ÚLTIMO AJUSTE DE NAVEGACIÓN A PRUEBA DEL OWNER (2026-10-19)
+## ESTADO — 0242: PUNTO 1 UI ACEPTADO; SIGUIENTE CORTE FUNCIONAL PUNTO 2 (2026-10-19)
+
+ACEPTACIÓN VIGENTE: el owner da por resuelto el punto 1 completo de UI tras probar en navegador y pide reorganizar pendientes para clear/retoma. Producto `26222f50` en dev; main local `fe1ee796` al registrar este relevo. Solo documentación en esta ronda, sin iniciar funcionalidad ni agentes. La aceptación visual no certifica masa, retirada legacy, accesos, QA global ni M1.
+
+COLA AUTORITATIVA: `docs/factory/0242-plan-implementacion.md` actualizado. Punto2 validar/corregir impresión, precuenta, reimpresión y anulación sobre UI actual; punto 3 cerrar activación/circuito mass exacto y efectos; punto 4 retirada funcional legacy/accesos; punto 5 casos reales cliente/cupón; punto 6 regresión de combinación/carga fría/M1. Hay implementación y evidencia previa: no reiniciar fundamentos. Antes de writes mass o quitar barreras, bloquear/retirar writers antiguos. Legacy sigue usado sin posV2=1; ocultar menú no equivale a cutover.
+
+RETOMA: leer plan y `docs/factory/0242-ui-handoff.md`, que conserva decisiones y prompt para clear. Reconciliar refs/factory, congelar alcance/candidato del punto 2 y revisar evidencias pertinentes. Owner retiró agentes en UI: no reactivar equipo histórico automáticamente ni extrapolar excepción visual a gates funcionales. Sin capturas, push/PROD ni limpieza de WT por oficio; preservar 3201/túnel y cambios ajenos. Evidencia histórica y límites debajo; las frases anteriores de “pendiente owner” de los ajustes visuales quedan superadas por esta aceptación.
+
 
 ÚLTIMOS AJUSTES L0 (dos mensajes del owner, mismo corte): Nueva orden desktop alineada explícitamente a derecha (wrappermlauto/headernowrap), Plus Iconoir y aumento moderado44→48px/padding20sin cambiar fuente. Misma presentación aplicada a PosConsolelegacy porque sigue siendo entrada usada sinpreview, sin modificar routing/acciones. Navbar mobile dentrooperación ahora SOLO Nueva orden centrada, retirado también enlacePOS, grid1col/justifyselfcenter; Mostrador seguía ya retirado. Sheet y evento primario siguen iguales. Typecheck/lint/formato/UIguard contra6329715c/diff-check PASS; smoke /private/tmp/checkpass-pos-navigation-0242/primary-only.ts PASSnavbarreal: único botón centrado, desktopderecha/Plus/alto48, abreSheet, sidebarAbrirPOS/querypreservada,0writes/pageerrors. Sin capturas/DB/agentes/push/PROD;3201 intacto. Handoff compacto sincronizado. Guardia global con backlog ajeno ya documentado no se repitió ni se declaróPASS. Pendiente owner.
 
