@@ -88,9 +88,7 @@ if (["fixture", "domain", "server"].includes(mode)) {
     process.on(signal, () => child.kill(signal));
 } else if (mode === "browser") {
   const { chromium, expect } = await import("@playwright/test");
-  const fixture = JSON.parse(
-    readFileSync(`${directory}/manifest.json`, "utf8"),
-  );
+  const fixture = JSON.parse(readFileSync(`${directory}/loyalty.json`, "utf8"));
   if (
     fixture.kind !== "mass-native-0242" ||
     fixture.phase !== "ready" ||
@@ -125,8 +123,12 @@ if (["fixture", "domain", "server"].includes(mode)) {
       },
     ]);
     const page = await context.newPage();
+    page.setDefaultTimeout(60000);
+    page.setDefaultNavigationTimeout(60000);
     page.on("request", (r) => {
       const path = new URL(r.url()).pathname;
+      if (path.endsWith("/close") && r.method() === "POST")
+        report.closeBody = r.postDataJSON();
       if (path.startsWith("/api/modules/pos/"))
         report.requests.push({
           path,
@@ -153,6 +155,32 @@ if (["fixture", "domain", "server"].includes(mode)) {
     await quantity
       .getByRole("button", { name: "Confirmar cantidad", exact: true })
       .click();
+    await page
+      .getByRole("button", { name: "Identificar cliente", exact: true })
+      .click();
+    const identify = page.getByRole("dialog", {
+      name: "Identificar cliente",
+      exact: true,
+    });
+    await identify
+      .getByRole("textbox", { name: "Código del pase", exact: true })
+      .fill(fixture.qrToken);
+    const resolved = page.waitForResponse(
+      (r) =>
+        new URL(r.url()).pathname.endsWith("/resolve") &&
+        r.request().method() === "POST",
+    );
+    await identify
+      .getByRole("button", { name: "Identificar", exact: true })
+      .click();
+    const resolveResponse = await resolved;
+    expect(resolveResponse.status()).toBe(200);
+    expect(await resolveResponse.json()).toMatchObject({
+      membership: { id: fixture.membershipId },
+      couponState: { coupon: { couponId: fixture.couponId } },
+    });
+    await expect(identify).toBeHidden();
+    const writeStart = report.requests.length;
     const created = page.waitForResponse(
       (r) =>
         new URL(r.url()).pathname === "/api/modules/pos/orders" &&
@@ -198,6 +226,12 @@ if (["fixture", "domain", "server"].includes(mode)) {
       id: order.id,
       status: "closed",
       total: "3.09",
+      sale: { total: "2.78" },
+    });
+    expect(report.closeBody).toMatchObject({
+      membershipId: fixture.membershipId,
+      coupon: { couponId: fixture.couponId },
+      payments: [expect.objectContaining({ amount: "2.78" })],
     });
     await expect(
       page.getByRole("heading", { name: "Venta cerrada", exact: true }).first(),
@@ -205,6 +239,25 @@ if (["fixture", "domain", "server"].includes(mode)) {
     expect(report.requests.every((r) => r.scoped && r.contract === "2")).toBe(
       true,
     );
+    report.postWriteOrderGets = report.requests
+      .slice(writeStart)
+      .filter(
+        (r) =>
+          r.method === "GET" && r.path.startsWith("/api/modules/pos/orders"),
+      ).length;
+    expect(report.postWriteOrderGets).toBe(0);
+    await page
+      .getByRole("button", { name: "Volver al historial", exact: true })
+      .click();
+    await expect(
+      page.getByRole("button", {
+        name: `Abrir ${order.orderLabel}`,
+        exact: true,
+      }),
+    ).toBeVisible();
+    report.historyConfirmed = true;
+    report.customerInput =
+      "real opaque pass token via Código del pase; physical camera not exercised";
     report.orderId = order.id;
     report.valid = true;
     writeFileSync(
@@ -212,6 +265,17 @@ if (["fixture", "domain", "server"].includes(mode)) {
       JSON.stringify(report, null, 2),
       { mode: 0o600, flag: "wx" },
     );
+  } catch (error) {
+    report.valid = false;
+    report.failure = String(error.message)
+      .replaceAll(fixture.qrToken, "[private-token]")
+      .replaceAll(fixture.cookie, "[private-cookie]");
+    writeFileSync(
+      `${directory}/browser-failure-${Date.now()}.json`,
+      JSON.stringify(report, null, 2),
+      { mode: 0o600, flag: "wx" },
+    );
+    throw Error(report.failure);
   } finally {
     await context.close();
     await browser.close();
