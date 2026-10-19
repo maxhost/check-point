@@ -92,6 +92,8 @@ export function MeasuredConsoleContent({
   accessEnabled?: boolean;
 }) {
   const [denied, setDenied] = useState(false);
+  const accessCurrent = useRef(accessEnabled && !denied);
+  accessCurrent.current = accessEnabled && !denied;
   const client = useMemo<PosClient>(() => {
     const wrap =
       (request: PosClient["request"]): PosClient["request"] =>
@@ -228,6 +230,28 @@ export function MeasuredConsoleContent({
     setOrder(value);
     setView("edit");
   }
+  async function loadProducts(id: string): Promise<PosOrderV2["items"]> {
+    try {
+      if (blocked || !active.current) throw new DiscardedPosIntent();
+      const captured = client.capture();
+      const epoch = cache.epoch;
+      const result = await cache.read<PosOrderV2>(detailKey(id), () =>
+        captured(orderUrl(id)),
+      );
+      if (
+        !active.current ||
+        !accessCurrent.current ||
+        cache.epoch !== epoch ||
+        cache.context !== context.identity ||
+        voidAction.getSnapshot().phase === "retired"
+      )
+        throw new DiscardedPosRead();
+      return result.items;
+    } catch (cause) {
+      handleError(cause);
+      throw cause;
+    }
+  }
   async function open(id: string) {
     if (blocked || (editor && !editor.requestExit())) return;
     const token = ++navigation.current;
@@ -330,6 +354,7 @@ export function MeasuredConsoleContent({
             locations={context.locations}
             disabled={blocked}
             onOpen={(id) => void open(id)}
+            onLoadProducts={loadProducts}
             onNew={(locationId) => {
               if (!blocked) selectEditor(null, locationId);
             }}
