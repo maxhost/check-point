@@ -1,6 +1,7 @@
 import { requireBackofficeSession } from "../../server/auth-guards";
 import { Suspense } from "react";
 import { BackofficeNavigation } from "./backoffice-navigation";
+import { BackofficeShell } from "./backoffice-shell";
 import { OnboardingChecklist } from "./onboarding/onboarding-checklist";
 import { readBackofficeInitialCore } from "../../server/backoffice-initial-context";
 import { SignOutButton } from "../components/sign-out-button";
@@ -39,7 +40,7 @@ export default async function BackofficeLayout({
           {children}
         </div>
       ) : (
-        <div className="backoffice-layout print:block">
+        <BackofficeShell>
           <BackofficeNavigation />
           {core.membership.role === "owner" && (
             <div className="contents print:hidden">
@@ -50,7 +51,7 @@ export default async function BackofficeLayout({
             <TrialNotice />
             {children}
           </div>
-        </div>
+        </BackofficeShell>
       )}
     </BackofficeProvider>
   );

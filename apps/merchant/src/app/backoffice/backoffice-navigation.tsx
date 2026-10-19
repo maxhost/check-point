@@ -10,6 +10,8 @@ import {
   HomeSimple,
   Megaphone,
   MoreHoriz,
+  NavArrowLeft,
+  NavArrowRight,
   Package,
   Palette,
   QrCode,
@@ -18,7 +20,7 @@ import {
   Xmark,
 } from "iconoir-react";
 import { useSelectedLayoutSegment } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { SignOutButton } from "../components/sign-out-button";
 import { Button, Text } from "../../ui";
 import { MODULES } from "../../modules/registry";
@@ -28,6 +30,7 @@ import { openOnboardingChecklist } from "./onboarding/onboarding-checklist-visib
 import { moduleNavigation } from "../../modules/navigation";
 
 import { moduleIcon } from "./module-icon";
+import { useNavigationWidth } from "./backoffice-shell";
 
 type MenuName = "business" | "loyalty" | "more";
 
@@ -167,6 +170,7 @@ function NavLink({
   segment,
   selectedSegment,
   onNavigate,
+  compact = false,
 }: {
   href: string;
   icon: typeof HomeSimple;
@@ -174,18 +178,21 @@ function NavLink({
   segment: string | null;
   selectedSegment: string | null;
   onNavigate?: () => void;
+  compact?: boolean;
 }) {
   const active = segment === selectedSegment;
   return (
     <Link
       aria-current={active ? "page" : undefined}
-      className="backoffice-nav-link"
+      className={`backoffice-nav-link ${compact ? "justify-center! px-0!" : ""}`}
+      aria-label={compact ? label : undefined}
+      title={compact ? label : undefined}
       data-active={active || undefined}
       href={href}
       onClick={onNavigate}
     >
       <Icon aria-hidden="true" width={21} height={21} strokeWidth={1.8} />
-      <span>{label}</span>
+      <span className={compact ? "sr-only" : undefined}>{label}</span>
     </Link>
   );
 }
@@ -264,6 +271,15 @@ export function BackofficeNavigation() {
   const operation = operationLinks.length
     ? operationModule?.operation
     : undefined;
+  const [expandedOperation, setExpandedOperation] = useState<string | null>(
+    null,
+  );
+  const compact = !!operation && expandedOperation !== segment;
+  const setNavigationWidth = useNavigationWidth();
+  useLayoutEffect(() => {
+    setNavigationWidth(compact);
+    return () => setNavigationWidth(false);
+  }, [compact, setNavigationWidth]);
   const PrimaryIcon = operation
     ? moduleIcon(operation.primaryAction.icon)
     : null;
@@ -292,94 +308,162 @@ export function BackofficeNavigation() {
 
   return (
     <>
-      <aside className="backoffice-sidebar print:hidden">
-        <div className="backoffice-wordmark">
-          <span aria-hidden="true">C</span>
-          <div>
-            <strong>CheckPass</strong>
-            <small title={businessName}>{businessName}</small>
-          </div>
-        </div>
-
-        {isOwner ? (
-          <nav
-            aria-label="Navegación principal"
-            className="backoffice-desktop-nav"
+      <aside
+        className={`backoffice-sidebar print:hidden ${compact ? "items-center px-3!" : ""}`}
+      >
+        {operation && (
+          <Button
+            variant="quiet"
+            className={`mb-4 size-11 shrink-0 p-0! ${compact ? "" : "self-end"}`}
+            aria-label={
+              compact
+                ? "Expandir menú de navegación"
+                : "Contraer menú de navegación"
+            }
+            aria-expanded={!compact}
+            aria-controls="backoffice-desktop-menu"
+            onPress={() => setExpandedOperation(compact ? segment : null)}
           >
-            <NavLink
-              href="/backoffice"
-              icon={HomeSimple}
-              label="Inicio"
-              segment={null}
-              selectedSegment={segment}
-            />
-            <div className="backoffice-nav-group">
-              <p>Mi negocio</p>
-              {links.map((item) =>
-                item.href ? (
-                  <NavLink
-                    {...item}
-                    href={item.href}
-                    key={item.label}
-                    selectedSegment={segment}
-                  />
-                ) : (
-                  <SoonLink
-                    icon={item.icon}
-                    key={item.label}
-                    label={item.label}
-                  />
-                ),
-              )}
-            </div>
-            <div className="backoffice-nav-group">
-              <p>Fidelización</p>
-              {loyaltyLinks.map((item) => (
-                <NavLink {...item} key={item.label} selectedSegment={segment} />
-              ))}
-            </div>
-            <div className="backoffice-nav-group">
-              <p>Cuenta</p>
+            {compact ? (
+              <NavArrowRight className="size-5" aria-hidden="true" />
+            ) : (
+              <NavArrowLeft className="size-5" aria-hidden="true" />
+            )}
+          </Button>
+        )}
+        {compact ? (
+          <nav
+            id="backoffice-desktop-menu"
+            aria-label="Navegación principal"
+            className="backoffice-desktop-nav w-full flex-1"
+          >
+            {(isOwner
+              ? [
+                  {
+                    href: "/backoffice",
+                    icon: HomeSimple,
+                    label: "Inicio",
+                    segment: null,
+                  },
+                  ...links,
+                  ...loyaltyLinks,
+                  {
+                    href: "/backoffice/subscription",
+                    icon: CreditCard,
+                    label: "Suscripción",
+                    segment: "subscription",
+                  },
+                  settingsLink,
+                ]
+              : delegados
+            ).map((item) => (
               <NavLink
-                href="/backoffice/subscription"
-                icon={CreditCard}
-                label="Suscripción"
-                segment="subscription"
+                {...item}
+                key={item.href}
                 selectedSegment={segment}
+                compact
               />
-              <NavLink {...settingsLink} selectedSegment={segment} />
-              <HelpButton />
-            </div>
-          </nav>
-        ) : delegados.length > 0 ? (
-          <nav
-            aria-label="Navegación principal"
-            className="backoffice-desktop-nav"
-          >
-            <div className="backoffice-nav-group">
-              <p>Administración</p>
-              {delegados.map((item) => (
-                <NavLink {...item} key={item.label} selectedSegment={segment} />
-              ))}
-            </div>
+            ))}
           </nav>
         ) : (
-          <p className="staff-nav-note">Espacio de atención</p>
-        )}
+          <div id="backoffice-desktop-menu" className="contents">
+            <div className="backoffice-wordmark">
+              <span aria-hidden="true">C</span>
+              <div>
+                <strong>CheckPass</strong>
+                <small title={businessName}>{businessName}</small>
+              </div>
+            </div>
 
-        <div className="backoffice-sidebar-footer">
-          {permissions.includes("counter") && (
-            <Link
-              aria-current={segment === "counter" ? "page" : undefined}
-              className="counter-access"
-              href="/backoffice/counter"
-            >
-              <QrCode aria-hidden="true" width={22} height={22} />
-              <span>Abrir mostrador</span>
-            </Link>
-          )}
-          <SignOutButton />
-        </div>
+            {isOwner ? (
+              <nav
+                aria-label="Navegación principal"
+                className="backoffice-desktop-nav"
+              >
+                <NavLink
+                  href="/backoffice"
+                  icon={HomeSimple}
+                  label="Inicio"
+                  segment={null}
+                  selectedSegment={segment}
+                />
+                <div className="backoffice-nav-group">
+                  <p>Mi negocio</p>
+                  {links.map((item) =>
+                    item.href ? (
+                      <NavLink
+                        {...item}
+                        href={item.href}
+                        key={item.label}
+                        selectedSegment={segment}
+                      />
+                    ) : (
+                      <SoonLink
+                        icon={item.icon}
+                        key={item.label}
+                        label={item.label}
+                      />
+                    ),
+                  )}
+                </div>
+                <div className="backoffice-nav-group">
+                  <p>Fidelización</p>
+                  {loyaltyLinks.map((item) => (
+                    <NavLink
+                      {...item}
+                      key={item.label}
+                      selectedSegment={segment}
+                    />
+                  ))}
+                </div>
+                <div className="backoffice-nav-group">
+                  <p>Cuenta</p>
+                  <NavLink
+                    href="/backoffice/subscription"
+                    icon={CreditCard}
+                    label="Suscripción"
+                    segment="subscription"
+                    selectedSegment={segment}
+                  />
+                  <NavLink {...settingsLink} selectedSegment={segment} />
+                  <HelpButton />
+                </div>
+              </nav>
+            ) : delegados.length > 0 ? (
+              <nav
+                aria-label="Navegación principal"
+                className="backoffice-desktop-nav"
+              >
+                <div className="backoffice-nav-group">
+                  <p>Administración</p>
+                  {delegados.map((item) => (
+                    <NavLink
+                      {...item}
+                      key={item.label}
+                      selectedSegment={segment}
+                    />
+                  ))}
+                </div>
+              </nav>
+            ) : (
+              <p className="staff-nav-note">Espacio de atención</p>
+            )}
+
+            <div className="backoffice-sidebar-footer">
+              {permissions.includes("counter") && (
+                <Link
+                  aria-current={segment === "counter" ? "page" : undefined}
+                  className="counter-access"
+                  href="/backoffice/counter"
+                >
+                  <QrCode aria-hidden="true" width={22} height={22} />
+                  <span>Abrir mostrador</span>
+                </Link>
+              )}
+              <SignOutButton />
+            </div>
+          </div>
+        )}
       </aside>
 
       <nav

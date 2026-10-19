@@ -2418,6 +2418,7 @@
   /* Backoffice shell — mobile first. The internal module UIs keep their existing
      markup; this layer only gives them shared navigation and a stable canvas. */
   .backoffice-layout {
+    --backoffice-compact-columns: 76px minmax(0, 1fr);
     min-height: 100svh;
     color: var(--ui-text);
     background:
