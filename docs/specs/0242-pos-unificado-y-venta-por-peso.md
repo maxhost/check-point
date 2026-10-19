@@ -1,7 +1,7 @@
 ---
 spec: 0242
 fecha: 2026-10-18
-estado: funcional cerrada; implementación y QA pendientes
+estado: funcional cerrada; puntos1–5 aceptados localmente, regresión y M1 final en curso
 resumen: Rediseño integral del POS con Mostrador integrado, órdenes por tipo, medidas de catálogo, retiro de Mostrador legacy y mejora de carga/autorización basada en0238.
 disjunta: no; POS, catálogo/business, auth compartida, financial, eventos, Stock/Recetas y analíticas
 archivos: ámbitos y escritores definidos en docs/factory/0242-plan-implementacion.md
@@ -109,4 +109,16 @@ DoD de producto y seguridad:
 
 ## 7. Estado de esta etapa
 
-Spec funcional cerrada tras la respuesta monetaria del owner; implementación por checkpoints y QA de producto pendientes. El cierre funcional recoge las respuestas explícitas del owner del18oct2026: PWA fuera; suspensión del canje directo; reglas de cupón visibles y exclusión explícita de líneas por peso para gratis/2x1; porcentaje/importe permitidos. Las decisiones técnicas de cantidades/compatibilidad y su revisión documental se registran junto a este documento. Todo hallazgo bloqueante de QA documental debe corregirse antes del handoff; el cierre no certifica código inexistente.
+Puntos1–5 del [plan](../factory/0242-plan-implementacion.md) aceptados localmente:
+UI por el owner, masa/invariantes0108, corte HTTPV2 y retirada de accesos/UI
+anteriores, fidelización y cadena de efectos con QA independiente. Combinado
+funcional a9d32924, entrega QA29b8592c. Regresión dirigida del autor39suites/197casos
+PASS compatibles, QA final del combinado pendiente; otras7 sólo por lectura.
+M1 R1.3 acredita listado, con QA independiente; rutas críticas R2 y cierre global
+siguen pendientes. No publicación ni PROD. Evidencia y límites en el plan y sus
+handoffs; la aceptación funcional no sustituye el gate de rendimiento.
+
+El contrato funcional recoge las respuestas explícitas del owner del18oct2026:
+PWA fuera; suspensión del canje directo; reglas de cupón visibles y exclusión de
+líneas por peso para gratis/2x1; porcentaje/importe permitidos. Estas decisiones
+permanecen vigentes durante el cierre de P6.

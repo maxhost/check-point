@@ -1,6 +1,6 @@
 # 0242 — Contratos de POS, cantidades y compatibilidad
 
-Anexo normativo de [spec0242](0242-pos-unificado-y-venta-por-peso.md), ADR0155. Este documento fija el contrato antes de repartir UI/backend. Nombres de archivos nuevos son previsión; paths reales se reservan en la ficha del checkpoint. Implementar tipos puros compartidos antes de dos consumidores. No se ha implementado ninguna ruta nueva en esta etapa.
+Anexo normativo de [spec0242](0242-pos-unificado-y-venta-por-peso.md), ADR0155. Contrato fijado antes de repartir UI/backend; los paths reales se reservan en cada ficha. La implementación funcional de los puntos1–5 ya está aceptada localmente; regresión y M1 final siguen en curso según el [plan](../factory/0242-plan-implementacion.md). Las referencias de diseño histórico de este anexo no sustituyen el estado de entrega ni autorizan nuevos cambios de contrato.
 
 ## 1. Tipos y precisión
 
