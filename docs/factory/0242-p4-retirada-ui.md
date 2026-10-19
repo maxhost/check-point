@@ -75,6 +75,14 @@ Ampliación adicional: `tests/e2e/pos-measured-editor.spec.ts` adapta botones y
 diálogos de local/tipo/nota aprobados, manteniendo payload/retry/conflictos,
 snapshots/unidades y monedaCOP; sin tocar el producto aceptado por selectores.
 
+Defecto funcional diferencial reproducido al portar mesas: table_occupied409 y
+unknown_table422 necesitan refrescar mesas, permitir elegir otra y conservar líneas,
+sin abandonar una operación incierta ni reenviar bajo otra identidad. Ampliación
+explícita a `modules/pos/ui/measured-editor-model.ts`, su `.test.ts`,
+`measured-pos-editor.tsx`, `measured-order-commands.ts` y su `.test.ts` para corregir
+ese recovery vigente. No es rediseño: usar controles existentes y conservar
+negativos de mesas, intención/captura congelada y scope. Caso browser en tables.spec.
+
 ## Checks y entrega
 
 Tipos/lint/UIguard focales, búsqueda de consumidores y pruebas proporcionales de
