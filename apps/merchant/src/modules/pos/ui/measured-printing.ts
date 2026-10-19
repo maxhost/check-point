@@ -171,7 +171,12 @@ export function useMeasuredPrinting({
         ...empty(),
         notice: "Impresora lista. Vuelve a imprimir el ticket.",
       });
-    } else finish(result, built.doc);
+    } else {
+      // Selection never enters the printing fallback. A separate print/retry
+      // gesture is required even when browser/device support disappeared.
+      lock.current = null;
+      update({ ...empty(), issue: result });
+    }
   }
   return {
     ...state,
