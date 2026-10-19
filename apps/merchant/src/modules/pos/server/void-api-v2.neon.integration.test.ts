@@ -94,6 +94,8 @@ async function state() {
 async function cleanup() {
   vi.restoreAllMocks();
   const owners = worlds.map((w) => w.seed.userId);
+  const businessIds = worlds.map((w) => w.seed.business.id);
+  console.info("void HTTP cleanup identities", { businessIds, owners });
   for (const world of worlds) {
     await dropPosWorld(world);
     expect(
@@ -119,6 +121,11 @@ async function cleanup() {
         .where(inArray(sessions.userId, owners)),
     ).toEqual([]);
   }
+  console.info("void HTTP cleanup verified", {
+    businessIds,
+    owners,
+    sessions: 0,
+  });
   worlds.length = 0;
 }
 
@@ -303,8 +310,8 @@ describe.skipIf(!posIntegrationEnabled)(
       expect(foreign.code).toBe("unknown_pos_order");
       expect(foreign).not.toHaveProperty("order");
       const invalid = request("invalid-id", "{");
-      expect((await call(invalid, "invalid-id", 422)).code).toBe(
-        "invalid_input",
+      expect((await call(invalid, "invalid-id", 404)).code).toBe(
+        "unknown_pos_order",
       );
       expect(invalid.bodyUsed).toBe(false);
       expect(await state()).toEqual(before);
@@ -312,8 +319,10 @@ describe.skipIf(!posIntegrationEnabled)(
 
     it("closed preparation rejects void without changing payments or sale", async () => {
       const order = await open();
-      const { paymentMethods } = await import("@mi-pasaporte/db/schema");
-      const methods = await getDb().select().from(paymentMethods);
+      const methods = await getDb()
+        .select()
+        .from(paymentMethods)
+        .where(eq(paymentMethods.businessId, a.seed.business.id));
       const cash = methods.find(
         (m) => m.businessId === a.seed.business.id && m.isCash,
       )!;
@@ -324,7 +333,7 @@ describe.skipIf(!posIntegrationEnabled)(
       });
       const before = await state();
       expect((await call(request(order.id), order.id, 409)).code).toBe(
-        "not_open",
+        "pos_order_not_open",
       );
       expect(await state()).toEqual(before);
     });
