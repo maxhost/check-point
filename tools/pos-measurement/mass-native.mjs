@@ -171,7 +171,7 @@ if (["fixture", "domain", "server"].includes(mode)) {
           .first(),
       ).toBeVisible();
       await expect(
-        page.getByText("Cliente Masa nativa", { exact: true }).first(),
+        page.getByText("Cliente: Cliente Masa nativa", { exact: true }).first(),
       ).toBeVisible();
       expect(report.requests.filter((r) => r.method !== "GET")).toEqual([]);
       report.orderId = orderId;
