@@ -2,7 +2,6 @@ import { operationModules } from "./support/modules-fixture";
 import { expect, test, type Page } from "@playwright/test";
 import { startCatalogHarness } from "./support/catalog-harness-server";
 import type { PosOrder } from "../../apps/merchant/src/modules/pos/ui/pos-types";
-
 const localId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1";
 const northId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2";
 const tableId = "cccccccc-cccc-4ccc-8ccc-ccccccccccc1";
@@ -17,7 +16,6 @@ test.beforeAll(async () => {
   );
 });
 test.afterAll(async () => harness.close());
-
 async function setup(page: Page, posEnabled = true, tablesEnabled = true) {
   await page.route("**/api/modules", (route) =>
     route.fulfill({
@@ -221,23 +219,6 @@ async function manage(page: Page) {
   await expect(modal(page)).toBeVisible();
   await expect(modal(page).getByText("Mesa 1", { exact: true })).toBeVisible();
 }
-async function newOrder(page: Page, hasTables = true) {
-  await page.goto(harness.url);
-  await page.getByRole("button", { name: "Nueva orden", exact: true }).click();
-  await expect(
-    hasTables
-      ? page.getByRole("button", { name: "Mesa 1 · Libre", exact: true })
-      : page.getByRole("textbox", { name: "Nombre de mesa" }),
-  ).toBeVisible();
-}
-async function review(page: Page) {
-  await page.getByRole("button", { name: "Tomar pedido", exact: true }).click();
-  await page.getByRole("button", { name: "Agregar Café", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Revisar pedido", exact: true })
-    .click();
-}
-
 test("Locales: crear, renombrar y quitar guarda inmediatamente; Editar y cerrar no guardan mesas", async ({
   page,
 }) => {
@@ -267,7 +248,6 @@ test("Locales: crear, renombrar y quitar guarda inmediatamente; Editar y cerrar 
     .getByRole("button", { name: "Confirmar", exact: true })
     .click();
   await expect(modal(page).getByText("Terraza", { exact: true })).toBeVisible();
-  await page.screenshot({ path: "/tmp/0187-mesas-local-mobile.png" });
   await modal(page)
     .getByRole("button", { name: "Quitar Terraza", exact: true })
     .click();
@@ -301,9 +281,6 @@ test("Locales: crear, renombrar y quitar guarda inmediatamente; Editar y cerrar 
   ).toHaveValue("Centro");
   expect(state.writes).toHaveLength(3);
 });
-
-/** Hace de `GET/POST /api/locations` y `PATCH /api/locations/:id`: el `router.refresh()` del
- * harness relee esta lista y rearma los paneles, como `page.tsx` en el servidor. */
 async function locationsServer(page: Page) {
   await setup(page);
   const server = [
@@ -340,7 +317,6 @@ async function locationsServer(page: Page) {
   await expect(mesas).toHaveCount(2);
   return mesas;
 }
-
 test("Locales: un local recién creado abre su Mesas sin recargar", async ({
   page,
 }) => {
@@ -355,7 +331,6 @@ test("Locales: un local recién creado abre su Mesas sin recargar", async ({
   await mesas.nth(2).click();
   await expect(page.getByRole("dialog", { name: "Mesas · Sur" })).toBeVisible();
 });
-
 test("Locales: un local renombrado abre Mesas con el nombre nuevo sin recargar", async ({
   page,
 }) => {
@@ -378,7 +353,6 @@ test("Locales: un local renombrado abre Mesas con el nombre nuevo sin recargar",
     page.getByRole("dialog", { name: "Mesas · Norte Plaza" }),
   ).toBeVisible();
 });
-
 test("Locales: duplicado y mesa ocupada muestran error literal y conservan entrada/lista; POSoff oculta Mesas", async ({
   page,
 }) => {
@@ -426,263 +400,6 @@ test("Locales: duplicado y mesa ocupada muestran error literal y conservan entra
     page.getByRole("button", { name: "Mesas", exact: true }),
   ).toHaveCount(0);
 });
-
-test("POS: mesa libre viaja como tableId; orden ocupa mesa; cambiar conserva id", async ({
-  page,
-}) => {
-  const state = await setup(page);
-  await page.setViewportSize({ width: 390, height: 844 });
-  await newOrder(page);
-  await expect(
-    page.getByRole("textbox", { name: "Nombre de mesa" }),
-  ).toHaveCount(0);
-  await expect(
-    page.getByRole("button", { name: "Mesa 2 · Ocupada", exact: true }),
-  ).toBeDisabled();
-  await page
-    .getByRole("button", { name: "Mesa 1 · Libre", exact: true })
-    .click();
-  await expect(
-    page.getByRole("button", { name: "Tomar pedido", exact: true }),
-  ).toBeEnabled();
-  await page.screenshot({
-    path: "/tmp/0187-mesas-pos-mobile.png",
-    animations: "disabled",
-  });
-  await review(page);
-  await page
-    .getByRole("button", { name: "Guardar pedido", exact: true })
-    .click();
-  await page
-    .getByRole("button", { name: "Volver al listado de órdenes", exact: true })
-    .click();
-  await expect(
-    page.getByRole("button", { name: "Nueva orden", exact: true }),
-  ).toBeVisible();
-  expect(state.writes[0].body.tableId).toBe(tableId);
-  expect(state.tables[0].openOrderId).toBe(orderId);
-  await page.getByRole("button", { name: "Nueva orden", exact: true }).click();
-  await expect(
-    page.getByRole("button", { name: "Mesa 1 · Ocupada", exact: true }),
-  ).toBeDisabled();
-  await page
-    .getByRole("button", { name: "Volver al listado de órdenes", exact: true })
-    .click();
-  state.tables[1].openOrderId = null;
-  state.tables[2].status = "active";
-  state.tables[2].openOrderId = "another-order";
-  await page.getByRole("button", { name: "Abrir Mesa 1", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Cambiar mesa: Mesa 1", exact: true })
-    .click();
-  const change = page.getByRole("dialog", {
-    name: "Cambiar mesa",
-    exact: true,
-  });
-  await expect(
-    change.getByRole("textbox", { name: "Nombre de mesa" }),
-  ).toHaveCount(0);
-  await expect(
-    change.getByRole("button", { name: "Mesa 1 · En esta orden", exact: true }),
-  ).toBeEnabled();
-  await expect(
-    change.getByRole("button", { name: /Mesa archivada/ }),
-  ).toHaveCount(0);
-  await expect(
-    change.getByRole("button", { name: "Guardar", exact: true }),
-  ).toBeDisabled();
-  await expect(change.getByText(/Mesa seleccionada:/)).toHaveCount(0);
-  await expect(
-    change.getByRole("button", { name: "Usar nombre de mesa", exact: true }),
-  ).toHaveCount(0);
-  await page.screenshot({ path: "/tmp/0187-mesas-chips-mobile.png" });
-  await page.setViewportSize({ width: 1280, height: 900 });
-  await page.screenshot({ path: "/tmp/0187-mesas-chips-desktop.png" });
-  await page.setViewportSize({ width: 390, height: 844 });
-  await change
-    .getByRole("button", { name: "Mesa 2 · Libre", exact: true })
-    .click();
-  await change.getByRole("button", { name: "Cancelar", exact: true }).click();
-  expect(state.writes).toHaveLength(1);
-  await page
-    .getByRole("button", { name: "Cambiar mesa: Mesa 1", exact: true })
-    .click();
-  await change
-    .getByRole("button", { name: "Mesa 2 · Libre", exact: true })
-    .click();
-  await change.getByRole("button", { name: "Guardar", exact: true }).click();
-  await expect(
-    page.getByText("Pedido actualizado", { exact: true }),
-  ).toBeVisible();
-  expect(state.writes.at(-1)?.body).toMatchObject({
-    tableId: secondId,
-    version: 1,
-  });
-  await page
-    .getByRole("button", { name: "Cambiar mesa: Mesa 2", exact: true })
-    .click();
-  await expect(
-    change.getByRole("button", { name: /Mesa archivada/ }),
-  ).toHaveCount(0);
-  await expect(
-    change.getByRole("button", { name: "Guardar", exact: true }),
-  ).toBeDisabled();
-  await expect(change.getByText(/Mesa seleccionada:/)).toHaveCount(0);
-  await expect(
-    change.getByRole("button", { name: "Usar nombre de mesa", exact: true }),
-  ).toHaveCount(0);
-  await change.getByRole("button", { name: "Cancelar", exact: true }).click();
-  expect(state.writes).toHaveLength(2);
-  expect(state.tables[0].openOrderId).toBeNull();
-});
-
-test("POS: una orden con nombre libre conserva el input al cambiar mesa y guarda null", async ({
-  page,
-}) => {
-  const state = await setup(page);
-  state.tables = [];
-  await newOrder(page, false);
-  await page.getByRole("textbox", { name: "Nombre de mesa" }).fill("Barra");
-  await review(page);
-  await page
-    .getByRole("button", { name: "Guardar pedido", exact: true })
-    .click();
-  await page.getByRole("radio", { name: "Editar", exact: true }).click();
-  await page.getByRole("button", { name: "Agregar Café", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Cambiar mesa: Barra", exact: true })
-    .click();
-  const change = page.getByRole("dialog", {
-    name: "Cambiar mesa",
-    exact: true,
-  });
-  await change
-    .getByRole("textbox", { name: "Nombre de mesa" })
-    .fill("Barra norte");
-  state.failure = {
-    status: 503,
-    code: "unavailable",
-    error: "No pudimos guardar la mesa. Inténtalo de nuevo.",
-  };
-  await change.getByRole("button", { name: "Guardar", exact: true }).click();
-  await expect(change.getByRole("alert")).toHaveText(state.failure.error);
-  await expect(
-    change.getByRole("textbox", { name: "Nombre de mesa" }),
-  ).toHaveValue("Barra norte");
-  expect(state.order?.tableLabel).toBe("Barra");
-  state.failure = null;
-  await change.getByRole("button", { name: "Guardar", exact: true }).click();
-  await expect(
-    page.getByText("Pedido actualizado", { exact: true }),
-  ).toBeVisible();
-  expect(state.writes.at(-1)?.body).toMatchObject({
-    tableId: null,
-    tableLabel: "Barra norte",
-    version: 1,
-  });
-  expect(state.writes.at(-1)?.body.items).toEqual([
-    { lineId: "line-1", productId, quantity: 1 },
-  ]);
-  await expect(
-    page.getByRole("button", { name: "Guardar cambios", exact: true }),
-  ).toBeEnabled();
-  await page
-    .getByRole("button", { name: "Guardar cambios", exact: true })
-    .click();
-  await expect.poll(() => state.writes.length).toBe(4);
-  expect(state.writes.at(-1)?.body).toMatchObject({ version: 2 });
-  expect(state.writes.at(-1)?.body.items).toEqual([
-    { lineId: "line-1", productId, quantity: 2 },
-  ]);
-});
-
-test("POS: todas ocupadas no habilita nombre libre ni avanzar", async ({
-  page,
-}) => {
-  const state = await setup(page);
-  state.tables[0].openOrderId = "occupied";
-  await page.goto(harness.url);
-  await page.getByRole("button", { name: "Nueva orden", exact: true }).click();
-  await expect(
-    page.getByRole("button", { name: "Mesa 1 · Ocupada", exact: true }),
-  ).toBeDisabled();
-  await expect(
-    page.getByRole("textbox", { name: "Nombre de mesa" }),
-  ).toHaveCount(0);
-  await expect(
-    page.getByRole("button", { name: "Tomar pedido", exact: true }),
-  ).toBeDisabled();
-  expect(state.writes).toHaveLength(0);
-});
-
-for (const code of ["table_occupied", "unknown_table"]) {
-  test(`POS: ${code} refresca mesas y conserva productos y error literal`, async ({
-    page,
-  }) => {
-    const state = await setup(page);
-    await newOrder(page);
-    await page
-      .getByRole("button", { name: "Mesa 1 · Libre", exact: true })
-      .click();
-    await review(page);
-    state.failure = {
-      status: code === "table_occupied" ? 409 : 422,
-      code,
-      error:
-        code === "table_occupied"
-          ? "Esta mesa ya tiene una orden abierta."
-          : "La mesa no existe o está archivada.",
-    };
-    if (code === "table_occupied") state.tables[0].openOrderId = "other";
-    else state.tables[0].status = "archived";
-    state.tables[1].openOrderId = null;
-    const reads = state.reads;
-    await page
-      .getByRole("button", { name: "Guardar pedido", exact: true })
-      .click();
-    await expect(
-      page.getByRole("alert").filter({ hasText: state.failure.error }),
-    ).toBeVisible();
-    await expect.poll(() => state.reads).toBeGreaterThan(reads);
-    await expect(
-      page.getByRole("button", { name: "Guardar pedido", exact: true }),
-    ).toBeDisabled();
-    await page
-      .getByRole("button", { name: "Volver a tomar pedido", exact: true })
-      .click();
-    await page
-      .getByRole("button", { name: "Volver a mesa", exact: true })
-      .click();
-    await expect(
-      page.getByRole("textbox", { name: "Nombre de mesa" }),
-    ).toHaveCount(0);
-    await page
-      .getByRole("button", { name: "Mesa 2 · Libre", exact: true })
-      .click();
-    state.failure = null;
-    await page
-      .getByRole("button", { name: "Tomar pedido", exact: true })
-      .click();
-    await page
-      .getByRole("button", { name: "Revisar pedido", exact: true })
-      .click();
-    await expect(
-      page
-        .getByRole("region", { name: "Productos del pedido" })
-        .getByText("Café", { exact: true }),
-    ).toBeVisible();
-    await page
-      .getByRole("button", { name: "Guardar pedido", exact: true })
-      .click();
-    await expect.poll(() => state.writes.length).toBe(2);
-    expect(state.writes[1].body.tableId).toBe(secondId);
-    expect(state.writes[1].body).toMatchObject({
-      tableLabel: "Mesa 2",
-      items: [{ productId, quantity: 1 }],
-    });
-  });
-}
-
 test("Locales: carga fallida reintenta; guardado bloquea Confirmar/Cerrar", async ({
   page,
 }) => {
@@ -734,7 +451,6 @@ test("Locales: carga fallida reintenta; guardado bloquea Confirmar/Cerrar", asyn
   release!();
   await expect(modal(page).getByText("Barra", { exact: true })).toBeVisible();
 });
-
 test("Locales: respuesta tardía de Centro no cambia el modal de Norte", async ({
   page,
 }) => {
@@ -778,115 +494,7 @@ test("Locales: respuesta tardía de Centro no cambia el modal de Norte", async (
   release!();
   await expect(north.getByText("Mesa tardía", { exact: true })).toHaveCount(0);
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.screenshot({ path: "/tmp/0187-mesas-local-desktop.png" });
 });
-
-test("POS: mesas pertenecen al local elegido; texto libre solo tras confirmar que no hay mesas", async ({
-  page,
-}) => {
-  const state = await setup(page);
-  let fail = true;
-  await page.route("**/api/modules/pos/tables**", (route) => {
-    const location = new URL(route.request().url()).searchParams.get(
-      "locationId",
-    );
-    expect(location).toBe(northId);
-    if (!fail) return route.fulfill({ json: { tables: [] } });
-    return route.fulfill({
-      status: 503,
-      json: { error: "No pudimos cargar las mesas del local." },
-    });
-  });
-  await page.goto(harness.url);
-  await page
-    .getByRole("button", { name: "Seleccionar local: Centro", exact: true })
-    .click();
-  await page
-    .getByRole("dialog", { name: "Seleccionar local" })
-    .getByRole("button")
-    .click();
-  await page.getByRole("option", { name: "Norte", exact: true }).click();
-  await page.getByRole("button", { name: "Nueva orden", exact: true }).click();
-  await expect(page.getByRole("alert")).toContainText(
-    "No pudimos cargar las mesas del local.",
-  );
-  await expect(
-    page.getByRole("textbox", { name: "Nombre de mesa" }),
-  ).toHaveCount(0);
-  await expect(
-    page.getByRole("button", { name: "Tomar pedido", exact: true }),
-  ).toBeDisabled();
-  fail = false;
-  await page
-    .getByRole("button", { name: "Reintentar mesas", exact: true })
-    .click();
-  await page
-    .getByRole("textbox", { name: "Nombre de mesa" })
-    .fill("Barra norte");
-  await review(page);
-  await page
-    .getByRole("button", { name: "Guardar pedido", exact: true })
-    .click();
-  await expect.poll(() => state.writes.length).toBe(1);
-  expect(state.writes[0].body).toMatchObject({
-    locationId: northId,
-    tableLabel: "Barra norte",
-  });
-  expect(state.writes[0].body).not.toHaveProperty("tableId");
-});
-
-for (const width of [390, 1280]) {
-  test(`0222 POS sin Mesas ofrece nombre libre y guarda sin tableId (${width})`, async ({
-    page,
-  }, testInfo) => {
-    const state = await setup(page, true, false);
-    await page.setViewportSize({ width, height: 900 });
-    await newOrder(page, false);
-    await expect(
-      page.getByText("Mesas del local", { exact: true }),
-    ).toHaveCount(0);
-    await expect(page.getByRole("button", { name: /Mesa [12] ·/ })).toHaveCount(
-      0,
-    );
-    await expect(
-      page.getByText("Cargando mesas…", { exact: true }),
-    ).toHaveCount(0);
-    await expect(
-      page.getByText(
-        "No hay mesas añadidas en este local. Puedes escribir un nombre.",
-        { exact: true },
-      ),
-    ).toHaveCount(0);
-    expect(state.reads).toBe(0);
-    await page
-      .getByRole("textbox", { name: "Nombre de mesa" })
-      .fill("Pedido de Ana");
-    await page.screenshot({
-      path: testInfo.outputPath(`pos-sin-mesas-${width}.png`),
-      fullPage: true,
-    });
-    await review(page);
-    await page
-      .getByRole("button", { name: "Guardar pedido", exact: true })
-      .click();
-    await expect.poll(() => state.writes.length).toBe(1);
-    expect(state.writes[0]).toMatchObject({
-      url: "/api/modules/pos/orders",
-      method: "POST",
-      body: { tableLabel: "Pedido de Ana" },
-    });
-    expect(state.writes[0].body).not.toHaveProperty("tableId");
-    expect(state.reads).toBe(0);
-    await page.goto(`${harness.url}?mode=locations`);
-    await expect(
-      page.getByRole("button", { name: "Editar", exact: true }).first(),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "Mesas", exact: true }),
-    ).toHaveCount(0);
-  });
-}
-
 test("0222 Locales relee sesión al cambiar módulos y respeta permiso de la acción", async ({
   page,
 }) => {
@@ -909,3 +517,211 @@ test("0222 Locales relee sesión al cambiar módulos y respeta permiso de la acc
     page.getByRole("button", { name: "Mesas", exact: true }),
   ).toHaveCount(0);
 });
+
+// 0242: current table-sale editor replaces the retired POS wizard. Keep both
+// server-rejection negatives: a refreshed table choice must preserve cart lines.
+for (const code of ["table_occupied", "unknown_table"] as const) {
+  test(`V2 ${code} refreshes tables, preserves lines and permits another table`, async ({
+    page,
+  }) => {
+    const current = await startCatalogHarness(
+      "tests/e2e/support/pos-measured-editor-harness.tsx",
+    );
+    try {
+      const { editorCatalog, editorOrder } =
+        await import("./support/pos-measured-editor-fixture");
+      let tableReads = 0;
+      const bodies: Record<string, unknown>[] = [];
+      const message =
+        code === "table_occupied"
+          ? "Esta mesa ya tiene una orden abierta."
+          : "La mesa no existe o está archivada.";
+      await page.route("**/api/modules/pos/**", (route) => {
+        const request = route.request(),
+          path = new URL(request.url()).pathname;
+        expect(request.headers()["x-pos-contract"]).toBe("2");
+        if (path.endsWith("catalog"))
+          return route.fulfill({ json: editorCatalog });
+        if (path.endsWith("tables")) {
+          tableReads++;
+          return route.fulfill({
+            json: {
+              tables: [
+                ...(bodies.length && code === "unknown_table"
+                  ? []
+                  : [
+                      {
+                        id: "first",
+                        name: "Mesa 1",
+                        openOrderId: bodies.length ? "other-order" : null,
+                      },
+                    ]),
+                { id: "second", name: "Mesa 2", openOrderId: null },
+              ],
+            },
+          });
+        }
+        const body = request.postDataJSON();
+        bodies.push(body);
+        if (bodies.length === 1)
+          return route.fulfill({
+            status: code === "table_occupied" ? 409 : 422,
+            json: { code, error: message },
+          });
+        return route.fulfill({
+          json: {
+            ...editorOrder,
+            saleType: "table",
+            tableId: body.tableId,
+            orderLabel: body.orderLabel,
+            location: { id: body.locationId, name: "Local Norte" },
+            items: body.items.map(
+              (item: Record<string, unknown>, index: number) => ({
+                ...editorOrder.items[0],
+                ...item,
+                lineId: `line-${index}`,
+              }),
+            ),
+          },
+        });
+      });
+      await page.goto(current.url + "?tables");
+      await page.getByRole("button", { name: /^Editar local:/ }).click();
+      await page.getByRole("button", { name: /Local$/ }).click();
+      await page
+        .getByRole("option", { name: "Local Norte", exact: true })
+        .click();
+      await page.getByRole("button", { name: /^Editar mesa u orden:/ }).click();
+      await page.getByRole("button", { name: /Tipo de venta$/ }).click();
+      await page.getByRole("option", { name: "Mesa", exact: true }).click();
+      await page
+        .getByRole("button", { name: "Mesa 1 · Libre", exact: true })
+        .click();
+      await page.getByRole("button", { name: "Listo", exact: true }).click();
+      await page
+        .getByRole("button", { name: "Añadir Café", exact: true })
+        .click();
+      await page
+        .getByRole("button", { name: "Confirmar orden", exact: true })
+        .click();
+      await expect(
+        page.getByRole("alert").filter({ hasText: message }),
+      ).toBeVisible();
+      await expect.poll(() => tableReads).toBeGreaterThan(1);
+      await page.getByRole("button", { name: /^Editar mesa u orden:/ }).click();
+      await expect(
+        page.getByRole("button", { name: "Mesa 1 · Libre", exact: true }),
+      ).toHaveCount(0);
+      await page
+        .getByRole("button", { name: "Mesa 2 · Libre", exact: true })
+        .click();
+      await page.getByRole("button", { name: "Listo", exact: true }).click();
+      await expect(
+        page.getByRole("group", { name: "Café, línea 1", exact: true }),
+      ).toBeVisible();
+      await page
+        .getByRole("button", { name: "Confirmar orden", exact: true })
+        .click();
+      await expect.poll(() => bodies.length).toBe(2);
+      expect(bodies[1]).toMatchObject({
+        tableId: "second",
+        items: [{ productId: "coffee", quantity: "1" }],
+      });
+    } finally {
+      await current.close();
+    }
+  });
+}
+
+for (const tableState of ["occupied", "empty", "disabled"] as const) {
+  test(`V2 table choice ${tableState} never assumes an occupied table`, async ({
+    page,
+  }) => {
+    const current = await startCatalogHarness(
+      "tests/e2e/support/pos-measured-editor-harness.tsx",
+    );
+    try {
+      const { editorCatalog, editorOrder } =
+        await import("./support/pos-measured-editor-fixture");
+      const writes: Record<string, unknown>[] = [];
+      await page.route("**/api/modules/pos/**", (route) => {
+        const request = route.request(),
+          path = new URL(request.url()).pathname;
+        if (path.endsWith("catalog"))
+          return route.fulfill({ json: editorCatalog });
+        if (path.endsWith("tables"))
+          return route.fulfill({
+            json: {
+              tables:
+                tableState === "occupied"
+                  ? [
+                      {
+                        id: "busy",
+                        name: "Mesa ocupada",
+                        openOrderId: "other-order",
+                      },
+                    ]
+                  : [],
+            },
+          });
+        const body = request.postDataJSON();
+        writes.push(body);
+        return route.fulfill({
+          json: {
+            ...editorOrder,
+            saleType: "table",
+            tableId: null,
+            orderLabel: body.orderLabel,
+          },
+        });
+      });
+      await page.goto(
+        current.url + (tableState === "disabled" ? "" : "?tables"),
+      );
+      await page.getByRole("button", { name: /^Editar local:/ }).click();
+      await page.getByRole("button", { name: /Local$/ }).click();
+      await page
+        .getByRole("option", { name: "Local Norte", exact: true })
+        .click();
+      await page.getByRole("button", { name: /^Editar mesa u orden:/ }).click();
+      await page.getByRole("button", { name: /Tipo de venta$/ }).click();
+      await page.getByRole("option", { name: "Mesa", exact: true }).click();
+      if (tableState === "occupied") {
+        await expect(
+          page.getByRole("button", {
+            name: "Mesa ocupada · Ocupada",
+            exact: true,
+          }),
+        ).toBeDisabled();
+        await expect(
+          page.getByRole("textbox", { name: "Nombre de mesa", exact: true }),
+        ).toHaveCount(0);
+      } else
+        await page
+          .getByRole("textbox", { name: "Nombre de mesa", exact: true })
+          .fill("Mesa libre");
+      await page.getByRole("button", { name: "Listo", exact: true }).click();
+      await page
+        .getByRole("button", { name: "Añadir Café", exact: true })
+        .click();
+      const save = page.getByRole("button", {
+        name: "Confirmar orden",
+        exact: true,
+      });
+      if (tableState === "occupied") {
+        await expect(save).toBeDisabled();
+        expect(writes).toHaveLength(0);
+      } else {
+        await save.click();
+        await expect.poll(() => writes.length).toBe(1);
+        expect(writes[0]).toMatchObject({
+          tableId: null,
+          orderLabel: "Mesa libre",
+          saleType: "table",
+        });
+      }
+    } finally {
+      await current.close();
+    }
+  });
+}

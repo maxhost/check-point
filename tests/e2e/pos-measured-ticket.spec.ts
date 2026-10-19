@@ -64,9 +64,10 @@ test("explicit preparation scopes a single GET; unsupported fallback shares the 
 }) => {
   const requests = await open(page, "?unsupported");
   await ready(page);
+  // The exact document is print-only; the on-screen receipt formats money separately.
   await expect(
     page.getByText("0.123456789 kg × 12.123456789 USD/lb", { exact: true }),
-  ).toBeVisible();
+  ).toHaveCount(1);
   await page
     .getByRole("button", { name: "Imprimir precuenta", exact: true })
     .click();
@@ -339,6 +340,7 @@ test("late unsupported result after selection retirement cannot open print", asy
   await page.waitForTimeout(80);
   expect(await page.evaluate(() => window.ticketTest.browsers)).toBe(0);
 });
+
 test("grouped ticket inspection phone and desktop", async ({ page }) => {
   await open(page, "?closed&pass&unsupported");
   await ready(page);
@@ -349,9 +351,5 @@ test("grouped ticket inspection phone and desktop", async ({ page }) => {
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
     ).toBe(true);
-    await page.screenshot({
-      path: `/private/tmp/measured-ticket-0242-evidence/ticket-${width}.png`,
-      fullPage: true,
-    });
   }
 });

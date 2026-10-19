@@ -1,3 +1,4 @@
+import { MODULES } from "../../../modules/registry";
 import type { BusinessModule } from "../settings/module-navigation";
 import type { PermissionScope } from "@mi-pasaporte/db/permissions-catalog";
 
@@ -26,8 +27,8 @@ const PERMISSION_COPY: Record<
     detail: "Ver avisos, ventas, costos y gastos del negocio.",
   },
   counter: {
-    label: "Mostrador",
-    detail: "Acreditar compras y canjear premios.",
+    label: "Clientes",
+    detail: "Consultar clientes, sus saldos e historial.",
   },
   catalog: {
     label: "Catálogo",
@@ -62,6 +63,7 @@ const PERMISSION_COPY: Record<
 
 const PERMISSION_ORDER: readonly PermissionScope[] = [
   "counter",
+  "analytics",
   "catalog",
   "locations",
   "loyalty",
@@ -181,4 +183,26 @@ export function errorCopy(payload: ApiFailure | null, fallback: string) {
   return (
     (payload?.code && ERROR_COPY[payload.code]) || payload?.error || fallback
   );
+}
+
+/** Recommend an operational start page only when its module and permission are available.
+ * This does not enable modules or change existing members' permissions. */
+export function staffDefaultPermissions(
+  modules: readonly {
+    id: string;
+    enabled: boolean;
+    permissions: readonly { id: string }[];
+  }[],
+): string[] {
+  for (const manifest of MODULES) {
+    const permission = manifest.startPage?.permission;
+    if (!manifest.operation || !permission) continue;
+    const available = modules.find((module) => module.id === manifest.id);
+    if (
+      available?.enabled === true &&
+      available.permissions.some((entry) => entry.id === permission)
+    )
+      return [permission];
+  }
+  return ["counter"];
 }

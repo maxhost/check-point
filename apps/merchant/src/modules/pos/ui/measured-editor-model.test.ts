@@ -3,7 +3,7 @@ import {
   MeasuredEditorSession,
   measuredEditorAmounts,
 } from "./measured-editor-model";
-import { PosCache, catalogKey } from "./pos-cache";
+import { PosCache, catalogKey, tablesKey } from "./pos-cache";
 import { createPosClient } from "./pos-context";
 import {
   editorCatalog,
@@ -15,7 +15,7 @@ const context = {
   identity: "a",
   locations: [{ id: "north", name: "North" }],
   currencyCode: "USD",
-  saleTypes: ["counter", "pickup"] as ("counter" | "pickup")[],
+  saleTypes: ["counter", "pickup"] as ("counter" | "pickup" | "table")[],
   tablesEnabled: false,
 };
 function setup(order: typeof editorOrder | null = null) {
@@ -23,7 +23,7 @@ function setup(order: typeof editorOrder | null = null) {
     contractVersion: 2,
   });
   const session = new MeasuredEditorSession(
-    context,
+    { ...context, saleTypes: [...context.saleTypes] },
     new PosCache(undefined, client.request),
     client,
     order,
@@ -145,5 +145,78 @@ describe("measured editor owner", () => {
     session.retireIdentity();
     expect(session.requestExit(true)).toBe(false);
     expect(session.commands.getSnapshot().status).toBe("retired");
+  });
+});
+
+describe("table rejection recovery", () => {
+  for (const [code, status] of [
+    ["table_occupied", 409],
+    ["unknown_table", 422],
+  ] as const) {
+    it(`${code} refreshes selection without losing lines or concealing the error`, async () => {
+      const session = setup();
+      session.context.saleTypes = [...session.context.saleTypes, "table"];
+      session.context.tablesEnabled = true;
+      const lines = [
+        newCartLine(
+          editorCatalog.products[0],
+          "line",
+          { source: null, unit: "unit", buffer: "1", edited: true },
+          ["kg", "lb"],
+        ),
+      ];
+      session.change({
+        saleType: "table",
+        tableId: "first",
+        orderLabel: "Mesa 1",
+        lines,
+      });
+      session.cache.put(tablesKey("north"), { tables: [{ id: "first" }] });
+      vi.spyOn(session.client, "capture").mockReturnValue(async () => {
+        throw new PosError(
+          "Revisa la mesa",
+          code,
+          undefined,
+          undefined,
+          status,
+        );
+      });
+      await session.save();
+      expect(session.draft.lines).toBe(lines);
+      expect(session.draft.tableId).toBeNull();
+      expect(session.tableRevision).toBe(1);
+      expect(session.cache.peek(tablesKey("north"))).toBeNull();
+      expect(session.error).toBe("Revisa la mesa");
+      expect(session.conflict).toBeNull();
+    });
+  }
+  it("does not release an uncertain create after table rejection during retry", async () => {
+    const session = setup();
+    session.change({
+      lines: [
+        newCartLine(
+          editorCatalog.products[0],
+          "line",
+          { source: null, unit: "unit", buffer: "1", edited: true },
+          ["kg", "lb"],
+        ),
+      ],
+    });
+    let count = 0;
+    vi.spyOn(session.client, "capture").mockReturnValue(async () => {
+      if (++count === 1) throw new Error("lost response");
+      throw new PosError(
+        "Ocupada",
+        "table_occupied",
+        undefined,
+        undefined,
+        409,
+      );
+    });
+    await session.save();
+    await session.save(false, true);
+    expect(session.commands.getSnapshot().status).toBe("uncertain");
+    expect(session.tableRevision).toBe(0);
+    expect(session.blocked).toBe(true);
   });
 });

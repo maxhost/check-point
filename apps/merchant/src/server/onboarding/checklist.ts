@@ -97,7 +97,7 @@ const TOUR_COPY: Record<OnboardingTourId, { title: string; body: string }> = {
   },
   staff: {
     title: "Conoce la pantalla de Equipo",
-    body: "Un recorrido corto por donde se da de alta a quien atiende el mostrador.",
+    body: "Un recorrido corto para dar de alta a tu equipo y revisar sus accesos.",
   },
   catalog: {
     title: "Conoce tu catálogo",

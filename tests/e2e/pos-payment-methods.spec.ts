@@ -1,8 +1,14 @@
-import { test, expect, type Page } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { startCatalogHarness } from "./support/catalog-harness-server";
+import {
+  paymentResolved,
+  paymentCoupon,
+  paymentMethods,
+  paymentClosed,
+  paymentOrder,
+} from "./support/pos-measured-payment-fixture";
+import type { MeasuredPaymentBody } from "../../apps/merchant/src/modules/pos/ui/measured-payment-close";
 let harness: Awaited<ReturnType<typeof startCatalogHarness>>;
-const cashId = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
-const cardId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
 test.beforeAll(async () => {
   harness = await startCatalogHarness(
     "tests/e2e/support/pos-payment-methods-fixture.tsx",
@@ -10,279 +16,153 @@ test.beforeAll(async () => {
   );
 });
 test.afterAll(async () => {
-  await harness?.close();
+  await harness.close();
 });
-
-async function setup(page: Page, scenario = "plain", retry = false) {
-  const stats = { methodReads: 0, closes: [] as Record<string, unknown>[] };
-  const coupon = {
-    couponId: "coupon",
-    label: "Beneficio",
-    kind: scenario === "targets" ? "free_product" : "discount",
-    rule: null,
-    productId: null,
-    productName: null,
-    discountUnit: scenario === "cop" ? "amount" : "percent",
-    discountValue:
-      scenario === "cop" ? "0.60" : scenario === "partial" ? "50" : "100",
-    currencyCode: scenario === "cop" ? "COP" : "USD",
-    extraUnits: null,
-    validUntil: "2027-01-01",
-  };
-  const couponState = { status: "selected", verdict: { valid: true }, coupon };
-  await page.route("**/api/modules/pos/payment-methods", (route) => {
-    stats.methodReads++;
-    return route.fulfill({
-      json: {
-        methods: [
-          {
-            id: cashId,
-            name: "Efectivo",
-            chargeShape: "none",
-            isCash: true,
-            status: "active",
-          },
-          {
-            id: cardId,
-            name: "Tarjeta de débito",
-            chargeShape: "percent",
-            isCash: false,
-            status: "active",
-          },
-        ],
-        defaultMethodId: cashId,
-      },
-    });
+async function setup(page: Page, cop = false) {
+  const stats = { methods: 0, closes: [] as MeasuredPaymentBody[] };
+  const coupon = { ...paymentCoupon, discountValue: "100" };
+  await page.route("**/api/modules/pos/**", (route) => {
+    const req = route.request(),
+      url = req.url();
+    expect(req.headers()["x-pos-contract"]).toBe("2");
+    if (url.endsWith("/resolve"))
+      return route.fulfill({
+        json: {
+          ...paymentResolved,
+          couponState: { status: "selected", verdict: { valid: true }, coupon },
+        },
+      });
+    if (url.includes("coupon-state"))
+      return route.fulfill({
+        json: {
+          couponState: { status: "selected", verdict: { valid: true }, coupon },
+        },
+      });
+    if (url.endsWith("payment-methods")) {
+      stats.methods++;
+      return route.fulfill({
+        json: {
+          methods: [
+            ...paymentMethods,
+            {
+              id: "card",
+              name: "Tarjeta",
+              isCash: false,
+              chargeShape: "none",
+              status: "active",
+            },
+          ],
+          defaultMethodId: "cash",
+        },
+      });
+    }
+    const body = req.postDataJSON() as MeasuredPaymentBody;
+    stats.closes.push(body);
+    const order = structuredClone(paymentOrder);
+    if (cop) order.business.currencyCode = "COP";
+    return route.fulfill({ json: paymentClosed(order, body, coupon) });
   });
-  await page.route("**/api/modules/pos/resolve", (route) =>
-    route.fulfill({
-      json: {
-        consumer: { displayName: "Ana" },
-        membership: {
-          id: "membership",
-          pointsBalance: 0,
-          stampsCount: 0,
-          justEnrolled: false,
-        },
-        program: {
-          id: "program",
-          kind: "points",
-          redeemAllowInsufficient: false,
-          accrual: { mode: "per_amount", grant: 1, blockAmount: 1 },
-          cardDesign: {
-            backgroundColor: null,
-            backgroundColor2: null,
-            gradientAngle: null,
-            borderColor: null,
-          },
-        },
-        catalog: {
-          products: [],
-          categories: [],
-          habitualProductIds: [],
-          lastPurchase: null,
-        },
-        rewards: [],
-        couponState,
-      },
-    }),
+  await page.goto(harness.url + (cop ? "?cop" : ""));
+  await page.getByRole("button", { name: "Leer QR explícito" }).click();
+  await expect(page.getByRole("status", { name: "Sesión" })).toContainText(
+    "Ana",
   );
-  await page.route("**/api/modules/pos/coupon-state?*", (route) =>
-    route.fulfill({ json: { couponState } }),
-  );
-  await page.route("**/api/modules/pos/orders/*/close", (route) => {
-    stats.closes.push(route.request().postDataJSON());
-    if (retry && stats.closes.length === 1) return route.abort("failed");
-    return route.fulfill({ json: { id: "closed-order", status: "closed" } });
-  });
-  await page.goto(`${harness.url}?scenario=${scenario}`);
+  await page
+    .getByRole("button", { name: "Preparar cobro", exact: true })
+    .click();
   return stats;
 }
-async function open(page: Page, withCustomer = false) {
-  if (withCustomer) {
-    await page
-      .getByRole("button", { name: "Identificar cliente", exact: true })
-      .click();
-    await expect(
-      page.getByText("Cliente listo", { exact: true }),
-    ).toBeVisible();
-  }
-  await page
-    .getByRole("button", { name: "Revisar cobro", exact: true })
-    .click();
-  await expect(
-    page.getByRole("dialog", { name: "Cobrar Venta" }),
-  ).toBeVisible();
-  await expect(
-    page.getByText("Actualizando beneficio…", { exact: true }),
-  ).toHaveCount(0);
-}
-const method = (page: Page) =>
-  page.getByRole("button", { name: /Medio de pago$/ });
-async function selectCard(page: Page) {
-  await method(page).click();
-  await page
-    .getByRole("option", { name: "Tarjeta de débito", exact: true })
-    .click();
-}
-
-for (const width of [390, 1280]) {
-  test(`selector cash/card and exact payload at ${width}`, async ({
+for (const cop of [false, true]) {
+  test(`100% coupon omits methods and sends empty payments; cop=${cop}`, async ({
     page,
-  }, info) => {
-    await page.setViewportSize({ width, height: 900 });
-    const stats = await setup(page);
-    await open(page);
-    await expect(method(page)).toContainText("Efectivo");
+  }) => {
+    const stats = await setup(page, cop);
     await expect(
-      page.getByRole("textbox", { name: "Recibido", exact: true }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "Confirmar cobro", exact: true }),
+      page.getByRole("button", { name: "Cerrar venta sin cobro" }),
     ).toBeEnabled();
-    await page.screenshot({
-      path: info.outputPath(`payment-method-${width}.png`),
-      fullPage: true,
-    });
-    await selectCard(page);
-    await expect(
-      page.getByRole("textbox", { name: "Recibido", exact: true }),
-    ).toHaveCount(0);
-    await page
-      .getByRole("button", { name: "Confirmar cobro", exact: true })
-      .click();
-    await expect(
-      page.getByText("Venta cerrada", { exact: true }),
-    ).toBeVisible();
-    expect(stats.closes[0].payments).toEqual([
-      { methodId: cardId, amount: "10.00" },
-    ]);
-    expect(stats.closes[0]).not.toHaveProperty("commission");
+    expect(stats.methods).toBe(0);
+    await page.getByRole("button", { name: "Cerrar venta sin cobro" }).click();
+    await expect(page.getByRole("status", { name: "Sesión" })).toContainText(
+      "closed",
+    );
+    expect(stats.closes[0].payments).toEqual([]);
   });
 }
-
-test("COP coupon preview and payment keep the approved rounded amount", async ({
+test("removing a customer from zero sale loads methods and restores a positive close", async ({
   page,
 }) => {
-  const stats = await setup(page, "cop");
-  await open(page, true);
-  await expect(page.getByText(/Ajuste de redondeo:/)).toContainText("0,20");
+  const stats = await setup(page);
+  await page.getByRole("button", { name: "Cancelar", exact: true }).click();
   await page
-    .getByRole("button", { name: "Confirmar cobro", exact: true })
+    .getByRole("button", { name: "Retirar persona", exact: true })
     .click();
-  await expect(page.getByText("Venta cerrada", { exact: true })).toBeVisible();
-  expect(stats.closes[0].payments).toEqual([
-    { methodId: cashId, amount: "10" },
-  ]);
-});
-
-test("100% coupon hides the payment method and sends an empty list", async ({
-  page,
-}) => {
-  const stats = await setup(page, "zero");
-  await open(page, true);
-  await expect(method(page)).toHaveCount(0);
-  expect(stats.methodReads).toBe(0);
   await page
-    .getByRole("button", { name: "Confirmar cobro", exact: true })
+    .getByRole("button", { name: "Preparar cobro", exact: true })
     .click();
-  await expect(page.getByText("Venta cerrada", { exact: true })).toBeVisible();
-  expect(stats.closes[0].payments).toEqual([]);
-});
-
-test("removing the customer from a zero sale loads methods and enables a positive close", async ({
-  page,
-}) => {
-  const stats = await setup(page, "zero");
-  await open(page, true);
-  await page
-    .getByRole("button", { name: "Quitar cliente", exact: true })
-    .click();
-  await expect(method(page)).toContainText("Efectivo");
   await expect(
     page.getByRole("button", { name: "Confirmar cobro", exact: true }),
   ).toBeEnabled();
-  expect(stats.methodReads).toBe(1);
+  expect(stats.methods).toBe(1);
   await page
     .getByRole("button", { name: "Confirmar cobro", exact: true })
     .click();
-  await expect(page.getByText("Venta cerrada", { exact: true })).toBeVisible();
-  expect(stats.closes[0].payments).toEqual([
-    { methodId: cashId, amount: "10.00" },
-  ]);
-  expect(stats.closes[0]).not.toHaveProperty("membershipId");
+  await expect(page.getByRole("status", { name: "Sesión" })).toContainText(
+    "closed",
+  );
+  expect(stats.closes[0].membershipId).toBeUndefined();
+  expect(stats.closes[0].coupon).toBeUndefined();
+  expect(stats.closes[0].payments.length).toBe(1);
 });
 
-test("excluding a 100% coupon loads methods; removing a customer preserves a valid selected method", async ({
+test("cash buffers reject insufficient, negative and excess precision before sending money", async ({
   page,
 }) => {
-  const stats = await setup(page, "zero");
-  await open(page, true);
+  const stats = await setup(page);
+  await page.getByRole("button", { name: "Cancelar", exact: true }).click();
   await page
-    .getByRole("button", { name: "Quitar beneficio", exact: true })
+    .getByRole("button", { name: "Retirar persona", exact: true })
     .click();
-  await expect(method(page)).toContainText("Efectivo");
-  await selectCard(page);
   await page
-    .getByRole("button", { name: "Quitar cliente", exact: true })
+    .getByRole("button", { name: "Preparar cobro", exact: true })
     .click();
-  await expect(method(page)).toContainText("Tarjeta de débito");
+  const received = page.getByRole("textbox", { name: "Recibido", exact: true });
+  for (const buffer of ["1", "-1", "5.001", "4,"]) {
+    await received.fill(buffer);
+    await expect(
+      page.getByRole("button", { name: "Confirmar cobro", exact: true }),
+    ).toBeDisabled();
+    expect(stats.closes).toHaveLength(0);
+  }
+  await received.fill("");
   await expect(
     page.getByRole("button", { name: "Confirmar cobro", exact: true }),
   ).toBeEnabled();
-  await page
-    .getByRole("button", { name: "Confirmar cobro", exact: true })
-    .click();
-  await expect(page.getByText("Venta cerrada", { exact: true })).toBeVisible();
-  expect(stats.closes[0].payments).toEqual([
-    { methodId: cardId, amount: "10.00" },
-  ]);
 });
 
-test("changing the free-product destination from zero to positive reloads payment methods", async ({
+test("card method sends the selected exact amount and no cash buffer", async ({
   page,
 }) => {
-  const stats = await setup(page, "targets");
-  await open(page, true);
-  await page.getByRole("button", { name: /Producto de la oferta$/ }).click();
+  const stats = await setup(page);
+  await page.getByRole("button", { name: "Cancelar", exact: true }).click();
   await page
-    .getByRole("option", { name: "Servicio principal", exact: true })
+    .getByRole("button", { name: "Retirar persona", exact: true })
     .click();
-  await expect(method(page)).toHaveCount(0);
-  await page.getByRole("button", { name: /Producto de la oferta$/ }).click();
   await page
-    .getByRole("option", { name: "Servicio incluido", exact: true })
+    .getByRole("button", { name: "Preparar cobro", exact: true })
     .click();
-  await expect(method(page)).toContainText("Efectivo");
+  await page.getByRole("button", { name: /Medio de pago$/ }).click();
+  await page.getByRole("option", { name: "Tarjeta", exact: true }).click();
   await expect(
-    page.getByRole("button", { name: "Confirmar cobro", exact: true }),
-  ).toBeEnabled();
+    page.getByRole("textbox", { name: "Recibido", exact: true }),
+  ).toHaveCount(0);
   await page
     .getByRole("button", { name: "Confirmar cobro", exact: true })
     .click();
-  await expect(page.getByText("Venta cerrada", { exact: true })).toBeVisible();
+  await expect(page.getByRole("status", { name: "Sesión" })).toContainText(
+    "closed",
+  );
   expect(stats.closes[0].payments).toEqual([
-    { methodId: cashId, amount: "10.00" },
+    { methodId: "card", amount: "4.01" },
   ]);
-});
-
-test("uncertain close freezes method, payments and idempotency key for retry", async ({
-  page,
-}) => {
-  const stats = await setup(page, "plain", true);
-  await open(page);
-  await selectCard(page);
-  await page
-    .getByRole("button", { name: "Confirmar cobro", exact: true })
-    .click();
-  await expect(
-    page.getByRole("button", { name: "Reintentar cobro", exact: true }),
-  ).toBeVisible();
-  await expect(method(page)).toBeDisabled();
-  await page
-    .getByRole("button", { name: "Reintentar cobro", exact: true })
-    .click();
-  await expect(page.getByText("Venta cerrada", { exact: true })).toBeVisible();
-  expect(stats.closes).toHaveLength(2);
-  expect(stats.closes[1]).toEqual(stats.closes[0]);
+  expect("received" in stats.closes[0]).toBe(false);
 });

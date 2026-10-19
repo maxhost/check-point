@@ -11,8 +11,31 @@ async function select(page: Page, label: string, value: string) {
   await page.getByRole("button", { name: new RegExp(label + "$") }).click();
   await page.getByRole("option", { name: value, exact: true }).click();
 }
-async function add(page: Page, name = "Café") {
-  await page.getByRole("button", { name: "Nueva orden", exact: true }).click();
+async function add(page: Page, name = "Café", pickup = false) {
+  const create = page.getByRole("button", { name: "Nueva orden", exact: true });
+  if (await create.isVisible()) await create.click();
+  else {
+    // The content-only harness has no shell mobile bar: deliver the same manifest action.
+    await page.evaluate(() =>
+      window.dispatchEvent(
+        new CustomEvent("checkpass:module-primary", {
+          detail: { moduleId: "pos" },
+        }),
+      ),
+    );
+  }
+  await page
+    .getByRole("button", {
+      name: pickup ? "Para retirar" : "Mostrador",
+      exact: true,
+    })
+    .click();
+  if (pickup) {
+    await page
+      .getByRole("textbox", { name: "Nombre o referencia", exact: true })
+      .fill("Ana");
+    await page.getByRole("button", { name: "Continuar", exact: true }).click();
+  }
   await page
     .getByRole("button", { name: `Añadir ${name}`, exact: true })
     .click();
@@ -153,13 +176,13 @@ if (!native) {
       .getByRole("button", { name: "Confirmar cobro", exact: true })
       .click();
     await expect(
-      page.getByRole("button", { name: "Volver al listado", exact: true }),
+      page.getByRole("button", { name: "Salir", exact: true }),
     ).toBeDisabled();
     await page
       .getByRole("button", { name: "Reintentar el mismo cobro", exact: true })
       .click();
     await expect(
-      page.getByRole("heading", { name: "Venta completada" }),
+      page.getByRole("heading", { name: "Venta cerrada", exact: true }),
     ).toBeVisible();
     const closing = state.writes.filter((w) => w.path.endsWith("close"));
     expect(closing).toHaveLength(2);
@@ -170,7 +193,7 @@ if (!native) {
       ),
     ).toHaveLength(1);
     await page
-      .getByRole("button", { name: "Volver al listado", exact: true })
+      .getByRole("button", { name: "Volver al historial", exact: true })
       .click();
     await select(page, "Estado", "Cerradas hoy");
     await expect(
@@ -180,13 +203,12 @@ if (!native) {
   });
   test("save a pickup, return and reopen canonical order", async ({ page }) => {
     const state = await setup(page);
-    await add(page);
-    await select(page, "Tipo de venta", "Para retirar");
+    await add(page, "Café", true);
     await page
-      .getByRole("textbox", { name: "Nombre o referencia", exact: true })
-      .fill("Ana");
-    await page
-      .getByRole("button", { name: "Confirmar pedido", exact: true })
+      .getByRole("button", {
+        name: /Confirmar orden|Guardar cambios/,
+        exact: true,
+      })
       .click();
     await expect(
       page.getByText("Pedido guardado", { exact: true }),
@@ -202,22 +224,30 @@ if (!native) {
     page,
   }) => {
     const state = await setup(page, "conflict");
-    await add(page);
-    await select(page, "Tipo de venta", "Para retirar");
+    await add(page, "Café", true);
     await page
-      .getByRole("textbox", { name: "Nombre o referencia", exact: true })
-      .fill("Ana");
-    await page
-      .getByRole("button", { name: "Confirmar pedido", exact: true })
+      .getByRole("button", {
+        name: /Confirmar orden|Guardar cambios/,
+        exact: true,
+      })
       .click();
     await expect(
       page.getByText("Pedido guardado", { exact: true }),
     ).toBeVisible();
     await page
+      .getByRole("button", {
+        name: /Añadir nota al pedido|Editar nota del pedido/,
+      })
+      .click();
+    await page
       .getByRole("textbox", { name: "Nota del pedido", exact: true })
       .fill("Mi intención");
+    await page.getByRole("button", { name: "Listo", exact: true }).click();
     await page
-      .getByRole("button", { name: "Confirmar pedido", exact: true })
+      .getByRole("button", {
+        name: /Confirmar orden|Guardar cambios/,
+        exact: true,
+      })
       .click();
     await expect(
       page.getByText("El pedido cambió. Revisa antes de continuar.", {
@@ -225,7 +255,10 @@ if (!native) {
       }),
     ).toBeVisible();
     await expect(
-      page.getByRole("button", { name: "Confirmar pedido", exact: true }),
+      page.getByRole("button", {
+        name: /Confirmar orden|Guardar cambios/,
+        exact: true,
+      }),
     ).toBeDisabled();
     await page
       .getByRole("button", {
@@ -233,11 +266,18 @@ if (!native) {
         exact: true,
       })
       .click();
+    await page
+      .getByRole("button", { name: "Editar nota del pedido", exact: true })
+      .click();
     await expect(
       page.getByRole("textbox", { name: "Nota del pedido", exact: true }),
     ).toHaveValue("Mi intención");
+    await page.getByRole("button", { name: "Listo", exact: true }).click();
     await page
-      .getByRole("button", { name: "Confirmar pedido", exact: true })
+      .getByRole("button", {
+        name: /Confirmar orden|Guardar cambios/,
+        exact: true,
+      })
       .click();
     expect(state.writes.filter((w) => w.method === "PUT")).toHaveLength(2);
   });
@@ -258,7 +298,7 @@ if (!native) {
       page.getByRole("button", { name: "Nueva orden", exact: true }),
     ).toBeEnabled();
     await expect(
-      page.getByRole("heading", { name: "Venta completada" }),
+      page.getByRole("heading", { name: "Venta cerrada", exact: true }),
     ).toHaveCount(0);
     await expect(
       page.getByRole("button", { name: "Confirmar cobro", exact: true }),
@@ -271,6 +311,12 @@ if (!native) {
       await add(page);
       await expect(
         page.getByRole("heading", { name: "Nuevo pedido", exact: true }),
+      ).toBeAttached();
+      await expect(
+        page.getByRole("button", {
+          name: "Editar mesa u orden: Mostrador",
+          exact: true,
+        }),
       ).toBeVisible();
       expect(
         await page.evaluate(
@@ -280,10 +326,6 @@ if (!native) {
       await expect(
         page.getByRole("button", { name: "Continuar al cobro", exact: true }),
       ).toBeEnabled();
-      await page.screenshot({
-        path: `/private/tmp/checkpass-pos-0242/connected-console/editor-${width}.png`,
-        fullPage: true,
-      });
     });
 } else {
   test("native Next/auth/HTTP/DB unit sale", async ({ page, context }) => {
@@ -319,10 +361,10 @@ if (!native) {
       .getByRole("button", { name: "Confirmar cobro", exact: true })
       .click();
     await expect(
-      page.getByRole("heading", { name: "Venta completada" }),
+      page.getByRole("heading", { name: "Venta cerrada", exact: true }),
     ).toBeVisible();
     await page
-      .getByRole("button", { name: "Volver al listado", exact: true })
+      .getByRole("button", { name: "Volver al historial", exact: true })
       .click();
     await select(page, "Estado", "Cerradas hoy");
     await expect(

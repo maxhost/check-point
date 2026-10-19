@@ -10,8 +10,8 @@ export const STAFF_TOUR_COPY = {
       "Escribe el nombre con el que identificarás a esta persona.",
     ],
     counter: [
-      "Mostrador ya viene activado",
-      "Es el permiso recomendado para quien atiende: acreditar compras y canjear premios. Puedes apagarlo o sumar otros antes de crear.",
+      "Revisa los permisos",
+      "El alta recomienda el acceso operativo si su módulo está activo; en otro caso, Clientes. Revisa la selección y ajusta los accesos antes de crear.",
     ],
     create: [
       "Crea su cuenta y muéstrale el PIN",

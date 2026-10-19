@@ -14,7 +14,6 @@ import {
   NavArrowRight,
   Package,
   Palette,
-  QrCode,
   Shop,
   StatsUpSquare,
   Xmark,
@@ -562,17 +561,23 @@ export function BackofficeNavigation() {
                 )}
               </>
             )}
-            {permissions.includes("counter") && (
+            {operationAccess && operationAccessHref && OperationAccessIcon && (
               <Link
-                aria-current={segment === "counter" ? "page" : undefined}
+                aria-current={
+                  segment === operationAccess.segment ? "page" : undefined
+                }
                 className="mobile-counter-access"
-                href="/backoffice/counter"
+                href={operationAccessHref}
                 onClick={closeMenu}
               >
                 <span>
-                  <QrCode aria-hidden="true" width={24} height={24} />
+                  <OperationAccessIcon
+                    aria-hidden="true"
+                    width={24}
+                    height={24}
+                  />
                 </span>
-                Mostrador
+                {operationAccess.label}
               </Link>
             )}
             {isOwner && (

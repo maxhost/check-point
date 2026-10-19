@@ -2,9 +2,21 @@
 
 import { Alert, Button, Dialog } from "../../../ui";
 import { ConfirmationToast } from "../../../app/components/confirmation-toast";
-import type { PosPrinting } from "./pos-printing";
+import type { PrintResult } from "./printing/index";
 
-export function PosPrintFeedback({ printing }: { printing: PosPrinting }) {
+type PrintFeedback = {
+  issue: Extract<PrintResult, { ok: false }> | null;
+  settingsError: string | null;
+  notice: string | null;
+  busy: boolean;
+  retrySettings: () => void;
+  dismissNotice: () => void;
+  dismiss: () => void;
+  choose: () => void;
+  retry: () => void;
+};
+
+export function PosPrintFeedback({ printing }: { printing: PrintFeedback }) {
   const choose =
     printing.issue?.reason === "no_printer" ||
     printing.issue?.reason === "not_found";

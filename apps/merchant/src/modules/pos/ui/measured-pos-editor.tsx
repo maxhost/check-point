@@ -140,7 +140,7 @@ export function MeasuredPosEditor({
   );
   const tables = usePosTables(
     draft.locationId,
-    0,
+    session.tableRevision,
     tableError,
     context.tablesEnabled && draft.saleType === "table",
     { client: session.client, cache: session.cache },

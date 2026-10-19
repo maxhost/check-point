@@ -1,8 +1,8 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
 import { QrCode } from "iconoir-react";
 import { Alert, Button, Dialog, Text, TextField } from "../../../ui";
-import { QrScanner } from "../../../app/backoffice/counter/qr-scanner";
+import { QrScanner } from "../../../components/qr-scanner";
 import type { MeasuredEditorSession } from "./measured-editor-model";
 import { PosError } from "./pos-types";
 
@@ -14,6 +14,8 @@ export function MeasuredEditorCustomer({
   onAccessError?: (cause: unknown) => void;
 }) {
   const [code, setCode] = useState("");
+  const [showRule, setShowRule] = useState(false);
+  const ruleId = useId();
   const customer = session.customer;
   const { resolved, scanning, resolving, error, excluded } = customer.state;
   const coupon = resolved?.couponState;
@@ -66,6 +68,27 @@ export function MeasuredEditorCustomer({
                   {coupon.coupon.label}
                   {excluded ? " · Sin aplicar" : ""}
                 </Text>
+                {coupon.coupon.rule && (
+                  <>
+                    {coupon.coupon.rule.length > 160 && (
+                      <Button
+                        variant="quiet"
+                        aria-expanded={showRule}
+                        aria-controls={ruleId}
+                        onPress={() => setShowRule(!showRule)}
+                      >
+                        {showRule
+                          ? "Ocultar condiciones del cupón"
+                          : "Ver condiciones del cupón"}
+                      </Button>
+                    )}
+                    {(coupon.coupon.rule.length <= 160 || showRule) && (
+                      <Text id={ruleId} variant="small">
+                        {coupon.coupon.rule}
+                      </Text>
+                    )}
+                  </>
+                )}
                 {!coupon.verdict.valid && (
                   <Text variant="small">{coupon.verdict.message}</Text>
                 )}

@@ -6,7 +6,11 @@ import { useBusinessModules } from "../settings/use-business-modules";
 import { ModuleHeader, Toast } from "../../components/ui";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { CredentialDialog } from "./credential-dialog";
-import type { StaffMember } from "./staff-contract";
+import {
+  PERMISSIONS,
+  staffDefaultPermissions,
+  type StaffMember,
+} from "./staff-contract";
 import { createStaff, renameStaff, savePermissions } from "./staff-api";
 import {
   CreateStaffPanel,
@@ -48,7 +52,7 @@ export function StaffConsole() {
   function closeCreate() {
     setCreateOpen(false);
     setCreateName("");
-    setCreatePermissions(["counter"]);
+    setCreatePermissions(staffDefaultPermissions(moduleState.modules));
     setError(null);
   }
 
@@ -78,6 +82,27 @@ export function StaffConsole() {
       return setError("Escribe el nombre del integrante.");
     if (!createPermissions.length)
       return setError("Elige al menos un permiso.");
+    if (
+      moduleState.modules.some(
+        (module) =>
+          !module.enabled &&
+          module.permissions.some((permission) =>
+            createPermissions.includes(permission.id),
+          ),
+      )
+    )
+      return setError(
+        "Hay un módulo desactivado. Revisa los permisos antes de crear al integrante.",
+      );
+    if (
+      modulesUnavailable &&
+      createPermissions.some(
+        (permission) => !PERMISSIONS.some((entry) => entry.id === permission),
+      )
+    )
+      return setError(
+        "Espera a que se carguen los permisos de módulos o vuelve a intentar.",
+      );
     setBusy(true);
     setError(null);
     try {
@@ -90,7 +115,7 @@ export function StaffConsole() {
       });
       setCreateOpen(false);
       setCreateName("");
-      setCreatePermissions(["counter"]);
+      setCreatePermissions(staffDefaultPermissions(moduleState.modules));
     } catch (reason) {
       setError(
         reason instanceof Error
@@ -203,7 +228,14 @@ export function StaffConsole() {
               <button
                 className="button"
                 data-tour="staff-add"
-                onClick={() => setCreateOpen(true)}
+                onClick={() => {
+                  setCreatePermissions(
+                    staffDefaultPermissions(
+                      modulesUnavailable ? [] : moduleState.modules,
+                    ),
+                  );
+                  setCreateOpen(true);
+                }}
               >
                 + Añadir integrante
               </button>

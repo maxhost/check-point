@@ -17,7 +17,7 @@ function validate(settings: Settings) {
 }
 
 export function TicketSettings() {
-  const scope = usePosContext();
+  const scope = usePosContext({ contractVersion: 2 });
   const posRequest = scope.client.request;
   const [settings, setSettings] = useState<Settings | null>(null);
   const [error, setError] = useState<string | null>(null);
