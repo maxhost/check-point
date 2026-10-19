@@ -71,3 +71,28 @@ instrumentadas/limitación callbacks y cleanup ownIDs SELECT0. N0 inferencial,
 sin control ni comparación temporal, sin hardware/cámara física. Mismo OTP real,
 IP fija y bucket sin reset/rotación, antiPROD/CI seleccionada y tools/neon-test.sh
 para todas las operaciones DB. Sin capturas/push/PROD;3201/túnel/ajenos intactos.
+
+## Frontera real cerrada y compatibilidad de metadatos entre worktrees
+
+SQL readonly4fb965d46f2890166b3d49abcd7ac0d2bad9561612bd06db161157275dea8d03
+confirmó las ocho tarifas2.000000000 rechazadas por el parser compilado6f;
+quantity decodednumber1 no es la causa. Orden creadaOPEN/v1,25opencontrol/24candidate,
+0closed y rollback en superficies inspeccionadas: pagos/coreorders/lines/eventos/
+redenciones0 y cuatro balances0. Cleanup6ceeEXIT0/1PASS0skip21.09s,89remaining0,
+ledger auth preservado; QA476a0161ce0891898d9b6e4c6397644270849310 auditó ownership
+8704 y proof. Procesos propios ausentes/puertos libres; factorygrid sólo doc:p6-r2.
+Aún no hay transferencia ni ejecución MASA.
+
+Pre-COPY se detectó incompatibilidad determinista del harness, antes de recursos:
+.metadata de card y grid difieren sólo en storeDir propio y prunedAt. No sustituir
+archivos para fingir identidad ni eliminar el check. Se asigna dentro de los cuatro
+paths masa una compatibilidad explícita en autorización: hashsource
+415e9f6943cbd67803ed9bc9955865cb2afaabbe8689b3b28f25741f3a3fb996 y hashrunner
+8e8d239441c4dc3217b1433deea594d05731ee41201a94c0544ebbda203cb50a,
+keys exactas prunedAt/storeDir, valores source/runner exactos leídos y referenciaQA.
+Validar realpaths privados propios y fechas, resto de JSON totalmente igual,
+versiones/hashes/lock/Node de dependencias estrictos. Copias0600/provenance/diff
+observados en manifest y recheck de AMBAS identidades al ejecutar. Cualquier otra
+diferencia o deriva de esos valores falla; no es una whitelist general. Origen
+freeze6cee/metadata415 y runnercard8e8 quedan inmutables. Negativos de auth/hash/
+keyextra/path/fecha antes de nuevoSHA/receta/QA. No modificar R2 ni su freeze.
