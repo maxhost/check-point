@@ -115,6 +115,7 @@ describe.skipIf(!posIntegrationEnabled)(
           orderLabel,
           locationId: world.seed.locationId,
           tableId: null,
+          note: null,
           items: [],
         });
       }
@@ -162,6 +163,7 @@ describe.skipIf(!posIntegrationEnabled)(
           orderLabel: "must-not-exist",
           tableId: null,
           locationId: b!.seed.locationId,
+          note: null,
           items: [],
         }),
       ]) {
@@ -196,6 +198,7 @@ describe.skipIf(!posIntegrationEnabled)(
         orderLabel: "CP1a-positive",
         tableId: null,
         locationId: a!.seed.locationId,
+        note: null,
         items: [],
       });
       expect(response.status).toBe(201);
