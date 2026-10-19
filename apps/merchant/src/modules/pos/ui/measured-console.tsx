@@ -5,6 +5,7 @@ import type {
   PosHistoryV2,
   PosLocationV2,
   PosOrderV2,
+  PosCatalogV2,
   SaleType,
 } from "../contracts";
 import {
@@ -12,6 +13,7 @@ import {
   detailKey,
   historyKey,
   tablesKey,
+  catalogKey,
 } from "./pos-cache";
 import type { PosTable } from "./pos-tables";
 import {
@@ -230,10 +232,19 @@ export function MeasuredConsoleContent({
     [...payments.current.values()].some((s) => !s.canLeave);
   const tableLocations = JSON.stringify(context.locations.map((l) => l.id));
   useEffect(() => {
-    if (view !== "list" || !context.tablesEnabled || !accessEnabled || denied)
-      return;
+    if (view !== "list" || !accessEnabled || denied) return;
     let current = true;
     for (const locationId of JSON.parse(tableLocations) as string[]) {
+      void cache
+        .read<PosCatalogV2>(catalogKey(locationId), () =>
+          client.request(
+            `/api/modules/pos/catalog?locationId=${encodeURIComponent(locationId)}`,
+          ),
+        )
+        .catch((cause) => {
+          if (current) handleError(cause);
+        });
+      if (!context.tablesEnabled) continue;
       void cache
         .read<{ tables: PosTable[] }>(tablesKey(locationId), () =>
           client.request(

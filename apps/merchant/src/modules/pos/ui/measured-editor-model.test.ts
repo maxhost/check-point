@@ -3,7 +3,7 @@ import {
   MeasuredEditorSession,
   measuredEditorAmounts,
 } from "./measured-editor-model";
-import { PosCache } from "./pos-cache";
+import { PosCache, catalogKey } from "./pos-cache";
 import { createPosClient } from "./pos-context";
 import {
   editorCatalog,
@@ -32,6 +32,22 @@ function setup(order: typeof editorOrder | null = null) {
   return session;
 }
 describe("measured editor owner", () => {
+  it("abre con el catálogo precargado sin estado de carga ni una segunda petición", async () => {
+    const { client } = setup();
+    const request = vi.spyOn(client, "request");
+    const cache = new PosCache();
+    cache.put(catalogKey("north"), editorCatalog);
+    const session = new MeasuredEditorSession(context, cache, client);
+    expect(session.catalog).toBe(editorCatalog);
+    const loading: boolean[] = [];
+    session.subscribe(() => loading.push(session.catalogLoading));
+    await session.loadCatalog();
+    expect(session.catalog).toBe(editorCatalog);
+    expect(session.catalogLoading).toBe(false);
+    expect(loading.every((value) => !value)).toBe(true);
+    expect(request).not.toHaveBeenCalled();
+  });
+
   it("inicializa los datos elegidos en el modal sin ensuciar el borrador ni sobrescribir un pedido existente", () => {
     const configured = {
       ...context,

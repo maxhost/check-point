@@ -131,6 +131,9 @@ export class MeasuredEditorSession {
   ) {
     this.order = order;
     this.draft = draftFor(order, context);
+    this.catalog = this.cache.peek<PosCatalogV2>(
+      catalogKey(this.draft.locationId),
+    );
     this.baseline = JSON.stringify(this.draft);
     this.commands = new MeasuredOrderCommands(client, cache, {
       historyStatus: "active",
@@ -181,6 +184,15 @@ export class MeasuredEditorSession {
   async loadCatalog(force = false) {
     const location = this.draft.locationId;
     if (!location || !this.active) return;
+    const cached =
+      !force && this.cache.peek<PosCatalogV2>(catalogKey(location));
+    if (cached) {
+      this.catalog = cached;
+      this.catalogLoading = false;
+      this.error = null;
+      this.publish();
+      return;
+    }
     this.catalogLoading = true;
     this.error = null;
     this.publish();
@@ -222,7 +234,7 @@ export class MeasuredEditorSession {
     )
       return false;
     if (this.draft.lines.length && !discardLines) return false;
-    this.catalog = null;
+    this.catalog = this.cache.peek<PosCatalogV2>(catalogKey(locationId));
     this.change({
       locationId,
       tableId: null,

@@ -1,11 +1,19 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Bag, DeliveryTruck, Shop, Table } from "iconoir-react";
-import { Button, Dialog, SelectField, Text, TextField } from "../../../ui";
-import type { SaleType } from "../contracts";
+import {
+  Alert,
+  Button,
+  Dialog,
+  SelectField,
+  Text,
+  TextField,
+} from "../../../ui";
+import type { PosCatalogV2, SaleType } from "../contracts";
 import type { MeasuredEditorContext } from "./measured-editor-model";
 import type { PosClient } from "./pos-context";
-import type { PosCache } from "./pos-cache";
+import { catalogKey, type PosCache } from "./pos-cache";
+import { PosError } from "./pos-types";
 import { PosTablePicker, tableUnavailable, usePosTables } from "./pos-tables";
 
 export type NewMeasuredOrder = {
@@ -71,6 +79,54 @@ export function MeasuredNewOrderDialog({
   const [tableId, setTableId] = useState<string | null>(null);
   const [orderLabel, setOrderLabel] = useState("");
   const hasLocation = context.locations.some((l) => l.id === locationId);
+  const [catalogState, setCatalogState] = useState<{
+    location: string;
+    error: string | null;
+  } | null>(null);
+  const [catalogAttempt, setCatalogAttempt] = useState(0);
+  const catalogReady =
+    cache.peek<PosCatalogV2>(catalogKey(locationId)) !== null;
+  const catalogError =
+    catalogState?.location === locationId ? catalogState.error : null;
+  useEffect(() => {
+    if (!isOpen || disabled || !hasLocation) return;
+    let current = true;
+    setCatalogState({ location: locationId, error: null });
+    void cache
+      .read<PosCatalogV2>(catalogKey(locationId), () =>
+        client.request(
+          `/api/modules/pos/catalog?locationId=${encodeURIComponent(locationId)}`,
+        ),
+      )
+      .then(() => {
+        if (current) setCatalogState({ location: locationId, error: null });
+      })
+      .catch((cause: unknown) => {
+        if (!current) return;
+        setCatalogState({
+          location: locationId,
+          error: "No pudimos preparar los productos de este local.",
+        });
+        if (
+          cause instanceof PosError &&
+          ([401, 403].includes(cause.status ?? 0) ||
+            cause.code === "backoffice_context_changed")
+        )
+          onError(cause);
+      });
+    return () => {
+      current = false;
+    };
+  }, [
+    isOpen,
+    disabled,
+    hasLocation,
+    locationId,
+    cache,
+    client,
+    onError,
+    catalogAttempt,
+  ]);
   const tables = usePosTables(
     locationId,
     0,
@@ -82,6 +138,7 @@ export function MeasuredNewOrderDialog({
   const canContinue =
     !disabled &&
     hasLocation &&
+    catalogReady &&
     !!saleType &&
     (saleType === "counter" ||
       (orderLabel.trim().length > 0 && orderLabel.trim().length <= 60)) &&
@@ -117,6 +174,7 @@ export function MeasuredNewOrderDialog({
                 aria-pressed={saleType === type.id}
                 isDisabled={
                   disabled ||
+                  (type.id === "counter" && hasLocation && !catalogReady) ||
                   (type.id === "table" &&
                     context.tablesEnabled &&
                     hasLocation &&
@@ -126,6 +184,7 @@ export function MeasuredNewOrderDialog({
                 onPress={() => {
                   if (disabled) return;
                   if (type.id === "counter" && hasLocation) {
+                    if (!catalogReady) return;
                     onContinue({
                       saleType: type.id,
                       locationId,
@@ -202,6 +261,24 @@ export function MeasuredNewOrderDialog({
             />
           )}
         </div>
+      )}
+      {catalogError && (
+        <Alert kind="error" title={catalogError}>
+          <Button
+            variant="secondary"
+            onPress={() => {
+              cache.invalidate(catalogKey(locationId));
+              setCatalogAttempt((attempt) => attempt + 1);
+            }}
+          >
+            Reintentar productos
+          </Button>
+        </Alert>
+      )}
+      {hasLocation && !catalogReady && !catalogError && (
+        <Text variant="small" className="mt-4">
+          Preparando productos del local…
+        </Text>
       )}
       <div className="mt-5 flex justify-between gap-3">
         <Button variant="quiet" onPress={onClose}>
