@@ -8,7 +8,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { EditPencil, Printer } from "iconoir-react";
+import { EditPencil, Printer, Xmark } from "iconoir-react";
 import { useMobileNavigation } from "../../../app/backoffice/backoffice-shell";
 import { ConfirmationToast } from "../../../app/components/confirmation-toast";
 import {
@@ -407,8 +407,8 @@ export function MeasuredPosEditor({
   );
   return (
     <div className="grid w-full min-w-0 max-w-none gap-5 p-3 pb-36 md:p-4 md:pb-4">
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0 break-words">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="sr-only md:not-sr-only md:min-w-0 md:flex-1 md:break-words">
           <Heading level={1}>
             {session.order?.orderLabel || "Nuevo pedido"}
           </Heading>
@@ -418,50 +418,53 @@ export function MeasuredPosEditor({
             </Text>
           )}
         </div>
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 md:order-last md:basis-full md:gap-3">
+          <Button
+            variant="secondary"
+            className="max-w-full rounded-full! border-primary! bg-primary-soft! px-4! text-primary!"
+            aria-label={`Editar mesa u orden: ${draft.orderLabel || labels[draft.saleType]}`}
+            isDisabled={blocked}
+            onPress={() => setDetailsEditor("order")}
+          >
+            <Text
+              as="span"
+              variant="label"
+              className="min-w-0 break-words text-primary"
+            >
+              {draft.orderLabel || labels[draft.saleType]}
+            </Text>
+            <EditPencil className="size-4 shrink-0" aria-hidden="true" />
+          </Button>
+          <Button
+            variant="secondary"
+            className="max-w-full rounded-full! border-primary! bg-primary-soft! px-4! text-primary!"
+            aria-label={`Editar local: ${context.locations.find((l) => l.id === draft.locationId)?.name ?? "Sin local"}`}
+            isDisabled={blocked}
+            onPress={() => setDetailsEditor("location")}
+          >
+            <Text
+              as="span"
+              variant="label"
+              className="min-w-0 break-words text-primary"
+            >
+              {context.locations.find((l) => l.id === draft.locationId)?.name ??
+                "Elegir local"}
+            </Text>
+            <EditPencil className="size-4 shrink-0" aria-hidden="true" />
+          </Button>
+        </div>
         <Button
           variant="quiet"
+          className="size-11 shrink-0 p-0! md:w-auto md:px-4!"
+          aria-label="Salir"
           isDisabled={blocked}
           onPress={() => {
             if (session.requestExit()) onExit();
             else setExitOpen(true);
           }}
         >
-          Salir
-        </Button>
-      </div>
-      <div className="flex flex-wrap items-center gap-3">
-        <Button
-          variant="secondary"
-          className="max-w-full rounded-full! border-primary! bg-primary-soft! px-4! text-primary!"
-          aria-label={`Editar mesa u orden: ${draft.orderLabel || labels[draft.saleType]}`}
-          isDisabled={blocked}
-          onPress={() => setDetailsEditor("order")}
-        >
-          <Text
-            as="span"
-            variant="label"
-            className="min-w-0 break-words text-primary"
-          >
-            {draft.orderLabel || labels[draft.saleType]}
-          </Text>
-          <EditPencil className="size-4 shrink-0" aria-hidden="true" />
-        </Button>
-        <Button
-          variant="secondary"
-          className="max-w-full rounded-full! border-primary! bg-primary-soft! px-4! text-primary!"
-          aria-label={`Editar local: ${context.locations.find((l) => l.id === draft.locationId)?.name ?? "Sin local"}`}
-          isDisabled={blocked}
-          onPress={() => setDetailsEditor("location")}
-        >
-          <Text
-            as="span"
-            variant="label"
-            className="min-w-0 break-words text-primary"
-          >
-            {context.locations.find((l) => l.id === draft.locationId)?.name ??
-              "Elegir local"}
-          </Text>
-          <EditPencil className="size-4 shrink-0" aria-hidden="true" />
+          <Xmark className="size-6 md:hidden" aria-hidden="true" />
+          <span className="hidden md:inline">Salir</span>
         </Button>
       </div>
       <Dialog
