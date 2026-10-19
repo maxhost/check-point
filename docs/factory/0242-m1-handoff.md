@@ -1,5 +1,13 @@
 # 0242 P6B — preparación offline M1R1
 
+Revisión previa rechazada1c39815c preservada sin datos. Este incrementoR1.1
+atiende los cuatro hallazgos de QA antes de cualquier medición: retornoOPEN
+candidato por Salir; respuesta exacta de ocho snapshots con IDs premanifestados y
+marker limitado a Productos del pedido/Orden, no nombres de catálogo global;
+CDPdecoded desconocido null, cero sólo observado/confirmado; cleanup con SELECTs
+de ausencia en catorce tablas propias y artefacto saneado antes de cleaned.
+Los adaptadores y markers siguen estrictos. Ver recetaR1.1 para contrato exacto.
+
 Nuevo autor/contexto fresco, WT/ref `pos-ui-grid-0242`, base exacta
 `b6375774a5b2f5c157df7aadc09b5f6820479c99`, después de QA funcional combinado
 `a9d32924` aceptado por coordinador. Este incremento implementa únicamente
@@ -51,7 +59,7 @@ se reportan separados y no acreditan rutas críticas ausentes. Instrumentación
 SQL/fases real existente se conserva, con artefacto privado/hash y resumen por tag.
 
 Checks offline en Node24.20.0/pnpm11.4.0: ESLint focal, Prettier, node--check y
-node--test estadístico (ocho pruebas, ceroskips); tscmerchant--noEmit
+node--test estadístico y validación de snapshots (nueve pruebas, ceroskips); tscmerchant--noEmit
 --incrementalfalse EXIT0. El SHA definitivo y resultado final de checks se entregan
 al coordinador fuera de este archivo para evitar autorreferencia. No se ejecutó
 suite DB (no se cuenta un skip comoPASS), browser, build ni servidor. No procesos

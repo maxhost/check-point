@@ -3,6 +3,9 @@ import { createHash } from "node:crypto";
 import { readFile, writeFile, realpath, lstat } from "node:fs/promises";
 import { resolve } from "node:path";
 import { expect } from "vitest";
+import { inArray } from "drizzle-orm";
+import { getDb } from "@mi-pasaporte/db";
+import { posOrderItems } from "@mi-pasaporte/db/schema";
 import {
   neonEndpointId,
   PROD_DB_ENDPOINT_SHA12,
@@ -15,8 +18,9 @@ import {
 import { login as loginExisting } from "./pos-measurement-login.test-support";
 
 export { owned };
-export type Manifest = Omit<ExistingManifest, "kind"> & {
+export type Manifest = Omit<ExistingManifest, "kind" | "fixtures"> & {
   kind: "pos-m1-list-fixture-v1";
+  fixtures: (ExistingManifest["fixtures"][number] & { lineIds: string[][] })[];
 };
 export async function guard() {
   expect(process.env.NEON_INTEGRATION_ISOLATED).toBe("true");
@@ -57,12 +61,42 @@ export async function load(file: string, endpoint: string) {
     expect(f.slug).toBe(`posm10242-${m.runId}-${f.case}`);
     expect(f.email).toBe(`${f.slug}@example.test`);
     expect(f.locations).toHaveLength(2);
+    expect(f.lineIds).toHaveLength(f.orders.length);
+    expect(new Set(f.lineIds.flat()).size).toBe(
+      f.orders.length * f.linesPerOrder,
+    );
+    for (const ids of f.lineIds) expect(ids).toHaveLength(f.linesPerOrder);
   }
   return m;
 }
 export async function inspect(m: Manifest) {
   expect(m.phase).toBe("ready");
   await inspectExisting({ ...m, kind: "pos-measurement-0242-v1" });
+  for (const f of m.fixtures) {
+    const rows = await getDb()
+      .select()
+      .from(posOrderItems)
+      .where(inArray(posOrderItems.posOrderId, f.orders));
+    expect(rows).toHaveLength(f.orders.length * f.linesPerOrder);
+    for (let i = 0; i < f.orders.length; i++) {
+      const lines = rows
+        .filter((r) => r.posOrderId === f.orders[i])
+        .sort((a, b) => a.position - b.position);
+      expect(lines.map((r) => r.id)).toEqual(f.lineIds[i]);
+      for (let j = 0; j < lines.length; j++)
+        expect(lines[j]).toMatchObject({
+          productId: f.products[j],
+          nameSnapshot: `Producto ${String(j).padStart(4, "0")}`,
+          quantity: "1.000000000",
+          unitPriceSnapshot: "2.000000000",
+          measureKind: "unit",
+          quantityUnit: "unit",
+          priceUnit: "unit",
+          conversionVersion: "mass-si-1",
+          position: j,
+        });
+    }
+  }
 }
 export async function login(m: Manifest, directory: string) {
   // Existing legitimate OTP/PIN helper, with its fixture type projection only.

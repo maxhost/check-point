@@ -3,7 +3,7 @@ import { dropBusiness } from "../../../server/counter-integration-support";
 import { randomUUID, randomInt } from "node:crypto";
 import { writeFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, inArray } from "drizzle-orm";
 import { getDb, withDbTransaction } from "@mi-pasaporte/db";
 import {
   users,
@@ -17,6 +17,9 @@ import {
   products,
   posOrders,
   posOrderItems,
+  sessions,
+  paymentMethods,
+  paymentMethodInitializations,
 } from "@mi-pasaporte/db/schema";
 import { hashPin } from "../../../server/staff-pin";
 import { ONBOARDING_TOURS } from "../../../server/onboarding/tours";
@@ -72,6 +75,11 @@ describe.skipIf(process.env.POS_M1_FIXTURE !== "true")(
                 () => randomUUID(),
               ),
               linesPerOrder: i === 2 ? 30 : 8,
+              lineIds: Array.from(
+                { length: i === 0 ? 0 : i === 1 ? 24 : 200 },
+                () =>
+                  Array.from({ length: i === 2 ? 30 : 8 }, () => randomUUID()),
+              ),
             };
           }),
         };
@@ -190,11 +198,16 @@ describe.skipIf(process.env.POS_M1_FIXTURE !== "true")(
               await tx.insert(posOrderItems).values(
                 f.orders.slice(offset, offset + 10).flatMap((posOrderId) =>
                   Array.from({ length: f.linesPerOrder }, (_, i) => ({
+                    id: f.lineIds[f.orders.indexOf(posOrderId)][i],
                     posOrderId,
                     productId: f.products[i],
                     nameSnapshot: `Producto ${String(i).padStart(4, "0")}`,
                     unitPriceSnapshot: "2.00",
                     quantity: "1",
+                    measureKind: "unit",
+                    quantityUnit: "unit",
+                    priceUnit: "unit",
+                    conversionVersion: "mass-si-1",
                     position: i,
                   })),
                 ),
@@ -245,6 +258,99 @@ describe.skipIf(process.env.POS_M1_FIXTURE !== "true")(
             await getDb().delete(users).where(eq(users.id, f.ownerId));
             await getDb().delete(users).where(eq(users.id, f.staffId));
           }
+          const businessIds = m.fixtures.map((f) => f.businessId),
+            userIds = m.fixtures.flatMap((f) => [f.ownerId, f.staffId]);
+          const orderIds = m.fixtures.flatMap((f) => f.orders),
+            lineIds = m.fixtures.flatMap((f) => f.lineIds.flat());
+          const checks = [
+            [
+              "businesses",
+              sql`select count(*)::int as count from ${businesses} where ${inArray(businesses.id, businessIds)}`,
+            ],
+            [
+              "users",
+              sql`select count(*)::int as count from ${users} where ${inArray(users.id, userIds)}`,
+            ],
+            [
+              "sessions",
+              sql`select count(*)::int as count from ${sessions} where ${inArray(sessions.userId, userIds)}`,
+            ],
+            [
+              "memberships",
+              sql`select count(*)::int as count from ${memberships} where ${inArray(memberships.businessId, businessIds)} or ${inArray(memberships.userId, userIds)}`,
+            ],
+            [
+              "subscriptions",
+              sql`select count(*)::int as count from ${subscriptions} where ${inArray(subscriptions.businessId, businessIds)}`,
+            ],
+            [
+              "modules",
+              sql`select count(*)::int as count from ${businessModules} where ${inArray(businessModules.businessId, businessIds)}`,
+            ],
+            [
+              "tours",
+              sql`select count(*)::int as count from ${businessOnboardingTours} where ${inArray(businessOnboardingTours.businessId, businessIds)}`,
+            ],
+            [
+              "locations",
+              sql`select count(*)::int as count from ${locations} where ${inArray(locations.businessId, businessIds)} or ${inArray(
+                locations.id,
+                m.fixtures.flatMap((f) => f.locations),
+              )}`,
+            ],
+            [
+              "categories",
+              sql`select count(*)::int as count from ${productCategories} where ${inArray(productCategories.businessId, businessIds)} or ${inArray(
+                productCategories.id,
+                m.fixtures.flatMap((f) => f.categories),
+              )}`,
+            ],
+            [
+              "products",
+              sql`select count(*)::int as count from ${products} where ${inArray(products.businessId, businessIds)} or ${inArray(
+                products.id,
+                m.fixtures.flatMap((f) => f.products),
+              )}`,
+            ],
+            [
+              "orders",
+              sql`select count(*)::int as count from ${posOrders} where ${inArray(posOrders.businessId, businessIds)} or ${inArray(posOrders.id, orderIds)}`,
+            ],
+            [
+              "lines",
+              sql`select count(*)::int as count from ${posOrderItems} where ${inArray(posOrderItems.posOrderId, orderIds)} or ${inArray(posOrderItems.id, lineIds)}`,
+            ],
+            [
+              "paymentMethods",
+              sql`select count(*)::int as count from ${paymentMethods} where ${inArray(paymentMethods.businessId, businessIds)}`,
+            ],
+            [
+              "paymentMethodInitializations",
+              sql`select count(*)::int as count from ${paymentMethodInitializations} where ${inArray(paymentMethodInitializations.businessId, businessIds)}`,
+            ],
+          ] as const;
+          const remaining: Record<string, number> = {};
+          for (const [label, query] of checks) {
+            remaining[label] = Number(
+              (await getDb().execute(query)).rows[0]?.count,
+            );
+            expect(remaining[label], `cleanup own ${label}`).toBe(0);
+          }
+          await writeFile(
+            `${directory}/cleanup.json`,
+            JSON.stringify(
+              {
+                kind: "pos-m1-list-cleanup-v1",
+                endpoint,
+                verified: true,
+                at: new Date().toISOString(),
+                remaining,
+              },
+              null,
+              2,
+            ) + "\n",
+            { flag: "wx", mode: 0o600 },
+          );
           m.phase = "cleaned";
           await save(file, m);
         }

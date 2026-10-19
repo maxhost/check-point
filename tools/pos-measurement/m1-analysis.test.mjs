@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { compare, median, p95, decision, analyze, rng } from "./m1-analyze.mjs";
 import { schedule, validateEndpoint, hash } from "./m1.mjs";
+import { validateOpenDetail } from "./m1-browser.mjs";
 
 test("nearest-rank p95 and conventional even median", () => {
   assert.equal(median([4, 1, 2, 3]), 2.5);
@@ -134,4 +135,77 @@ test("unambiguous regression is FAIL and insufficient population never PASS", ()
   assert.equal(decision(compare(pairs)), "FAIL");
   assert.equal(decision(compare(pairs), { improvement: true }), "FAIL");
   assert.equal(decision(compare(pairs.slice(0, 5))), "INCONCLUSIVE");
+});
+test("open-review evidence rejects incorrect snapshots even when catalog contains all names", () => {
+  const fixture = {
+    orders: ["o0"],
+    locations: ["l0"],
+    linesPerOrder: 8,
+    lineIds: [Array.from({ length: 8 }, (_, i) => `line${i}`)],
+    products: Array.from({ length: 120 }, (_, i) => `p${i}`),
+  };
+  const value = {
+    id: "o0",
+    status: "open",
+    tableLabel: "M1 000",
+    orderLabel: "M1 000",
+    location: { id: "l0", name: "Centro" },
+    total: "16.00",
+    items: Array.from({ length: 8 }, (_, i) => ({
+      lineId: `line${i}`,
+      productId: `p${i}`,
+      name: `Producto ${String(i).padStart(4, "0")}`,
+      quantity: "1",
+      unitPrice: "2.00",
+      lineTotal: "2.00",
+      measure: {
+        kind: "unit",
+        quantityUnit: "unit",
+        priceUnit: "unit",
+        conversionVersion: "mass-si-1",
+      },
+    })),
+  };
+  assert.equal(validateOpenDetail(value, fixture, "candidate"), true);
+  assert.equal(validateOpenDetail(value, fixture, "control"), true);
+  const legacy = structuredClone(value);
+  legacy.items.forEach((item) => {
+    delete item.measure;
+  });
+  assert.equal(validateOpenDetail(legacy, fixture, "control"), true);
+  assert.equal(validateOpenDetail(legacy, fixture, "candidate"), false);
+  for (const field of [
+    "lineId",
+    "productId",
+    "name",
+    "quantity",
+    "unitPrice",
+    "lineTotal",
+  ]) {
+    const changed = structuredClone(value);
+    changed.items[0][field] = "wrong";
+    assert.equal(
+      validateOpenDetail(changed, fixture, "candidate"),
+      false,
+      field,
+    );
+    assert.equal(validateOpenDetail(changed, fixture, "control"), false, field);
+  }
+  for (const field of [
+    "kind",
+    "quantityUnit",
+    "priceUnit",
+    "conversionVersion",
+  ]) {
+    const changed = structuredClone(value);
+    changed.items[0].measure[field] = "wrong";
+    assert.equal(
+      validateOpenDetail(changed, fixture, "candidate"),
+      false,
+      field,
+    );
+  }
+  const missing = structuredClone(value);
+  missing.items.pop();
+  assert.equal(validateOpenDetail(missing, fixture, "candidate"), false);
 });

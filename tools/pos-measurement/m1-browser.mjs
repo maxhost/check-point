@@ -29,6 +29,34 @@ const pathOnly = (url) => {
     return "[invalid-url]";
   }
 };
+export function validateOpenDetail(value, fixture, source) {
+  const index = 0;
+  return (
+    value.id === fixture.orders[index] &&
+    value.status === "open" &&
+    (source === "control" ? value.tableLabel : value.orderLabel) === "M1 000" &&
+    value.location?.id === fixture.locations[0] &&
+    value.location?.name === "Centro" &&
+    Number(value.total) === fixture.linesPerOrder * 2 &&
+    value.items?.length === fixture.linesPerOrder &&
+    new Set(value.items.map((item) => item.lineId)).size ===
+      fixture.linesPerOrder &&
+    value.items.every(
+      (item, i) =>
+        item.lineId === fixture.lineIds[index][i] &&
+        item.productId === fixture.products[i] &&
+        item.name === `Producto ${String(i).padStart(4, "0")}` &&
+        String(item.quantity) === "1" &&
+        /^2(?:\.0+)?$/.test(String(item.unitPrice)) &&
+        /^2(?:\.0+)?$/.test(String(item.lineTotal)) &&
+        (source === "control" ||
+          (item.measure?.kind === "unit" &&
+            item.measure.quantityUnit === "unit" &&
+            item.measure.priceUnit === "unit" &&
+            item.measure.conversionVersion === "mass-si-1")),
+    )
+  );
+}
 async function listening() {
   return new Promise((resolve) => {
     const socket = createConnection({ host: "127.0.0.1", port: 43242 });
@@ -204,7 +232,7 @@ async function instrument(context, fixture, source, save) {
       start: event.timestamp,
       status: null,
       encoded: null,
-      decoded: 0,
+      decoded: null,
       termination: null,
       initiator: {
         type: event.initiator.type,
@@ -236,7 +264,7 @@ async function instrument(context, fixture, source, save) {
   });
   cdp.on("Network.dataReceived", (e) => {
     const row = network.get(e.requestId)?.row;
-    if (row) row.decoded += e.dataLength;
+    if (row) row.decoded = (row.decoded ?? 0) + e.dataLength;
   });
   cdp.on("Network.loadingFinished", (e) => {
     const row = network.get(e.requestId)?.row;
@@ -245,6 +273,9 @@ async function instrument(context, fixture, source, save) {
         encoded: e.encodedDataLength,
         end: e.timestamp,
         termination: "finish",
+        decoded:
+          row.decoded ??
+          (row.method === "HEAD" || [204, 205].includes(row.status) ? 0 : null),
       });
     network.delete(e.requestId);
   });
@@ -363,25 +394,62 @@ async function instrument(context, fixture, source, save) {
   async function detail(observation) {
     await begin(observation);
     await page.evaluate(
-      ({ names, label }) => {
+      ({ names, label, source }) => {
         const state = (window.__m1Detail = {
           start: performance.now(),
           ready: null,
         });
         const check = () => {
-          const text = document.body.textContent;
+          const visible = (e) =>
+            !!e.getClientRects().length &&
+            getComputedStyle(e).visibility !== "hidden";
+          const region = [
+            ...document.querySelectorAll('[aria-label="Productos del pedido"]'),
+          ].find(visible);
+          const rows = region ? [...region.children].filter(visible) : [];
+          const actualOrder =
+            source === "control"
+              ? !!region
+              : !!region?.closest('section[aria-label="Orden"]');
+          const rowReady =
+            rows.length === names.length &&
+            rows.every((row, i) => {
+              const buttons = [...row.querySelectorAll("button")].filter(
+                visible,
+              );
+              const name = names[i];
+              const named = [...row.querySelectorAll("*")].some(
+                (e) => e.textContent?.trim() === name,
+              );
+              const quantity =
+                source === "control"
+                  ? buttons.some(
+                      (b) =>
+                        b.getAttribute("aria-label") ===
+                          `Añadir unidad de ${name} a 2.00` && !b.disabled,
+                    ) &&
+                    [...row.querySelectorAll("span")].some(
+                      (s) => s.textContent?.trim() === "1",
+                    )
+                  : buttons.some(
+                      (b) =>
+                        b.getAttribute("aria-label") ===
+                          `Editar cantidad de ${name}, línea ${i + 1}` &&
+                        b.textContent?.trim() === "1" &&
+                        !b.disabled,
+                    );
+              return named && quantity && /2[.,]00/.test(row.textContent);
+            });
+          const heading = [
+            ...document.querySelectorAll('h1,[role="heading"][aria-level="1"]'),
+          ].some((h) => visible(h) && h.textContent?.trim() === label);
           const pay = [...document.querySelectorAll("button")].find(
             (b) =>
               b.textContent?.trim() === "Cobrar" &&
               !b.disabled &&
               b.getClientRects().length,
           );
-          if (
-            state.ready === null &&
-            text.includes(label) &&
-            names.every((n) => text.includes(n)) &&
-            pay
-          )
+          if (state.ready === null && heading && actualOrder && rowReady && pay)
             state.ready = performance.now();
         };
         new MutationObserver(check).observe(document, {
@@ -393,6 +461,7 @@ async function instrument(context, fixture, source, save) {
       },
       {
         label: "M1 000",
+        source,
         names: Array.from(
           { length: fixture.linesPerOrder },
           (_, i) => `Producto ${String(i).padStart(4, "0")}`,
@@ -412,16 +481,23 @@ async function instrument(context, fixture, source, save) {
         .click(),
     ]);
     const value = await response.json();
+    observation.detailAssertion = {
+      valid:
+        response.status() === 200 && validateOpenDetail(value, fixture, source),
+      expectedLines: fixture.linesPerOrder,
+      observedLines: value.items?.length ?? null,
+      measureAuthority:
+        source === "control"
+          ? "explicit unit fixture/schema; legacy DTO does not expose measure"
+          : "canonical DTO and fixture",
+    };
     await page.waitForFunction(() => Number.isFinite(window.__m1Detail?.ready));
     observation.detailInteractiveMs = await page.evaluate(
       () => window.__m1Detail.ready - window.__m1Detail.start,
     );
     await settle(observation, pending, network);
     observation.valid =
-      response.status() === 200 &&
-      value.id === fixture.orders[0] &&
-      value.items?.length === fixture.linesPerOrder &&
-      Number(value.total) === fixture.linesPerOrder * 2 &&
+      observation.detailAssertion.valid &&
       observation.pageErrors === 0 &&
       observation.settlement === "finish" &&
       observation.network.every(
@@ -470,10 +546,7 @@ async function instrument(context, fixture, source, save) {
     );
     await page
       .getByRole("button", {
-        name:
-          source === "control"
-            ? "Volver al listado de órdenes"
-            : "Volver al historial",
+        name: source === "control" ? "Volver al listado de órdenes" : "Salir",
         exact: true,
       })
       .first()

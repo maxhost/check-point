@@ -1,6 +1,8 @@
-# 0242 M1 — receta R1, listado real contemporáneo
+# 0242 M1 — receta R1.1, listado real contemporáneo
 
-Receta previa a datos. Este primer corte mide listado; no cierra0242 ni sustituye
+Revisión R1.1 previa a datos; sustituye R1 del commit1c39815c, rechazada por QA
+sin ejecutar datos. Corrige adaptador OPEN, marcador de revisión, bytes desconocidos
+y verificación durable de cleanup. Receta previa a datos. Este primer corte mide listado; no cierra0242 ni sustituye
 los gates de catálogo, detalle, guardar, QR, preparar y cerrar. No hay datos M1
 recogidos al escribir R1. El coordinador autoriza recursos por separado después de
 la preparación offline. No capturas/push/PROD. M0, sus21identidades y todos sus
@@ -57,7 +59,9 @@ prefijo `posm10242-`; nunca importar o resetear tenants/ledger/históricos M0.
 Tres tenants sintéticos: empty0órdenes, normal24abiertas×8líneas/120productos,
 volume200abiertas×30líneas/2000productos. Ocho categorías, dos locales. Todos los
 productos/líneas son unidades compatibles con ambas fuentes, tarifa2.00,
-cantidad1, total16.00normal/60.00volume. Órdenes alternadas entre locales; índices
+cantidad1, total16.00normal/60.00volume. Los IDs de cada línea se premanifiestan
+y se insertan explícitos; inspect verifica IDs/producto/nombre/qty/precio/medidas
+unit/unit/unit/mass-si-1 y posición contra DB antes del freeze. Órdenes alternadas entre locales; índices
 pares pertenecen a Centro, impares a Norte. El manifiesto congela orden de IDs de
 locales `[Centro,Norte]`; ambos clientes seleccionan Centro inicialmente, tal
 como hacen control y candidato. Normal compara12filas visibles respaldadas por
@@ -91,9 +95,19 @@ Los10pares alternanAB/BA (cinco de cada uno).
 Cuatro diagnósticos separados, cada uno5pares por rol: empty, volume,
 lista→detalle y detalle→lista. AB/BA alterna; owner iniciaAB y staffBA para
 balance global. Lista→detalle abre la misma ordenM1 000 del primer local;
-detalle usable requiere respuesta canónica, sus8productos reales, label y acción
-Cobrar habilitada. Retorno prepara ese mismo detalle fuera del reloj y mide
-acción de volver hasta el mismo conjunto exacto de12filas y Nueva orden activa.
+detalle/revisión abierta usable exige respuesta exacta contra fixture: ocho
+lineIDs/productIDs/nombres, cantidad1, precio2, lineTotal2, localCentro, estadoOPEN
+y medidaunit. El DTOcontrol no expone medida: se acredita por fixture y esquema
+inspeccionados, sin inventar campos deAPI. El marcador se limita a la región
+Productos del pedido visible (y secciónOrden en candidato), con exactamente
+ochofilas reales, cada nombre/cantidad1/precio2 y Cobrar habilitado. No usa nombres
+del catálogo120productos ni texto global como prueba de líneas. AbrirOPEN lleva
+a revisión/editor, no al ticket de una venta cerrada. Retorno prepara ese mismo
+editor/revisión fuera del reloj y mide
+acción de volver hasta el mismo conjunto exacto de12filas y Nueva orden activa:
+control usa Volver al listado de órdenes; candidato usa Salir. No cambiar producto
+para igualar selectores. La respuesta y el DOM deben validar ambos antes de aceptar
+el intento, sin relajar el marcador.
 No guardado ni venta. No son transición de otra rutaRSC. Con staff[pos] no existe
 landing autorizada distinta equivalente: ese trayecto no forma esta población,
 no es un test saltado niPASS. Owner tampoco se mezcla con un trayecto distinto.
@@ -124,7 +138,10 @@ tags propios, sin sumar medianas para fabricar trayectos.
 Tras marcador se espera finalización de requests y lectura de respuestas, más
 500ms continuos sin pendientes, máximo15s. Waterfalls registran finish/error/
 timeout y bytes realmente observados; bytes desconocidos quedan null, nunca0
-inventado. Este asentamiento queda FUERA del reloj listo. Fracaso/timeout es
+inventado. CDPdecoded inicia null; sólo se suma cuando dataReceived lo observa,
+y cero sólo cuando observado o finalizaciónHEAD/HTTP204/205 lo confirma. Un
+finish sin evidencia de decoded no convierte cache/error/timeout en cero.
+Este asentamiento queda FUERA del reloj listo. Fracaso/timeout es
 evidencia inválida y se conserva. No cerrar contextos con peticiones pendientes
 silenciosas ni inferir status200, cancelación o bytes de SQL terminado.
 
@@ -147,6 +164,12 @@ Los gates estructurales del protocolo siguen íntegros: ceroGET redundantes,
 caché sin refetch por crear/editar/cambiar pestaña/calcular peso, una confirmación
 de cierre y autoridad/efectos equivalentes. R1 sólo observa el subconjunto de
 listado; no acredita los demás por ausencia de ejecución.
+
+Cleanup posterior exige SELECT/asserts de ausencia de los propios tenants,
+owners/staff, sesiones, membresías, órdenes, líneas, productos, categorías,
+locales, módulos, tours, suscripciones y métodos/inicializaciones de pago. Sólo
+después persiste artefacto0600 saneado de conteos y marca cleaned; nunca liberar
+DB basándose sólo en DELETE ejecutado. No elimina históricos/tenants ajenos.
 
 ## Segundo corte obligatorio, aún no autorizado por R1
 
