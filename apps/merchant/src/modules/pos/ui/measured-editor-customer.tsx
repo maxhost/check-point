@@ -108,14 +108,14 @@ export function MeasuredEditorCustomer({
           if (!open) customer.cancel();
         }}
       >
-        <div className="grid max-h-80 gap-3 overflow-y-auto">
+        <div className="grid max-h-96 gap-3 overflow-y-auto">
           <Text variant="small">Escanea el QR o pega el código del pase.</Text>
           {error && <Alert kind="error" title={error} />}
           {resolving ? (
             <Text>Identificando cliente…</Text>
           ) : (
             <>
-              <div className="[&_video]:h-40! [&_video]:aspect-auto!">
+              <div className="mx-auto w-44 [&_.counter-scan-hint]:hidden">
                 <QrScanner onDecode={identify} />
               </div>
               <TextField
