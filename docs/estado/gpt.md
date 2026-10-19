@@ -3,7 +3,17 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO VIGENTE — DETENIDO POR ORDEN DEL OWNER (2026-10-19)
+## ESTADO VIGENTE — QA MANUAL DEL OWNER (2026-10-19)
+
+Actualización: owner probó la venta con empleado y confirmó que funciona correctamente. Ese caso queda aprobado; cliente+descuento e impresión siguen pendientes, sin autorización nueva de push/PROD.
+
+Owner confirmó corregido el guardado por peso tras migración local. Resultados del QA manual y mejoras diferidas registrados en `mejoras.md`: unitarios/kg/decimales/validaciones/mezcla/cobro/importes/recarga sin duplicados y anulación de órdenes no cobradas funcionan según owner. Selector sólo kg (no pudo750g) y pérdida de filtro al volver quedan diferidos; cliente+descuento pendiente, impresión mañana, empleado pendiente. Entrada local de empleado `http://localhost:3201/acceso-equipo` verificada HTTP200, sin tocar túnel ni servidor. No declarar QA completo ni reversión de venta cobrada validada.
+
+Owner reordenó: preparar QA real primero y corregir sus incidencias; publicación después de su aceptación y autorización explícita. Harness simplificado/replay/limpieza posteriores; R2 diferido. No reactivar agentes ni campañas. Conservar servidor3201/túnel y cambios ajenos; sin capturas/push/PROD.
+
+Primer bloqueo manual: crear o editar producto por peso devolvía409 `pos_client_upgrade_required`; productos unitarios sí guardaban. UI/API ya transmiten `X-Catalog-Contract: 2`. Inspección de la DB LOCAL usada por merchant confirmó107 migraciones y las tres barreras `product_*_legacy_check`: faltaban0107/0108. Root ejecutó el migrador existente protegido `node --env-file=apps/merchant/.env.local packages/db/src/migrate-local.ts` bajoNode24, sin modificar código. Verificación posterior:109 migraciones, hashes del journal completos/0pendientes, barreras legacy deproducto ausentes y checks permanentes price/cost shape presentes. No pruebas ni fixtures contra DB de QA; pendiente que el owner reintente crear/editar y confirme el resultado desde su sesión. Servidor/túnel preservados, sinPROD.
+
+## HISTÓRICO — DETENIDO POR ORDEN DEL OWNER (2026-10-19)
 
 **NO continuar automáticamente0242, harness, QA niR2.** El owner detuvo el trabajo por tiempo/presupuesto. La autorización posterior fue exclusivamente un agente para comprobar/reproducir el replay pendiente y devolver resumen; ya finalizó. No nuevas ventas/fixtures/builds/instalaciones/servidores/pruebas sin nueva instrucción.
 
