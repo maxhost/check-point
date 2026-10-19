@@ -1,3 +1,301 @@
+# 0242 R1.3 — campaña de listado completa, revisión QA final pendiente
+
+Runner ejecutado dcd5434c3a98433590976e3fc641df2f179a869c, limpio al congelar.
+Namespace privado `/private/tmp/checkpass-pos-0242/m1-r13-dcd5434c` (0700),
+artefactos0600. No rebuild: control6f/VLV2 y COPY nueva candidato1fd/mQAE,
+freeze anterior1617 verificado, producto/instrumentación/dependencias sin diff.
+Prepare plan3cce52df; fixture setup/inspect/login PASS sin skips; copias basales
+wx0600 antes freezeFINAL d0a0293d4960064a73db88cab3f7f1cd78b301cc7234e40ca4db94c14bbdfca2.
+Metadata prepare=execution4b03b10e…46f7c, changedKeys[]. Receta ejecutada SHA256
+af682c3fe7fcb74ef4a7a031ddd86da58416100bf42bc1e9167ece4598d7c43c.
+
+Campaña exacta EXIT0, complete=true:240observaciones/240warmups/20preparaciones,
+todos válidos y preservados; sin retries, reemplazos o descartes. Mismas30parejas
+normales por rol, ABBA y estimadores predeclarados. Resultados de LISTADO normal:
+
+| Rol | Mediana control→candidato | Delta mediana CI95(ms) | p95 control→candidato | Delta p95 CI95(ms) |
+| --- | --- | --- | --- | --- |
+| OWNER | 2319→1593.90ms (−31.27%) | [−743.20,−696.50] | 2368.20→1662.30ms | [−738.20,−685.80] |
+| STAFF[pos] | 2330.40→1636.55ms (−29.77%) | [−711.35,−668.60] | 2537.20→1670.80ms | [−905.40,−684.10] |
+
+El analizador versionado da medianImprovement/listNonRegression PASS para ambos
+roles; no es PASS global0242 ni de rutas críticas mutantes. Assets nuevos,
+empty/volume e ida/retorno son diagnósticos separados sin inferencia. Detalle es
+algo más lento en candidato: mediana OWNER783.20→827.80ms y STAFF790.80→835.20ms;
+retorno17.50→27.30ms y23.20→30.90ms. No se borra ni declara no-regresión de R2.
+La categoría especulativa sólo opera con conjunción R1.3: errores/bytesparciales y
+strictFunctionalValid originales permanecen. R1.2 FAIL y D1 EXIT2 históricos
+siguen intactos; ningún resultado anterior se reinterpretó como PASS.
+
+Reconciliación PRIVADA exhaustiva, 500tags exactos con RID:63,112filas;
+14,796requestSTART=END;15,180SQLSTART=END;1,580phaseSTART=END;0SQLfallidos,
+0tags desconocidos y0eventos posteriores al audit previo a close donde existe.
+20tags sin trace corresponden exactamente a retorno sinHTTP/CDP0, no skips.
+Se preservan2avisos diagnósticos adicionales de alineación de reloj: diferencias
+5.441/5.212ms entre SQLduration y end.at−start.at, ambos START/ENDoktrue completos.
+queryStart muestrea performance.now antes HMAC/record, cuyos timestamps se toman
+después; el umbral5ms fue chequeo auxiliar, no gate de campaña. Los avisos NO se
+borraron: explicación en trace-reconciliation-clock-notes.json, raw intacto.
+SQL normal por observación OWNER27→45 y STAFF23→41: aumento18, no reducciónglobal.
+Precargas explícitas de2locales y todos sus costos permanecen observados.
+
+Identidad poststop válida, runtimeDeltas[] en ambas fuentes;240PIDs propios
+comprobados ausentes y43242sinlistener. Cleanup MISMOdcd EXIT0,1PASS0skips,
+14conteos propios0/phasecleaned, sin postinspect que reescriba basal. DB devuelta
+por factory a regresión; no más acceso DB autorizado para este corte.
+
+Artefactos privados principales (hashes completos también en
+final-artifact-manifest.json):
+
+- list-results.json:6930983e5c9be729da330470bd5a8e4d5e160689340596e1db700f60caf1387e.
+- server-trace.jsonl:b2bd03cd8a46e10a793d8237ec43eccb2f23174440f7c096b1b656a3fbe6c3ec.
+- analysis.json:c18896485c79a5cea1449b210f825c079c8f934c2bc861c727972a28c3277cc3.
+- trace-reconciliation.json:e919db7343b03f784efef79aed12521ebfb44831fe715a3fb6158b40d613f806.
+- trace-reconciliation-clock-notes.json:439a27846746ce53c8b453bfddac8b604fe0a60939210dbd41a00e617e4cb83b.
+- identity-after-stop.json:1dd4cfa49b14e7de47c06e67f8fa96c98d786817fcc2e5602fe8f325d17cb2eb.
+- cleanup.json:19c333c69d438c417b425628abc67edf587a50711f760732f984dc1b326f1680.
+
+QA independiente final verifica raw/identidades/CI/reconciliación. R2 permanece
+pendiente, propuesta privada r2-proposal-readonly.md no ejecutada: fichas/paths y
+receta nueva deben fijar tamaño/estratos/6relojes/cámara/tail/DB/replay antes datos.
+No capturas/push/PROD, no cambios a3201/túnel/M0 ni originales congelados.
+
+---
+
+# 0242 R1.3 — política terminal previa a nuevos datos
+
+D1 ejecutado exactamente sobre ebf20fbe en namespace privado m1-d1-ebf20fbe:
+setup/inspect/login PASS, freeze7efe3526, sin rebuild. Dos entradas OWNER
+control→candidato, completed=true, strictGateSatisfied=false, EXIT2 y cero
+muestras inferenciales. 25/23 canceladas con flags Nextprefetch/RSC y ExtraInfo,
+status200/textxcomponent, cancelled/ERR_ABORTED, encodednull/decoded parcial.
+Finalizan1884–2107ms/1776–2029ms despuésDocument, antes marker y close.
+Esto prueba requests especulativos marcados; no demuestra mecanismo interno.
+API/DOM reales válidos, 0pageErrors; el FAIL normal anterior permanece intacto.
+Datos SHA c21b78757e0b03a2933b66d4d7eed91fa67380c148b7ad92688f11bf98a641dc;
+trace5d337352302c3428e600b370732eeb5dc821e067c15a142f3ab14c26010ac75b.
+Identidad final válida, runtimeDeltas[] ambas fuentes. Cleanup MISMOebf PASS,
+14tablas0/phasecleaned, SHA3d227ad873516213979f8fde18553b29756afce769e1e7fca5d9d7ff83f8c2d9,
+puerto43242 sin listener. Basales y congelados conservados, sin postinspect.
+
+R1.3 preparado offline por autorización del coordinador: categoría separada
+speculative-cancel sólo con TODA la conjunción de receta y fingerprints D1 por
+build/hash/stack estrictos. Conserva errores/bytes/costos y strictFunctionalValid;
+API/document/assets/acciones/RSC sin prueba siguen estrictos. Detalle/retorno y
+D1 no adoptan excepción. Schedule240/240 y estadística intactos. Dos catálogos
+consistentes con precarga2locales por lectura; sin afirmar query no observada.
+DB volvió a regresión; nueva preparación/campaña espera QA y transferencia.
+
+---
+
+# 0242 D1 — observabilidad previa a otra campaña, sin inferencia
+
+La campañaR1.2 en1fd427d2 congeló receta6bb4f051…a419 y freeze1617de3c…6436.
+Setup44.3s, inspect38.0s, login39.6s: cada operación1PASS/0skips. Build directo
+Node/Next EXIT0, candidato1fd/BUILD_IDmQAEivzHwhRenkWFyULLz. Prepare/ejecución
+metadata coinciden4b03…6f7c, changedKeys[]; identidad final estricta pasó.
+
+Única entrada: warmupCONTROL, primer bloqueowner. APIlist200/válida,12labels,
+listUsable3776ms,0pageErrors y settlementfinish, pero functionalValidfalse:
+25Fetch RSC /backoffice* con canceledtrue, response200 observada, encodednull y
+decodedparcial. FinCDP1859–2096ms trasDocument, antes del marcador3776ms; no lo
+causó context.close. Initiators llegan a fetch de Next y son compatibles con
+prefetch; al faltar flags/errorText NO se atribuye causa definitiva. CERO muestras
+medidas, candidato no observado, NO M1PASS. Reporte privado list-results.jsonSHA
+`f6fc1b53819f6aa5954dd14bcb990a7bdb37718b208f7f82a59d180f4ff9dff6`;
+server-traceSHAe6029d6d018044321b598515779f392105f2aae7417e5def3ef0b936e2a59756.
+
+Cleanup MISMO1fd antes de editar:1PASS/0skips8.71s,14conteos0/phasecleaned,
+43242sinlistener; cleanup.jsonSHA
+`2d3095a9926db4520b45c81eaf53a2aff4cfcaf557e84502328405ed3c44f9aa`.
+Identity-after-stop.json preserva identidad válida y runtimeDeltas[] antescleanup.
+Basales schema0f582307…ccd0 y fixture1fb057bb…6532 se conservaron wx0600;
+no postinspect ni reescritura. DB devuelta por factory a regresión, sin nuevos
+servidores/fixtures/datos mientras se prepara este delta offline.
+
+D1 propuesto y autorizado offline por coordinador: exactamente2primeras entradas
+OWNER normal control→candidato, sin warmups/reloads ni muestras inferenciales.
+Receta D1 exacta añadida ANTESdatos. Se agregan flags permitidos booleanos,
+CDPcanceled/errorText/blockedReason/wallTime y fases de lifecycle; no cookies,
+queries/scope/QR ni capturas. Gates normales NO se relajan; ceroGETcandidate sigue
+obligatorio. ObsComplete no equivalePASS y puede salir2 con gate estrictofalse.
+Reuso candidato1fd/mQAE sólo COPY privada nueva, compiladosidénticos a freeze1617,
+producto/instrumentación/lockdiff vacío, dependencias/configestrictas y fuente1fd
+separada del runner nuevo; runtime original nunca se inicia ni modifica.
+
+Se pide revalidaciónQA del delta y autorización técnica nueva ANTES de D1. No se
+reutiliza3776 como muestra ni se transforma FAIL previo enPASS. Trece tests offline,
+0skips, incluyen allowlist sin secretos y exactamente2entradas noinferenciales.
+La revisión de e7e9192e detectó que ExtraInfo temprano podía perder flags.
+Se corrige con buffer de booleanos por requestId y correlación local saneada;
+prueba ambos órdenes CDP, snapshots independientes y ausencia de headers crudos.
+No se ejecutó prepare ni diagnóstico sobre ese candidato rechazado.
+Sólo paths asignados m1.mjs/m1-browser.mjs/m1-analysis.test.mjs/receta/handoff.
+
+---
+
+# 0242 M1R1.2 — fallo de identidad previo a muestras y corrección offline
+
+Sobre runner3c07ff93 y namespace `/private/tmp/checkpass-pos-0242/m1-r1-3c07ff93`:
+setup1PASS/0skips43.9s; inspectinicial1PASS/0skips31.8s; login realOTP/PIN
+1PASS/0skips44.7s. Build propio webpackproduction EXIT0, BUILD_ID
+`jkkbjmrA74A1y1VG_oJTw`, buildSource3c07. Control6f/BUILD_IDoriginal intacto.
+Freeze SHA256 `8107325fa1bfe863d3fce83f52428d17e8fb00c0aceb8705271b056db5973afa`,
+recipeSHA `45a112985ed98c70910e3649c63fec5a69493f0bdba84c340483f1d9cf5ffc75`;
+2274sourcehashes,814control/822candidatocompilados,6cookies proveedor.
+
+Primer intento de launcher setup omitió namespace y no llegó a DB; logargvfail
+privado preservado antes de corregir argumentos. La única llamada measure3c07
+falló por Dependency metadata drift ANTES de importar/lanzar Chromium, servidor,
+warmup o muestra. No existe list-results.json; measure.log se conserva. CERO
+observaciones temporales, noM1PASS ni conclusión de producto. No se repite ni
+sustituye muestra alguna. No hubo servidor propio que detener;43242sinlistener.
+
+Plan tenía `.modules.yaml` SHA aed8958f6e21343c52ee5d09df070ae41728ade96e17ee724e97d5f7a81cd8a6,
+observado previo a medida 1d3474e311314209e7d753904ae414d3944baa96e6298eedd92aea47ff20740f.
+Lockfuente se conservó `4cfe18864f12af4fe3b0cd84ab477e936ecd52d96847579cc087e6e13b020821`.
+Se copió metadataobservado0600: JSON con prunedAt de build, storeDir de candidate
+scratch y virtualStoreDir pasando por su symlink a node_modules del WT. El plan
+NO guardó bytes iniciales de metadata: no hay diff histórico atribuible, sólo
+hashes y contenido observado. Tras cleanup wrapperROOT volvió a cambiar metadata
+(hash4b03b10eeeb55917de02ec9395969a3d67a0d6f835c6c8a9e865b278aeb46f7c).
+No se atribuye a cambio de paquetes ni se usa para rebajar identidad.
+
+Antes de cualquier edición se hizo cleanup MISMO3c07:1PASS/0skips9.05s,14tablas
+propias con SELECT/assert0 y phasecleaned; cleanup.jsonSHA256
+`1308b8f17025ac00c0dd7ec0969281d46638cdf63d0871b69beec0f8f31f9604`.
+DBtransferida por coordinador de vuelta a regresión; sinDB/build/freeze nuevos
+hasta otra asignación. Nunca tocar3201/PID927/túnel/M0/tenants ajenos.
+
+Basales wx0600 conservadas ANTESfreeze, sin postinspect que las sobrescriba:
+schema-preflight.baseline.jsonSHA25969cbc24fdb0485fe2d188f816121c1f18b56684928348517fb64abd946879;
+fixture.baseline.jsonSHA c4a27aa4cbb9d78a946241bcce9d29e262d837b3ba7f8615033cedb5ee035237.
+El archivo fixture.json posterior sólo cambia al estado cleaned; la copia basal
+retiene el hash original. Recursos/auth/config/cookies/logs/freeze anteriores
+permanecen privados. Setup/inspect/login/build/freeze PASS no son PASSM1.
+
+Delta offline R1.2: copia metadataPREPARE sólo provenance y metadataEJECUCIÓN en
+freezeFINAL después de wrapper/build, con hashes y changedKeys de copias reales.
+Verificación exacta de ese snapshotfinal durante campaña, nunca contra timestamp
+prebuild. Identidad de Node/binpnpm/packageJSON/versiones/realpaths/lockfuente y
+installedlock estricta en prepare/freeze/ejecución. Build directo Node/Next evita
+que pnpmexec en scratch reconfigure metadatos compartidos. Se añade test negativo
+significativo de baselinefinal, cambio durante campaña y drift de dependencias.
+No cambia tamaño/orden/estimadores ni marcadores. Total once pruebas offline,
+ceroskips; corrección y nueva receta pendientes de QA antes de otros datos.
+
+---
+
+# 0242 P6B — preparación offline M1R1
+
+Prepare offline ee97e93d EXIT0 en namespace
+`/private/tmp/checkpass-pos-0242/m1-r1-ee97e93d`, planSHA256
+`96874b79235c52a3c05e95ed75b90405b7f4a81bbdc1f38b9b18c6d020d5edb3`.
+Control6f/BUILD_IDoriginal/hash54cbc…ec5fe verificados;815archivos.next. Candidato
+sólofuente ee97, SIN.next. Archivo fuentecontrol104980480bytes y candidato
+111216640bytes, ambos0600. Auditoría7695archivos/1399dirs,14symlinksdeps,
+0modos incorrectos; namespace0700/plan0600, archivehistórico conserva0644.
+NoDB/build/servidor/fixture/medición. El plan viejo se conserva; siguiente fuente
+requiere namespace nuevo y aprobaciónQA del delta antes de datos.
+
+Política freeze siguiente, explicada al coordinador ANTESdatos y acotada por QA:
+sólo cache/fetch-cache/**, cache/images/** y trace bajo.next son runtime mutables, con
+hashes inicial/final y deltas por intento. Ningún otro cache/webpack/tsbuildinfo,
+ISRserver, manifest/server/static/BUILD_ID se excluye. Un cambio compilado aborta;
+control también debe igualar mapa compilado archivado inicial. Test significativo
+modifica archivos temporales propios: cachepermitido queda observado, cambios
+server/manifest/BUILD_ID/webpack/trace-build/cache desconocido se rechazan.
+
+Segunda preparación e58f41b6 falló por ENOBUFS de gitarchive >100MB antes de
+extraer fuente: namespace `/private/tmp/checkpass-pos-0242/m1-r1-e58f41b6`
+conserva únicamente copiaarchive0600 (6042760bytes/hashoriginal) y control/0700
+vacío; sinplan/candidate/build/DB/servidor/datos. El delta siguiente transmite
+stdout de gitarchive directamente a FD de archivo propio wx0600, sin límite
+de capturaRAM, y sólo después extrae con tar. Manifiesta sourcearchives/hashes
+de ambas fuentes. No altera archivo original ni reutiliza intentos fallidos.
+
+Preparación925e3397 revisada por QA sin bloqueantes funcionales de receta/código.
+Su primer prepare offline se detuvo por una restricción de modo: archive histórico
+0644 bajo padreprivate0700; selected/ci.env son0600. Namespace
+`/private/tmp/checkpass-pos-0242/m1-r1-925e3397` queda0700 VACÍO, sin plan/runtime
+extraído ni datos. Fix posterior sólo lee archive regular/no-symlink dentro de
+padre0700, verifica SHA original y crea copia exclusiva0600 propia antes de tar;
+nunca modifica modos/contenido originales. Este fallo es setup de permisos, no
+producto ni medición. Nueva preparación requiere namespace/SHA explícitos.
+
+Revisión previa rechazada1c39815c preservada sin datos. Este incrementoR1.1
+atiende los cuatro hallazgos de QA antes de cualquier medición: retornoOPEN
+candidato por Salir; respuesta exacta de ocho snapshots con IDs premanifestados y
+marker limitado a Productos del pedido/Orden, no nombres de catálogo global;
+CDPdecoded desconocido null, cero sólo observado/confirmado; cleanup con SELECTs
+de ausencia en catorce tablas propias y artefacto saneado antes de cleaned.
+Los adaptadores y markers siguen estrictos. Ver recetaR1.1 para contrato exacto.
+
+Nuevo autor/contexto fresco, WT/ref `pos-ui-grid-0242`, base exacta
+`b6375774a5b2f5c157df7aadc09b5f6820479c99`, después de QA funcional combinado
+`a9d32924` aceptado por coordinador. Este incremento implementa únicamente
+harness/receta offline. **No hay datos, build, Nextstart ni operacionesDB M1.**
+Tampoco conclusión de rendimiento, aceptaciónQA o cierre0242.
+
+Ocho paths de ficha: cuatro scripts `m1.mjs`, `m1-browser.mjs`, `m1-analyze.mjs`,
+`m1-analysis.test.mjs`; dos fixtures `m1-fixture.neon.integration.test.ts` y
+`m1-fixture.test-support.ts`; receta `0242-m1-receta.md` y este handoff. Ningún
+cambio de producto/kit/guard/schema/tooling compartido ni factory/estados/índices.
+
+RecetaR1 previa a datos:30paresABBA del listado normal por rol; diez primeras
+entradas con assets nuevos por fuente/rol; cinco pares por rol separados para
+empty, volume, lista→detalle y detalle→lista. Son240observaciones medidas,
+240warmups y20preparaciones de detalle, estas últimas dos fuera de las muestras.
+TransiciónRSCowner queda diagnóstico pendiente separado; staff sólo[pos] no
+tiene landing autorizada distinta equivalente. No se declara ese trayectoPASS.
+Control y candidato comparten doce filas visibles/24IDs normales, con primer
+localCentro y orden `[Centro,Norte]` manifestado, nunca24contra12.
+
+Launcher separa runnerSHA de buildSource/BUILD_ID, valida configuraciónCI y
+antiPROD incondicional, exige autorización de recursos del coordinador para
+fixture/build/freeze/measure y usa sólo wrapperNeon para DB. `prepare` construye
+scratchruntime sin cuartoWT y sin sobrescribir `.next`/M0: código original6f más
+archivecontrol original, candidato fuente congelada, dependencias/paths/hashes
+manifestados. Preparación real de scratch ee97 se ejecutó sólo offline, como consta arriba.
+No build de candidato ni runtime de servidor.
+El control NO se recompila. Uso serial del mismo43242 aprobado por coordinador,
+con proceso nuevo por observación y exactamente1warmup equivalente antes del
+reloj; assets nuevos son otro contexto después de ese warmup. DB preparada/caliente,
+sin afirmaciónDBfría ohostingPROD. Cookie login usa helper OTP/PIN existente.
+
+Browser observa todas las peticiones y sus initiators, incluidos proveedor,
+sesión/módulos globales. No oculta un GET global de primera entrada detrás de
+un smoke calentado: warmup también debe pasar gates funcionales/estructurales,
+se conserva por separado y su fallo detiene campaña. Marcador DOM exige datos
+reales y Nueva orden habilitada; responseassertions vinculan IDs/labels/local/
+líneas/total. Requests y bytes quedan finish/error/timeout; quietud500ms sin
+pendientes, máximo15s fuera de listUsable. No interceptacionesAPI, capturas,
+cookies fabricadas ni cuerpos/tokens en reportes. Rutas mutantes quedan fuera de
+R1: recetaR2 obligatoria antes de identidades/datos, con cámara sintética igual,
+auth/token/API/DB reales y tailpostclose fuera de closeConfirmed bajo la misma
+regla declarada de finalización. Las21identidades M0 no se consumen.
+
+Análisis calcula diferencias de medianas/p95 MARGINALES, p95nearest-rank,
+bootstrapPAREADO10000/seed24220261018 y ICpercentil95; no mediana de diferencias.
+Distingue PASS/FAIL/INCONCLUSIVE y no transforma incertidumbrep95 enPASS.
+Rechaza corte incompleto, duplicado, fallos y tamaños incompatibles; los diagnósticos
+se reportan separados y no acreditan rutas críticas ausentes. Instrumentación
+SQL/fases real existente se conserva, con artefacto privado/hash y resumen por tag.
+
+Checks offline en Node24.20.0/pnpm11.4.0: ESLint focal, Prettier, node--check y
+node--test estadístico y validación de snapshots (diez pruebas, ceroskips); tscmerchant--noEmit
+--incrementalfalse EXIT0. El SHA definitivo y resultado final de checks se entregan
+al coordinador fuera de este archivo para evitar autorreferencia. No se ejecutó
+suite DB (no se cuenta un skip comoPASS), browser, build ni servidor. No procesos
+propios que detener. RecursosDB siguen reservados al autor de regresión hasta
+transferencia explícita. Revisión previa de receta/código por QA es el siguiente
+paso antes de cualquier dato M1. No factorydeliver por cuenta del worker.
+
+---
+
+El handoff histórico siguiente corresponde exclusivamente al diagnóstico nativo
+previo; sus datos no se reutilizan como M1.
+
 # 0242 P6B — incremento diagnóstico nativo previo a M1
 
 Entrega parcial: harness diagnóstico y una venta nativa nueva con inspección

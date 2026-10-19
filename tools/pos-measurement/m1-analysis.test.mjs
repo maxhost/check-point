@@ -1,0 +1,495 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { compare, median, p95, decision, analyze, rng } from "./m1-analyze.mjs";
+import { schedule, validateEndpoint, hash } from "./m1.mjs";
+import {
+  validateOpenDetail,
+  diagnosticRequestHeaders,
+  requestFlagTracker,
+  isSpeculativeCancel,
+  SPECULATIVE_CANCEL_POLICY,
+} from "./m1-browser.mjs";
+import { diagnosticSchedule } from "./m1.mjs";
+import { snapshotBuild, compareBuildIdentity } from "./m1.mjs";
+import {
+  metadataProvenance,
+  assertMetadataIdentity,
+  assertDependencyIdentity,
+} from "./m1.mjs";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, dirname } from "node:path";
+
+test("nearest-rank p95 and conventional even median", () => {
+  assert.equal(median([4, 1, 2, 3]), 2.5);
+  assert.equal(p95(Array.from({ length: 20 }, (_, i) => i + 1)), 19);
+  assert.equal(p95(Array.from({ length: 30 }, (_, i) => i + 1)), 29);
+  assert.throws(() => median([NaN]));
+  assert.throws(() => p95([]));
+});
+test("paired resampling preserves constant paired shift at every marginal quantile", () => {
+  const pairs = Array.from({ length: 30 }, (_, i) => ({
+    control: 1000 + i * 31,
+    candidate: 900 + i * 31,
+  }));
+  const result = compare(pairs);
+  assert.deepEqual(result.median.ci95, [-100, -100]);
+  assert.deepEqual(result.p95.ci95, [-100, -100]);
+  assert.equal(decision(result, { improvement: true }), "PASS");
+  assert.equal(decision(result), "PASS");
+});
+test("marginal median delta differs from median of paired deltas", () => {
+  const pairs = [
+    { control: 1, candidate: 100 },
+    { control: 100, candidate: 101 },
+    { control: 101, candidate: 1 },
+  ];
+  assert.equal(compare(pairs, { iterations: 100 }).median.delta, 0);
+  assert.equal(
+    median(pairs.map((p) => p.candidate - p.control).map((n) => n + 100)) - 100,
+    1,
+  );
+});
+test("tail uncertainty cannot be hidden by median improvement", () => {
+  const pairs = Array.from({ length: 30 }, (_, i) => ({
+    control: 1000,
+    candidate: i < 28 ? 800 : 3000,
+  }));
+  const a = compare(pairs),
+    b = compare(pairs);
+  assert.deepEqual(a, b);
+  assert.equal(a.median.delta, -200);
+  assert.equal(decision(a), "INCONCLUSIVE");
+  assert.ok(a.p95.ci95[1] > 50);
+});
+test("invalid/incomplete/duplicate populations fail closed", () => {
+  assert.throws(() =>
+    compare([
+      { control: 1, candidate: NaN },
+      { control: 2, candidate: 3 },
+    ]),
+  );
+  assert.throws(() =>
+    analyze({ kind: "pos-m1-list-results-v1", complete: false, attempts: [] }),
+  );
+  assert.throws(() =>
+    analyze({ kind: "pos-m1-list-results-v1", complete: true, attempts: [] }),
+  );
+});
+test("ABBA schedule is balanced, distinct and deterministic, separate diagnostics/assets", () => {
+  const a = schedule(),
+    b = schedule();
+  assert.deepEqual(a, b);
+  for (const role of ["owner", "staff"]) {
+    const normal = a.filter(
+      (x) => x.role === role && x.population === "normal-full",
+    );
+    assert.equal(normal.length, 60);
+    for (let i = 0; i < normal.length; i += 4)
+      assert.deepEqual(
+        normal.slice(i, i + 4).map((x) => x.source),
+        ["control", "candidate", "candidate", "control"],
+      );
+    assert.equal(new Set(normal.map((x) => x.pair)).size, 30);
+    for (const source of ["control", "candidate"])
+      assert.equal(
+        a.filter(
+          (x) =>
+            x.role === role &&
+            x.population === "new-assets" &&
+            x.source === source,
+        ).length,
+        10,
+      );
+    for (const population of [
+      "list-to-detail",
+      "detail-to-list",
+      "empty",
+      "volume",
+    ])
+      assert.equal(
+        a.filter((x) => x.role === role && x.population === population).length,
+        10,
+      );
+  }
+  assert.equal(new Set(a.map((x) => x.id)).size, a.length);
+  assert.equal(rng()(), rng()());
+});
+test("endpoint validation always blocks PROD including pooler aliases", () => {
+  const blocked = hash("ep-hello").slice(0, 12);
+  assert.throws(() =>
+    validateEndpoint("postgres://u:p@example.com/db", blocked, "zzz"),
+  );
+  assert.throws(() =>
+    validateEndpoint(
+      "postgres://u:p@ep-hello-pooler.us-east-2.aws.neon.tech/db",
+      blocked,
+      blocked,
+    ),
+  );
+  assert.throws(() =>
+    validateEndpoint(
+      "postgres://u:p@ep-hello.us-east-2.aws.neon.tech/db",
+      "unused",
+      "wrong",
+    ),
+  );
+  assert.equal(
+    validateEndpoint(
+      "postgres://u:p@ep-hello-pooler-rvr.us-east-2.aws.neon.tech/db",
+      "different",
+      blocked,
+    ),
+    blocked,
+  );
+});
+test("unambiguous regression is FAIL and insufficient population never PASS", () => {
+  const pairs = Array.from({ length: 30 }, () => ({
+    control: 1000,
+    candidate: 1500,
+  }));
+  assert.equal(decision(compare(pairs)), "FAIL");
+  assert.equal(decision(compare(pairs), { improvement: true }), "FAIL");
+  assert.equal(decision(compare(pairs.slice(0, 5))), "INCONCLUSIVE");
+});
+test("open-review evidence rejects incorrect snapshots even when catalog contains all names", () => {
+  const fixture = {
+    orders: ["o0"],
+    locations: ["l0"],
+    linesPerOrder: 8,
+    lineIds: [Array.from({ length: 8 }, (_, i) => `line${i}`)],
+    products: Array.from({ length: 120 }, (_, i) => `p${i}`),
+  };
+  const value = {
+    id: "o0",
+    status: "open",
+    tableLabel: "M1 000",
+    orderLabel: "M1 000",
+    location: { id: "l0", name: "Centro" },
+    total: "16.00",
+    items: Array.from({ length: 8 }, (_, i) => ({
+      lineId: `line${i}`,
+      productId: `p${i}`,
+      name: `Producto ${String(i).padStart(4, "0")}`,
+      quantity: "1",
+      unitPrice: "2.00",
+      lineTotal: "2.00",
+      measure: {
+        kind: "unit",
+        quantityUnit: "unit",
+        priceUnit: "unit",
+        conversionVersion: "mass-si-1",
+      },
+    })),
+  };
+  assert.equal(validateOpenDetail(value, fixture, "candidate"), true);
+  assert.equal(validateOpenDetail(value, fixture, "control"), true);
+  const legacy = structuredClone(value);
+  legacy.items.forEach((item) => {
+    delete item.measure;
+  });
+  assert.equal(validateOpenDetail(legacy, fixture, "control"), true);
+  assert.equal(validateOpenDetail(legacy, fixture, "candidate"), false);
+  for (const field of [
+    "lineId",
+    "productId",
+    "name",
+    "quantity",
+    "unitPrice",
+    "lineTotal",
+  ]) {
+    const changed = structuredClone(value);
+    changed.items[0][field] = "wrong";
+    assert.equal(
+      validateOpenDetail(changed, fixture, "candidate"),
+      false,
+      field,
+    );
+    assert.equal(validateOpenDetail(changed, fixture, "control"), false, field);
+  }
+  for (const field of [
+    "kind",
+    "quantityUnit",
+    "priceUnit",
+    "conversionVersion",
+  ]) {
+    const changed = structuredClone(value);
+    changed.items[0].measure[field] = "wrong";
+    assert.equal(
+      validateOpenDetail(changed, fixture, "candidate"),
+      false,
+      field,
+    );
+  }
+  const missing = structuredClone(value);
+  missing.items.pop();
+  assert.equal(validateOpenDetail(missing, fixture, "candidate"), false);
+});
+test("runtime cache changes remain observed; server/manifests and unknown caches remain immutable", () => {
+  const dir = mkdtempSync(join(tmpdir(), "pos-m1-build-policy-"));
+  const put = (path, body) => {
+    mkdirSync(dirname(join(dir, path)), { recursive: true });
+    writeFileSync(join(dir, path), body);
+  };
+  try {
+    for (const path of [
+      "BUILD_ID",
+      "build-manifest.json",
+      "server/app/pos.js",
+      "cache/webpack/p.bin",
+      "trace-build",
+    ])
+      put(path, "original");
+    put("cache/fetch-cache/data", "before");
+    put("trace", "before");
+    const initial = snapshotBuild(dir);
+    put("cache/fetch-cache/data", "after");
+    put("cache/images/new", "new");
+    put("trace", "after");
+    const changed = compareBuildIdentity(initial, snapshotBuild(dir));
+    assert.deepEqual(
+      changed.map((x) => x.path),
+      ["cache/fetch-cache/data", "cache/images/new", "trace"],
+    );
+    assert.ok(changed.every((x) => x.current && x.current !== x.initial));
+    for (const path of [
+      "BUILD_ID",
+      "build-manifest.json",
+      "server/app/pos.js",
+      "cache/webpack/p.bin",
+      "trace-build",
+    ]) {
+      put(path, "mutated");
+      assert.throws(
+        () => compareBuildIdentity(initial, snapshotBuild(dir)),
+        /Compiled build drift/,
+      );
+      put(path, "original");
+    }
+    put("cache/unknown/new", "unclassified");
+    assert.throws(
+      () => compareBuildIdentity(initial, snapshotBuild(dir)),
+      /Compiled build drift/,
+    );
+  } finally {
+    rmSync(dir, { recursive: true });
+  }
+});
+test("execution metadata binds final freeze, while prepare delta remains observable and dependencies stay strict", () => {
+  const prepare = Buffer.from(
+    JSON.stringify({ prunedAt: "prepare", virtualStoreDir: "base" }),
+  );
+  const execution = Buffer.from(
+    JSON.stringify({ prunedAt: "built", virtualStoreDir: "scratch" }),
+  );
+  const provenance = metadataProvenance(prepare, execution);
+  assert.deepEqual(provenance.changedKeys, ["prunedAt", "virtualStoreDir"]);
+  assert.notEqual(provenance.prepareSha256, provenance.executionSha256);
+  assert.doesNotThrow(() =>
+    assertMetadataIdentity(provenance.executionSha256, execution),
+  );
+  assert.throws(() =>
+    assertMetadataIdentity(provenance.prepareSha256, execution),
+  );
+  assert.throws(() =>
+    assertMetadataIdentity(
+      provenance.executionSha256,
+      Buffer.from(
+        JSON.stringify({
+          prunedAt: "changed-during-campaign",
+          virtualStoreDir: "scratch",
+        }),
+      ),
+    ),
+  );
+  const baseline = {
+    node: "24.20.0",
+    lock: "locked",
+    realpath: "/actual/package",
+    version: "16.3.0",
+  };
+  assert.doesNotThrow(() =>
+    assertDependencyIdentity(baseline, structuredClone(baseline)),
+  );
+  for (const field of Object.keys(baseline)) {
+    const changed = { ...baseline, [field]: "drift" };
+    assert.throws(
+      () => assertDependencyIdentity(baseline, changed),
+      /Installed dependency identity drift/,
+    );
+  }
+});
+test("D1 observes only allowlisted header booleans and exactly two noninferential owner entries", () => {
+  const flags = diagnosticRequestHeaders({
+    RSC: "1",
+    "Next-Router-Prefetch": "2",
+    "Next-Router-Segment-Prefetch": "/_tree",
+    Purpose: "prefetch",
+    "Sec-Purpose": "prefetch;prerender",
+    Cookie: "secret-cookie",
+    "X-Backoffice-Scope": "secret-scope",
+  });
+  assert.ok(Object.values(flags).every((v) => typeof v === "boolean"));
+  assert.ok(
+    flags.rsc &&
+      flags.nextRouterPrefetchPresent &&
+      flags.nextRouterPrefetchKnown &&
+      flags.nextRouterSegmentPrefetch &&
+      flags.purposePrefetch &&
+      flags.secPurposePrefetch,
+  );
+  assert.ok(!JSON.stringify(flags).includes("secret"));
+  const unknown = diagnosticRequestHeaders({
+    "next-router-prefetch": "unknown",
+  });
+  assert.equal(unknown.nextRouterPrefetchPresent, true);
+  assert.equal(unknown.nextRouterPrefetchKnown, false);
+  const plan = diagnosticSchedule();
+  assert.equal(plan.length, 2);
+  assert.deepEqual(
+    plan.map((a) => a.source),
+    ["control", "candidate"],
+  );
+  assert.ok(
+    plan.every(
+      (a) =>
+        a.role === "owner" && a.case === "normal" && a.inferential === false,
+    ),
+  );
+});
+
+test("D1 retains only flag snapshots in either CDP event order with a local correlation id", () => {
+  const chromeId = "private-CDP-id";
+  const request = { RSC: "1", Cookie: "secret-cookie" };
+  const extra = {
+    "Next-Router-Prefetch": "2",
+    "Next-Router-Segment-Prefetch": "/secret-segment",
+    "X-Backoffice-Scope": "secret-scope",
+  };
+  const early = requestFlagTracker();
+  const buffered = early.extra(chromeId, extra);
+  const extraFirst = early.request(chromeId, request);
+  const late = requestFlagTracker();
+  const initial = late.request(chromeId, request);
+  const requestFirst = late.extra(chromeId, extra);
+  assert.deepEqual(extraFirst, requestFirst);
+  assert.equal(extraFirst.requestId, "request-1");
+  assert.equal(buffered.requestId, extraFirst.requestId);
+  assert.equal(initial.extraInfoObserved, false);
+  assert.equal(extraFirst.extraInfoObserved, true);
+  assert.equal(extraFirst.flags.rsc, true);
+  assert.equal(extraFirst.flags.nextRouterPrefetchKnown, true);
+  assert.equal(extraFirst.flags.nextRouterSegmentPrefetch, true);
+  assert.equal(early.request("another-private-id", {}).requestId, "request-2");
+  assert.ok(
+    !JSON.stringify([buffered, extraFirst, requestFirst]).match(
+      /secret|private-CDP|Cookie|Backoffice/,
+    ),
+  );
+  // Returned snapshots cannot mutate the retained buffer.
+  buffered.flags.rsc = false;
+  assert.equal(early.request(chromeId, {}).flags.rsc, true);
+});
+
+test("R1.3 speculative cancellation requires every observed proof for either frozen build", () => {
+  for (const source of ["control", "candidate"]) {
+    const fp = SPECULATIVE_CANCEL_POLICY.fingerprints[source];
+    const row = {
+      local: true,
+      method: "GET",
+      type: "Fetch",
+      path: "/backoffice/analytics",
+      start: 10,
+      end: 10.2,
+      wallTime: 1000,
+      requestFlags: {
+        rsc: true,
+        nextRouterPrefetchPresent: true,
+        nextRouterPrefetchKnown: true,
+      },
+      requestExtraInfoObserved: true,
+      initiator: {
+        type: "script",
+        stack: fp.positions.map(([line, column]) => ({
+          path: fp.path,
+          line,
+          column,
+        })),
+      },
+      status: 200,
+      mime: "text/x-component",
+      termination: "error",
+      cancelled: true,
+      errorText: "net::ERR_ABORTED",
+      blockedReason: null,
+      encoded: null,
+      decoded: 270,
+    };
+    const context = {
+      source,
+      identity: {
+        buildId: fp.buildId,
+        buildFiles: { [fp.path.replace("/_next/", "")]: fp.sha256 },
+      },
+      prerequisites: true,
+      beforeCloseAt: 1000300,
+    };
+    const original = structuredClone(row);
+    assert.equal(isSpeculativeCancel(row, context), true);
+    assert.deepEqual(row, original); // Cost and termination evidence stay unchanged.
+    const variants = [
+      { local: false },
+      { method: "POST" },
+      { type: "Document" },
+      { type: "Script" },
+      { path: "/api/modules/pos/orders" },
+      { path: "/_next/static/chunk.js" },
+      { path: "/backofficeevil" },
+      { requestExtraInfoObserved: false },
+      { status: 204 },
+      { status: null },
+      { mime: "application/json" },
+      { termination: "finish" },
+      { termination: "timeout" },
+      { cancelled: false },
+      { errorText: "net::ERR_FAILED" },
+      { blockedReason: "other" },
+      { blockedReason: undefined },
+      { end: 11 },
+      { end: null },
+      { end: 9 },
+      { wallTime: null },
+      { initiator: { ...row.initiator, type: "other" } },
+      {
+        initiator: { ...row.initiator, stack: row.initiator.stack.slice(0, 1) },
+      },
+      {
+        initiator: {
+          ...row.initiator,
+          stack: row.initiator.stack.map((f) => ({
+            ...f,
+            column: f.column + 1,
+          })),
+        },
+      },
+      ...Object.keys(row.requestFlags).map((key) => ({
+        requestFlags: { ...row.requestFlags, [key]: false },
+      })),
+    ];
+    for (const delta of variants)
+      assert.equal(
+        isSpeculativeCancel({ ...row, ...delta }, context),
+        false,
+        JSON.stringify(delta),
+      );
+    for (const delta of [
+      { source: "unknown" },
+      { prerequisites: false },
+      { beforeCloseAt: 1000100 },
+      { beforeCloseAt: NaN },
+      { identity: { ...context.identity, buildId: "drift" } },
+      { identity: { ...context.identity, buildFiles: {} } },
+    ])
+      assert.equal(isSpeculativeCancel(row, { ...context, ...delta }), false);
+  }
+});
