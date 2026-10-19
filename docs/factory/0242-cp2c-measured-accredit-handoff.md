@@ -1,0 +1,25 @@
+# 0242 CP2c.5 — acreditación medida
+
+Base: `c0abf18f1ece78facb99095d6dce8e102b88cc30`. Writer nuevo B, worktree `/private/tmp/checkpass-pos-0242/measured-accredit-0242`, factory `measured-accredit-0242`. Scope: los seis archivos reservados; no se modificaron primitivas compartidas ni flujo legacy.
+
+`accreditMeasuredInTx(tx, input)` es un servicio interno sin conectar al cierre. Recibe negocio/operador/membresía autorizados, snapshots servidor en orden estable, pagos del caller y cupón opcional con fuente explícita. Devuelve `{ settlement, granted }`. Usa `accrualContext`, campaign→coupon→business_customer, lookup antes de selección/veredicto/decisión, `decideMeasuredBenefit`, núcleo financiero exacto y `persistMeasuredGrant`; después extras→redención→clearSelection. El producto bloqueado prevalece. La exclusión local no cambia selección. El caller conserva lock/versión POS, métodos/persistencia de pagos, recursos, comisión, evento y commit.
+
+Frontera de idempotencia acordada con coordinador antes de código: una `core.order` previa con esa clave devuelve409 `request_reused`, sin efectos. No existe settlement/originals completo en core para reconstruir la respuesta. El futuro cierre resolverá el replay de una POS cerrada desde su snapshot antes de invocar el servicio. No se captura23505; un conflicto concurrente aborta la transacción y jamás enlaza otra compra. El resultado nuevo exige `pushQueueId` propio.
+
+`computeAccrualFromMoney` calcula bloques de centavos con bigint, admite importes normalizados enteros de monedas minorUnit0 o de dos decimales, y valida grant entero positivo y límite int32 real antes de convertir resultado final. `0.30/0.10=3`; per_purchase conserva grant con net0. `computeAccrual(number)` y sus callers permanecen intactos.
+
+Evidencia fuera del worktree: `/private/tmp/checkpass-pos-0242/evidence-measured-accredit/`, manifiesto con comandos/exits/configuración y hashes de fuentes. Node24.20.0, pnpm11.4.0, hooks `.githooks`. DB exclusivamente wrapper `NEON_TEST_ENV_FILE=/private/tmp/checkpass-pos-0242/private/ci.env bash tools/neon-test.sh src/modules/pos/server/measured-accredit.neon.integration.test.ts --no-file-parallelism`, con reserva mantenida durante teardown.
+
+- Tipos merchant/domain/db: exit0. También consumer/platform ejecutados inicialmente: exit0.
+- Lint focal y formato: exit0; UIguard base: exit0 sin aumentos.
+- Puros finales:50PASS/0skip (22 acumulación exacta,4 algebra mass/settlementJPY,24 benefit). El helper inicial rechazaba importes enteros de minorUnit0; se corrigió antes de freeze y se repitieron puros y tipos domain/merchant, todos exit0. Primer inicio con config/root incorrecto y primer import relativo de test incorrecto fallaron antes de corregirse; conservados como fallos de setup, no como evidencia PASS.
+- Guardias módulos:14PASS/2FAIL de backlog conocido, sin offenders propios: expenses/server/immediate.neon.integration.test.ts→stock/count.ts y literals previos de backoffice/context/onboarding/analytics. No se editaron guardias.
+- Primera corrida Neon:13PASS/6FAIL/0skip por fixtures que asignaban productId a discount/custom/extras, violando `core_campaign_coupon_reward_product_kind_check`; teardown terminó sin fallar. Se corrigió exclusivamente fixture para conservar producto en gratis/2x1. Log original preservado.
+
+- Segunda corrida Neon:18PASS/1FAIL/0skip; único fallo fixture del descuento fijo sin currencyCodeSnapshot, constraint `core_campaign_coupon_reward_currency_check`. Teardown y verificaciones de ausencias completos. Primer intento focal repitió el fallo porque una sustitución textual no aplicó el cambio; ambos logs se conservan. Corrección efectiva USD: test afectado `-t 5.00` PASS1/18skip por filtro, con teardown/ausencias exit0. Los18 skips no son pruebas ejecutadas; se conserva evidencia compatible de18 casos reales anteriores y1 caso focal corregido, sin afirmar19PASS integral. Servicio sin cambios entre esas corridas; cambio posterior del helper solo añade rama de entero normalizado y conserva cálculo USD de dos decimales probado.
+
+Teardown comprobó ausencia de negocios, membresías de owners, owners, sesiones merchant de owners, consumidores, membresías y pushes propios. No se crearon staff ni sesiones en las fixtures. No quedan procesos propios. DB disponible para liberar por coordinador. Wrapper avisa que falta NEON_CI_CONSUMER_DATABASE_URL; esta entrega no certifica el oráculo del rol consumer.
+
+Candidato congelado en el commit de esta entrega; SHA exacto en la respuesta y manifiesto externo. Hooks vigentes, checkout limpio. Queda QA independiente; ninguna aceptación/integración/factory fue operada por el autor.
+
+Límites explícitos: no HTTP/browser/cierre E2E/build/fullverify/M0/M1. Mass positiva solo decisión/algebra pura; mass negativa sintética rechaza antes de storage. Las barreras expand de almacenamiento siguen activas. No se certifica orden mass canónica ni cierre/pagos reales. QA independiente e integración/factory corresponden al coordinador; este autor conserva fixes. Sin push, PROD, migraciones productivas ni ramas principales.
