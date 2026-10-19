@@ -10,6 +10,7 @@ import { EditPencil } from "iconoir-react";
 import {
   Alert,
   Button,
+  Card,
   Dialog,
   FormActions,
   Heading,
@@ -20,10 +21,14 @@ import {
 } from "../../../ui";
 import type { PosCatalogProductV2, PosOrderV2, SaleType } from "../contracts";
 import { MeasuredCart } from "./measured-cart";
+import { measuredMoney } from "./measured-money";
+import { measuredPaymentPreview } from "./measured-payment-preview";
+import { MeasuredEditorCustomer } from "./measured-editor-customer";
 import {
   appendCartLine,
   newCartLine,
   quantityEditor,
+  resolvedCartLine,
   serializeMeasuredCart,
   type QuantityEditor,
 } from "./measured-cart-model";
@@ -68,6 +73,7 @@ export function MeasuredPosEditor({
   useEffect(() => {
     live.current = session;
     return () => {
+      session.customer.cancel();
       if (live.current === session) live.current = null;
     };
   }, [session]);
@@ -77,6 +83,7 @@ export function MeasuredPosEditor({
   >(null);
   const [view, setView] = useState<"catalog" | "order">("catalog");
   const [exitOpen, setExitOpen] = useState(false);
+  const [noteOpen, setNoteOpen] = useState(false);
   const [locationChange, setLocationChange] = useState<string | null>(null);
   const [pending, setPending] = useState<{
     product: PosCatalogProductV2;
@@ -122,6 +129,26 @@ export function MeasuredPosEditor({
     /* Partial captures remain visible. */
   }
   const validation = session.validation();
+  let benefitPreview: ReturnType<typeof measuredPaymentPreview> | null = null;
+  if (session.customer.state.resolved && draft.lines.length) {
+    try {
+      benefitPreview = measuredPaymentPreview(
+        {
+          status: "open",
+          business: { name: "", currencyCode: context.currencyCode },
+          items: draft.lines.map((line) => ({
+            ...resolvedCartLine(line, units),
+            lineId: line.key,
+          })),
+        },
+        session.customer.state.resolved,
+        null,
+        session.customer.state.excluded,
+      );
+    } catch {
+      /* Keep incomplete quantities visible. */
+    }
+  }
   const conflict = session.conflict;
   const conflictError =
     conflict?.error instanceof PosError ? conflict.error : null;
@@ -174,32 +201,76 @@ export function MeasuredPosEditor({
       setMessage((cause as Error).message);
     }
   }
+  const confirmation = (
+    <Button
+      className="md:w-full"
+      isDisabled={
+        blocked ||
+        !!validation ||
+        unavailable ||
+        !!pending ||
+        (draft.saleType === "counter" && !draft.lines.length)
+      }
+      onPress={() => void save(draft.saleType === "counter")}
+    >
+      {state.status === "pending"
+        ? "Guardando…"
+        : draft.saleType === "counter"
+          ? "Continuar al cobro"
+          : "Confirmar orden"}
+    </Button>
+  );
+  const totalLabel =
+    total === undefined
+      ? "Revisa las cantidades"
+      : measuredMoney(
+          benefitPreview?.amounts?.collected ?? total,
+          context.currencyCode,
+        );
   const primary = (
+    <div className="grid gap-4 border-t border-border p-5">
+      <div className="flex items-center justify-between gap-3">
+        <Text>Subtotal</Text>
+        <Text className="tabular-nums">
+          {total === undefined
+            ? totalLabel
+            : measuredMoney(total, context.currencyCode)}
+        </Text>
+      </div>
+      {benefitPreview?.amounts &&
+        !/^0(?:\.00)?$/.test(benefitPreview.amounts.discount) && (
+          <div className="flex items-center justify-between gap-3">
+            <Text>Descuento</Text>
+            <Text>
+              {measuredMoney(
+                benefitPreview.amounts.discount,
+                context.currencyCode,
+              )}
+            </Text>
+          </div>
+        )}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Heading level={2}>Total</Heading>
+        <Text variant="metric">{totalLabel}</Text>
+      </div>
+      <Text variant="small">
+        {session.customer.state.resolved
+          ? "Cliente identificado · Beneficios al cobrar"
+          : "Sin cliente · No se acreditan beneficios"}
+      </Text>
+      {benefitPreview?.error && (
+        <Alert kind="error" title={benefitPreview.error} />
+      )}
+      {confirmation}
+    </div>
+  );
+  const mobilePrimary = (
     <div className="flex items-center justify-between gap-4 border-t border-border bg-surface p-4">
       <div className="min-w-0">
         <Text variant="small">Total del pedido</Text>
-        <Text variant="label">
-          {total === undefined
-            ? "Revisa las cantidades"
-            : `${context.currencyCode} ${total.replace(".", ",")}`}
-        </Text>
+        <Text variant="label">{totalLabel}</Text>
       </div>
-      <Button
-        isDisabled={
-          blocked ||
-          !!validation ||
-          unavailable ||
-          !!pending ||
-          (draft.saleType === "counter" && !draft.lines.length)
-        }
-        onPress={() => void save(draft.saleType === "counter")}
-      >
-        {state.status === "pending"
-          ? "Guardando…"
-          : draft.saleType === "counter"
-            ? "Continuar al cobro"
-            : "Confirmar pedido"}
-      </Button>
+      {confirmation}
     </div>
   );
   return (
@@ -446,10 +517,10 @@ export function MeasuredPosEditor({
           Orden ({draft.lines.length})
         </Button>
       </div>
-      <div className="grid min-w-0 gap-8 md:grid-cols-2">
+      <div className="grid min-w-0 gap-6 md:grid-cols-2 xl:grid-cols-3">
         <section
           aria-label="Catálogo"
-          className={`${view === "catalog" ? "" : "hidden"} min-w-0 md:block`}
+          className={`${view === "catalog" ? "" : "hidden"} min-w-0 md:block xl:col-span-2`}
         >
           <div className="mb-4">
             <Heading level={2}>Catálogo</Heading>
@@ -479,41 +550,86 @@ export function MeasuredPosEditor({
           aria-label="Orden"
           className={`${view === "order" ? "" : "hidden"} min-w-0 md:block`}
         >
-          <div className="mb-4">
-            <Heading level={2}>Orden</Heading>
-          </div>
-          <MeasuredCart
-            lineAmounts={lineAmounts}
-            lines={draft.lines}
-            enabledUnits={units}
-            currencyCode={context.currencyCode}
-            busy={blocked}
-            onChange={(lines) => session.change({ lines })}
-          />
-          <div className="mt-6">
-            <TextAreaField
-              label="Nota del pedido"
-              value={draft.note}
-              maxLength={1000}
-              isDisabled={blocked}
-              onChange={(note) => session.change({ note })}
-            />
-          </div>
-          {validation && (
-            <div className="mt-4" role="status">
-              <Text variant="small">{validation}</Text>
+          <Card as="div" className="overflow-hidden rounded-2xl p-0! sm:p-0!">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5">
+              <Heading level={2}>Venta actual</Heading>
+              <Text
+                as="span"
+                variant="small"
+                className="rounded-sm border border-border px-2 py-1"
+              >
+                {session.order
+                  ? session.dirty
+                    ? "Cambios sin guardar"
+                    : "Guardado"
+                  : "Borrador"}
+              </Text>
             </div>
-          )}
-          <div className="fixed inset-x-0 bottom-0 z-20 md:static md:mt-6">
-            {primary}
+            <MeasuredEditorCustomer
+              session={session}
+              onAccessError={onAccessError}
+            />
+            <div className="grid gap-4 p-5">
+              <MeasuredCart
+                lineAmounts={lineAmounts}
+                lines={draft.lines}
+                enabledUnits={units}
+                currencyCode={context.currencyCode}
+                busy={blocked}
+                onChange={(lines) => session.change({ lines })}
+              />
+              <div className="grid gap-2">
+                <Button
+                  variant="quiet"
+                  className="justify-start! px-0!"
+                  isDisabled={blocked}
+                  onPress={() => setNoteOpen(true)}
+                >
+                  <EditPencil className="size-4" aria-hidden="true" />
+                  {draft.note
+                    ? "Editar nota del pedido"
+                    : "Añadir nota al pedido"}
+                </Button>
+                {draft.note && (
+                  <Text variant="small" className="line-clamp-2 break-words">
+                    {draft.note}
+                  </Text>
+                )}
+              </div>
+              {validation && (
+                <div role="status">
+                  <Text variant="small">{validation}</Text>
+                </div>
+              )}
+            </div>
+            <div className="hidden md:block">{primary}</div>
+          </Card>
+          <div className="fixed inset-x-0 bottom-0 z-20 md:hidden">
+            {mobilePrimary}
           </div>
         </section>
         {view === "catalog" && (
           <div className="fixed inset-x-0 bottom-0 z-20 md:hidden">
-            {primary}
+            {mobilePrimary}
           </div>
         )}
       </div>
+      <Dialog
+        title="Nota del pedido"
+        isOpen={noteOpen && !blocked}
+        onOpenChange={setNoteOpen}
+      >
+        <TextAreaField
+          label="Nota del pedido"
+          value={draft.note}
+          maxLength={1000}
+          isDisabled={blocked}
+          onChange={(note) => session.change({ note })}
+        />
+        <div className="mt-4 flex justify-end">
+          <Button onPress={() => setNoteOpen(false)}>Listo</Button>
+        </div>
+      </Dialog>
       {pending && (
         <MeasuredQuantityDialog
           name={pending.product.name}

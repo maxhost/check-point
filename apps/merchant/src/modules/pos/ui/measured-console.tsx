@@ -37,6 +37,7 @@ import {
 } from "./measured-void-action";
 import type { MeasuredEditorContext } from "./measured-editor-model";
 import { MeasuredNewOrderDialog } from "./measured-new-order-dialog";
+import type { EditorCustomerSelection } from "./measured-customer-model";
 
 export function MeasuredConsole({ locations }: { locations: PosLocationV2[] }) {
   const scope = usePosContext({ contractVersion: 2 });
@@ -134,6 +135,7 @@ export function MeasuredConsoleContent({
   const [newOrderLocation, setNewOrderLocation] = useState<string | null>(null);
   const editors = useRef(new Set<MeasuredEditorSession>());
   const payments = useRef(new Map<string, MeasuredPaymentSession>());
+  const customerSelections = useRef(new Map<string, EditorCustomerSelection>());
   const active = useRef(true);
   const navigation = useRef(0);
   const [editor, setEditor] = useState<MeasuredEditorSession | null>(null);
@@ -289,6 +291,16 @@ export function MeasuredConsoleContent({
       value,
     );
     editors.current.add(next);
+    if (value) {
+      const pendingCustomer = customerSelections.current.get(value.id);
+      const paymentCustomer = payments.current.get(value.id)?.getSnapshot();
+      if (pendingCustomer) next.customer.adopt(pendingCustomer);
+      else if (paymentCustomer)
+        next.customer.adopt({
+          resolved: paymentCustomer.resolved,
+          excluded: paymentCustomer.excluded,
+        });
+    }
     setEditor(next);
     setOrder(value);
     setView("edit");
@@ -378,6 +390,9 @@ export function MeasuredConsoleContent({
         if (active.current) redraw((n) => n + 1);
       });
     }
+    const selectedCustomer = customerSelections.current.get(value.id);
+    if (selectedCustomer && current.acceptEditorCustomer(selectedCustomer))
+      customerSelections.current.delete(value.id);
     setPayment(current);
     setOrder(value);
     setView("detail");
@@ -453,6 +468,7 @@ export function MeasuredConsoleContent({
           session={editor}
           onAccessError={handleError}
           onSaved={(value) => {
+            customerSelections.current.set(value.id, editor.customer.selection);
             setOrder(value);
             syncHistory();
           }}

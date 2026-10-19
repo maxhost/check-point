@@ -21,6 +21,7 @@ import { MeasuredOrderCommands } from "./measured-order-commands";
 import { catalogKey, PosCache } from "./pos-cache";
 import type { PosClient } from "./pos-context";
 import { PosError } from "./pos-types";
+import { MeasuredCustomerModel } from "./measured-customer-model";
 
 export type MeasuredEditorContext = {
   identity: string;
@@ -112,6 +113,7 @@ export function measuredEditorTotal(
  */
 export class MeasuredEditorSession {
   readonly commands: MeasuredOrderCommands;
+  readonly customer: MeasuredCustomerModel;
   private listeners = new Set<() => void>();
   private revision = 0;
   private active = true;
@@ -139,6 +141,12 @@ export class MeasuredEditorSession {
       historyStatus: "active",
     });
     this.commands.subscribe(this.publish);
+    this.customer = new MeasuredCustomerModel(
+      client,
+      cache,
+      this.publish,
+      () => !this.blocked,
+    );
   }
   subscribe = (fn: () => void) => {
     this.listeners.add(fn);
@@ -158,7 +166,10 @@ export class MeasuredEditorSession {
     return (
       ["pending", "uncertain", "retired"].includes(
         this.commands.getSnapshot().status,
-      ) || !this.active
+      ) ||
+      !this.active ||
+      this.customer?.state.resolving === true ||
+      this.customer?.isRetired === true
     );
   }
   get conflict() {
@@ -178,6 +189,7 @@ export class MeasuredEditorSession {
   }
   retireIdentity() {
     this.active = false;
+    this.customer.retire();
     this.commands.retire();
     this.publish();
   }
@@ -234,6 +246,7 @@ export class MeasuredEditorSession {
     )
       return false;
     if (this.draft.lines.length && !discardLines) return false;
+    this.customer.remove();
     this.catalog = this.cache.peek<PosCatalogV2>(catalogKey(locationId));
     this.change({
       locationId,

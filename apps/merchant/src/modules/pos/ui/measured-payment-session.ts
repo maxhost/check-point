@@ -8,6 +8,7 @@ import {
   canonicalPaymentOrder,
 } from "./measured-payment-close";
 import { measuredPaymentPreview } from "./measured-payment-preview";
+import type { EditorCustomerSelection } from "./measured-customer-model";
 
 export type MeasuredPaymentState = {
   phase:
@@ -193,6 +194,20 @@ export class MeasuredPaymentSession {
       review: false,
       error: null,
     });
+  }
+  acceptEditorCustomer(selection: EditorCustomerSelection) {
+    if (this.busy || this.state.phase !== "idle") return false;
+    this.token++;
+    this.publish({
+      resolved: structuredClone(selection.resolved),
+      excluded: selection.excluded,
+      target: null,
+      customerReview: false,
+      validated: false,
+      review: false,
+      error: null,
+    });
+    return true;
   }
   cancelDialog() {
     if (!this.blocked) {

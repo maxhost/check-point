@@ -1,8 +1,10 @@
 "use client";
 import { useState } from "react";
+import { Minus, Plus } from "iconoir-react";
 import type { MassUnit } from "@mi-pasaporte/domain/measures";
 import { Button, Text } from "../../../ui";
 import { MeasuredQuantityDialog } from "./measured-quantity-dialog";
+import { measuredMoney } from "./measured-money";
 import {
   cartLineAmount,
   serializeMeasuredCart,
@@ -51,7 +53,7 @@ export function MeasuredCart({
       <div
         role="region"
         aria-label="Productos del pedido"
-        className="grid gap-4"
+        className="grid gap-5"
       >
         {!lines.length && (
           <Text variant="muted">
@@ -79,20 +81,21 @@ export function MeasuredCart({
                 <div className="min-w-0 flex-1 break-words">
                   <Text variant="label">{line.snapshot.name}</Text>
                   <Text variant="small">
-                    {currencyCode} {line.snapshot.unitPrice.replace(".", ",")}{" "}
-                    por {unitLabel(line.snapshot.measure.priceUnit)}
+                    {measuredMoney(line.snapshot.unitPrice, currencyCode)} /{" "}
+                    {unitLabel(line.snapshot.measure.priceUnit)}
                   </Text>
                 </div>
                 <Text variant="label" className="shrink-0">
                   {amount === undefined
                     ? "Revisa la cantidad"
-                    : `${currencyCode} ${amount.replace(".", ",")}`}
+                    : measuredMoney(amount, currencyCode)}
                 </Text>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 {line.snapshot.measure.kind === "unit" && (
                   <Button
                     variant="secondary"
+                    className="size-11 shrink-0 p-0!"
                     isDisabled={
                       busy ||
                       !amount ||
@@ -110,24 +113,25 @@ export function MeasuredCart({
                       })
                     }
                   >
-                    Quitar unidad
+                    <Minus className="size-5" aria-hidden="true" />
                   </Button>
                 )}
                 <Button
                   variant="secondary"
+                  className="min-w-16 tabular-nums"
                   isDisabled={busy}
                   aria-label={`Editar cantidad de ${label}`}
                   onPress={() => setEditing({ key: line.key, original: line })}
                 >
                   {view.approximate ? "≈ " : ""}
-                  {view.display.replace(".", ",") || "Sin cantidad"}{" "}
-                  {line.editor.unit === "unit" && view.display !== "1"
-                    ? "unidades"
-                    : unitLabel(line.editor.unit)}
+                  {view.display.replace(".", ",") || "Sin cantidad"}
+                  {line.editor.unit !== "unit" &&
+                    ` ${unitLabel(line.editor.unit)}`}
                 </Button>
                 {line.snapshot.measure.kind === "unit" && (
                   <Button
                     variant="secondary"
+                    className="size-11 shrink-0 p-0!"
                     isDisabled={busy || !amount}
                     aria-label={`Añadir una unidad de ${label}`}
                     onPress={() =>
@@ -140,11 +144,12 @@ export function MeasuredCart({
                       })
                     }
                   >
-                    Añadir unidad
+                    <Plus className="size-5" aria-hidden="true" />
                   </Button>
                 )}
                 <Button
                   variant="quiet"
+                  className="ml-auto text-content-muted!"
                   isDisabled={busy}
                   aria-label={`Quitar ${label}`}
                   onPress={() =>

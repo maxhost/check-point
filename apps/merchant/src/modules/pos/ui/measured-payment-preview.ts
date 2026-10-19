@@ -23,7 +23,7 @@ export type MeasuredPaymentPreview = {
   canConfirm: boolean;
 };
 export function measuredPaymentPreview(
-  order: PosOrderV2,
+  order: Pick<PosOrderV2, "status" | "items" | "business">,
   resolved: PosResolveV2 | null,
   target: string | null = null,
   excluded = false,

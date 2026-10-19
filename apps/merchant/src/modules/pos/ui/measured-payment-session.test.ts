@@ -50,6 +50,26 @@ const closed = paymentClosed(paymentOrder, {
   payments: [{ methodId: "cash", amount: "4.01" }],
 });
 describe("parent-held measured payment command", () => {
+  it("recibe el cliente del editor y lo revalida al cobrar, sin volver a resolver el pase", async () => {
+    const { session, calls } = setup(async <T>() => closed as T);
+    expect(
+      session.acceptEditorCustomer({
+        resolved: paymentResolved,
+        excluded: true,
+      }),
+    ).toBe(true);
+    await session.prepare();
+    await session.confirm();
+    expect(calls.some((call) => call.url.endsWith("/resolve"))).toBe(false);
+    expect(calls.some((call) => call.url.includes("coupon-state"))).toBe(true);
+    const body = calls.find((call) => call.url.endsWith("/close"))?.body;
+    expect(body).toMatchObject({ membershipId: paymentResolved.membership.id });
+    expect(body).not.toHaveProperty("coupon");
+    expect(
+      session.acceptEditorCustomer({ resolved: null, excluded: false }),
+    ).toBe(false);
+  });
+
   it("freezes deeply once; ambiguity followed by 4xx stays uncertain, explicit identical retry succeeds once", async () => {
     let count = 0;
     const { session, calls, capture } = setup(async <T>() => {
