@@ -1,3 +1,29 @@
+# 0242 R1.3 — política terminal previa a nuevos datos
+
+D1 ejecutado exactamente sobre ebf20fbe en namespace privado m1-d1-ebf20fbe:
+setup/inspect/login PASS, freeze7efe3526, sin rebuild. Dos entradas OWNER
+control→candidato, completed=true, strictGateSatisfied=false, EXIT2 y cero
+muestras inferenciales. 25/23 canceladas con flags Nextprefetch/RSC y ExtraInfo,
+status200/textxcomponent, cancelled/ERR_ABORTED, encodednull/decoded parcial.
+Finalizan1884–2107ms/1776–2029ms despuésDocument, antes marker y close.
+Esto prueba requests especulativos marcados; no demuestra mecanismo interno.
+API/DOM reales válidos, 0pageErrors; el FAIL normal anterior permanece intacto.
+Datos SHA c21b78757e0b03a2933b66d4d7eed91fa67380c148b7ad92688f11bf98a641dc;
+trace5d337352302c3428e600b370732eeb5dc821e067c15a142f3ab14c26010ac75b.
+Identidad final válida, runtimeDeltas[] ambas fuentes. Cleanup MISMOebf PASS,
+14tablas0/phasecleaned, SHA3d227ad873516213979f8fde18553b29756afce769e1e7fca5d9d7ff83f8c2d9,
+puerto43242 sin listener. Basales y congelados conservados, sin postinspect.
+
+R1.3 preparado offline por autorización del coordinador: categoría separada
+speculative-cancel sólo con TODA la conjunción de receta y fingerprints D1 por
+build/hash/stack estrictos. Conserva errores/bytes/costos y strictFunctionalValid;
+API/document/assets/acciones/RSC sin prueba siguen estrictos. Detalle/retorno y
+D1 no adoptan excepción. Schedule240/240 y estadística intactos. Dos catálogos
+consistentes con precarga2locales por lectura; sin afirmar query no observada.
+DB volvió a regresión; nueva preparación/campaña espera QA y transferencia.
+
+---
+
 # 0242 D1 — observabilidad previa a otra campaña, sin inferencia
 
 La campañaR1.2 en1fd427d2 congeló receta6bb4f051…a419 y freeze1617de3c…6436.

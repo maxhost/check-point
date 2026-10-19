@@ -502,6 +502,7 @@ function prepare(directory, reuseDirectory) {
   });
   exclusive(join(directory, "plan.json"), {
     kind: "pos-m1-list-plan-v1",
+    listTerminalPolicy: "r1.3-next-prefetch-terminal-v1",
     buildHashPolicy: BUILD_HASH_POLICY,
     runnerSHA,
     recipeSha256: hash(

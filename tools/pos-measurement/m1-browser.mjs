@@ -77,6 +77,81 @@ export function requestFlagTracker() {
     extra: (id, headers) => update(id, headers, true),
   };
 }
+export const SPECULATIVE_CANCEL_POLICY = {
+  version: "r1.3-next-prefetch-terminal-v1",
+  evidenceSha256:
+    "c21b78757e0b03a2933b66d4d7eed91fa67380c148b7ad92688f11bf98a641dc",
+  fingerprints: {
+    control: {
+      buildId: "VLV2fFFeM_dUWKnxvv7iY",
+      path: "/_next/static/chunks/366-1e7ee26c05fad4c5.js",
+      sha256:
+        "71049ae75438441d83bb34317d7dcd2bc1858923afba7c726cd23407d8dede2b",
+      positions: [
+        [31, 32043],
+        [51, 75478],
+      ],
+    },
+    candidate: {
+      buildId: "mQAEivzHwhRenkWFyULLz",
+      path: "/_next/static/chunks/8140-6590b424086e36ba.js",
+      sha256:
+        "55d723bfc4c5053ffe7d073e67011546787116cfd2ed83886c9b073001bcba55",
+      positions: [
+        [0, 71702],
+        [0, 75109],
+      ],
+    },
+  },
+};
+// D1 proves marked speculative Next requests, not the internal abort callsite.
+export function isSpeculativeCancel(
+  row,
+  { source, identity, prerequisites, beforeCloseAt },
+) {
+  const fp = SPECULATIVE_CANCEL_POLICY.fingerprints[source];
+  const stack = row.initiator?.stack;
+  const endedAt = row.wallTime * 1000 + (row.end - row.start) * 1000;
+  return !!(
+    fp &&
+    prerequisites === true &&
+    identity?.buildId === fp.buildId &&
+    identity.buildFiles?.[fp.path.replace("/_next/", "")] === fp.sha256 &&
+    row.local === true &&
+    row.method === "GET" &&
+    row.type === "Fetch" &&
+    (row.path === "/backoffice" || row.path.startsWith("/backoffice/")) &&
+    row.requestFlags?.rsc === true &&
+    row.requestFlags.nextRouterPrefetchPresent === true &&
+    row.requestFlags.nextRouterPrefetchKnown === true &&
+    row.requestExtraInfoObserved === true &&
+    row.initiator?.type === "script" &&
+    stack?.length === fp.positions.length &&
+    fp.positions.every(
+      ([line, column], i) =>
+        stack[i].path === fp.path &&
+        stack[i].line === line &&
+        stack[i].column === column,
+    ) &&
+    row.status === 200 &&
+    row.mime === "text/x-component" &&
+    row.termination === "error" &&
+    row.cancelled === true &&
+    row.errorText === "net::ERR_ABORTED" &&
+    row.blockedReason === null &&
+    Number.isFinite(row.start) &&
+    Number.isFinite(row.end) &&
+    row.end >= row.start &&
+    Number.isFinite(row.wallTime) &&
+    Number.isFinite(beforeCloseAt) &&
+    endedAt < beforeCloseAt
+  );
+}
+const strictNetworkRow = (r) =>
+  r.local &&
+  r.method === "GET" &&
+  r.termination === "finish" &&
+  (r.status === null || r.status < 400);
 function phase(observation, name, save) {
   observation.phases ??= [];
   observation.phases.push({
@@ -260,7 +335,13 @@ async function settle(observation, pending, network) {
   observation.settlement = "timeout";
   for (const { row } of network.values()) row.termination = "timeout";
 }
-async function instrument(context, fixture, source, save) {
+async function instrument(
+  context,
+  fixture,
+  source,
+  save,
+  terminalIdentity = null,
+) {
   const labels = fixture.orders
     .filter((_, i) => i % 2 === 0)
     .map((id) => `M1 ${String(fixture.orders.indexOf(id)).padStart(3, "0")}`);
@@ -454,18 +535,42 @@ async function instrument(context, fixture, source, save) {
           r.path.startsWith("/api/") && !r.path.startsWith("/api/modules/pos/"),
       ),
     };
-    observation.functionalValid =
+    const ready =
+      Number.isFinite(observation.listUsableMs) &&
       observation.listResponses.length === 1 &&
       observation.listResponses.every((r) => r.valid) &&
       observation.pageErrors === 0 &&
-      observation.settlement === "finish" &&
-      observation.network.every(
-        (r) =>
-          r.local &&
-          r.method === "GET" &&
-          r.termination === "finish" &&
-          (r.status === null || r.status < 400),
-      );
+      observation.settlement === "finish";
+    observation.strictFunctionalValid =
+      ready && observation.network.every(strictNetworkRow);
+    observation.functionalValid = observation.strictFunctionalValid;
+    if (terminalIdentity) {
+      observation.terminalPolicy = SPECULATIVE_CANCEL_POLICY.version;
+      // This audit precedes context.close; requests must have ended before it.
+      observation.preCloseAuditAt = performance.timeOrigin + performance.now();
+      const prerequisites =
+        ready &&
+        observation.network
+          .filter((r) => r.path.startsWith("/api/"))
+          .every((r) => strictNetworkRow(r) && r.status === 200);
+      for (const row of observation.network) {
+        row.terminalCategory = isSpeculativeCancel(row, {
+          source,
+          identity: terminalIdentity,
+          prerequisites,
+          beforeCloseAt: observation.preCloseAuditAt,
+        })
+          ? "speculative-cancel"
+          : row.termination;
+      }
+      observation.functionalValid =
+        ready &&
+        observation.network.every(
+          (row) =>
+            strictNetworkRow(row) ||
+            row.terminalCategory === "speculative-cancel",
+        );
+    }
     observation.structuralValid =
       observation.structural.listGET === 1 &&
       (source === "control" ||
@@ -658,6 +763,8 @@ function observation(tag) {
 export async function campaign(directory) {
   const { freeze, plan } = verifyFreeze(directory),
     fixture = JSON.parse(privateFile(join(directory, "fixture.json")));
+  if (plan.listTerminalPolicy !== SPECULATIVE_CANCEL_POLICY.version)
+    throw Error("New R1.3 terminal policy plan required before campaign");
   if (fixture.kind !== "pos-m1-list-fixture-v1" || fixture.phase !== "ready")
     throw Error("Owned ready M1 fixture required");
   const file = join(directory, "list-results.json"),
@@ -667,6 +774,7 @@ export async function campaign(directory) {
       recipeSha256: freeze.recipeSha256,
       freezeSha256: hash(privateFile(join(directory, "freeze.json"))),
       buildHashPolicy: freeze.buildHashPolicy,
+      terminalPolicy: SPECULATIVE_CANCEL_POLICY,
       runtimeInitial: Object.fromEntries(
         ["control", "candidate"].map((source) => [
           source,
@@ -725,7 +833,13 @@ export async function campaign(directory) {
         return c;
       };
       let context = await newContext(),
-        measured = await instrument(context, f, planned.source, save);
+        measured = await instrument(
+          context,
+          f,
+          planned.source,
+          save,
+          freeze[planned.source],
+        );
       try {
         attempt.stage = "warmup";
         attempt.warmup = observation(`pos-warm-${planned.id}`);
@@ -739,7 +853,13 @@ export async function campaign(directory) {
         if (planned.population === "new-assets") {
           await context.close();
           context = await newContext();
-          measured = await instrument(context, f, planned.source, save);
+          measured = await instrument(
+            context,
+            f,
+            planned.source,
+            save,
+            freeze[planned.source],
+          );
         }
         if (planned.population === "detail-to-list") {
           attempt.detailPreparation = observation(`pos-prep-${planned.id}`);

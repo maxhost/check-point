@@ -1,4 +1,52 @@
-# 0242 M1 — receta R1.2, listado real contemporáneo
+# 0242 M1 — receta R1.3, listado real contemporáneo
+
+R1.3 es una revisión PREVIA a cualquier nueva campaña. R1.2 se detuvo en su
+primer warmup control; cero muestras inferenciales. D1 completó dos observaciones
+OWNER, sin warmup/reload/inferencia; ambas conservaron functionalValid=false y
+EXIT2. No se transforman esos resultados ni el FAIL anterior en PASS. R1.3 mantiene
+los 240 warmups y 240 observaciones, orden ABBA, roles/poblaciones/markers y todos
+los estimadores/umbrales originales. Requiere SHA limpio, revisión QA y namespace
+nuevo con autorización exacta antes de datos.
+
+La categoría terminal `speculative-cancel` se permite sólo en entradas completas
+de listado y sus warmups, con la MISMA conjunción en control/candidato:
+
+- GET local tipo Fetch bajo `/backoffice` o `/backoffice/`, jamás API, documento,
+  assets o acciones; RSC=true, router-prefetch presente y reconocido=true,
+  ExtraInfo observado=true.
+- Initiator script con stack EXACTO de dos frames de Next observado en D1,
+  posiciones y SHA256 del chunk según `SPECULATIVE_CANCEL_POLICY` versionada en
+  m1-browser.mjs; BUILD_ID y hash compilado deben coincidir con el freeze estricto.
+  Control: chunk366-1e7ee26c05fad4c5.js, posiciones31:32043/51:75478,
+  SHA71049ae75438441d83bb34317d7dcd2bc1858923afba7c726cd23407d8dede2b.
+  Candidato: chunk8140-6590b424086e36ba.js, posiciones0:71702/0:75109,
+  SHA55d723bfc4c5053ffe7d073e67011546787116cfd2ed83886c9b073001bcba55.
+- Response status200 y MIME text/x-component observados, termination=error,
+  cancelled=true, errorText EXACTO net::ERR_ABORTED, blockedReason=null.
+  Inicio/fin/wallTime finitos, fin>=inicio y fin anterior al audit previo a close
+  registrado en la observación. No se infiere finish a partir de status200.
+- Marker/API/DOM reales válidos, 0pageErrors, quietud500ms alcanzada antes del
+  timeout15s, TODAS las APIs locales GET200finish. Cualquier otro request debe
+  satisfacer el gate finish original. RSC sin TODAS las pruebas sigue fallando.
+
+Cada fila conserva termination=error, encoded desconocido=null, decoded parcial o
+null y todos sus costos/initiators/flags/timestamps. Se añade terminalCategory
+separada; el informe conserva strictFunctionalValid y declara terminalPolicy.
+No se quitan requests ni bytes; detalle/retorno y D1 mantienen finish estricto.
+Los fingerprints prueban solicitudes especulativas marcadas, no el callsite
+interno que causó abort. Cambios de build/stack no se aceptan automáticamente.
+
+Evidencia D1 privada: diagnostic-results.json SHA256
+c21b78757e0b03a2933b66d4d7eed91fa67380c148b7ad92688f11bf98a641dc,
+25 canceladas control y23 candidato antes del marker y del close. Ambos API/DOM
+válidos, gate estructural candidato0GETsession/modules satisfecho. Dos catálogos
+candidato son consistentes con precarga explícita por cada uno de los2locales:
+measured-console.tsx261–272 usa catalogKey(locationId); PosCache.read deduplica
+por esa clave, no pathname. D1 no guardó query: no demuestra atribución individual
+por red; los dos costos permanecen. R1.3 no modifica producto ni filtros.
+Reuso permitido como D1: COPY privada nueva candidato1fd/mQAE, freeze1617 exacto,
+producto/instrumentación/lockdiff vacío, sin rebuild ni iniciar runtime anterior.
+
 
 Revisión R1.2 previa a datos; la ejecución3c07 se detuvo antes de iniciar
 browser/servidor/warmup/muestras por metadata pnpm previa a build. No se cambia

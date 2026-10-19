@@ -6,6 +6,8 @@ import {
   validateOpenDetail,
   diagnosticRequestHeaders,
   requestFlagTracker,
+  isSpeculativeCancel,
+  SPECULATIVE_CANCEL_POLICY,
 } from "./m1-browser.mjs";
 import { diagnosticSchedule } from "./m1.mjs";
 import { snapshotBuild, compareBuildIdentity } from "./m1.mjs";
@@ -387,4 +389,107 @@ test("D1 retains only flag snapshots in either CDP event order with a local corr
   // Returned snapshots cannot mutate the retained buffer.
   buffered.flags.rsc = false;
   assert.equal(early.request(chromeId, {}).flags.rsc, true);
+});
+
+test("R1.3 speculative cancellation requires every observed proof for either frozen build", () => {
+  for (const source of ["control", "candidate"]) {
+    const fp = SPECULATIVE_CANCEL_POLICY.fingerprints[source];
+    const row = {
+      local: true,
+      method: "GET",
+      type: "Fetch",
+      path: "/backoffice/analytics",
+      start: 10,
+      end: 10.2,
+      wallTime: 1000,
+      requestFlags: {
+        rsc: true,
+        nextRouterPrefetchPresent: true,
+        nextRouterPrefetchKnown: true,
+      },
+      requestExtraInfoObserved: true,
+      initiator: {
+        type: "script",
+        stack: fp.positions.map(([line, column]) => ({
+          path: fp.path,
+          line,
+          column,
+        })),
+      },
+      status: 200,
+      mime: "text/x-component",
+      termination: "error",
+      cancelled: true,
+      errorText: "net::ERR_ABORTED",
+      blockedReason: null,
+      encoded: null,
+      decoded: 270,
+    };
+    const context = {
+      source,
+      identity: {
+        buildId: fp.buildId,
+        buildFiles: { [fp.path.replace("/_next/", "")]: fp.sha256 },
+      },
+      prerequisites: true,
+      beforeCloseAt: 1000300,
+    };
+    const original = structuredClone(row);
+    assert.equal(isSpeculativeCancel(row, context), true);
+    assert.deepEqual(row, original); // Cost and termination evidence stay unchanged.
+    const variants = [
+      { local: false },
+      { method: "POST" },
+      { type: "Document" },
+      { type: "Script" },
+      { path: "/api/modules/pos/orders" },
+      { path: "/_next/static/chunk.js" },
+      { path: "/backofficeevil" },
+      { requestExtraInfoObserved: false },
+      { status: 204 },
+      { status: null },
+      { mime: "application/json" },
+      { termination: "finish" },
+      { termination: "timeout" },
+      { cancelled: false },
+      { errorText: "net::ERR_FAILED" },
+      { blockedReason: "other" },
+      { blockedReason: undefined },
+      { end: 11 },
+      { end: null },
+      { end: 9 },
+      { wallTime: null },
+      { initiator: { ...row.initiator, type: "other" } },
+      {
+        initiator: { ...row.initiator, stack: row.initiator.stack.slice(0, 1) },
+      },
+      {
+        initiator: {
+          ...row.initiator,
+          stack: row.initiator.stack.map((f) => ({
+            ...f,
+            column: f.column + 1,
+          })),
+        },
+      },
+      ...Object.keys(row.requestFlags).map((key) => ({
+        requestFlags: { ...row.requestFlags, [key]: false },
+      })),
+    ];
+    for (const delta of variants)
+      assert.equal(
+        isSpeculativeCancel({ ...row, ...delta }, context),
+        false,
+        JSON.stringify(delta),
+      );
+    for (const delta of [
+      { source: "unknown" },
+      { prerequisites: false },
+      { beforeCloseAt: 1000100 },
+      { beforeCloseAt: NaN },
+      { identity: { ...context.identity, buildId: "drift" } },
+      { identity: { ...context.identity, buildFiles: {} } },
+    ])
+      assert.equal(isSpeculativeCancel(row, { ...context, ...delta }), false);
+  }
 });
