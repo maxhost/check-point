@@ -132,6 +132,52 @@ describe("measured document preserves exact snapshots and monetary authority", (
       );
     },
   );
+  it.each([
+    ["1.49", "0.51", "1", "+1 COP"],
+    ["0.51", "0.49", "0", "-1 COP"],
+  ])(
+    "prints frozen rounding from %s minus %s",
+    (price, discount, collected, adjustment) => {
+      const order = closedTicket();
+      order.items[0] = {
+        ...order.items[0],
+        quantity: "1",
+        unitPrice: price,
+        measure: {
+          kind: "unit",
+          quantityUnit: "unit",
+          priceUnit: "unit",
+          conversionVersion: "mass-si-1",
+        },
+      };
+      order.settlement = buildFinancialSettlementFromSnapshots({
+        currencyCode: "COP",
+        lines: [{ ...order.items[0], sourceLineId: "mass", position: 0 }],
+        discount: {
+          amount: discount,
+          origin: {
+            type: "campaign_coupon",
+            sourceId: "coupon",
+            scope: "order",
+          },
+        },
+        payments:
+          collected === "0"
+            ? []
+            : [{ paymentId: "payment", methodId: "cash", amount: collected }],
+      });
+      const doc = build(order);
+      expect(doc.total).toBe(`${collected} COP`);
+      expect(doc.summary?.roundingAdjustment).toBe(adjustment);
+      for (const paper of [58, 80] as const) {
+        const rows = layoutTicket(doc, paper)
+          .filter((row) => row.kind === "text")
+          .map((row) => row.text)
+          .join(" ");
+        expect(rows).toContain(`Ajuste de redondeo: ${adjustment}`);
+      }
+    },
+  );
   it("does not recalculate a terminal legacy snapshot and never labels voided as a sale", () => {
     const order = { ...ticketOrder, status: "voided" as const, total: "87.00" };
     expect(build(order).metadata?.kind).toBe("Orden anulada");
