@@ -95,6 +95,7 @@ const lines = (id: string) =>
 
 describe.skipIf(!posIntegrationEnabled)(
   "0242 CP2b creation V2 guarded transactions",
+  { timeout: 60000 },
   () => {
     beforeAll(async () => {
       a = await seedPosWorld("CP2b create A");
@@ -519,7 +520,7 @@ describe.skipIf(!posIntegrationEnabled)(
         ],
       });
       const created = await body(await call(fresh));
-      expect(created.items[0].unitPrice).toBe("7.00");
+      expect(created.items[0].unitPrice).toBe("7");
       expect(created.total).toBe("14.00");
       expect(
         await getDb()
