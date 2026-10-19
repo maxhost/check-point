@@ -5,6 +5,8 @@
 
 ## ESTADO — 0242: PRIMER AJUSTE UI EN PREVIEW; PENDIENTE PRUEBA DEL OWNER (2026-10-18)
 
+ÚLTIMO AJUSTE L0: cámaraQR ampliada208→256px (w64, proporción3:4), owneraprueba tamaño pero reporta scrollbar interior. Retirado maxh96/overflow-y-auto del cuerpo de este modal, altura se ajusta al contenido, footer sigue separado. Formato/lint/UIguard contra21d7406d/diff-check PASS. Smoke con cámaraficticia verifica proporción, campo y botones visibles1280x800/390x667 y ausencia de descendientes con scrollvertical,0pageerrors. Sin capturas/DB/agentes/push/PROD. Ownerprueba3201.
+
 ÚLTIMO AJUSTE L0: owner pide quitar «Escanea el QR o pega el código del pase.» y ampliar un poco cámaraQR. Texto retirado; wrapper centrado pasa176→208px (w52, maxwfull), conserva proporción3:4 nativa y footer independiente. Solo presentación measured-editor-customer; formato/lint/UIguard contraac5e8742/diff-check PASS, sin tests nuevos ni browser/capturas por cambio mínimo. Sin agentes/DB/push/PROD. Owner prueba3201.
 
 CORRECCIÓN L0 MÁS RECIENTE: owner señala que cámaraQR horizontal del ajuste anterior no sirve visualmente. Se restaura proporción nativa VERTICAL3:4 del scanner, dentro de wrapper centrado176px (w44), sin forzar altura/aspect del video. Oculta solo hint interno redundante que se apretaba en anchopequeño; instrucción sobre cámara conservada. Cuerpo maxh96 permite cámara/código y footer externo mantiene botones. Solo clases módulo measured-editor-customer, sin scanner/kit/core/HTTP. Formato/lint/UIguard contrac7297459/diff-check PASS; smoke anterior ajustado verifica proporción3:4, ancho176 y campo/botones dentro viewport1280x800/390x667, Cancelar,0pageerrors con cámaraficticia. Sin capturas/DB/agentes/push/PROD;3201 intacto. Pendiente owner.
