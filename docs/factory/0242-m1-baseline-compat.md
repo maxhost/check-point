@@ -96,3 +96,59 @@ observados en manifest y recheck de AMBAS identidades al ejecutar. Cualquier otr
 diferencia o deriva de esos valores falla; no es una whitelist general. Origen
 freeze6cee/metadata415 y runnercard8e8 quedan inmutables. Negativos de auth/hash/
 keyextra/path/fecha antes de nuevoSHA/receta/QA. No modificar R2 ni su freeze.
+
+## Decisión R2 y encargo de implementación posterior a masa
+
+Con incompatibilidad de precio demostrada por SQL y compiled, el coordinador
+adopta f04 como baseline R2 compatible DISTINTO. Autor/QA inventariaron la misma
+limitación: incluye validaciones/lectores/financial/headers nuevos; no es sólo UI,
+no reetiquetar6f, no sumar a M0/R1. No hay muestras inferenciales R2 previas.
+Gates, seis poblaciones, n30pareado, ABBA/seed/historia0..29/efectos/colas y replay
+no cambian. La siguiente implementación y receta deben reflejar esa identidad.
+
+Se asignan SÓLO estos siete paths ya reservados en pos-m1-r2-0242, sin paths nuevos:
+
+- tools/pos-measurement/m1.mjs
+- tools/pos-measurement/m1-browser.mjs
+- tools/pos-measurement/m1-flows.mjs
+- tools/pos-measurement/m1-flow-analyze.mjs
+- tools/pos-measurement/m1-flow-analysis.test.mjs
+- docs/factory/0242-m1-r2-receta.md
+- docs/factory/0242-m1-r2-handoff.md
+
+**No editar GRID6cee todavía:** primero diagnóstico masa/COPY y cierre de identidad
+de origen. Hasta GO posterior del coordinador, sólo propuesta por lectura; este
+contrato previo no concede instalación, build, DB, OTP ni navegador.
+
+Implementación acotada: perfil flow-f04 distinto del R1/6f por defecto; rechazo de
+perfil ausente/mezclado. CLI compat-control-prepare archivef04 offline; deps sólo
+con autorización dependencies/offline/frozen/ownvirtualstore y scripts predeclarados;
+build sólo con acción build/Node24/Next16.3/CI seleccionada antiPROD; snapshot sólo
+lectura de source/tree/config/lock/deps/metadata/maps/BID antes/después. Sin cuartoWT,
+sin symlink node_modulesGRID, sin tocar archive6f. Resolver realpaths desde merchant
+y domain para db, db/schema, domain/financial y domain/measures, dentro sourcef04
+privado y bytes contra Git; dependencias externas iguales en versión/hash/lock.
+
+Plan flow-prepare sólo toma POS_M1_CONTROL_ARTIFACT sellado con hash/provenance,
+COPY propia sin caché mutable; candidato FRESH de runner nuevo. Snapshots controlf04
+y candidateRunner separados y completos, sourceArchive/buildSource40/runner40/BID/
+compiledmap/digest/runtimeallowed/deps/resolver/config. Freeze liga ambos con plan,
+inventario, receta y policy; analyzer/reporte exigen baselineSourcef04 y MISMO
+controlArtifactSHA en los seis lotes, rechazo de mezcla6f/f04/artefactos distintos.
+R1 comandos y evidencia siguen sin cambios.
+
+Si el fingerprint f04 cambia, modo compat-control-diagnose-readonly de lote con
+acción diagnose-readonly/DB-puertos exclusivos/snapshotbuildprevio/cookies reales;
+GET listado/detalle únicamente, ningún POST/save/QR/close/replay. Tag/rawCDP/SQL/
+errores/bytes/contexto/sourcecallsite propios, quiescencia/stop. No requiere policy
+inexistente ni inventa freeze; después QA decide DOS frames reales y chunk del
+nuevo build, o rechaza. Si coincide, prueba transitiva exacta sin fingir identidad6f.
+Sólo después policy→authfreeze→freeze→NUEVAauthmeasure, sin ciclo de hashes.
+
+Negativos offline: resolver escapa/source incorrecto, drift lock/config/maps/BID,
+mixbaseline/artefacto seis lotes, fingerprint6f no aprobado para build nuevo,
+authacción/hash inválidos y diagnóstico que intente write. No cambiar tests/fixtures
+para normalizar HTTP/cerrar financiero de6f ni añadir endpoints. Commit limpio y
+QA de nuevo source/receta antes cualquier recurso real. Luego D2 NUEVO24funcionales
+cleanup0 antes R2 NUEVO360; no reutilizar datos/identidades/OTPledger ni ampliar por
+resultado favorable. Todo futuro push/PROD sigue sin autorización.
