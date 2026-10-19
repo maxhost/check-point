@@ -1,5 +1,13 @@
 # 0242 P6B — preparación offline M1R1
 
+Segunda preparación e58f41b6 falló por ENOBUFS de gitarchive >100MB antes de
+extraer fuente: namespace `/private/tmp/checkpass-pos-0242/m1-r1-e58f41b6`
+conserva únicamente copiaarchive0600 (6042760bytes/hashoriginal) y control/0700
+vacío; sinplan/candidate/build/DB/servidor/datos. El delta siguiente transmite
+stdout de gitarchive directamente a FD de archivo propio wx0600, sin límite
+de capturaRAM, y sólo después extrae con tar. Manifiesta sourcearchives/hashes
+de ambas fuentes. No altera archivo original ni reutiliza intentos fallidos.
+
 Preparación925e3397 revisada por QA sin bloqueantes funcionales de receta/código.
 Su primer prepare offline se detuvo por una restricción de modo: archive histórico
 0644 bajo padreprivate0700; selected/ci.env son0600. Namespace

@@ -10,6 +10,8 @@ import {
   existsSync,
   symlinkSync,
   chmodSync,
+  openSync,
+  closeSync,
 } from "node:fs";
 import { resolve, dirname, join } from "node:path";
 import { execFileSync, spawn } from "node:child_process";
@@ -283,12 +285,19 @@ function prepare(directory) {
     [candidate, runnerSHA],
   ]) {
     mkdirSync(runtime, { mode: 0o700 });
-    execFileSync("tar", ["-xf", "-", "-C", runtime], {
-      input: execFileSync("git", ["archive", source], {
+    // Archive can exceed100MB; stream stdout to an exclusive private file rather
+    // than buffering the repository in execFileSync's bounded stdout capture.
+    const sourceArchive = join(directory, `source-${source}.tar`);
+    const sourceFd = openSync(sourceArchive, "wx", 0o600);
+    try {
+      execFileSync("git", ["archive", source], {
         cwd: ROOT,
-        maxBuffer: 100 * 1024 * 1024,
-      }),
-    });
+        stdio: ["ignore", sourceFd, "pipe"],
+      });
+    } finally {
+      closeSync(sourceFd);
+    }
+    execFileSync("tar", ["-xf", sourceArchive, "-C", runtime]);
     linkDependencies(runtime);
   }
   execFileSync("tar", ["-xzf", archive, "-C", join(control, "apps/merchant")]);
@@ -330,9 +339,20 @@ function prepare(directory) {
       archiveSha256: CONTROL_ARCHIVE,
       archivePath: archive,
       originalArchivePath: originalArchive,
+      sourceArchivePath: join(directory, `source-${CONTROL_SOURCE}.tar`),
+      sourceArchiveSha256: hash(
+        privateFile(join(directory, `source-${CONTROL_SOURCE}.tar`)),
+      ),
       buildFiles: treeHashes(controlNext),
     },
-    candidate: { runtime: candidate, buildSource: runnerSHA },
+    candidate: {
+      runtime: candidate,
+      buildSource: runnerSHA,
+      sourceArchivePath: join(directory, `source-${runnerSHA}.tar`),
+      sourceArchiveSha256: hash(
+        privateFile(join(directory, `source-${runnerSHA}.tar`)),
+      ),
+    },
     schedule: schedule(),
     ready: false,
   });
