@@ -68,3 +68,10 @@ Node24, tipos/lint/formato proporcionales y negativos pertinentes. Commit limpio
 sólo propio, SHA/handoff con límites e intentos; no factorydeliver por incremento.
 QA independiente leerá fuente y verificará artefactos reales/effects/replay cuando
 se ejecute. No screenshots, push, PROD ni nueva certificación hardware.
+
+## Orden operativo actualizado
+
+La ficha [recuperación baseline R2](0242-m1-baseline-compat.md) permite adelantar
+el diagnóstico masa candidato-only después del cleanup auditado de D2 y de una
+transferencia factory expresa. Sustituye sólo el orden posterior a R2 indicado
+arriba; no concede aún ejecución ni cambia receta, paths, identidad o gates.
