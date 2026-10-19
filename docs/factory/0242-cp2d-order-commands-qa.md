@@ -27,3 +27,26 @@ Fallos iniciales del autor conservados: fixture compartida (24PASS/3FAIL) y conv
 Sin DB/env/wrapper/browser/build/fullverify/M0/M1, servidores/túnel/3201, auth nativa, publicación ni PROD. Fetch mocked no acredita idempotencia servidor/autenticación real. Caller futuro debe configurar contractVersion2 y historyStatus acorde al mismo PosCache; retirar instancia solo por retiro real del editor/contexto, nunca para abandonar creación incierta y generar otra key.
 
 Checks propios finalizados; cero procesos persistentes iniciados. `ps` inicialmente EPERM: coordinador avisado y lectura acotada escalada autorizada confirmó solo la propia inspección/rg, sin procesos QA pendientes. Informe único commit local; checkout limpio al entregar. Requiere corrección del autor y nueva revisión focal de hallazgos antes de aceptación.
+
+## Recheck de la misma entrega — PASS
+
+Candidato congelado `dc0b7ad316fe8fe51925753e3f9444a1e5288b6d`, incluyendo fix autor `7dd6bcda52aa243fd1acc4b08dc2facc47d9988e`. El FAIL anterior y su evidencia permanecen: este PASS acredita exclusivamente la revisión corregida. Revisión focal del diff de facade y regresiones, handoff actualizado e identity-fixes.log; manager de producción sin cambios. Sin nuevo alcance ni cambios de producto desde QA.
+
+Repetido el mismo diagnóstico externo original, sin modificarlo: `node /private/tmp/checkpass-pos-0242/order-commands-qa-evidence/reproduce.cjs`. Resultado observado contra esperado:
+
+- Cerrada anónima gross=collected10: summary total10/saleTotal10.
+- Proyección sintética cerrada gross10/collected8: summary total8/saleTotal8; detalle conserva bruto10. No certifica un cierre ni elegibilidad comercial del descuento.
+- Detalle y summary closed/voided v3 frente a respuesta abierta tardía v3: se preservan closed/voided, ninguna reaparece en abiertas. Si solo summary acredita estado terminal, las nuevas regresiones del manager verifican conflicto cache_revision_ahead con receivedOrder/summary, sin order autoritativo inventado.
+- Historia ausente y lectura pendiente iniciada después de beginWrite: respuesta antigua rechazada con DiscardedPosRead; no historial fabricado ni GET adicional.
+
+La facade invalida historyKey antes del retorno sin snapshot, conserva estados terminales en empates de versión y proyecta cerrado desde settlement.collected, luego sale.total, luego order.total. Open/voided conservan bruto y saleTotal:null. Los tres bloqueantes originales quedan resueltos en esta revisión.
+
+Comprobaciones propias sobre este candidato, todas finalizadas EXIT0:
+
+- Mismos dos archivos focales de Vitest: **46/46**, 2 archivos, **0 skips**, incluyendo las regresiones afectadas y transporte real hasta fetch mocked.
+- `pnpm --filter @mi-pasaporte/merchant typecheck`: EXIT0; repetido por cambios de facade/tests y candidato integrado nuevo.
+- Identidad SHA256 coincidente con identity-fixes.log: lockfile, configs Vitest/tsconfig y cuatro archivos de fuentes/tests. Node24.20.0/pnpm11.4.0. Se reutilizan lint/formato/UIguard del autor, logs qa-fixes-lint/format/guard.log EXIT0; warning de guard existente, sin aumentos.
+
+Logs propios preservados junto a los anteriores en `/private/tmp/checkpass-pos-0242/order-commands-qa-evidence/`: recheck-identity.log, recheck-reproduce.log, recheck-tests.log y recheck-types.log. El diagnóstico EXIT0 indica ejecución; aceptación se apoya en revisión de observaciones y regresiones con aserciones, sin retries ni skips. Formato del informe y git diff --check EXIT0.
+
+Mismos límites originales: sin DB/env/browser/build/fullverify/auth nativa/PROD/push. Cero checks o procesos persistentes propios pendientes; checkout limpio al entregar commit exclusivo del informe. PASS QA local del candidato citado; aceptación/factory/integración/publicación corresponden al coordinador y a las autorizaciones vigentes.
