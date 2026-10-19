@@ -1,7 +1,8 @@
 "use client";
 import { useState } from "react";
 import { Button, Heading, SelectField, Text } from "../../../ui";
-import type { PosHistoryV2, PosLocationV2, PosSummaryV2 } from "../contracts";
+import type { PosHistoryV2, PosLocationV2 } from "../contracts";
+import { MeasuredOrderCard } from "./measured-order-card";
 
 export function MeasuredOrderList({
   history,
@@ -29,31 +30,6 @@ export function MeasuredOrderList({
       row.status === status &&
       (location === "all" || row.location?.id === location),
   );
-  function row(order: PosSummaryV2) {
-    return (
-      <li
-        key={order.id}
-        className="flex min-w-0 flex-wrap items-center justify-between gap-4 border-b border-border py-4"
-      >
-        <div className="min-w-0 break-words">
-          <Text variant="label">{order.orderLabel}</Text>
-          <Text variant="muted">
-            {order.location?.name ?? "Sin local"} · {order.lineCount} líneas
-          </Text>
-          <Text>
-            {currencyCode} {order.total}
-          </Text>
-        </div>
-        <Button
-          variant="secondary"
-          isDisabled={disabled}
-          onPress={() => onOpen(order.id)}
-        >
-          Abrir {order.orderLabel}
-        </Button>
-      </li>
-    );
-  }
   return (
     <section
       aria-label="Pedidos"
@@ -91,12 +67,26 @@ export function MeasuredOrderList({
           onSelectionChange={(key) => setLocation(String(key))}
         />
       </div>
-      <Text variant="muted">
-        Las cerradas y anuladas corresponden al día del negocio.
-      </Text>
+      {status !== "open" && (
+        <Text variant="muted">
+          Las cerradas y anuladas corresponden al día del negocio.
+        </Text>
+      )}
       {rows.length ? (
-        <ul aria-label="Órdenes" className="min-w-0">
-          {rows.map(row)}
+        <ul
+          aria-label="Órdenes"
+          className="grid min-w-0 grid-cols-2 gap-3 lg:grid-cols-3 lg:gap-4"
+        >
+          {rows.map((order) => (
+            <li key={order.id} className="min-w-0">
+              <MeasuredOrderCard
+                order={order}
+                currencyCode={currencyCode}
+                disabled={disabled}
+                onOpen={onOpen}
+              />
+            </li>
+          ))}
         </ul>
       ) : (
         <Text>No hay pedidos en esta vista. Puedes crear una nueva orden.</Text>
