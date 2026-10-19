@@ -3,6 +3,10 @@ import assert from "node:assert/strict";
 import { compare, median, p95, decision, analyze, rng } from "./m1-analyze.mjs";
 import { schedule, validateEndpoint, hash } from "./m1.mjs";
 import { validateOpenDetail } from "./m1-browser.mjs";
+import { snapshotBuild, compareBuildIdentity } from "./m1.mjs";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, dirname } from "node:path";
 
 test("nearest-rank p95 and conventional even median", () => {
   assert.equal(median([4, 1, 2, 3]), 2.5);
@@ -208,4 +212,54 @@ test("open-review evidence rejects incorrect snapshots even when catalog contain
   const missing = structuredClone(value);
   missing.items.pop();
   assert.equal(validateOpenDetail(missing, fixture, "candidate"), false);
+});
+test("runtime cache changes remain observed; server/manifests and unknown caches remain immutable", () => {
+  const dir = mkdtempSync(join(tmpdir(), "pos-m1-build-policy-"));
+  const put = (path, body) => {
+    mkdirSync(dirname(join(dir, path)), { recursive: true });
+    writeFileSync(join(dir, path), body);
+  };
+  try {
+    for (const path of [
+      "BUILD_ID",
+      "build-manifest.json",
+      "server/app/pos.js",
+      "cache/webpack/p.bin",
+      "trace-build",
+    ])
+      put(path, "original");
+    put("cache/fetch-cache/data", "before");
+    put("trace", "before");
+    const initial = snapshotBuild(dir);
+    put("cache/fetch-cache/data", "after");
+    put("cache/images/new", "new");
+    put("trace", "after");
+    const changed = compareBuildIdentity(initial, snapshotBuild(dir));
+    assert.deepEqual(
+      changed.map((x) => x.path),
+      ["cache/fetch-cache/data", "cache/images/new", "trace"],
+    );
+    assert.ok(changed.every((x) => x.current && x.current !== x.initial));
+    for (const path of [
+      "BUILD_ID",
+      "build-manifest.json",
+      "server/app/pos.js",
+      "cache/webpack/p.bin",
+      "trace-build",
+    ]) {
+      put(path, "mutated");
+      assert.throws(
+        () => compareBuildIdentity(initial, snapshotBuild(dir)),
+        /Compiled build drift/,
+      );
+      put(path, "original");
+    }
+    put("cache/unknown/new", "unclassified");
+    assert.throws(
+      () => compareBuildIdentity(initial, snapshotBuild(dir)),
+      /Compiled build drift/,
+    );
+  } finally {
+    rmSync(dir, { recursive: true });
+  }
 });

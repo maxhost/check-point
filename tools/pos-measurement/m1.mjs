@@ -22,6 +22,42 @@ export const CONTROL_SOURCE = "6f8e1e9cecdd33930c5f055db43641d805dbe3c2";
 export const CONTROL_BUILD = "VLV2fFFeM_dUWKnxvv7iY";
 export const CONTROL_ARCHIVE =
   "54cbc567143f7d3e2af43309810c14da6bea647ab50926534ecb4b78109ec5fe";
+export const BUILD_HASH_POLICY = Object.freeze({
+  version: 1,
+  runtimeMutable: ["cache/fetch-cache/**", "cache/images/**", "trace"],
+});
+export function buildPathKind(path) {
+  if (
+    path.startsWith("/") ||
+    path.split("/").some((p) => ["..", ".", ""].includes(p))
+  )
+    throw Error("Build-relative file path required");
+  return path === "trace" ||
+    path.startsWith("cache/fetch-cache/") ||
+    path.startsWith("cache/images/")
+    ? "runtime"
+    : "compiled";
+}
+export function snapshotBuild(directory) {
+  return {
+    buildFiles: treeHashes(directory, "", "compiled"),
+    runtimeFiles: treeHashes(directory, "", "runtime"),
+  };
+}
+export function compareBuildIdentity(initial, current) {
+  if (JSON.stringify(initial.buildFiles) !== JSON.stringify(current.buildFiles))
+    throw Error("Compiled build drift");
+  const before = initial.runtimeFiles,
+    after = current.runtimeFiles;
+  return [...new Set([...Object.keys(before), ...Object.keys(after)])]
+    .sort()
+    .filter((path) => before[path] !== after[path])
+    .map((path) => ({
+      path,
+      initial: before[path] ?? null,
+      current: after[path] ?? null,
+    }));
+}
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const PRIVATE = "/private/tmp/checkpass-pos-0242/private";
 export const hash = (value) => createHash("sha256").update(value).digest("hex");
@@ -192,16 +228,18 @@ export function schedule() {
   }
   return out;
 }
-function treeHashes(directory, prefix = "") {
+function treeHashes(directory, prefix = "", kind = "all") {
   const result = {};
   for (const name of readdirSync(directory).sort()) {
     const p = join(directory, name),
       rel = join(prefix, name),
       s = lstatSync(p);
     if (s.isSymbolicLink()) throw Error("Unexpected symlink in build archive");
-    if (s.isDirectory()) Object.assign(result, treeHashes(p, rel));
-    else if (s.isFile()) result[rel] = hash(readFileSync(p));
-    else throw Error("Unexpected archive file type");
+    if (s.isDirectory()) Object.assign(result, treeHashes(p, rel, kind));
+    else if (s.isFile()) {
+      if (kind === "all" || buildPathKind(rel) === kind)
+        result[rel] = hash(readFileSync(p));
+    } else throw Error("Unexpected archive file type");
   }
   return result;
 }
@@ -310,6 +348,7 @@ function prepare(directory) {
     throw Error("Archived BUILD_ID mismatch");
   exclusive(join(directory, "plan.json"), {
     kind: "pos-m1-list-plan-v1",
+    buildHashPolicy: BUILD_HASH_POLICY,
     runnerSHA,
     recipeSha256: hash(
       readFileSync(join(ROOT, "docs/factory/0242-m1-receta.md")),
@@ -343,7 +382,8 @@ function prepare(directory) {
       sourceArchiveSha256: hash(
         privateFile(join(directory, `source-${CONTROL_SOURCE}.tar`)),
       ),
-      buildFiles: treeHashes(controlNext),
+      buildFiles: treeHashes(controlNext, "", "compiled"),
+      runtimeFiles: treeHashes(controlNext, "", "runtime"),
     },
     candidate: {
       runtime: candidate,
@@ -376,6 +416,9 @@ export function verifyFreeze(directory) {
     plan = JSON.parse(privateFile(join(directory, "plan.json")));
   if (
     f.runnerSHA !== clean() ||
+    JSON.stringify(f.buildHashPolicy) !== JSON.stringify(BUILD_HASH_POLICY) ||
+    JSON.stringify(plan.buildHashPolicy) !==
+      JSON.stringify(BUILD_HASH_POLICY) ||
     f.recipeSha256 !==
       hash(readFileSync(join(ROOT, "docs/factory/0242-m1-receta.md"))) ||
     f.configSha256 !== selected().sha256 ||
@@ -386,12 +429,13 @@ export function verifyFreeze(directory) {
       hash(privateFile(join(directory, "schema-preflight.json")))
   )
     throw Error("Frozen campaign identity drift");
+  const runtimeDeltas = {},
+    currentRuntimeFiles = {};
   for (const source of ["control", "candidate"]) {
     const next = join(plan[source].runtime, "apps/merchant/.next");
-    if (
-      JSON.stringify(treeHashes(next)) !== JSON.stringify(f[source].buildFiles)
-    )
-      throw Error("Compiled build drift");
+    const current = snapshotBuild(next);
+    runtimeDeltas[source] = compareBuildIdentity(f[source], current);
+    currentRuntimeFiles[source] = current.runtimeFiles;
   }
   for (const [file, digest] of Object.entries(f.files))
     if (hash(readFileSync(join(ROOT, file))) !== digest)
@@ -404,7 +448,7 @@ export function verifyFreeze(directory) {
     hash(readFileSync(join(ROOT, "node_modules/.modules.yaml")))
   )
     throw Error("Dependency metadata drift");
-  return { freeze: f, plan };
+  return { freeze: f, plan, runtimeDeltas, currentRuntimeFiles };
 }
 async function main() {
   process.umask(0o077);
@@ -469,6 +513,7 @@ async function main() {
       .filter(Boolean);
     const report = {
       kind: "pos-m1-list-freeze-v1",
+      buildHashPolicy: BUILD_HASH_POLICY,
       runnerSHA: clean(),
       recipeSha256: hash(
         readFileSync(join(ROOT, "docs/factory/0242-m1-receta.md")),
@@ -495,11 +540,19 @@ async function main() {
       report[source] = {
         buildSource: plan[source].buildSource,
         buildId: readFileSync(join(next, "BUILD_ID"), "utf8").trim(),
-        buildFiles: treeHashes(next),
+        buildFiles: treeHashes(next, "", "compiled"),
+        runtimeFiles: treeHashes(next, "", "runtime"),
       };
     }
     if (report.control.buildId !== CONTROL_BUILD)
       throw Error("Original control BUILD_ID changed");
+    if (
+      JSON.stringify(report.control.buildFiles) !==
+      JSON.stringify(plan.control.buildFiles)
+    )
+      throw Error(
+        "Original archived control compiled files changed before freeze",
+      );
     exclusive(join(directory, "freeze.json"), report);
     return;
   }

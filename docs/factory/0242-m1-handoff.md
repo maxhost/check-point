@@ -1,5 +1,23 @@
 # 0242 P6B — preparación offline M1R1
 
+Prepare offline ee97e93d EXIT0 en namespace
+`/private/tmp/checkpass-pos-0242/m1-r1-ee97e93d`, planSHA256
+`96874b79235c52a3c05e95ed75b90405b7f4a81bbdc1f38b9b18c6d020d5edb3`.
+Control6f/BUILD_IDoriginal/hash54cbc…ec5fe verificados;815archivos.next. Candidato
+sólofuente ee97, SIN.next. Archivo fuentecontrol104980480bytes y candidato
+111216640bytes, ambos0600. Auditoría7695archivos/1399dirs,14symlinksdeps,
+0modos incorrectos; namespace0700/plan0600, archivehistórico conserva0644.
+NoDB/build/servidor/fixture/medición. El plan viejo se conserva; siguiente fuente
+requiere namespace nuevo y aprobaciónQA del delta antes de datos.
+
+Política freeze siguiente, explicada al coordinador ANTESdatos y acotada por QA:
+sólo cache/fetch-cache/**, cache/images/** y trace bajo.next son runtime mutables, con
+hashes inicial/final y deltas por intento. Ningún otro cache/webpack/tsbuildinfo,
+ISRserver, manifest/server/static/BUILD_ID se excluye. Un cambio compilado aborta;
+control también debe igualar mapa compilado archivado inicial. Test significativo
+modifica archivos temporales propios: cachepermitido queda observado, cambios
+server/manifest/BUILD_ID/webpack/trace-build/cache desconocido se rechazan.
+
 Segunda preparación e58f41b6 falló por ENOBUFS de gitarchive >100MB antes de
 extraer fuente: namespace `/private/tmp/checkpass-pos-0242/m1-r1-e58f41b6`
 conserva únicamente copiaarchive0600 (6042760bytes/hashoriginal) y control/0700
@@ -50,7 +68,8 @@ antiPROD incondicional, exige autorización de recursos del coordinador para
 fixture/build/freeze/measure y usa sólo wrapperNeon para DB. `prepare` construye
 scratchruntime sin cuartoWT y sin sobrescribir `.next`/M0: código original6f más
 archivecontrol original, candidato fuente congelada, dependencias/paths/hashes
-manifestados. Preparación real de scratch todavía no ejecutada en este incremento.
+manifestados. Preparación real de scratch ee97 se ejecutó sólo offline, como consta arriba.
+No build de candidato ni runtime de servidor.
 El control NO se recompila. Uso serial del mismo43242 aprobado por coordinador,
 con proceso nuevo por observación y exactamente1warmup equivalente antes del
 reloj; assets nuevos son otro contexto después de ese warmup. DB preparada/caliente,
@@ -76,7 +95,7 @@ se reportan separados y no acreditan rutas críticas ausentes. Instrumentación
 SQL/fases real existente se conserva, con artefacto privado/hash y resumen por tag.
 
 Checks offline en Node24.20.0/pnpm11.4.0: ESLint focal, Prettier, node--check y
-node--test estadístico y validación de snapshots (nueve pruebas, ceroskips); tscmerchant--noEmit
+node--test estadístico y validación de snapshots (diez pruebas, ceroskips); tscmerchant--noEmit
 --incrementalfalse EXIT0. El SHA definitivo y resultado final de checks se entregan
 al coordinador fuera de este archivo para evitar autorreferencia. No se ejecutó
 suite DB (no se cuenta un skip comoPASS), browser, build ni servidor. No procesos

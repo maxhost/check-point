@@ -42,6 +42,16 @@ añadir warmups ni reintentos a conveniencia. Arranque/startup queda fuera del
 marcador y se manifiesta. No se declara DB fría: el wrapper ya la despertó.
 No se extrapola a hostingPROD. No hay población inferencial de proceso/pool frío.
 
+Antes de medir se exige checkout limpio y freeze compatible. Política de hashes
+versionada antes de datos: sólo `.next/cache/fetch-cache/**`,
+`.next/cache/images/**` y `.next/trace` se clasifican runtime mutable conocido.
+Se manifiestan sus hashes iniciales/finales y cada delta por intento; no se ignoran.
+No se excluye todo cache: webpack/tsbuildinfo, paths no clasificados, ISRserver,
+BUILD_ID, manifests, server, static, types, diagnostics y trace-build siguen
+inmutables. Un cambio allí aborta por drift. Una nueva clase mutable legítima
+requiere investigación y política previa explícita, nunca exclusión retrospectiva.
+El freeze control además compara sus compilados con el mapa archivado del plan.
+
 Antes de medir se exige checkout limpio y freeze compatible. Cada fuente usa
 código archivado/compilado correcto y la misma topología de observación. Tras
 cada observación se detiene sólo el proceso propio; nunca3201/PID927/túnel.

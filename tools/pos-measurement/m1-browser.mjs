@@ -583,6 +583,13 @@ export async function campaign(directory) {
       runnerSHA: freeze.runnerSHA,
       recipeSha256: freeze.recipeSha256,
       freezeSha256: hash(privateFile(join(directory, "freeze.json"))),
+      buildHashPolicy: freeze.buildHashPolicy,
+      runtimeInitial: Object.fromEntries(
+        ["control", "candidate"].map((source) => [
+          source,
+          freeze[source].runtimeFiles,
+        ]),
+      ),
       startedAt: new Date().toISOString(),
       complete: false,
       attempts: [],
@@ -612,7 +619,7 @@ export async function campaign(directory) {
       };
       report.attempts.push(attempt);
       save();
-      verifyFreeze(directory);
+      attempt.runtimeBefore = verifyFreeze(directory).runtimeDeltas;
       server = await start(directory, plan[planned.source].runtime, planned.id);
       attempt.server = {
         pid: server.child.pid,
@@ -679,6 +686,7 @@ export async function campaign(directory) {
         await context.close();
         await server.stop();
         server = null;
+        attempt.runtimeAfter = verifyFreeze(directory).runtimeDeltas;
         save();
       }
     }
@@ -722,9 +730,19 @@ export async function campaign(directory) {
         }),
       };
     }
+    try {
+      const finalIdentity = verifyFreeze(directory);
+      report.runtimeFinal = finalIdentity.currentRuntimeFiles;
+      report.runtimeDeltas = finalIdentity.runtimeDeltas;
+    } catch {
+      report.identityFailure = true;
+      report.complete = false;
+    }
     report.finishedAt = new Date().toISOString();
     save();
   }
+  if (!report.complete)
+    throw Error("M1 frozen identity check failed; private report preserved");
   console.log(
     "M1 list cut completed; separate critical-route recipe/gates still required.",
   );
