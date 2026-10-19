@@ -6,6 +6,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
+import { EditPencil } from "iconoir-react";
 import {
   Alert,
   Button,
@@ -71,9 +72,9 @@ export function MeasuredPosEditor({
     };
   }, [session]);
   const { draft, context, catalog } = session;
-  const [detailsExpanded, setDetailsExpanded] = useState(
-    !session.context.initialSaleType,
-  );
+  const [detailsEditor, setDetailsEditor] = useState<
+    "order" | "location" | null
+  >(null);
   const [view, setView] = useState<"catalog" | "order">("catalog");
   const [exitOpen, setExitOpen] = useState(false);
   const [locationChange, setLocationChange] = useState<string | null>(null);
@@ -208,13 +209,11 @@ export function MeasuredPosEditor({
           <Heading level={1}>
             {session.order?.orderLabel || "Nuevo pedido"}
           </Heading>
-          <Text variant="muted">
-            {session.order
-              ? session.dirty
-                ? "Cambios sin guardar"
-                : "Pedido guardado"
-              : "Prepara tu venta"}
-          </Text>
+          {session.order && (
+            <Text variant="muted">
+              {session.dirty ? "Cambios sin guardar" : "Pedido guardado"}
+            </Text>
+          )}
         </div>
         <Button
           variant="quiet"
@@ -227,89 +226,126 @@ export function MeasuredPosEditor({
           Salir
         </Button>
       </div>
-      {context.initialSaleType && (
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <Text variant="label">
-            {labels[draft.saleType]}
-            {draft.orderLabel ? ` · ${draft.orderLabel}` : ""}
-          </Text>
-          <Button
-            variant="quiet"
-            isDisabled={blocked}
-            onPress={() => setDetailsExpanded((value) => !value)}
+      <div className="flex flex-wrap items-center gap-3">
+        <Button
+          variant="secondary"
+          className="max-w-full rounded-full! border-primary! bg-primary-soft! px-4! text-primary!"
+          aria-label={`Editar mesa u orden: ${draft.orderLabel || labels[draft.saleType]}`}
+          isDisabled={blocked}
+          onPress={() => setDetailsEditor("order")}
+        >
+          <Text
+            as="span"
+            variant="label"
+            className="min-w-0 break-words text-primary"
           >
-            {detailsExpanded ? "Ocultar datos" : "Cambiar datos"}
-          </Button>
-        </div>
-      )}
-      {detailsExpanded && (
-        <div className="grid gap-4 md:grid-cols-2">
-          <SelectField
-            label="Tipo de venta"
-            selectedKey={draft.saleType}
-            options={[
-              ...context.saleTypes,
-              ...(session.order?.saleType === "legacy"
-                ? ["legacy" as const]
-                : []),
-            ].map((id) => ({ id, label: labels[id] }))}
-            isDisabled={blocked}
-            onSelectionChange={(key) =>
-              session.change({
-                saleType: key as SaleType,
-                tableId: null,
-                orderLabel: "",
-              })
-            }
-          />
-          <SelectField
-            label="Local"
-            selectedKey={draft.locationId || null}
-            options={context.locations.map((l) => ({
-              id: l.id,
-              label: l.name,
-            }))}
-            isDisabled={blocked || context.locations.length === 1}
-            onSelectionChange={(key) => {
-              const id = String(key);
-              if (id === draft.locationId) return;
-              if (!session.changeLocation(id, false)) setLocationChange(id);
-            }}
-          />
-          {draft.saleType === "table" && context.tablesEnabled ? (
-            <PosTablePicker
-              {...tables}
-              tableId={draft.tableId}
-              name={draft.orderLabel}
-              orderId={session.order?.id}
-              disabled={blocked}
-              onChange={(tableId, orderLabel) =>
-                session.change({ tableId, orderLabel })
-              }
+            {draft.orderLabel || labels[draft.saleType]}
+          </Text>
+          <EditPencil className="size-4 shrink-0" aria-hidden="true" />
+        </Button>
+        <Button
+          variant="secondary"
+          className="max-w-full rounded-full! border-primary! bg-primary-soft! px-4! text-primary!"
+          aria-label={`Editar local: ${context.locations.find((l) => l.id === draft.locationId)?.name ?? "Sin local"}`}
+          isDisabled={blocked}
+          onPress={() => setDetailsEditor("location")}
+        >
+          <Text
+            as="span"
+            variant="label"
+            className="min-w-0 break-words text-primary"
+          >
+            {context.locations.find((l) => l.id === draft.locationId)?.name ??
+              "Elegir local"}
+          </Text>
+          <EditPencil className="size-4 shrink-0" aria-hidden="true" />
+        </Button>
+      </div>
+      <Dialog
+        title={
+          detailsEditor === "location" ? "Cambiar local" : "Editar mesa u orden"
+        }
+        isOpen={detailsEditor !== null && !blocked}
+        onOpenChange={(open) => {
+          if (!open) setDetailsEditor(null);
+        }}
+      >
+        <div className="grid gap-4">
+          {detailsEditor === "location" ? (
+            <SelectField
+              label="Local"
+              selectedKey={draft.locationId || null}
+              options={context.locations.map((l) => ({
+                id: l.id,
+                label: l.name,
+              }))}
+              isDisabled={blocked || context.locations.length === 1}
+              onSelectionChange={(key) => {
+                const id = String(key);
+                if (id === draft.locationId) return;
+                setDetailsEditor(null);
+                if (!session.changeLocation(id, false)) setLocationChange(id);
+              }}
             />
           ) : (
-            draft.saleType !== "counter" && (
-              <TextField
-                label={
-                  draft.saleType === "table"
-                    ? "Nombre de mesa"
-                    : "Nombre o referencia"
-                }
-                value={draft.orderLabel}
-                onChange={(orderLabel) => session.change({ orderLabel })}
-                isRequired
-                maxLength={60}
+            <>
+              <SelectField
+                label="Tipo de venta"
+                selectedKey={draft.saleType}
+                options={[
+                  ...context.saleTypes,
+                  ...(session.order?.saleType === "legacy"
+                    ? ["legacy" as const]
+                    : []),
+                ].map((id) => ({ id, label: labels[id] }))}
                 isDisabled={blocked}
+                onSelectionChange={(key) =>
+                  session.change({
+                    saleType: key as SaleType,
+                    tableId: null,
+                    orderLabel: "",
+                  })
+                }
               />
-            )
+              {draft.saleType === "table" && context.tablesEnabled ? (
+                <PosTablePicker
+                  {...tables}
+                  tableId={draft.tableId}
+                  name={draft.orderLabel}
+                  orderId={session.order?.id}
+                  disabled={blocked}
+                  onChange={(tableId, orderLabel) =>
+                    session.change({ tableId, orderLabel })
+                  }
+                />
+              ) : (
+                draft.saleType !== "counter" && (
+                  <TextField
+                    label={
+                      draft.saleType === "table"
+                        ? "Nombre de mesa"
+                        : "Nombre o referencia"
+                    }
+                    value={draft.orderLabel}
+                    onChange={(orderLabel) => session.change({ orderLabel })}
+                    isRequired
+                    maxLength={60}
+                    isDisabled={blocked}
+                  />
+                )
+              )}
+              {draft.saleType === "counter" && (
+                <Text variant="muted">
+                  La referencia de Mostrador se asigna al guardar.
+                </Text>
+              )}
+            </>
           )}
-          {draft.saleType === "counter" && (
-            <Text variant="muted">
-              La referencia de Mostrador se asigna al guardar.
-            </Text>
-          )}
+          <Button variant="secondary" onPress={() => setDetailsEditor(null)}>
+            Listo
+          </Button>
         </div>
-      )}
+      </Dialog>
       {(session.error || message) && (
         <Alert kind="error" title={session.error || message || ""} />
       )}

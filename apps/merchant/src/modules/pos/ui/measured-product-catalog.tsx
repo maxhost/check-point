@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Button, SelectField, Text, TextField } from "../../../ui";
+import { Button, SearchField, SelectField, Text } from "../../../ui";
 import type { PosCatalogProductV2, PosCatalogV2 } from "../contracts";
 import { unitLabel } from "./measured-cart-model";
 
@@ -27,17 +27,25 @@ export function MeasuredProductCatalog({
   );
   return (
     <div className="grid gap-4">
-      <TextField label="Buscar productos" value={search} onChange={setSearch} />
-      <SelectField
-        label="Categoría"
-        selectedKey={category}
-        onSelectionChange={(key) => setCategory(String(key))}
-        options={[
-          { id: "all", label: "Todos" },
-          { id: "frequent", label: "Frecuentes" },
-          ...catalog.categories.map((c) => ({ id: c.id, label: c.name })),
-        ]}
-      />
+      <div className="grid min-w-0 grid-cols-2 items-start gap-3">
+        <SearchField
+          className="min-w-0"
+          label="Buscar productos"
+          value={search}
+          onChange={setSearch}
+        />
+        <SelectField
+          className="min-w-0"
+          label="Categoría"
+          selectedKey={category}
+          onSelectionChange={(key) => setCategory(String(key))}
+          options={[
+            { id: "all", label: "Todos" },
+            { id: "frequent", label: "Frecuentes" },
+            ...catalog.categories.map((c) => ({ id: c.id, label: c.name })),
+          ]}
+        />
+      </div>
       <div className="grid gap-2 sm:grid-cols-2">
         {products.map((product) => (
           <Button
