@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { buildFinancialAmountsFromSnapshots } from "@mi-pasaporte/domain/financial";
+import {
+  buildFinancialAmountsFromSnapshots,
+  buildFinancialSettlementFromSnapshots,
+} from "@mi-pasaporte/domain/financial";
 import {
   assertLegacySnapshot,
   measuredItems,
@@ -124,6 +127,39 @@ describe("POS trusted measured projections", () => {
     expect(actual.financialSnapshot).toBe(frozen);
     expect(actual.lineTotal).toBe("2.00");
     expect(actual.unitPrice).toBe("99");
+  });
+  it("defensively uses the settlement's frozen line by sourceLineId if its row capture is absent", () => {
+    const settlement = buildFinancialSettlementFromSnapshots({
+      currencyCode: "USD",
+      lines: [
+        {
+          sourceLineId: "line-1",
+          position: 0,
+          quantity: "1",
+          unitPrice: "2",
+          measure: {
+            kind: "unit",
+            quantityUnit: "unit",
+            priceUnit: "unit",
+            conversionVersion: "mass-si-1",
+          },
+        },
+      ],
+      discount: {
+        amount: "1.00",
+        origin: { type: "campaign_coupon", sourceId: "coupon", scope: "order" },
+      },
+      payments: [{ paymentId: "payment", methodId: "method", amount: "1.00" }],
+    });
+    const [actual] = measuredItems(
+      [line({ unitPrice: "99", financialSnapshot: null })],
+      "COP",
+      true,
+      settlement,
+    );
+    expect(actual.financialSnapshot).toBe(settlement.lines[0]);
+    expect(actual.lineTotal).toBe("2.00");
+    expect(actual.financialSnapshot?.money.discount).toBe("1.00");
   });
   it("keeps open calculated amounts separate from persisted financial snapshots and permits combining", () => {
     const [first, second] = measuredItems(
