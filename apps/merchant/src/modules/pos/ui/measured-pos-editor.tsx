@@ -71,6 +71,9 @@ export function MeasuredPosEditor({
     };
   }, [session]);
   const { draft, context, catalog } = session;
+  const [detailsExpanded, setDetailsExpanded] = useState(
+    !session.context.initialSaleType,
+  );
   const [view, setView] = useState<"catalog" | "order">("catalog");
   const [exitOpen, setExitOpen] = useState(false);
   const [locationChange, setLocationChange] = useState<string | null>(null);
@@ -94,7 +97,7 @@ export function MeasuredPosEditor({
     0,
     tableError,
     context.tablesEnabled && draft.saleType === "table",
-    { client: session.client },
+    { client: session.client, cache: session.cache },
   );
   const unavailable =
     (context.tablesEnabled &&
@@ -224,69 +227,89 @@ export function MeasuredPosEditor({
           Salir
         </Button>
       </div>
-      <div className="grid gap-4 md:grid-cols-2">
-        <SelectField
-          label="Tipo de venta"
-          selectedKey={draft.saleType}
-          options={[
-            ...context.saleTypes,
-            ...(session.order?.saleType === "legacy"
-              ? ["legacy" as const]
-              : []),
-          ].map((id) => ({ id, label: labels[id] }))}
-          isDisabled={blocked}
-          onSelectionChange={(key) =>
-            session.change({
-              saleType: key as SaleType,
-              tableId: null,
-              orderLabel: "",
-            })
-          }
-        />
-        <SelectField
-          label="Local"
-          selectedKey={draft.locationId || null}
-          options={context.locations.map((l) => ({ id: l.id, label: l.name }))}
-          isDisabled={blocked || context.locations.length === 1}
-          onSelectionChange={(key) => {
-            const id = String(key);
-            if (id === draft.locationId) return;
-            if (!session.changeLocation(id, false)) setLocationChange(id);
-          }}
-        />
-        {draft.saleType === "table" && context.tablesEnabled ? (
-          <PosTablePicker
-            {...tables}
-            tableId={draft.tableId}
-            name={draft.orderLabel}
-            orderId={session.order?.id}
-            disabled={blocked}
-            onChange={(tableId, orderLabel) =>
-              session.change({ tableId, orderLabel })
+      {context.initialSaleType && (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Text variant="label">
+            {labels[draft.saleType]}
+            {draft.orderLabel ? ` · ${draft.orderLabel}` : ""}
+          </Text>
+          <Button
+            variant="quiet"
+            isDisabled={blocked}
+            onPress={() => setDetailsExpanded((value) => !value)}
+          >
+            {detailsExpanded ? "Ocultar datos" : "Cambiar datos"}
+          </Button>
+        </div>
+      )}
+      {detailsExpanded && (
+        <div className="grid gap-4 md:grid-cols-2">
+          <SelectField
+            label="Tipo de venta"
+            selectedKey={draft.saleType}
+            options={[
+              ...context.saleTypes,
+              ...(session.order?.saleType === "legacy"
+                ? ["legacy" as const]
+                : []),
+            ].map((id) => ({ id, label: labels[id] }))}
+            isDisabled={blocked}
+            onSelectionChange={(key) =>
+              session.change({
+                saleType: key as SaleType,
+                tableId: null,
+                orderLabel: "",
+              })
             }
           />
-        ) : (
-          draft.saleType !== "counter" && (
-            <TextField
-              label={
-                draft.saleType === "table"
-                  ? "Nombre de mesa"
-                  : "Nombre o referencia"
+          <SelectField
+            label="Local"
+            selectedKey={draft.locationId || null}
+            options={context.locations.map((l) => ({
+              id: l.id,
+              label: l.name,
+            }))}
+            isDisabled={blocked || context.locations.length === 1}
+            onSelectionChange={(key) => {
+              const id = String(key);
+              if (id === draft.locationId) return;
+              if (!session.changeLocation(id, false)) setLocationChange(id);
+            }}
+          />
+          {draft.saleType === "table" && context.tablesEnabled ? (
+            <PosTablePicker
+              {...tables}
+              tableId={draft.tableId}
+              name={draft.orderLabel}
+              orderId={session.order?.id}
+              disabled={blocked}
+              onChange={(tableId, orderLabel) =>
+                session.change({ tableId, orderLabel })
               }
-              value={draft.orderLabel}
-              onChange={(orderLabel) => session.change({ orderLabel })}
-              isRequired
-              maxLength={60}
-              isDisabled={blocked}
             />
-          )
-        )}
-        {draft.saleType === "counter" && (
-          <Text variant="muted">
-            La referencia de Mostrador se asigna al guardar.
-          </Text>
-        )}
-      </div>
+          ) : (
+            draft.saleType !== "counter" && (
+              <TextField
+                label={
+                  draft.saleType === "table"
+                    ? "Nombre de mesa"
+                    : "Nombre o referencia"
+                }
+                value={draft.orderLabel}
+                onChange={(orderLabel) => session.change({ orderLabel })}
+                isRequired
+                maxLength={60}
+                isDisabled={blocked}
+              />
+            )
+          )}
+          {draft.saleType === "counter" && (
+            <Text variant="muted">
+              La referencia de Mostrador se asigna al guardar.
+            </Text>
+          )}
+        </div>
+      )}
       {(session.error || message) && (
         <Alert kind="error" title={session.error || message || ""} />
       )}

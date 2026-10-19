@@ -1,6 +1,5 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Bag, DeliveryTruck, Shop, Table } from "iconoir-react";
 import { Alert, Button, Dialog, Heading, Text } from "../../../ui";
 import type {
   PosHistoryV2,
@@ -8,7 +7,13 @@ import type {
   PosOrderV2,
   SaleType,
 } from "../contracts";
-import { DiscardedPosRead, detailKey, historyKey } from "./pos-cache";
+import {
+  DiscardedPosRead,
+  detailKey,
+  historyKey,
+  tablesKey,
+} from "./pos-cache";
+import type { PosTable } from "./pos-tables";
 import {
   DiscardedPosIntent,
   usePosContext,
@@ -29,33 +34,7 @@ import {
   retireMeasuredVoidIdentity,
 } from "./measured-void-action";
 import type { MeasuredEditorContext } from "./measured-editor-model";
-
-const newOrderTypes = [
-  {
-    id: "table",
-    label: "Mesa",
-    icon: <Table className="size-6" aria-hidden="true" />,
-  },
-  {
-    id: "counter",
-    label: "Mostrador",
-    icon: <Shop className="size-6" aria-hidden="true" />,
-  },
-  {
-    id: "delivery",
-    label: "Delivery",
-    icon: <DeliveryTruck className="size-6" aria-hidden="true" />,
-  },
-  {
-    id: "pickup",
-    label: "Para retirar",
-    icon: <Bag className="size-6" aria-hidden="true" />,
-  },
-] satisfies {
-  id: Exclude<SaleType, "legacy">;
-  label: string;
-  icon: React.ReactNode;
-}[];
+import { MeasuredNewOrderDialog } from "./measured-new-order-dialog";
 
 export function MeasuredConsole({ locations }: { locations: PosLocationV2[] }) {
   const scope = usePosContext({ contractVersion: 2 });
@@ -249,6 +228,35 @@ export function MeasuredConsoleContent({
     !voidAction.canLeave ||
     !!editor?.blocked ||
     [...payments.current.values()].some((s) => !s.canLeave);
+  const tableLocations = JSON.stringify(context.locations.map((l) => l.id));
+  useEffect(() => {
+    if (view !== "list" || !context.tablesEnabled || !accessEnabled || denied)
+      return;
+    let current = true;
+    for (const locationId of JSON.parse(tableLocations) as string[]) {
+      void cache
+        .read<{ tables: PosTable[] }>(tablesKey(locationId), () =>
+          client.request(
+            `/api/modules/pos/tables?locationId=${encodeURIComponent(locationId)}`,
+          ),
+        )
+        .catch((cause) => {
+          if (current) handleError(cause);
+        });
+    }
+    return () => {
+      current = false;
+    };
+  }, [
+    view,
+    context.tablesEnabled,
+    accessEnabled,
+    denied,
+    tableLocations,
+    cache,
+    client,
+    handleError,
+  ]);
   function syncHistory() {
     setHistory(cache.peek<PosHistoryV2>(historyKey, true));
   }
@@ -256,9 +264,15 @@ export function MeasuredConsoleContent({
     value: PosOrderV2 | null,
     locationId?: string,
     initialSaleType?: Exclude<SaleType, "legacy">,
+    initialIdentification?: MeasuredEditorContext["initialIdentification"],
   ) {
     const next = new MeasuredEditorSession(
-      { ...context, lastLocationId: locationId, initialSaleType },
+      {
+        ...context,
+        lastLocationId: locationId,
+        initialSaleType,
+        initialIdentification,
+      },
       cache,
       client,
       value,
@@ -399,7 +413,22 @@ export function MeasuredConsoleContent({
             onChooseNew={(locationId) => {
               if (!blocked) setNewOrderLocation(locationId);
             }}
-            onRefresh={() => void load(true)}
+            onRefresh={() => {
+              if (context.tablesEnabled) {
+                for (const location of context.locations) {
+                  const key = tablesKey(location.id);
+                  cache.invalidate(key);
+                  void cache
+                    .read<{ tables: PosTable[] }>(key, () =>
+                      client.request(
+                        `/api/modules/pos/tables?locationId=${encodeURIComponent(location.id)}`,
+                      ),
+                    )
+                    .catch(handleError);
+                }
+              }
+              void load(true);
+            }}
           />
         ) : (
           !loading && (
@@ -491,41 +520,25 @@ export function MeasuredConsoleContent({
           )}
         </section>
       )}
-      <Dialog
-        title="Nueva orden"
-        description="Elige el tipo de orden que quieres crear."
+      <MeasuredNewOrderDialog
+        key={newOrderLocation ?? "closed"}
         isOpen={newOrderLocation !== null && view === "list" && !blocked}
-        onOpenChange={(open) => {
-          if (!open) setNewOrderLocation(null);
+        initialLocationId={newOrderLocation ?? ""}
+        context={context}
+        client={client}
+        cache={cache}
+        disabled={blocked}
+        onClose={() => setNewOrderLocation(null)}
+        onError={handleError}
+        onContinue={(details) => {
+          if (blocked || newOrderLocation === null) return;
+          setNewOrderLocation(null);
+          selectEditor(null, details.locationId, details.saleType, {
+            tableId: details.tableId,
+            orderLabel: details.orderLabel,
+          });
         }}
-      >
-        <div className="grid grid-cols-2 gap-3">
-          {newOrderTypes
-            .filter((type) => context.saleTypes.includes(type.id))
-            .map((type) => (
-              <Button
-                key={type.id}
-                variant="secondary"
-                className="min-h-28 flex-col gap-3"
-                isDisabled={blocked}
-                onPress={() => {
-                  if (blocked || newOrderLocation === null) return;
-                  const locationId = newOrderLocation;
-                  setNewOrderLocation(null);
-                  selectEditor(null, locationId, type.id);
-                }}
-              >
-                {type.icon}
-                {type.label}
-              </Button>
-            ))}
-        </div>
-        <div className="mt-4 flex justify-end">
-          <Button variant="quiet" onPress={() => setNewOrderLocation(null)}>
-            Cancelar
-          </Button>
-        </div>
-      </Dialog>
+      />
       <Dialog
         title="Anular pedido"
         isOpen={confirmVoid}

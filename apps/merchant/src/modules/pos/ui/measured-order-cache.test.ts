@@ -2,7 +2,48 @@ import { buildFinancialSettlement } from "@mi-pasaporte/domain/financial";
 import { expect, it } from "vitest";
 import type { PosHistoryV2, PosOrderV2 } from "../contracts";
 import { MeasuredOrderCache } from "./measured-order-cache";
-import { PosCache, DiscardedPosRead, detailKey, historyKey } from "./pos-cache";
+import {
+  PosCache,
+  DiscardedPosRead,
+  detailKey,
+  historyKey,
+  tablesKey,
+} from "./pos-cache";
+import type { PosTable } from "./pos-tables";
+
+it("actualiza la ocupación de mesas desde respuestas canónicas sin recargar ni mezclar locales", () => {
+  const cache = new PosCache();
+  const facade = new MeasuredOrderCache(cache, "active");
+  const tables = [
+    { id: "t1", name: "Mesa 1", openOrderId: null },
+    { id: "t2", name: "Mesa 2", openOrderId: "other" },
+  ];
+  cache.put(tablesKey("north"), { tables });
+  cache.put(tablesKey("south"), { tables });
+  const tableOrder = {
+    ...order(1),
+    saleType: "table" as const,
+    tableId: "t1",
+    location: { id: "north", name: "Norte" },
+  };
+  facade.accept(tableOrder);
+  expect(
+    cache
+      .peek<{ tables: PosTable[] }>(tablesKey("north"))
+      ?.tables.map((t) => t.openOrderId),
+  ).toEqual(["o", "other"]);
+  expect(
+    cache
+      .peek<{ tables: PosTable[] }>(tablesKey("south"))
+      ?.tables.map((t) => t.openOrderId),
+  ).toEqual([null, "other"]);
+  facade.accept({ ...tableOrder, status: "closed" });
+  expect(
+    cache
+      .peek<{ tables: PosTable[] }>(tablesKey("north"))
+      ?.tables.map((t) => t.openOrderId),
+  ).toEqual([null, "other"]);
+});
 
 const order = (
   version: number,

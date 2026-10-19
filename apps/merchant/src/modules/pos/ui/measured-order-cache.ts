@@ -1,6 +1,7 @@
 import type { PosHistoryV2, PosOrderV2, PosSummaryV2 } from "../contracts";
 import { PosError } from "./pos-types";
-import { detailKey, historyKey, type PosCache } from "./pos-cache";
+import { detailKey, historyKey, tablesKey, type PosCache } from "./pos-cache";
+import type { PosTable } from "./pos-tables";
 
 // Close/void do not necessarily increment version; a terminal snapshot wins ties.
 const statusRank = { open: 0, closed: 1, voided: 2 } as const;
@@ -58,6 +59,30 @@ export class MeasuredOrderCache {
       );
     }
     this.cache.put(key, result);
+    // Patch availability from the canonical order, without a GET after a write.
+    for (const locationId of new Set([
+      previous?.location?.id,
+      result.location?.id,
+    ])) {
+      if (!locationId) continue;
+      const tableCacheKey = tablesKey(locationId);
+      const known = this.cache.peek<{ tables: PosTable[] }>(tableCacheKey);
+      this.cache.invalidate(tableCacheKey);
+      if (known)
+        this.cache.put(tableCacheKey, {
+          tables: known.tables.map((table) => ({
+            ...table,
+            openOrderId:
+              result.status === "open" &&
+              result.location?.id === locationId &&
+              result.tableId === table.id
+                ? result.id
+                : table.openOrderId === result.id
+                  ? null
+                  : table.openOrderId,
+          })),
+        });
+    }
     if (!history) return result;
     const valid = this.cache.peek(historyKey) !== null;
     // Match list V2's frozenSummaryTotals without importing server code or arithmetic.

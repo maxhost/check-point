@@ -5,16 +5,18 @@ import { Alert, Button, Text, TextField } from "../../../ui";
 import { PosError } from "./pos-types";
 
 import { usePosContext, type PosClient } from "./pos-context";
-type PosTable = { id: string; name: string; openOrderId: string | null };
+import { tablesKey, type PosCache } from "./pos-cache";
+export type PosTable = { id: string; name: string; openOrderId: string | null };
 export function usePosTables(
   locationId: string,
   revision: number,
   onError: (cause: unknown) => void,
   enabled = true,
-  options?: { client: PosClient },
+  options?: { client: PosClient; cache?: PosCache },
 ) {
   const scope = usePosContext();
   const posRequest = options?.client.request ?? scope.client.request;
+  const cache = options?.cache;
   const [attempt, setAttempt] = useState(0);
   const [snapshot, setSnapshot] = useState<{
     location: string;
@@ -30,9 +32,11 @@ export function usePosTables(
       (scope.present && (!scope.identity || scope.loading))
     )
       return;
-    void posRequest<{ tables: PosTable[] }>(
-      `/api/modules/pos/tables?locationId=${encodeURIComponent(locationId)}`,
-    )
+    const read = () =>
+      posRequest<{ tables: PosTable[] }>(
+        `/api/modules/pos/tables?locationId=${encodeURIComponent(locationId)}`,
+      );
+    void (cache ? cache.read(tablesKey(locationId), read) : read())
       .then((data) => {
         if (active)
           setSnapshot({
@@ -71,16 +75,23 @@ export function usePosTables(
     scope.loading,
     scope.present,
     posRequest,
+    cache,
   ]);
   return {
     enabled,
     tables: !enabled
       ? []
-      : snapshot.location === locationId
-        ? snapshot.tables
-        : null,
+      : cache
+        ? (cache.peek<{ tables: PosTable[] }>(tablesKey(locationId))?.tables ??
+          null)
+        : snapshot.location === locationId
+          ? snapshot.tables
+          : null,
     error: enabled && snapshot.location === locationId ? snapshot.error : null,
-    retry: () => setAttempt((value) => value + 1),
+    retry: () => {
+      cache?.invalidate(tablesKey(locationId));
+      setAttempt((value) => value + 1);
+    },
   };
 }
 

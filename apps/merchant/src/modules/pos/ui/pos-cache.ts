@@ -11,6 +11,7 @@ export class DiscardedPosRead extends Error {}
 export const historyKey = "history";
 export const catalogKey = (locationId: string) => `catalog:${locationId}`;
 export const detailKey = (id: string) => `order:${id}`;
+export const tablesKey = (locationId: string) => `tables:${locationId}`;
 
 /** Private to one mounted console. No timers, persistence or shared module state. */
 export class PosCache {

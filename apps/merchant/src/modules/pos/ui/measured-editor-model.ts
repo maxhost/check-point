@@ -30,6 +30,7 @@ export type MeasuredEditorContext = {
   tablesEnabled: boolean;
   lastLocationId?: string;
   initialSaleType?: Exclude<SaleType, "legacy">;
+  initialIdentification?: { tableId: string | null; orderLabel: string };
 };
 export type MeasuredEditorDraft = {
   saleType: SaleType;
@@ -56,8 +57,11 @@ function draftFor(
         ? context.locations[0].id
         : (context.locations.find((l) => l.id === context.lastLocationId)?.id ??
           ""),
-    tableId: order?.tableId ?? null,
-    orderLabel: order?.orderLabel ?? "",
+    tableId: order
+      ? order.tableId
+      : (context.initialIdentification?.tableId ?? null),
+    orderLabel:
+      order?.orderLabel ?? context.initialIdentification?.orderLabel ?? "",
     note: order?.note ?? "",
     lines: order?.items.map(existingCartLine) ?? [],
   };

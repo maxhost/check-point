@@ -32,6 +32,33 @@ function setup(order: typeof editorOrder | null = null) {
   return session;
 }
 describe("measured editor owner", () => {
+  it("inicializa los datos elegidos en el modal sin ensuciar el borrador ni sobrescribir un pedido existente", () => {
+    const configured = {
+      ...context,
+      initialSaleType: "pickup" as const,
+      initialIdentification: { tableId: null, orderLabel: "Ana" },
+    };
+    const { client, cache } = setup();
+    const fresh = new MeasuredEditorSession(configured, cache, client);
+    expect(fresh.draft).toMatchObject({
+      saleType: "pickup",
+      orderLabel: "Ana",
+      tableId: null,
+      locationId: "north",
+    });
+    expect(fresh.dirty).toBe(false);
+    const existing = new MeasuredEditorSession(
+      configured,
+      cache,
+      client,
+      editorOrder,
+    );
+    expect(existing.draft.saleType).toBe(editorOrder.saleType);
+    expect(existing.draft.orderLabel).toBe(editorOrder.orderLabel);
+    expect(existing.draft.tableId).toBe(editorOrder.tableId);
+    expect(existing.dirty).toBe(false);
+  });
+
   it("distribuye dos líneas COP0.49 con el mismo kernel del total global", () => {
     const lines = ["a", "b"].map((key) =>
       newCartLine(
