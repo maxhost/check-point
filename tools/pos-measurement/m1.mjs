@@ -248,9 +248,29 @@ function prepare(directory) {
     throw Error("New M1 namespace required");
   mkdirSync(directory, { mode: 0o700 });
   privateDirectory(directory);
-  const archive = `${PRIVATE}/control-build-6f.tar.gz`;
-  if (hash(privateFile(archive)) !== CONTROL_ARCHIVE)
+  // Historical archive is0644 inside its protected0700 parent. Preserve it verbatim;
+  // only the new owned copy must satisfy the namespace's0600 file contract.
+  const originalArchive = `${PRIVATE}/control-build-6f.tar.gz`;
+  const originalStat = lstatSync(originalArchive),
+    parentStat = lstatSync(PRIVATE);
+  if (
+    !originalStat.isFile() ||
+    originalStat.isSymbolicLink() ||
+    realpathSync(originalArchive) !== originalArchive ||
+    !parentStat.isDirectory() ||
+    parentStat.isSymbolicLink() ||
+    parentStat.mode & 0o077
+  )
+    throw Error(
+      "Original control must be regular and inside protected private parent",
+    );
+  const archiveBytes = readFileSync(originalArchive);
+  if (hash(archiveBytes) !== CONTROL_ARCHIVE)
     throw Error("Original control archive changed");
+  const archive = join(directory, "control-build-6f.tar.gz");
+  writeFileSync(archive, archiveBytes, { flag: "wx", mode: 0o600 });
+  if (hash(privateFile(archive)) !== CONTROL_ARCHIVE)
+    throw Error("Owned control copy mismatch");
   const names = execFileSync("tar", ["-tzf", archive], { encoding: "utf8" })
     .trim()
     .split("\n");
@@ -308,6 +328,8 @@ function prepare(directory) {
       buildSource: CONTROL_SOURCE,
       buildId: CONTROL_BUILD,
       archiveSha256: CONTROL_ARCHIVE,
+      archivePath: archive,
+      originalArchivePath: originalArchive,
       buildFiles: treeHashes(controlNext),
     },
     candidate: { runtime: candidate, buildSource: runnerSHA },

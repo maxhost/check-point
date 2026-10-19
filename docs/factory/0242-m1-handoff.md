@@ -1,5 +1,14 @@
 # 0242 P6B — preparación offline M1R1
 
+Preparación925e3397 revisada por QA sin bloqueantes funcionales de receta/código.
+Su primer prepare offline se detuvo por una restricción de modo: archive histórico
+0644 bajo padreprivate0700; selected/ci.env son0600. Namespace
+`/private/tmp/checkpass-pos-0242/m1-r1-925e3397` queda0700 VACÍO, sin plan/runtime
+extraído ni datos. Fix posterior sólo lee archive regular/no-symlink dentro de
+padre0700, verifica SHA original y crea copia exclusiva0600 propia antes de tar;
+nunca modifica modos/contenido originales. Este fallo es setup de permisos, no
+producto ni medición. Nueva preparación requiere namespace/SHA explícitos.
+
 Revisión previa rechazada1c39815c preservada sin datos. Este incrementoR1.1
 atiende los cuatro hallazgos de QA antes de cualquier medición: retornoOPEN
 candidato por Salir; respuesta exacta de ocho snapshots con IDs premanifestados y
