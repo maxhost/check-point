@@ -83,6 +83,14 @@ explícita a `modules/pos/ui/measured-editor-model.ts`, su `.test.ts`,
 ese recovery vigente. No es rediseño: usar controles existentes y conservar
 negativos de mesas, intención/captura congelada y scope. Caso browser en tables.spec.
 
+Ampliación por cobertura moderna ejecutada (42PASS/12FAIL previos, sin atribuir
+suite verde): `tests/e2e/pos-measured-payment.spec.ts` y
+`pos-measured-ticket.spec.ts` adaptan formato/copy/ubicación de regla y documento
+oculto para impresión. Conservar efecto económico/cambio/revalidación/regla íntegra
+en su ubicación vigente y separación de gestos/unsupported. Si es fallo de producto,
+no relajar aserción. `app/backoffice/loyalty/loyalty-tour-step.ts` retira copy de
+ofrecimiento de canje sin saldo, preservando ancla/datos históricos.
+
 ## Checks y entrega
 
 Tipos/lint/UIguard focales, búsqueda de consumidores y pruebas proporcionales de
