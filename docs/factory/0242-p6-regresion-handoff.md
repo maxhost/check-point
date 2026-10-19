@@ -1,10 +1,17 @@
 # 0242 P6A — handoff de regresión HTTP
 
+
+## Corrección de entrega aún no aceptada: cleanup pos-access
+
+La entrega a8a0795e fue rechazada por fixturecleanup real después de QA combinada en a414:11/11casos funcionalesPASS,129.27s,0skips/retries ytypecheckPASS (informe `aafd55944718f3b22fd015509ae348ee41ac0270`). QA confirmó2owners/2sessions/1consumer propios retenidos por afterAllpos-access; coordinador retiró esosIDs exactos y comprobóinspector0/PIDs0. ElPASSfuncional sigue compatible, pero no se declara entregaaceptada ni cleanup originalPASS.
+
+Corrección local sólo pos-access+håndoff: consumerId registrado inmediatamente al retornar scannedCustomer; owners desdea/b.seed.userId ystaff desdeextraUsers, capturados antes de dropPosWorld. Tras retirar ambos negocios se eliminan únicamente esos consumer/userIDs y se comprueba SELECT0consumer/users/sessions. Registro privado de IDs alcrear/retirar; setup parcial sólo procesa mundos retornados y listas no vacías, sin inferencia/barridoporpatrones. Seis cuerpos/casos/negativos/guards/scopes/latencias/polls intactos; ningún helperexportado/global/producto/pathnuevo. Nuevo retestpos-access6 requiere QAlectura/GO/transferenciaCI; ningunaDB sobre esta corrección todavía. Checks offline: typecheckmerchant PASS, ESLint1 PASS, Prettier2 PASS y diff whitespace PASS. La matriz39/197 conserva evidenciafuncional, sin certificar cleanup corregido antes del retest.
+
 ## Estado actual para entrega
 
 Código congelado y último corte validado: `d67e3181a7b6b8ec6763e0bc0a2a76dd81fa7e9a`. Esta actualización sólo modifica el handoff. Base `01445a86bdec433e8d7bc75b94dfca1ce8184c19`, WT/ref `pos-ui-card-0242`;45paths propios =39suites+5soportes+este informe. Sin cambios de producto/guards/tooling/esquema/migraciones.
 
-Inventario dirigido46: **39suites completas/197casos distintos PASS compatibles por cortes +7suites compatibles por lectura**. No quedan suites asignadas pendientes de ejecución. No equivale a corrida global/exhaustividad de toda la app ni a QAfinal. Las7sinPASS nuevo son business-access,business-sales-units,console-native,legacy-cutover,pos-context-native,pos-scope,pos-staff-entry (todas `modules/pos/server`); motivo por archivo en matriz. LosPASSreutilizados conservan fuente compatible; no se repitieron37/189 por ceremonia.
+Inventario dirigido46: **39suites completas/197casos distintos PASS compatibles por cortes +7suites compatibles por lectura**. Tras el rechazo de cleanup descrito arriba queda únicamente retestpos-access6 de la corrección local; no repetir las39suites ni11deQA. No equivale a corrida global/exhaustividad de toda la app ni a QAfinal. Las7sinPASS nuevo son business-access,business-sales-units,console-native,legacy-cutover,pos-context-native,pos-scope,pos-staff-entry (todas `modules/pos/server`); motivo por archivo en matriz. LosPASSreutilizados conservan fuente compatible; no se repitieron37/189 por ceremonia.
 
 | Últimos gates sobre d67e3181 | Resultado |
 | --- | --- |

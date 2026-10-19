@@ -1,6 +1,6 @@
 import { closeWithCash } from "./pos-payment-integration-support";
 import { randomUUID } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   type PosWorld,
@@ -17,7 +17,12 @@ import {
 } from "./pos-integration-support";
 import { conCookie } from "../../../server/permissions-integration-support";
 import { getDb } from "@mi-pasaporte/db";
-import { businessModules } from "@mi-pasaporte/db/schema";
+import {
+  businessModules,
+  consumerAccounts,
+  users,
+  sessions,
+} from "@mi-pasaporte/db/schema";
 import { scannedCustomer } from "../../../server/counter/coupon-cycle-support";
 import { PATCH as SET_PERMISSIONS } from "../../../app/api/staff/[userId]/permissions/route";
 import { POST as CREATE_STAFF } from "../../../app/api/staff/route";
@@ -40,10 +45,19 @@ const scopes = new Map<string, string>();
 const caller = (cookie: string) => scopedPos(cookie, scopes.get(cookie)!);
 let a: PosWorld;
 let b: PosWorld;
+const consumerIds: string[] = [];
 
 beforeAll(async () => {
   a = await seedPosWorld("POS acceso A");
+  console.info("P6 pos-access fixture identity", {
+    businessId: a.seed.business.id,
+    ownerId: a.seed.userId,
+  });
   b = await seedPosWorld("POS acceso B");
+  console.info("P6 pos-access fixture identity", {
+    businessId: b.seed.business.id,
+    ownerId: b.seed.userId,
+  });
   for (const w of [a, b])
     scopes.set(
       w.ownerCookie,
@@ -52,8 +66,45 @@ beforeAll(async () => {
 }, 240_000);
 
 afterAll(async () => {
-  await dropPosWorld(a);
-  await dropPosWorld(b);
+  // Partial setup owns only worlds that returned successfully; never infer identities.
+  const worlds = [a, b].filter((target): target is PosWorld => target != null);
+  const userIds = [
+    ...new Set(
+      worlds.flatMap((target) => [target.seed.userId, ...target.extraUsers]),
+    ),
+  ];
+  console.info("P6 pos-access retiring identities", {
+    businessIds: worlds.map((target) => target.seed.business.id),
+    userIds,
+    consumerIds,
+  });
+  for (const target of worlds) await dropPosWorld(target);
+  if (consumerIds.length) {
+    await getDb()
+      .delete(consumerAccounts)
+      .where(inArray(consumerAccounts.id, consumerIds));
+    expect(
+      await getDb()
+        .select({ id: consumerAccounts.id })
+        .from(consumerAccounts)
+        .where(inArray(consumerAccounts.id, consumerIds)),
+    ).toEqual([]);
+  }
+  if (userIds.length) {
+    await getDb().delete(users).where(inArray(users.id, userIds));
+    expect(
+      await getDb()
+        .select({ id: users.id })
+        .from(users)
+        .where(inArray(users.id, userIds)),
+    ).toEqual([]);
+    expect(
+      await getDb()
+        .select({ id: sessions.id })
+        .from(sessions)
+        .where(inArray(sessions.userId, userIds)),
+    ).toEqual([]);
+  }
 }, 240_000);
 
 const posEnabledOf = async (businessId: string) =>
@@ -113,6 +164,11 @@ describe.skipIf(!posIntegrationEnabled)(
         { productId: a.cafe, quantity: 1 },
       ]);
       const foreign = await scannedCustomer(b);
+      consumerIds.push(foreign.consumerId);
+      console.info("P6 pos-access consumer identity", {
+        businessId: b.seed.business.id,
+        consumerId: foreign.consumerId,
+      });
       const response = await closeWithCash(
         a.ownerCookie,
         order.id,
