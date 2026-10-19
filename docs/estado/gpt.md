@@ -3,7 +3,15 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — 0242: UI PRIMERO POR INSTRUCCIÓN DEL OWNER; NUEVO ORDEN PENDIENTE (2026-10-18)
+## ESTADO — 0242: PRIMER AJUSTE UI EN PREVIEW; PENDIENTE PRUEBA DEL OWNER (2026-10-18)
+
+Owner pidió convertir listado de órdenes en tarjetas: título de mesa/descripción guardada, total, recuento de productos e icono Iconoir por tipo; desktop como cards de histórico y móvil dos columnas. Dos implementadores NUEVOS, sin QA independiente ni batería extensa: `ui_card` entregó `9b6b18137cf55b354c631e0d49b318c6a4cb2f15` (nuevo `measured-order-card.tsx`); `ui_grid` entregó `5131007674c3e5d41e79f35f7ea8299e7315147f` (`measured-order-list.tsx`). Integrados en dev `72b94a6f1b8c93a56bcaae2539f5558a5988be25`, disponible en preview3201 existente. Card kit, título íntegro, tipo/local, total Intl es-EC desde decimal string, lineCount productos sin sumar magnitudes; botón Abrir conserva disabled/callback. Grid 2 columnas y 3 desde lg. Misma presentación para cerradas/anuladas con estado; ayuda de día solo en esas vistas. Sin cambios de dominio/contratos/creación/pagos/impresión.
+
+Prettier/eslint focales de autores y ui-guard combinado contra ab42ec8b: PASS; diff-check PASS; typecheck Merchant combinado (`tsc --noEmit`, Node24.20.0) EXIT0. Factory `pos-ui-{card,grid}-0242` delivered, WTs limpios conservados pendientes de revisión manual del owner; NO marcar aceptación visual ni cleanup antes de ella. Main local sigue fe1ee796; QA WT previo intacto. Sin push/PROD/DB ni alteración de3201/túnel/artefactos ajenos. CI remoto consultado: 90ebe18 rojo por Unit+integración Neon y backlog de módulos, ajeno a este corte; no se intentó corregir ni afirmar verde global. Sandbox bloqueó refs/índices: escalaciones acotadas de Git local resueltas.
+
+Esperar feedback del owner sobre esta tarjeta o siguiente ajuste concreto; no iniciar auditoría general ni otros pendientes por oficio. Bloques siguientes son contexto anterior subordinado a esta entrega.
+
+## CONTEXTO ANTERIOR — 0242: UI PRIMERO POR INSTRUCCIÓN DEL OWNER (2026-10-18)
 
 CORRECCIÓN EXPLÍCITA MÁS RECIENTE DEL OWNER: el prompt anterior de reanudación era incorrecto. Él va a indicar específicamente QUÉ arreglar de UI. Tratarlo como ajustes **L0 rápidos**, usar dos implementadores NUEVOS con paths separados, **SIN agente QA ni batería extensa**; owner prueba en browser y da feedback. No iniciar auditoría/contraste general, rediseño de superficies ni trabajo antes de su lista. Diff/estáticos focales pertinentes; no tests nuevos por ceremonia, no DB/matrices repetidas por presentación. Esta instrucción del owner prevalece sobre workflowQA anterior para ESTA fase UI. Handoff0242-ui y plan corregidos; prompt nuevo espera lista del owner. No implementadores activos ni códigoUI despachado. Mantener lógica validada, no push/PROD, preservar3201/túnel/artefactosajenos. Párrafos anteriores al clear que pedían QA independiente o reparto fijo de superficies quedan reemplazados por este bloque.
 

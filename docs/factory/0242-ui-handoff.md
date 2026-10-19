@@ -1,5 +1,9 @@
 # 0242 — Handoff compacto para corregir la UI después de clear
 
+## Avance vigente: primera tarjeta entregada a prueba manual
+
+El owner ya dio el primer encargo: listado en tarjetas con nombre de mesa/descripción guardada, total, recuento de productos e iconos Iconoir; dos columnas móvil y tres desktop. Implementado por dos autores nuevos e integrado en dev `72b94a6f1b8c93a56bcaae2539f5558a5988be25`: card `9b6b1813`, grid `51310076`. Solo `measured-order-card.tsx` nuevo y `measured-order-list.tsx` modificado. Formato/lint focal, UI guard combinado contra ab42ec8b, diff-check y typecheck Merchant PASS. Sin QA independiente, browser automatizado ni DB. Preview3201 conserva servidor/sesión del owner. **Pendiente prueba visual del owner**, factory ambos delivered; WTs limpios conservados y main local sigue fe1ee796. No aceptar visualmente/retirar por oficio. Detalles en bloque vigente de estado GPT. El contexto de abajo es anterior a este primer encargo; esperar feedback o siguiente ajuste concreto, sin auditoría general. Sin push/PROD.
+
 ## Objetivo inmediato y autorización
 
 El owner ordenó corregir PRIMERO la UI y aclaró después cómo trabajar: **él indicará específicamente cada arreglo**. Son ajustes UI L0, rápidos, con dos implementadores nuevos y **prueba manual del owner en el navegador**, sin QA independiente ni batería extensa. No iniciar auditoría de toda la UI, contraste general ni nueva ronda de diseño antes de recibir su lista. El laboratorio aprobado sigue siendo referencia cuando ayude a resolver sus instrucciones concretas. No continuar primero con retirada legacy/peso ni dar por aceptada la UI por pruebas de componentes.
