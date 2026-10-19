@@ -71,6 +71,9 @@ certifica en QA P4; el PASS P3a no cubría la pantalla cliente de ajustes.
 Ampliación tras ejecución real de cobertura sustituta: `tests/e2e/pos-connected-console.spec.ts`
 adapta selección de tipo/detalles al diálogo aceptado del punto1; conserva negativos,
 importe/caché/intención y elimina duplicación de happy path en otras suites.
+Ampliación adicional: `tests/e2e/pos-measured-editor.spec.ts` adapta botones y
+diálogos de local/tipo/nota aprobados, manteniendo payload/retry/conflictos,
+snapshots/unidades y monedaCOP; sin tocar el producto aceptado por selectores.
 
 ## Checks y entrega
 
