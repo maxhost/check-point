@@ -85,3 +85,22 @@ El soporte contiene writersHTTPV1 indirectos: adoptar V2 mediante opción explí
 capturada en setup, conservar default raw y negativos/carreras/rollback. Corregir
 la clasificación de compatibilidad del inventario; no contar lectura estática como
 PASS. DBCI transferida al autor P6A sólo tras teardownQA confirmado29b8592c.
+
+## Ampliación residual HTTP previa a código
+
+Paths asignados:
+
+- `apps/merchant/src/modules/pos/server/pos-orders.neon.integration.test.ts`.
+- `apps/merchant/src/modules/pos/server/pos-best-sellers.neon.integration.test.ts`.
+- `apps/merchant/src/modules/pos/server/pos-disable.neon.integration.test.ts`.
+- `apps/merchant/src/modules/pos/server/pos-disable-tables.neon.integration.test.ts`.
+- `apps/merchant/src/modules/analytics-an3-events.neon.integration.test.ts`.
+- `apps/merchant/src/modules/brand-fiscal-inert.neon.integration.test.ts`.
+- `apps/merchant/src/modules/stock-local.neon.integration.test.ts`.
+- `apps/merchant/src/modules/negocio-retirement.neon.integration.test.ts`.
+
+Sólo adopción de fixtures HTTP al contrato vigente y conservación de los oráculos
+originales; no corregir backlog no relacionado ni debilitar invariantes de eventos,
+stock/analytics, marca fiscal o retiro. No alterar el checkout mientras corra el
+lote congelado. Puede preparar un patch propio privado con estos paths exactos
+sin crear otro worktree/configuración, para aplicarlo después del cierre del lote.
