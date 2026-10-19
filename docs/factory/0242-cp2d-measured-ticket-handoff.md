@@ -55,3 +55,19 @@ Revisión inicial `8203ce48`: tipos EXIT2 por campo identity requerido por feedb
 Sandbox: git index.lock y ps dieron EPERM, avisados al coordinador y resueltos con escalación acotada propia. Chromium arrancó escalado desde el inicio. Sin bypass de hooks, push, PROD, DB/env/wrapper, Next build, fullverify, M0/M1, puerto3201, túnel ni artefactos ajenos. `ps/lsof` escalados de solo lectura confirmaron cero runners y `OWN_WORKTREE_CWD_PROCESSES=0`; registro `processes.log`.
 
 Preparado para conexión posterior por otro incremento y QA NUEVO independiente. Harness usa kit/CSS/transportes reales con BLE/window.print simulados; no acredita papel físico ni BLE hardware. Un transporte ya invocado no se cancela desde este hook; se retiran sus efectos UI tardíos y nunca se inicia una nueva impresión desde una selección antigua. Sin pendientes de implementación; el autor conserva el worktree y fixes hasta aceptación, y el coordinador gestiona factory/refs/estados/integración.
+
+## Corrección de QA del mismo bloque
+
+QA independiente rechazó la entrega original: `choose → unsupported → finish` podía abrir `window.print()` desde el gesto de selección. Informe original commit `7bbb5697801f809ff85fd4506a0ca59200e158d7`; reproducción y FAIL EXIT1 preservados en `/private/tmp/measured-ticket-qa/choose-escalated.log`, con copia propia `qa-original-fail-choose.log` en el directorio de evidencia del autor. Los PASS anteriores no cubrían esa rama y no certifican la aceptación del bloque.
+
+Fuente correctiva congelada `8136b5a0f955797c35976d4970838955496a0368`: solo hook y regresión propia. Los fallos de selección ahora liberan el lock y muestran su issue; no atraviesan `finish`, no montan fallback ni imprimen. `print/retry` conservan la ruta de impresión y requieren otro gesto. Tres casos añadidos: selección unsupported (repro exacto de QA), cancelled y write_failed, todos con cero escrituras/cero window.print antes del retry explícito y sin nuevos comandos de venta. El mismo QA debe revalidar; no hay aceptación aún.
+
+Checks afectados sobre esa fuente, Node24.20.0 y configuración Chromium propia anterior, todos EXIT0:
+
+- Tipos merchant: `pnpm --filter @mi-pasaporte/merchant typecheck`, log `qa-fix-types.log`.
+- ESLint y Prettier del hook/spec; `node tools/ui-guard.ts --base ce76a92ffbf998fca44f56e13a955c28f4a660fd`: un archivo UI, sin aumentos; log `qa-fix-static.log`.
+- Browser: mismo comando/config anterior, con `--grep-invert 'grouped ticket inspection' --output /private/tmp/measured-ticket-0242-qa-fix-browser`; 15/15 funcionales, cero retries/skips, log `qa-fix-browser.log`. Conserva selección exitosa/gesto, cancelación/fallo de impresión, fallback solo tras gesto print/retry y retiros tardíos de identidad/orden/unmount. La captura se excluyó expresamente de esta selección, no se ejecutó otra ronda visual.
+
+Builder financiero, renderers, transportes, dispositivo, papel y copy genérica intactos. Evidencia previa financiera y capturas sigue aplicando a esos mismos paths; no se repite su matriz. `manifest.json` conserva los fallos y añade fuente, comandos, resultados y límites de la corrección. Solo se modifican hook, spec de regresión y este handoff; sin factory/refs/estados/push/PROD.
+
+Auditoría final de la corrección con ps/lsof escalados de solo lectura: cero runners y `OWN_WORKTREE_CWD_PROCESSES=0`. Sin procesos que detener; worktree conservado para fixes hasta aceptación del mismo QA.
