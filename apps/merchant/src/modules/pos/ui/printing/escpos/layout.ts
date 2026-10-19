@@ -60,6 +60,13 @@ export function layoutTicket(doc: TicketDoc, paper: Paper): Row[] {
   const rows: Row[] = [];
   if (doc.businessName) rows.push(...text(doc.businessName, "center", true));
   if (doc.table) rows.push(...text(doc.table, "center"));
+  if (doc.metadata) {
+    rows.push(...text(doc.metadata.kind, "center", true));
+    rows.push(...text(doc.metadata.saleType, "center"));
+    rows.push(...text(doc.metadata.identifier, "center"));
+    if (doc.metadata.note)
+      rows.push(...text(`Nota: ${doc.metadata.note}`, "left"));
+  }
   rows.push({ kind: "rule" });
   for (const line of doc.lines) {
     rows.push(...text(line.name, "left"));

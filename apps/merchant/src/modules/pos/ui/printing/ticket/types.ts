@@ -33,13 +33,21 @@ export type TicketOrder = {
 
 export type TicketLine = {
   name: string;
-  quantity: number;
+  /** Measured tickets preserve the exact decimal and its unit as text. */
+  quantity: number | string;
   /** Ya formateados con la moneda del negocio. */
   unitPrice: string;
   lineTotal: string;
 };
 
 export type TicketDoc = {
+  /** Optional V2 headings shared by HTML and ESC/POS; legacy documents omit them. */
+  metadata?: {
+    kind: string;
+    saleType: string;
+    identifier: string;
+    note: string | null;
+  };
   summary?: {
     gross: string;
     discount: string;
