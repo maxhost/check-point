@@ -37,7 +37,13 @@ export function MeasuredEditorCustomer({
   );
   return (
     <>
-      <div className="grid gap-3 border-b border-border bg-surface-subtle p-5">
+      <div
+        className={
+          resolved
+            ? "grid gap-3 border-b border-border bg-surface-subtle p-5"
+            : "hidden gap-3 border-b border-border bg-surface-subtle p-5 md:grid"
+        }
+      >
         {resolved ? (
           <>
             <div className="flex flex-wrap items-center justify-between gap-2">
