@@ -68,6 +68,10 @@ sin autoactivar impresión ni debilitar guard/owner. No cambiar default global d
 transporte para esconder consumidores antiguos. Este cierre de compatibilidad se
 certifica en QA P4; el PASS P3a no cubría la pantalla cliente de ajustes.
 
+Ampliación tras ejecución real de cobertura sustituta: `tests/e2e/pos-connected-console.spec.ts`
+adapta selección de tipo/detalles al diálogo aceptado del punto1; conserva negativos,
+importe/caché/intención y elimina duplicación de happy path en otras suites.
+
 ## Checks y entrega
 
 Tipos/lint/UIguard focales, búsqueda de consumidores y pruebas proporcionales de
