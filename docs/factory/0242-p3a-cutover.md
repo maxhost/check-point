@@ -22,6 +22,9 @@ Counter: guard actual primero, luego410 `feature_retired`, sin parseo ni efectos
 sin redirigir POST. Preservar401/403 y no filtrar datos. Headers private/no-store.
 Tests decisivos con spies de dominio/guard, incluyendo settings/payment/tablas.
 Sin DB asignada a A en esta primera entrega; tipos/lint y pruebas puras focales.
+Ampliación explícita antes de editar: `pos/server/pos-scope.neon.integration.test.ts`
+para sustituir expectativas de scope opcional/cliente legacy por contrato requerido.
+A prepara assertions, B/QA ejecuta después con reserva DB; sin relajar seguridad.
 
 ## B — entrada y accesos
 
