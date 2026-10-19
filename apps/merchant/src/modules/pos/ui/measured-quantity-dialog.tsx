@@ -77,7 +77,7 @@ export function MeasuredQuantityDialog({
           autoFocus
           label="Cantidad"
           inputMode={editor.unit === "unit" ? "numeric" : "decimal"}
-          value={view.display.replace(".", ",")}
+          value={editor.edited ? editor.buffer : view.display.replace(".", ",")}
           onChange={(value) => onChange(editQuantity(editor, value))}
           errorMessage={validation}
           description={

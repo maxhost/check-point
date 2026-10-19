@@ -36,6 +36,9 @@ test("mass manual, buffers, coma, tarifa congelada y doble confirmación", async
       .getByRole("textbox", { name: "Cantidad", exact: true })
       .fill(value);
     await expect(
+      page.getByRole("textbox", { name: "Cantidad", exact: true }),
+    ).toHaveValue(value);
+    await expect(
       page.getByRole("button", { name: "Confirmar cantidad" }),
     ).toBeDisabled();
   }
