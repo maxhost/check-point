@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { Archive, Bag, DeliveryTruck, Eye, Shop, Table } from "iconoir-react";
+import {
+  Archive,
+  Bag,
+  DeliveryTruck,
+  NavArrowRight,
+  Shop,
+  Table,
+} from "iconoir-react";
 import { Button, Card, Heading, Text } from "../../../ui";
 import type { PosOrderV2, PosSummaryV2, SaleType } from "../contracts";
 
@@ -225,7 +232,7 @@ function OrderCard({
         isDisabled={disabled}
         onPress={() => onOpen(order.id)}
       >
-        <Eye className="size-5" aria-hidden="true" />
+        <NavArrowRight className="size-5" aria-hidden="true" />
       </Button>
     </Card>
   );
