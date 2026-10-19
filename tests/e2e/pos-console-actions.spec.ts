@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import { startCatalogHarness } from "./support/catalog-harness-server";
+import { connectedCatalog } from "./support/pos-connected-console-fixture";
 import {
   actionClosed,
   actionHistory,
@@ -61,6 +62,8 @@ async function setup(page: Page, mode = "normal") {
           defaultMethodId: "cash",
         },
       });
+    if (path.endsWith("catalog"))
+      return route.fulfill({ json: connectedCatalog });
     if (req.method() === "GET") {
       if (path.endsWith("orders")) {
         if (
@@ -147,12 +150,15 @@ async function open(page: Page) {
     .getByRole("button", { name: "Abrir Pedido abierto", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Pedido abierto", exact: true }),
+    page.getByRole("heading", { name: "Venta actual", exact: true }),
   ).toBeVisible();
 }
 async function confirm(page: Page) {
   await page
-    .getByRole("button", { name: "Anular pedido", exact: true })
+    .getByRole("button", {
+      name: /^(Anular cuenta|Anular pedido)$/,
+      exact: true,
+    })
     .click();
   await page
     .getByRole("button", { name: "Confirmar anulación", exact: true })
@@ -170,9 +176,13 @@ test("ticket preparation starts after usable list; precuenta, choose and retry d
 }) => {
   const state = await setup(page, "initial-delay");
   await expect.poll(state.paused).toBe(true);
-  expect(state.requests.map((r) => r.path)).toEqual([
-    "/api/modules/pos/orders",
-  ]);
+  expect(state.requests.filter((r) => r.path.endsWith("/orders"))).toHaveLength(
+    1,
+  );
+  expect(state.requests.filter((r) => r.path.endsWith("/ticket"))).toHaveLength(
+    0,
+  );
+  expect(writes(state)).toEqual([]);
   state.release();
   await open(page);
   await page
@@ -277,7 +287,7 @@ test("changing selection retires late printer feedback and old browser document"
     .getByRole("button", { name: "Elegir impresora", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "Volver al listado", exact: true })
+    .getByRole("button", { name: /^(Salir|Volver al historial)$/, exact: true })
     .click();
   await selectStatus(page, "Cerradas hoy");
   await page
@@ -290,10 +300,18 @@ test("changing selection retires late printer feedback and old browser document"
     }),
   ).toHaveCount(0);
   await expect(
-    page.getByRole("region", { name: "Ticket de impresión", exact: true }),
+    page.getByRole("region", {
+      name: "Ticket de impresión",
+      exact: true,
+      includeHidden: true,
+    }),
   ).toContainText("Pedido cerrado");
   await expect(
-    page.getByRole("region", { name: "Ticket de impresión", exact: true }),
+    page.getByRole("region", {
+      name: "Ticket de impresión",
+      exact: true,
+      includeHidden: true,
+    }),
   ).not.toContainText("Pedido abierto");
   expect(
     await page.evaluate(
@@ -312,7 +330,7 @@ test("result and closed reprint preserve canonical closed sale without another c
     .getByRole("button", { name: "Confirmar cobro", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Venta completada", exact: true }),
+    page.getByRole("heading", { name: "Venta cerrada", exact: true }),
   ).toBeVisible();
   await page.evaluate(() =>
     Object.defineProperty(navigator, "bluetooth", {
@@ -327,7 +345,7 @@ test("result and closed reprint preserve canonical closed sale without another c
     .poll(() => page.evaluate(() => window.consoleActions.browsers))
     .toBe(1);
   await page
-    .getByRole("button", { name: "Volver al listado", exact: true })
+    .getByRole("button", { name: /^(Salir|Volver al historial)$/, exact: true })
     .click();
   await selectStatus(page, "Cerradas hoy");
   await page
@@ -340,7 +358,10 @@ test("result and closed reprint preserve canonical closed sale without another c
     .poll(() => page.evaluate(() => window.consoleActions.browsers))
     .toBe(2);
   await expect(
-    page.getByRole("button", { name: "Anular pedido", exact: true }),
+    page.getByRole("button", {
+      name: /^(Anular cuenta|Anular pedido)$/,
+      exact: true,
+    }),
   ).toHaveCount(0);
   expect(writes(state).map((r) => r.path)).toEqual([
     `/api/modules/pos/orders/${actionOpen.id}/close`,
@@ -366,7 +387,7 @@ for (const mode of ["disabled", "settings-error"])
     } else
       await expect(
         page.getByRole("button", { name: "Imprimir precuenta", exact: true }),
-      ).toHaveCount(0);
+      ).toBeDisabled();
     await expect(
       page.getByRole("button", { name: "Cobrar", exact: true }),
     ).toBeEnabled();
@@ -378,24 +399,30 @@ test("cancel does not write; double confirm applies canonical void to same list 
   const state = await setup(page);
   await open(page);
   await page
-    .getByRole("button", { name: "Anular pedido", exact: true })
+    .getByRole("button", {
+      name: /^(Anular cuenta|Anular pedido)$/,
+      exact: true,
+    })
     .click();
   await page.getByRole("button", { name: "Cancelar", exact: true }).click();
   expect(writes(state)).toEqual([]);
   await page
-    .getByRole("button", { name: "Anular pedido", exact: true })
+    .getByRole("button", {
+      name: /^(Anular cuenta|Anular pedido)$/,
+      exact: true,
+    })
     .click();
   await page
     .getByRole("button", { name: "Confirmar anulación", exact: true })
     .dblclick();
   await expect(
-    page.getByRole("heading", { name: "Orden anulada", exact: true, level: 2 }),
+    page.getByRole("heading", { name: "Orden anulada", exact: true, level: 1 }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Cobrar", exact: true }),
   ).toHaveCount(0);
   await page
-    .getByRole("button", { name: "Volver al listado", exact: true })
+    .getByRole("button", { name: /^(Salir|Volver al historial)$/, exact: true })
     .click();
   await expect(
     page.getByRole("button", { name: "Abrir Pedido abierto", exact: true }),
@@ -405,14 +432,14 @@ test("cancel does not write; double confirm applies canonical void to same list 
     .getByRole("button", { name: "Abrir Pedido abierto", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Orden anulada", exact: true, level: 2 }),
+    page.getByRole("heading", { name: "Orden anulada", exact: true, level: 1 }),
   ).toBeVisible();
   expect(writes(state).map((r) => r.body)).toEqual([
     { version: actionOpen.version },
   ]);
   expect(
     state.requests.filter(
-      (r) => r.method === "GET" && !r.path.endsWith("ticket"),
+      (r) => r.method === "GET" && /\/orders(?:\/[^/]+)?$/.test(r.path),
     ),
   ).toHaveLength(2);
 });
@@ -430,7 +457,10 @@ test("lost void response retains same intent through remount and 403 until expli
   ).toBeEnabled();
   await page.evaluate(() => window.dispatchEvent(new Event("actions-remount")));
   await expect(
-    page.getByRole("button", { name: "Volver al listado", exact: true }),
+    page.getByRole("button", {
+      name: /^(Salir|Volver al historial)$/,
+      exact: true,
+    }),
   ).toBeDisabled();
   await expect(
     page.getByRole("button", { name: "Cobrar", exact: true }),
@@ -458,13 +488,16 @@ test("lost void response retains same intent through remount and 403 until expli
     .getByRole("button", { name: "Comprobar acceso", exact: true })
     .click();
   await expect(
-    page.getByRole("button", { name: "Volver al listado", exact: true }),
+    page.getByRole("button", {
+      name: /^(Salir|Volver al historial)$/,
+      exact: true,
+    }),
   ).toBeDisabled();
   await page
     .getByRole("button", { name: "Reintentar la misma anulación", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Orden anulada", exact: true, level: 2 }),
+    page.getByRole("heading", { name: "Orden anulada", exact: true, level: 1 }),
   ).toBeVisible();
   const attempts = writes(state);
   expect(attempts).toHaveLength(3);
@@ -500,14 +533,17 @@ for (const mode of [
         .getByRole("button", { name: "Revisar orden actual", exact: true })
         .click();
       await expect(
-        page.getByText("Cambio concurrente", { exact: true }),
+        page.getByText("Notas: Cambio concurrente", { exact: true }),
       ).toBeVisible();
       await expect(
         page.getByRole("button", { name: "Cobrar", exact: true }),
       ).toBeEnabled();
     } else if (mode === "malformed") {
       await expect(
-        page.getByRole("button", { name: "Volver al listado", exact: true }),
+        page.getByRole("button", {
+          name: /^(Salir|Volver al historial)$/,
+          exact: true,
+        }),
       ).toBeDisabled();
       await page
         .getByRole("button", {
@@ -519,7 +555,7 @@ for (const mode of [
         page.getByRole("heading", {
           name: "Orden anulada",
           exact: true,
-          level: 2,
+          level: 1,
         }),
       ).toBeVisible();
       expect(writes(state)[0].body).toEqual(writes(state)[1].body);
@@ -543,7 +579,7 @@ for (const mode of [
         page.getByRole("heading", {
           name: "Orden anulada",
           exact: true,
-          level: 2,
+          level: 1,
         }),
       ).toHaveCount(0);
     } else {
@@ -561,29 +597,80 @@ for (const mode of [
     expect(writes(state).every((r) => r.path.endsWith("/void"))).toBe(true);
     expect(writes(state)).toHaveLength(mode === "malformed" ? 2 : 1);
   });
-test("grouped open detail and confirmation inspection at 390 and 1280", async ({
+
+test("mobile dirty precuenta preserves notes without saving or charging; persisted void still confirms", async ({
   page,
 }) => {
-  await setup(page);
+  const state = await setup(page);
   await open(page);
-  for (const width of [390, 1280]) {
-    await page.setViewportSize({ width, height: 950 });
-    expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= innerWidth,
-      ),
-    ).toBe(true);
-    await page.screenshot({
-      path: `/private/tmp/checkpass-pos-0242/console-actions/detail-${width}.png`,
-      fullPage: true,
-    });
-    await page
-      .getByRole("button", { name: "Anular pedido", exact: true })
-      .click();
-    await page.screenshot({
-      path: `/private/tmp/checkpass-pos-0242/console-actions/confirm-${width}.png`,
-      fullPage: true,
-    });
-    await page.getByRole("button", { name: "Cancelar", exact: true }).click();
-  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page
+    .getByRole("button", { name: "Opciones de la orden", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Notas", exact: true }).click();
+  const note = page.getByRole("dialog", {
+    name: "Nota del pedido",
+    exact: true,
+  });
+  await note
+    .getByRole("textbox", { name: "Nota del pedido", exact: true })
+    .fill("Sin hielo · pendiente");
+  await note.getByRole("button", { name: "Listo", exact: true }).click();
+  await page.evaluate(() =>
+    Object.defineProperty(navigator, "bluetooth", {
+      configurable: true,
+      value: undefined,
+    }),
+  );
+  await page
+    .getByRole("button", { name: "Opciones de la orden", exact: true })
+    .click();
+  await page
+    .getByRole("dialog", { name: "Opciones de la orden", exact: true })
+    .getByRole("button", { name: "Imprimir", exact: true })
+    .click();
+  await expect
+    .poll(() => page.evaluate(() => window.consoleActions.browsers))
+    .toBe(1);
+  const doc = page.getByRole("region", {
+    name: "Ticket de impresión",
+    exact: true,
+    includeHidden: true,
+  });
+  await expect(doc).toContainText("Precuenta · Borrador sin confirmar");
+  await expect(doc).toContainText("Nota: Sin hielo · pendiente");
+  await expect(doc).toContainText("Total: 4.00 USD");
+  expect(writes(state)).toEqual([]);
+  await page
+    .getByRole("button", { name: "Opciones de la orden", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Anular orden", exact: true }).click();
+  const confirmation = page.getByRole("dialog", {
+    name: "Anular pedido",
+    exact: true,
+  });
+  await expect(confirmation).toContainText(
+    "Los cambios sin guardar se descartarán.",
+  );
+  await confirmation
+    .getByRole("button", { name: "Cancelar", exact: true })
+    .click();
+  expect(writes(state)).toEqual([]);
+  await page
+    .getByRole("button", { name: "Opciones de la orden", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Anular orden", exact: true }).click();
+  await confirmation
+    .getByRole("button", { name: "Confirmar anulación", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Orden anulada", exact: true, level: 1 }),
+  ).toBeVisible();
+  expect(writes(state).map((r) => ({ path: r.path, body: r.body }))).toEqual([
+    {
+      path: `/api/modules/pos/orders/${actionOpen.id}/void`,
+      body: { version: actionOpen.version },
+    },
+  ]);
+  expect(state.errors).toEqual([]);
 });
