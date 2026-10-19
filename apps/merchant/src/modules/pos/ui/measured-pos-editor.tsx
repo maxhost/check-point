@@ -67,6 +67,8 @@ export type MeasuredPosEditorProps = {
   onAccessError?: (error: unknown) => void;
   printingConfiguration?: MeasuredPrinting;
   accessEnabled?: boolean;
+  actionsDisabled?: boolean;
+  onVoid?: () => void;
 };
 export function MeasuredPosEditor({
   session,
@@ -76,6 +78,8 @@ export function MeasuredPosEditor({
   onAccessError,
   printingConfiguration,
   accessEnabled = true,
+  actionsDisabled = false,
+  onVoid,
 }: MeasuredPosEditorProps) {
   useSyncExternalStore(
     session.subscribe,
@@ -106,7 +110,7 @@ export function MeasuredPosEditor({
   const [message, setMessage] = useState<string | null>(null);
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
   const state = session.commands.getSnapshot();
-  const blocked = session.blocked;
+  const blocked = session.blocked || actionsDisabled;
   const units = catalog?.salesMassUnits ?? [];
   const tableError = useCallback(
     (cause: unknown) => {
@@ -361,6 +365,18 @@ export function MeasuredPosEditor({
         {confirmation}
         {printButton}
       </div>
+      {session.order?.status === "open" && onVoid && (
+        <div className="hidden md:block">
+          <Button
+            variant="quiet"
+            className="w-full text-danger!"
+            isDisabled={blocked}
+            onPress={onVoid}
+          >
+            Anular cuenta
+          </Button>
+        </div>
+      )}
       {printing.ready && !printing.enabled && (
         <Alert kind="info" title="Impresión desactivada en los ajustes del POS">
           <Button variant="quiet" onPress={printing.retrySettings}>

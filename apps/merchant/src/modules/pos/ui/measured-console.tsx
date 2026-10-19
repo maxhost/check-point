@@ -338,10 +338,17 @@ export function MeasuredConsoleContent({
         client.request(orderUrl(id)),
       );
       if (!active.current || token !== navigation.current) return;
-      setOrder(result);
-      setEditor(null);
       setPayment(payments.current.get(id) ?? null);
-      setView("detail");
+      if (
+        result.status === "open" &&
+        window.matchMedia("(min-width: 768px)").matches
+      ) {
+        selectEditor(result);
+      } else {
+        setOrder(result);
+        setEditor(null);
+        setView("detail");
+      }
     } catch (cause) {
       handleError(cause);
     } finally {
@@ -396,7 +403,13 @@ export function MeasuredConsoleContent({
       customerSelections.current.delete(value.id);
     setPayment(current);
     setOrder(value);
-    setView("detail");
+    if (!(
+      view === "edit" &&
+      editor?.order?.id === value.id &&
+      window.matchMedia("(min-width: 768px)").matches
+    )) {
+      setView("detail");
+    }
     void current.prepare();
   }
   const paymentState = payment?.getSnapshot();
@@ -469,6 +482,13 @@ export function MeasuredConsoleContent({
           session={editor}
           printingConfiguration={printing}
           accessEnabled={accessEnabled && !denied}
+          actionsDisabled={blocked}
+          onVoid={() => {
+            if (blocked || !editor.order || editor.order.status !== "open")
+              return;
+            setOrder(editor.order);
+            setConfirmVoid(true);
+          }}
           onAccessError={handleError}
           onSaved={(value) => {
             customerSelections.current.set(value.id, editor.customer.selection);
@@ -573,7 +593,7 @@ export function MeasuredConsoleContent({
         title="Anular pedido"
         isOpen={confirmVoid}
         onOpenChange={setConfirmVoid}
-        description={`¿Quieres anular ${order?.orderLabel}? Ya no podrás editar ni cobrar este pedido.`}
+        description={`¿Quieres anular ${order?.orderLabel}? Ya no podrás editar ni cobrar este pedido.${view === "edit" && editor?.dirty ? " Los cambios sin guardar se descartarán." : ""}`}
       >
         <div className="mt-4 flex flex-wrap justify-end gap-3">
           <Button variant="secondary" onPress={() => setConfirmVoid(false)}>
