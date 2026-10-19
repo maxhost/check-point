@@ -115,7 +115,7 @@ function OrderCard({
     <Card
       as="article"
       aria-labelledby={titleId}
-      className="relative flex h-full min-w-0 flex-row items-center gap-3 rounded-2xl p-4 sm:p-4 md:flex-col md:items-stretch md:gap-4 md:p-6"
+      className="relative flex h-full min-w-0 flex-row items-center gap-3 rounded-2xl p-4! sm:p-4! md:flex-col md:items-stretch md:gap-4 md:p-6!"
     >
       <div className="flex min-w-0 flex-1 items-center gap-3 md:flex-none">
         <div className={`shrink-0 rounded-xl p-3 ${saleType.color}`}>
@@ -127,6 +127,9 @@ function OrderCard({
           </Heading>
           <Text variant="small" className="sr-only md:not-sr-only">
             {saleType.label}
+          </Text>
+          <Text variant="small" className="break-words md:hidden">
+            {formatTotal(order.total, currencyCode)}
           </Text>
         </div>
       </div>
@@ -150,7 +153,7 @@ function OrderCard({
       <div className="relative hidden md:block">
         <Button
           variant="quiet"
-          className="rounded-full bg-info-soft text-info"
+          className="rounded-full bg-info-soft! text-info!"
           aria-label={`Ver productos de ${order.orderLabel}`}
           aria-expanded={expanded}
           aria-controls={expanded ? productsId : undefined}

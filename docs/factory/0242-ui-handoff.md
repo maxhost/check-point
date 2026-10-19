@@ -1,5 +1,9 @@
 # 0242 — Handoff compacto para corregir la UI después de clear
 
+## Última instrucción y segunda ronda
+
+Owner confirmó: **a partir de la siguiente ronda, ajustes ligeros directos por el coordinador, SIN agentes**. Sustituye instrucciones anteriores de dos implementadores para próximos arreglos. Segunda ronda integrada en dev `afc164cd`: iconos junto al nombre con colores por tipo; badge local bajo precio y badge productos que abre panel de contenido cargado por demanda desde caché/cliente actuales; móvil UNA columna compacta (icono/nombre/total/Abrir). Autores `4e0fc014` y `9f985d18`, más ajuste directo final de padding/prioridad de color y precio móvil. Formato/lint3archivos/UIguard/diff-check/typecheckMerchant PASS. Pendiente revisión manual del owner en3201. Sin QA independiente/browserautomatizado/DB/push/PROD. Factory delivered/WTs conservados; main sin avance. El primer ajuste y reglas anteriores siguen solo como historia cuando contradicen este bloque.
+
 ## Avance vigente: primera tarjeta entregada a prueba manual
 
 El owner ya dio el primer encargo: listado en tarjetas con nombre de mesa/descripción guardada, total, recuento de productos e iconos Iconoir; dos columnas móvil y tres desktop. Implementado por dos autores nuevos e integrado en dev `72b94a6f1b8c93a56bcaae2539f5558a5988be25`: card `9b6b1813`, grid `51310076`. Solo `measured-order-card.tsx` nuevo y `measured-order-list.tsx` modificado. Formato/lint focal, UI guard combinado contra ab42ec8b, diff-check y typecheck Merchant PASS. Sin QA independiente, browser automatizado ni DB. Preview3201 conserva servidor/sesión del owner. **Pendiente prueba visual del owner**, factory ambos delivered; WTs limpios conservados y main local sigue fe1ee796. No aceptar visualmente/retirar por oficio. Detalles en bloque vigente de estado GPT. El contexto de abajo es anterior a este primer encargo; esperar feedback o siguiente ajuste concreto, sin auditoría general. Sin push/PROD.
