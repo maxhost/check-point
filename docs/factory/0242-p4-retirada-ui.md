@@ -91,6 +91,12 @@ en su ubicación vigente y separación de gestos/unsupported. Si es fallo de pro
 no relajar aserción. `app/backoffice/loyalty/loyalty-tour-step.ts` retira copy de
 ofrecimiento de canje sin saldo, preservando ancla/datos históricos.
 
+Defecto funcional confirmado al conservar regla íntegra: editor y cupón compacto
+no la mostraban. Scope ampliado `modules/pos/ui/measured-coupon.tsx`; mantener
+cobro compacto habitual, mostrar regla completa en review tras revalidación y
+en el editor cliente (path ya asignado), con expansión accesible si larga. Usar
+kit existente, sin parsear reglas ni cambiar efecto económico/revalidación.
+
 ## Checks y entrega
 
 Tipos/lint/UIguard focales, búsqueda de consumidores y pruebas proporcionales de
