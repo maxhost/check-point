@@ -3,11 +3,17 @@ import { getDb } from "@mi-pasaporte/db";
 import {
   businesses,
   locations,
+  moduleEvents,
   orders,
   posOrderItems,
   posOrders,
 } from "@mi-pasaporte/db/schema";
 import { unitPriceOf } from "./lines";
+import {
+  frozenVoidFromRow,
+  voidSnapshotColumns,
+  voidSnapshotJoin,
+} from "./void-snapshot";
 import {
   EMPTY_SUMMARY,
   measuredSummaryColumns,
@@ -50,6 +56,7 @@ export type PosSummaryV2 = Omit<PosOrderSummary, "tableLabel" | "itemCount"> & {
 type PosList<T> = { open: T[]; closedToday: T[] };
 
 const summaryColumns = {
+  ...voidSnapshotColumns,
   id: posOrders.id,
   status: posOrders.status,
   tableLabel: posOrders.tableLabel,
@@ -148,6 +155,7 @@ export async function listPosOrders(
         },
       })
       .from(posOrders)
+      .leftJoin(moduleEvents, voidSnapshotJoin)
       .leftJoin(aggregates, eq(aggregates.posOrderId, posOrders.id))
       .leftJoin(locations, eq(locations.id, posOrders.locationId))
       .leftJoin(
@@ -168,6 +176,7 @@ export async function listPosOrders(
   const toSummary = (
     row: (typeof open)[number],
   ): PosOrderSummary | PosSummaryV2 => {
+    const frozenVoid = frozenVoidFromRow(row);
     const aggregate =
       row.amounts?.lineCount === null
         ? EMPTY_SUMMARY
@@ -203,7 +212,7 @@ export async function listPosOrders(
       aggregate,
       row.status === "open"
         ? (business?.currencyCode ?? "USD")
-        : (settlement?.currencyCode ?? "USD"),
+        : (frozenVoid?.currencyCode ?? settlement?.currencyCode ?? "USD"),
       version,
     );
     const frozen = frozenSummaryTotals(
@@ -216,7 +225,9 @@ export async function listPosOrders(
       },
       version,
     );
-    const total = row.status === "open" ? amounts.total : frozen.total;
+    const total =
+      frozenVoid?.gross ??
+      (row.status === "open" ? amounts.total : frozen.total);
     const net = frozen.saleTotal;
     const common = {
       id: row.id,
