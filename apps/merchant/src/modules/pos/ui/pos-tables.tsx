@@ -4,16 +4,17 @@ import { useEffect, useState } from "react";
 import { Alert, Button, Text, TextField } from "../../../ui";
 import { PosError } from "./pos-types";
 
-import { usePosContext } from "./pos-context";
+import { usePosContext, type PosClient } from "./pos-context";
 type PosTable = { id: string; name: string; openOrderId: string | null };
 export function usePosTables(
   locationId: string,
   revision: number,
   onError: (cause: unknown) => void,
   enabled = true,
+  options?: { client: PosClient },
 ) {
   const scope = usePosContext();
-  const posRequest = scope.client.request;
+  const posRequest = options?.client.request ?? scope.client.request;
   const [attempt, setAttempt] = useState(0);
   const [snapshot, setSnapshot] = useState<{
     location: string;
