@@ -44,6 +44,9 @@ function transaction(
 const product = {
   id: "00000000-0000-4000-8000-000000000001",
   name: "Producto",
+  categoryId: null,
+  imageObjectKey: "private-key",
+  imageVersion: 2,
   unitPrice: "4.000000000",
   soldByWeight: true,
   pricingUnit: "lb",
@@ -176,7 +179,18 @@ describe("0242 transactional capture projection (mass algebra, no canonical DB w
     ).rejects.toMatchObject({
       code: "catalog_changed",
       extra: {
-        product: { id: product.id, catalogRevision: "3", unitPrice: "4" },
+        products: [
+          {
+            id: product.id,
+            name: "Producto",
+            categoryId: null,
+            imagePath: `/api/public/catalog/${product.id}/image?v=2`,
+            soldByWeight: true,
+            pricingUnit: "lb",
+            catalogRevision: "3",
+            unitPrice: "4",
+          },
+        ],
       },
     });
   });

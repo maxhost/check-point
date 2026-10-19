@@ -14,6 +14,7 @@ import {
 } from "../../../server/counter";
 import { readPosCatalog } from "./measured-catalog";
 import { createPosOrderV2 } from "./measured-create";
+import { updatePosOrderV2 } from "./measured-update";
 import type { ModuleRoute, ModuleServer } from "../../route-table";
 import { closePosOrder } from "./close";
 import { posOrderId } from "./errors";
@@ -120,9 +121,13 @@ const routes: readonly ModuleRoute[] = [
     path: "orders/:id",
     failure: "No pudimos guardar la orden.",
     handler: async ({ request, business, params }) => {
+      const contract = posReadContract(request);
       const id = posOrderId(params.id);
+      const body = await readPosBody(request);
       return NextResponse.json(
-        await updatePosOrder(business, id, await readPosBody(request)),
+        await (contract === 2
+          ? updatePosOrderV2(business, id, body)
+          : updatePosOrder(business, id, body)),
       );
     },
   }),
