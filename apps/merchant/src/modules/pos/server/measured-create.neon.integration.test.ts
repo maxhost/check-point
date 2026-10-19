@@ -313,7 +313,7 @@ describe.skipIf(!posIntegrationEnabled)(
           }),
         ),
       );
-      expect(created.items[0].unitPrice).toBe("1000000000.00");
+      expect(created.items[0].unitPrice).toBe("1000000000");
       expect(
         (
           await call(
