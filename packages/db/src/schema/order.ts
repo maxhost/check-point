@@ -112,18 +112,18 @@ export const orderItems = core.table(
   },
   (table) => [
     check("core_order_item_quantity_check", sql`${table.quantity} > 0`),
-    // Temporary expand barriers: retain every historical unit row until CP2c.
+    // Permanent measured shape; retain historical unit quantities and tariffs.
     check(
-      "order_item_quantity_legacy_check",
-      sql`${table.quantity} <= 2147483647 and ${table.quantity} = trunc(${table.quantity})`,
+      "order_item_quantity_shape_check",
+      sql`(${table.measureKind} = 'unit' and ${table.quantity} <= 2147483647 and ${table.quantity} = trunc(${table.quantity})) or (${table.measureKind} = 'mass' and ${table.quantity} <= 999999999.999999999)`,
     ),
     check(
-      "order_item_price_legacy_check",
-      sql`${table.unitPriceSnapshot} between -9999999999.99 and 9999999999.99 and ${table.unitPriceSnapshot} = trunc(${table.unitPriceSnapshot}, 2)`,
+      "order_item_price_shape_check",
+      sql`(${table.measureKind} = 'mass' and ${table.unitPriceSnapshot} between 0 and 999999999.999999999) or (${table.measureKind} = 'unit' and (${table.unitPriceSnapshot} between -999999999.999999999 and 999999999.999999999 or (${table.unitPriceSnapshot} between -9999999999.99 and 9999999999.99 and ${table.unitPriceSnapshot} = trunc(${table.unitPriceSnapshot}, 2))))`,
     ),
     check(
-      "order_item_measure_legacy_check",
-      sql`${table.measureKind} = 'unit' and ${table.quantityUnit} = 'unit' and ${table.priceUnit} = 'unit' and ${table.conversionVersion} = 'mass-si-1'`,
+      "order_item_measure_shape_check",
+      sql`${table.conversionVersion} = 'mass-si-1' and ((${table.measureKind} = 'unit' and ${table.quantityUnit} = 'unit' and ${table.priceUnit} = 'unit') or (${table.measureKind} = 'mass' and ${table.quantityUnit} in ('kg', 'lb', 'g') and ${table.priceUnit} in ('kg', 'lb', 'g')))`,
     ),
     index("core_order_item_order_idx").on(table.orderId),
   ],
