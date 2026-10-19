@@ -48,6 +48,35 @@ export function diagnosticRequestHeaders(headers) {
     secPurposePrefetch: /\bprefetch\b/i.test(h["sec-purpose"] ?? ""),
   };
 }
+export function requestFlagTracker() {
+  const byId = new Map();
+  let sequence = 0;
+  function update(chromeId, headers, extraInfo) {
+    let state = byId.get(chromeId);
+    if (!state) {
+      state = {
+        requestId: `request-${++sequence}`,
+        flags: diagnosticRequestHeaders({}),
+        extraInfoObserved: false,
+      };
+      byId.set(chromeId, state);
+    }
+    const flags = diagnosticRequestHeaders(headers);
+    state.flags = Object.fromEntries(
+      Object.keys(flags).map((key) => [key, flags[key] || state.flags[key]]),
+    );
+    state.extraInfoObserved ||= extraInfo;
+    return {
+      requestId: state.requestId,
+      flags: { ...state.flags },
+      extraInfoObserved: state.extraInfoObserved,
+    };
+  }
+  return {
+    request: (id, headers) => update(id, headers, false),
+    extra: (id, headers) => update(id, headers, true),
+  };
+}
 function phase(observation, name, save) {
   observation.phases ??= [];
   observation.phases.push({
@@ -248,18 +277,25 @@ async function instrument(context, fixture, source, save) {
   let current;
   const network = new Map(),
     pending = new Set(),
-    observedRequests = new Map();
+    observedRequests = new Map(),
+    flagsByRequest = requestFlagTracker();
   cdp.on("Network.requestWillBeSent", (event) => {
     if (!current) return;
     const url = new URL(event.request.url);
+    const flags = flagsByRequest.request(
+      event.requestId,
+      event.request.headers,
+    );
     const row = {
+      requestId: flags.requestId,
       path: url.pathname,
       local: url.origin === ORIGIN,
       method: event.request.method,
       type: event.type,
       start: event.timestamp,
       wallTime: event.wallTime,
-      requestFlags: diagnosticRequestHeaders(event.request.headers),
+      requestFlags: flags.flags,
+      requestExtraInfoObserved: flags.extraInfoObserved,
       status: null,
       encoded: null,
       decoded: null,
@@ -279,16 +315,12 @@ async function instrument(context, fixture, source, save) {
     observedRequests.set(event.requestId, { row });
   });
   cdp.on("Network.requestWillBeSentExtraInfo", (event) => {
+    // CDP can deliver ExtraInfo first: retain only the allowlisted booleans.
+    const flags = flagsByRequest.extra(event.requestId, event.headers);
     const row = observedRequests.get(event.requestId)?.row;
     if (!row) return;
-    const flags = diagnosticRequestHeaders(event.headers);
-    row.requestFlags = Object.fromEntries(
-      Object.keys(flags).map((key) => [
-        key,
-        flags[key] || row.requestFlags[key],
-      ]),
-    );
-    row.requestExtraInfoObserved = true;
+    row.requestFlags = flags.flags;
+    row.requestExtraInfoObserved = flags.extraInfoObserved;
   });
   cdp.on("Network.responseReceived", (event) => {
     const row = network.get(event.requestId)?.row;

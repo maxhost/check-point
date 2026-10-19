@@ -34,8 +34,12 @@ producto/instrumentación/lockdiff vacío, dependencias/configestrictas y fuente
 separada del runner nuevo; runtime original nunca se inicia ni modifica.
 
 Se pide revalidaciónQA del delta y autorización técnica nueva ANTES de D1. No se
-reutiliza3776 como muestra ni se transforma FAIL previo enPASS. Doce tests offline,
+reutiliza3776 como muestra ni se transforma FAIL previo enPASS. Trece tests offline,
 0skips, incluyen allowlist sin secretos y exactamente2entradas noinferenciales.
+La revisión de e7e9192e detectó que ExtraInfo temprano podía perder flags.
+Se corrige con buffer de booleanos por requestId y correlación local saneada;
+prueba ambos órdenes CDP, snapshots independientes y ausencia de headers crudos.
+No se ejecutó prepare ni diagnóstico sobre ese candidato rechazado.
 Sólo paths asignados m1.mjs/m1-browser.mjs/m1-analysis.test.mjs/receta/handoff.
 
 ---

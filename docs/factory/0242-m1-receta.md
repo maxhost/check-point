@@ -241,7 +241,9 @@ infieren bytes0, finish ni cancelación por haberSQL terminado. Se captura:
 
 - Booleanos permitidos RSC, presencia/valor reconocido Next-Router-Prefetch,
   presencia Next-Router-Segment-Prefetch, Purposeprefetch y Sec-Purposeprefetch.
-  Se combinan requestWillBeSent y ExtraInfo mediante allowlist, sin guardar
+  Se combinan requestWillBeSent y ExtraInfo en ambos órdenes mediante buffer por
+  requestId que retiene sólo booleanos permitidos; cada fila expone una identidad
+  local correlacionable, nunca el requestId CDP. No se guardan
   Cookie, scope, QR, otros headers, queries ni valores de segment-prefetch.
 - CDP canceled, errorText saneado, blockedReason y timestamps start/response/end,
   wallTime e initiatorstack por path. Timestamps de server/context/navigation,

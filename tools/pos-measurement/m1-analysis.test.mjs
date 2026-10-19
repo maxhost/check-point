@@ -2,7 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { compare, median, p95, decision, analyze, rng } from "./m1-analyze.mjs";
 import { schedule, validateEndpoint, hash } from "./m1.mjs";
-import { validateOpenDetail, diagnosticRequestHeaders } from "./m1-browser.mjs";
+import {
+  validateOpenDetail,
+  diagnosticRequestHeaders,
+  requestFlagTracker,
+} from "./m1-browser.mjs";
 import { diagnosticSchedule } from "./m1.mjs";
 import { snapshotBuild, compareBuildIdentity } from "./m1.mjs";
 import {
@@ -350,4 +354,37 @@ test("D1 observes only allowlisted header booleans and exactly two noninferentia
         a.role === "owner" && a.case === "normal" && a.inferential === false,
     ),
   );
+});
+
+test("D1 retains only flag snapshots in either CDP event order with a local correlation id", () => {
+  const chromeId = "private-CDP-id";
+  const request = { RSC: "1", Cookie: "secret-cookie" };
+  const extra = {
+    "Next-Router-Prefetch": "2",
+    "Next-Router-Segment-Prefetch": "/secret-segment",
+    "X-Backoffice-Scope": "secret-scope",
+  };
+  const early = requestFlagTracker();
+  const buffered = early.extra(chromeId, extra);
+  const extraFirst = early.request(chromeId, request);
+  const late = requestFlagTracker();
+  const initial = late.request(chromeId, request);
+  const requestFirst = late.extra(chromeId, extra);
+  assert.deepEqual(extraFirst, requestFirst);
+  assert.equal(extraFirst.requestId, "request-1");
+  assert.equal(buffered.requestId, extraFirst.requestId);
+  assert.equal(initial.extraInfoObserved, false);
+  assert.equal(extraFirst.extraInfoObserved, true);
+  assert.equal(extraFirst.flags.rsc, true);
+  assert.equal(extraFirst.flags.nextRouterPrefetchKnown, true);
+  assert.equal(extraFirst.flags.nextRouterSegmentPrefetch, true);
+  assert.equal(early.request("another-private-id", {}).requestId, "request-2");
+  assert.ok(
+    !JSON.stringify([buffered, extraFirst, requestFirst]).match(
+      /secret|private-CDP|Cookie|Backoffice/,
+    ),
+  );
+  // Returned snapshots cannot mutate the retained buffer.
+  buffered.flags.rsc = false;
+  assert.equal(early.request(chromeId, {}).flags.rsc, true);
 });
