@@ -50,3 +50,18 @@ archivos HTTP más soporte compatible; ampliar por impacto demostrado. QA NUEVO
 independiente revisará diff/matriz y reproducirá señales decisivas en congelado.
 Commit limpio sólo propio; entregar SHA al coordinador, sin factory/estados/índices.
 Sin capturas, push, PROD ni tocar3201/túnel/procesos/cambios ajenos.
+
+## Ampliación auth/tenant previa a código
+
+Después del inventario39consumidores únicos, se asignan explícitamente también:
+
+- `apps/merchant/src/modules/pos/server/pos-access.neon.integration.test.ts`.
+- `apps/merchant/src/modules/pos/server/pos-ladder.neon.integration.test.ts`.
+- `apps/merchant/src/modules/pos/server/ticket-settings.neon.integration.test.ts`.
+- `apps/merchant/src/modules/pos/server/payment-methods.neon.integration.test.ts`.
+- `apps/merchant/src/modules/tables/server/tables.neon.integration.test.ts`.
+
+Conservar escalera de guard y controles positivos scoped2, aislamiento/permisos,
+ajustes owner/noowner sin autoenable y locks/Mesas. No nuevo acceso entre módulos
+ni cambios de guard/baseline. Los demás33transitivos siguen pidiendo ampliación
+por grupo; no editar todos de forma implícita. Recursos DB aún no transferidos.
