@@ -61,6 +61,13 @@ se retira si no tiene consumidor vigente. Bajo `tests/e2e/support/`:
 No existen counter.spec.ts/pos-counter.spec.ts en esta base. Mantener cobertura
 vigente con contratos nuevos y dejar mapa de sustitución de pruebas obsoletas.
 
+Hallazgo de conexión posterior a QA P3a: `modules/pos/ui/ticket-settings.tsx`
+es consumidor productivo y usa usePosContext sin contractVersion2. Scope ampliado
+para adoptar explícitamente contrato2 ahí y verificar GET/PUT con scope original,
+sin autoactivar impresión ni debilitar guard/owner. No cambiar default global del
+transporte para esconder consumidores antiguos. Este cierre de compatibilidad se
+certifica en QA P4; el PASS P3a no cubría la pantalla cliente de ajustes.
+
 ## Checks y entrega
 
 Tipos/lint/UIguard focales, búsqueda de consumidores y pruebas proporcionales de
