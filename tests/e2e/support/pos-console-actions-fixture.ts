@@ -1,3 +1,8 @@
+import type { createBackofficeContextController } from "../../../apps/merchant/src/app/backoffice/backoffice-context-controller";
+import type {
+  BackofficeInitialContext,
+  ModuleDTO,
+} from "../../../apps/merchant/src/backoffice-context-contract";
 import type { PosOrderV2 } from "../../../apps/merchant/src/modules/pos/contracts";
 import { connectedOrder } from "./pos-connected-console-fixture";
 export const actionOpen: PosOrderV2 = {
@@ -26,3 +31,49 @@ export const actionHistory = () => ({
     },
   ],
 });
+
+export function actionCore(scope = "a"): BackofficeInitialContext {
+  return {
+    version: 1,
+    bootId: `actions-${scope}`,
+    scopeKey: scope.repeat(64),
+    userId: "actions-user",
+    emailVerified: true,
+    business: {
+      id: `actions-${scope}`,
+      name: "Comercio",
+      status: "active",
+      timezone: "America/Guayaquil",
+      currencyCode: "USD",
+    },
+    membership: { role: "owner", status: "active", permissions: ["pos"] },
+    billing: { access: "subscribed", trialDaysLeft: null, trialEndsAt: null },
+  };
+}
+export const actionModule: ModuleDTO = {
+  id: "pos",
+  name: "POS",
+  description: "",
+  enabled: true,
+  requires: [],
+  suggested: false,
+  navigation: [],
+  permissions: [],
+};
+
+const unexpectedContextRead = async () => {
+  throw new Error("Unexpected context I/O");
+};
+export const actionContextAdapters: Parameters<
+  typeof createBackofficeContextController
+>[1] = {
+  readSession: unexpectedContextRead,
+  readModules: unexpectedContextRead,
+  readSummary: unexpectedContextRead,
+  readInbox: unexpectedContextRead,
+  decideInbox: unexpectedContextRead,
+  readChecklist: unexpectedContextRead,
+  verifyEmail: unexpectedContextRead,
+  requestRefresh: () => {},
+  navigate: () => {},
+};

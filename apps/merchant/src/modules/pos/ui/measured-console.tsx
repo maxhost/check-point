@@ -111,7 +111,6 @@ export function MeasuredConsoleContent({
   }, [sourceClient]);
   const { owner: voidAction, state: voidState } = useMeasuredVoidAction(
     context.identity,
-    client,
     timeZone,
   );
   const cache = voidAction.cache;

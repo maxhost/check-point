@@ -1,12 +1,26 @@
 import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { MeasuredConsoleContent } from "../../../apps/merchant/src/modules/pos/ui/measured-console";
-import { createPosClient } from "../../../apps/merchant/src/modules/pos/ui/pos-context";
-let identity = "a";
-const client = createPosClient(
-  () => ({ identity, scopeKey: identity.repeat(64) }),
-  { contractVersion: 2 },
-);
+import { MeasuredConsole } from "../../../apps/merchant/src/modules/pos/ui/measured-console";
+import { BackofficeProvider } from "../../../apps/merchant/src/app/backoffice/backoffice-context";
+import { createBackofficeContextController } from "../../../apps/merchant/src/app/backoffice/backoffice-context-controller";
+import {
+  actionCore,
+  actionModule,
+  actionContextAdapters,
+} from "./pos-console-actions-fixture";
+function context(scope = "a") {
+  const core = actionCore(scope);
+  const controller = createBackofficeContextController(
+    core,
+    actionContextAdapters,
+  );
+  controller.applyModulesSeed({
+    bootId: core.bootId,
+    scopeKey: core.scopeKey,
+    result: { state: "ready", modules: [actionModule] },
+  });
+  return { core, controller };
+}
 declare global {
   interface Window {
     consoleActions: {
@@ -74,12 +88,11 @@ Object.defineProperty(navigator, "bluetooth", {
   },
 });
 function Harness() {
-  const [key, setKey] = useState(identity);
+  const [current, setCurrent] = useState(() => context());
   const [mount, setMount] = useState(0);
   useEffect(() => {
     const change = () => {
-      identity = "b";
-      setKey(identity);
+      setCurrent(context("b"));
     };
     const remount = () => setMount((n) => n + 1);
     window.addEventListener("actions-identity", change);
@@ -90,18 +103,16 @@ function Harness() {
     };
   }, []);
   return (
-    <MeasuredConsoleContent
-      key={`${key}:${mount}`}
-      client={client}
-      timeZone="America/Guayaquil"
-      context={{
-        identity: key,
-        locations: [{ id: "north", name: "Local Norte" }],
-        currencyCode: "USD",
-        saleTypes: ["counter", "pickup", "delivery", "table"],
-        tablesEnabled: false,
-      }}
-    />
+    <BackofficeProvider
+      key={current.core.scopeKey}
+      initialContext={current.core}
+      controller={current.controller}
+    >
+      <MeasuredConsole
+        key={mount}
+        locations={[{ id: "north", name: "Local Norte" }]}
+      />
+    </BackofficeProvider>
   );
 }
 createRoot(document.getElementById("root")!).render(<Harness />);
