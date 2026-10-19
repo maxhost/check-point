@@ -51,7 +51,7 @@ export function closedTicket(pass = false): PosOrderV2 {
     payments: [{ paymentId: "payment", methodId: "cash", amount: "3.00" }],
   });
   return {
-    ...ticketOrder,
+    ...structuredClone(ticketOrder),
     status: "closed",
     version: 2,
     closedAt: "2026-10-18T12:01:00Z",

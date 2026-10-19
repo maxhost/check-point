@@ -175,6 +175,12 @@ export function useMeasuredPrinting({
   }
   return {
     ...state,
+    identity: JSON.stringify([
+      context,
+      order?.id,
+      order?.version,
+      order?.status,
+    ]),
     ready: !!settings,
     enabled: settings?.printingEnabled === true,
     doc: built.doc,

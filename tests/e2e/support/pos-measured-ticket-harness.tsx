@@ -20,6 +20,7 @@ declare global {
       choices: number;
       writes: number;
       browsers: number;
+      stacks: string[];
       inGesture: boolean;
       gestures: boolean[];
       stale: null | { print: () => Promise<void>; choose: () => Promise<void> };
@@ -32,6 +33,7 @@ const probe = (window.ticketTest = {
   choices: 0,
   writes: 0,
   browsers: 0,
+  stacks: [],
   inGesture: false,
   gestures: [] as boolean[],
   stale: null,
@@ -61,7 +63,8 @@ Object.defineProperty(navigator, "bluetooth", {
       ? undefined
       : {
           async requestDevice() {
-            probe.gestures.push(probe.inGesture);
+            probe.gestures.push(navigator.userActivation.isActive);
+            probe.stacks.push(new Error().stack ?? "");
             probe.choices++;
             if (probe.delay)
               await new Promise((resolve) => setTimeout(resolve, probe.delay));

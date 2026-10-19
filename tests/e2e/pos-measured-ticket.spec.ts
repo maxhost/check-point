@@ -105,6 +105,10 @@ test("selection stays in gesture and requires another explicit gesture to print;
   await page.waitForTimeout(200);
   expect(await page.evaluate(() => window.ticketTest.writes)).toBe(writes);
   expect(await page.evaluate(() => window.ticketTest.gestures)).toEqual([true]);
+  // An async suspension before the transport would show `at async choose`.
+  expect(await page.evaluate(() => window.ticketTest.stacks[0])).toMatch(
+    /at choose \(/,
+  );
   expect(
     requests.every(
       (request) => request.method === "GET" && request.url.endsWith("/ticket"),

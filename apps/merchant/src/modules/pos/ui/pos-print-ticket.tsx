@@ -6,7 +6,7 @@ export function PosPrintTicket({ doc }: { doc: TicketDoc }) {
   return (
     <section
       aria-label="Ticket de impresión"
-      className="grid gap-4 print:visible print:absolute print:inset-x-0 print:top-0 print:p-4"
+      className="grid w-full min-w-0 max-w-3xl gap-4 break-words print:visible print:absolute print:inset-x-0 print:top-0 print:p-4"
     >
       {doc.businessName !== null && (
         <Heading level={2}>{doc.businessName}</Heading>
