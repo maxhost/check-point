@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { readLibraryRecipe, updateRecipe } from "./recipes/server/library";
 import * as eventPublisher from "../server/module-events/publish";
 import {
@@ -22,6 +23,7 @@ import { getDb } from "@mi-pasaporte/db";
 import { modulesIntegrationEnabled } from "./modules-integration-support";
 import {
   world,
+  stockPos,
   productId,
   flourId,
   route,
@@ -29,7 +31,7 @@ import {
   setupStockLocalWorld,
   cleanupStockLocalWorld,
 } from "./stock-local-integration-support";
-beforeAll(setupStockLocalWorld, 180_000);
+beforeAll(() => setupStockLocalWorld({ posContract: 2 }), 180_000);
 afterAll(cleanupStockLocalWorld, 180_000);
 afterEach(() => vi.restoreAllMocks());
 describe.skipIf(!modulesIntegrationEnabled)(
@@ -113,9 +115,21 @@ describe.skipIf(!modulesIntegrationEnabled)(
           addressSnapshot: {},
         })
         .returning({ id: locations.id });
-      const absent = await route("POST", "pos/orders", {
-        tableLabel: "Mesa válida",
-        items: [{ productId, quantity: 1 }],
+      const absent = await stockPos().create({
+        locationId: null,
+        createRequestId: randomUUID(),
+        saleType: "pickup",
+        orderLabel: "Mesa válida",
+        tableId: null,
+        note: null,
+        items: [
+          {
+            productId,
+            quantity: "1",
+            quantityUnit: "unit",
+            catalogRevision: "1",
+          },
+        ],
       });
       expect(absent.status).toBe(422);
       expect((await absent.json()).code).toBe("location_required");
@@ -125,17 +139,39 @@ describe.skipIf(!modulesIntegrationEnabled)(
         .where(eq(locations.businessId, other.businessId));
       expect(
         (
-          await route("POST", "pos/orders", {
-            tableLabel: "Mesa válida",
+          await stockPos().create({
+            createRequestId: randomUUID(),
+            saleType: "pickup",
+            orderLabel: "Mesa válida",
+            tableId: null,
+            note: null,
             locationId: foreign[0].id,
-            items: [{ productId, quantity: 1 }],
+            items: [
+              {
+                productId,
+                quantity: "1",
+                quantityUnit: "unit",
+                catalogRevision: "1",
+              },
+            ],
           })
         ).status,
       ).toBe(404);
-      const chosen = await route("POST", "pos/orders", {
-        tableLabel: "Mesa válida",
+      const chosen = await stockPos().create({
+        createRequestId: randomUUID(),
+        saleType: "pickup",
+        orderLabel: "Mesa válida",
+        tableId: null,
+        note: null,
         locationId: second.id,
-        items: [{ productId, quantity: 1 }],
+        items: [
+          {
+            productId,
+            quantity: "1",
+            quantityUnit: "unit",
+            catalogRevision: "1",
+          },
+        ],
       });
       expect(chosen.status).toBe(201);
       expect((await chosen.json()).location.id).toBe(second.id);

@@ -1,3 +1,5 @@
+import { inArray } from "drizzle-orm";
+import { consumerAccounts, users, sessions } from "@mi-pasaporte/db/schema";
 import {
   world,
   subscriber,
@@ -8,7 +10,7 @@ import {
 } from "./pos/server/retirement-integration-support";
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { and, eq, sql } from "drizzle-orm";
 import { getDb, withDbTransaction } from "@mi-pasaporte/db";
 import {
@@ -24,19 +26,22 @@ import {
 import { buildFinancialSettlement } from "@mi-pasaporte/domain/financial";
 import { SERVER_MODULES } from "./server-registry";
 import {
-  openOrder,
+  openOrderV2,
+  dropPosWorld,
+  capturePosScope,
+  scopedPos,
   pos,
   posStaff,
   seedProduct,
   posIntegrationEnabled,
 } from "./pos/server/pos-integration-support";
-import { callModuleRoute } from "./modules-integration-support";
 import {
   listPaymentMethods,
   archivePaymentMethod,
 } from "../server/business/payment-methods";
 import { readSaleCommissions } from "../server/business/commission-read";
 import { applyClaimedDelivery } from "../server/module-events/retry";
+let scope: string;
 const preflightSql = readFileSync(
   new URL("../server/business/retirement-preflight.sql", import.meta.url),
   "utf8",
@@ -47,6 +52,15 @@ describe.skipIf(!posIntegrationEnabled)(
   "0235 conditioned post-drain retirement",
   () => {
     setupRetirementWorld();
+    afterAll(async () => {
+      if (world) {
+        await dropPosWorld(world);
+        await retireFixtureIdentities([world]);
+      }
+    }, 240000);
+    beforeAll(async () => {
+      scope = await capturePosScope(world.ownerCookie, world.seed.business.id);
+    });
     it("POS activation cannot initialize or resurrect methods; only settlement metadata remains modular", async () => {
       const first = await listPaymentMethods(world.seed.business.id, "all");
       const method = first.methods.find((m) => !m.isCash)!;
@@ -84,11 +98,14 @@ describe.skipIf(!posIntegrationEnabled)(
     }, 120000);
     it("POS-only operator keeps selector metadata and closes with core results when event publication is OFF", async () => {
       const staff = await posStaff(world, ["pos"]);
-      const response = await callModuleRoute(
-        "GET",
-        "/api/modules/pos/payment-methods",
+      const staffScope = await capturePosScope(
         staff.cookie,
+        world.seed.business.id,
       );
+      const response = await scopedPos(
+        staff.cookie,
+        staffScope,
+      ).paymentMethods();
       expect(response.status).toBe(200);
       const methods = await response.json();
       expect(
@@ -96,12 +113,12 @@ describe.skipIf(!posIntegrationEnabled)(
           (m: Record<string, unknown>) => !Object.hasOwn(m, "commission"),
         ),
       ).toBe(true);
-      const order = await openOrder(world, [
+      const order = await openOrderV2(world, scope, [
         { productId: world.cafe, quantity: 1 },
       ]);
       expect(
         (
-          await pos.close(staff.cookie, order.id, {
+          await scopedPos(staff.cookie, staffScope).close(order.id, {
             clientRequestId: randomUUID(),
             version: order.version,
             payments: [{ methodId: methods.defaultMethodId, amount: "2.00" }],
@@ -135,7 +152,9 @@ describe.skipIf(!posIntegrationEnabled)(
     }, 120000);
     it("historical canonical zero is readable without a header while absent/foreign evidence never manufactures zero", async () => {
       const free = await seedProduct(world, "Historical free", "0.00");
-      const order = await openOrder(world, [{ productId: free, quantity: 1 }]);
+      const order = await openOrderV2(world, scope, [
+        { productId: free, quantity: 1 },
+      ]);
       const settlement = buildFinancialSettlement({
         currencyCode: "USD",
         lines: [
@@ -283,3 +302,40 @@ describe.skipIf(!posIntegrationEnabled)(
     }, 120000);
   },
 );
+
+/** Retire only identities created by these fixtures, after their business roots are gone. */
+async function retireFixtureIdentities(
+  targets: { seed: { userId: string }; extraUsers: string[] }[],
+  consumers: string[] = [],
+) {
+  if (consumers.length) {
+    await getDb()
+      .delete(consumerAccounts)
+      .where(inArray(consumerAccounts.id, consumers));
+    expect(
+      await getDb()
+        .select({ id: consumerAccounts.id })
+        .from(consumerAccounts)
+        .where(inArray(consumerAccounts.id, consumers)),
+    ).toEqual([]);
+  }
+  const owners = targets.flatMap((target) => [
+    target.seed.userId,
+    ...target.extraUsers,
+  ]);
+  if (owners.length) {
+    await getDb().delete(users).where(inArray(users.id, owners));
+    expect(
+      await getDb()
+        .select({ id: users.id })
+        .from(users)
+        .where(inArray(users.id, owners)),
+    ).toEqual([]);
+    expect(
+      await getDb()
+        .select({ id: sessions.id })
+        .from(sessions)
+        .where(inArray(sessions.userId, owners)),
+    ).toEqual([]);
+  }
+}

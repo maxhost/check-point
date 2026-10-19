@@ -1,17 +1,20 @@
 import { randomUUID } from "node:crypto";
-import { describe, expect, it } from "vitest";
-import { eq } from "drizzle-orm";
+import { afterAll, describe, expect, it } from "vitest";
+import { eq, inArray } from "drizzle-orm";
 import { getDb } from "@mi-pasaporte/db";
 import {
+  users,
+  sessions,
   businesses,
   moduleEvents,
   paymentCommissions,
   posOrderPayments,
 } from "@mi-pasaporte/db/schema";
 import {
-  openOrder,
+  openOrderV2,
+  dropPosWorld,
   seedProduct,
-  pos,
+  scopedPos,
   posIntegrationEnabled,
 } from "./pos-integration-support";
 
@@ -19,10 +22,36 @@ import { createPaymentMethod } from "../../../server/business/payment-methods";
 import { saveCommission } from "../../../server/business/commission-config";
 import { readSaleCommissions } from "../../../server/business/commission-read";
 
-import { world, close, setupBusinessWorld } from "./business-core-support";
+import {
+  world,
+  other,
+  worldScope,
+  close,
+  setupBusinessWorld,
+} from "./business-core-support";
 describe.skipIf(!posIntegrationEnabled)("0235 business-financial", () => {
-  setupBusinessWorld();
-  it("flagOFF still closes with core method and durable provisional0; retry keeps it after new configuration", async () => {
+  setupBusinessWorld({ posContract: 2 });
+  afterAll(async () => {
+    const fixtures = [world, other].filter(Boolean);
+    for (const target of fixtures) await dropPosWorld(target);
+    const owners = fixtures.map((target) => target.seed.userId);
+    if (owners.length) {
+      await getDb().delete(users).where(inArray(users.id, owners));
+      expect(
+        await getDb()
+          .select({ id: users.id })
+          .from(users)
+          .where(inArray(users.id, owners)),
+      ).toEqual([]);
+      expect(
+        await getDb()
+          .select({ id: sessions.id })
+          .from(sessions)
+          .where(inArray(sessions.userId, owners)),
+      ).toEqual([]);
+    }
+  }, 240000);
+  it("V2 closes with core method and durable provisional0; retry keeps it after new configuration", async () => {
     const method = await createPaymentMethod(world.seed.business.id, {
       name: "No tariff",
       chargeShape: "percent",
@@ -41,19 +70,23 @@ describe.skipIf(!posIntegrationEnabled)("0235 business-financial", () => {
       reasons: ["commission_unconfigured"],
       payments: [{ configured: false, commission: "0.00" }],
     });
-    expect(
-      await getDb()
-        .select()
-        .from(moduleEvents)
-        .where(eq(moduleEvents.sourceId, order.id)),
-    ).toHaveLength(0);
+    const firstEvents = await getDb()
+      .select()
+      .from(moduleEvents)
+      .where(eq(moduleEvents.sourceId, order.id));
+    expect(firstEvents).toHaveLength(1);
+    expect(firstEvents[0]).toMatchObject({
+      eventType: "sale.closed",
+      eventVersion: 4,
+    });
     await saveCommission(world.seed.business.id, method.id, {
       expectedRevisionId: null,
       percent: "10",
     });
-    expect((await pos.close(world.ownerCookie, order.id, body)).status).toBe(
-      200,
-    );
+    expect(
+      (await scopedPos(world.ownerCookie, worldScope!).close(order.id, body))
+        .status,
+    ).toBe(200);
     expect(
       await readSaleCommissions(
         world.seed.business.id,
@@ -68,6 +101,12 @@ describe.skipIf(!posIntegrationEnabled)("0235 business-financial", () => {
       .where(eq(posOrderPayments.posOrderId, order.id));
     expect(rows).toHaveLength(1);
     expect(rows[0].methodProviderId).toBe("core");
+    expect(
+      await getDb()
+        .select()
+        .from(moduleEvents)
+        .where(eq(moduleEvents.sourceId, order.id)),
+    ).toEqual(firstEvents);
   }, 120000);
   it("revision A remains frozen after B; another close uses B; publication reuses captured core revision", async () => {
     const method = await createPaymentMethod(world.seed.business.id, {
@@ -165,15 +204,20 @@ describe.skipIf(!posIntegrationEnabled)("0235 business-financial", () => {
         .where(eq(businesses.id, world.seed.business.id));
     }
   }, 120000);
-  it("net0 flagOFF has an explicit durable core header and no fake payment; absence is unknown", async () => {
+  it("net0 V2 has an explicit durable core header and no fake payment; absence is unknown", async () => {
     const free = await seedProduct(world, "Free test", "0.00");
-    const order = await openOrder(world, [{ productId: free, quantity: 1 }]);
+    const order = await openOrderV2(world, worldScope!, [
+      { productId: free, quantity: 1 },
+    ]);
     // Use the existing POS-authorized free product, not a browser-supplied net.
-    const response = await pos.close(world.ownerCookie, order.id, {
-      clientRequestId: randomUUID(),
-      version: order.version,
-      payments: [],
-    });
+    const response = await scopedPos(world.ownerCookie, worldScope!).close(
+      order.id,
+      {
+        clientRequestId: randomUUID(),
+        version: order.version,
+        payments: [],
+      },
+    );
     expect(response.status).toBe(200);
     expect(
       await readSaleCommissions(

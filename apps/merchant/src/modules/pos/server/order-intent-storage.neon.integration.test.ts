@@ -11,8 +11,9 @@ import {
 } from "@mi-pasaporte/db/schema";
 import {
   dropPosWorld,
-  openOrder,
-  pos,
+  seedLegacyOrder,
+  capturePosScope,
+  scopedPos,
   posIntegrationEnabled,
   seedPosWorld,
   seedProduct,
@@ -279,17 +280,23 @@ describe.skipIf(!posIntegrationEnabled)(
     it("keeps legacy inserts and unit detail/list reads compatible with null private projections", async () => {
       const world = worlds[0];
       const productId = await seedProduct(world, "Historical unit", "3.25");
-      const order = await openOrder(
+      const scope = await capturePosScope(
+        world.ownerCookie,
+        world.seed.business.id,
+      );
+      const order = await seedLegacyOrder(
         world,
         [{ productId, quantity: 2 }],
         "Mesa pickup",
       );
       expect(order).toMatchObject({
         total: "6.50",
-        items: [{ quantity: 2, unitPrice: "3.25" }],
+        items: [{ quantity: "2", unitPrice: "3.25" }],
       });
-      expect((await pos.read(world.ownerCookie, order.id)).status).toBe(200);
-      const list = await pos.list(world.ownerCookie);
+      expect(
+        (await scopedPos(world.ownerCookie, scope).read(order.id)).status,
+      ).toBe(200);
+      const list = await scopedPos(world.ownerCookie, scope).list();
       expect(list.status).toBe(200);
       expect(JSON.stringify(await list.json())).toContain(order.id);
       const [stored] = await getDb()

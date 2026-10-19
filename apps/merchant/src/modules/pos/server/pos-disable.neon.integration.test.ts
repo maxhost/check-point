@@ -1,3 +1,6 @@
+import { inArray } from "drizzle-orm";
+import { consumerAccounts, users, sessions } from "@mi-pasaporte/db/schema";
+import { randomUUID } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { getDb } from "@mi-pasaporte/db";
@@ -73,16 +76,26 @@ vi.mock("./module", async (importOriginal) => {
   };
 });
 
-const { dropPosWorld, posIntegrationEnabled, pos, seedPosWorld, setModuleRow } =
-  await import("./pos-integration-support");
+const {
+  dropPosWorld,
+  posIntegrationEnabled,
+  pos,
+  capturePosScope,
+  scopedPos,
+  seedPosWorld,
+  setModuleRow,
+} = await import("./pos-integration-support");
 type PosWorld = Awaited<ReturnType<typeof seedPosWorld>>;
 
 let w: PosWorld;
+let scope: string;
 beforeAll(async () => {
   w = await seedPosWorld("POS apagar");
+  scope = await capturePosScope(w.ownerCookie, w.seed.business.id);
 }, 240_000);
 afterAll(async () => {
   await dropPosWorld(w);
+  await retireFixtureIdentities([w], []);
 }, 240_000);
 
 const businessId = () => w.seed.business.id;
@@ -137,7 +150,16 @@ async function newDiningTable(name: string): Promise<string> {
 }
 
 const create = (body: Record<string, unknown> = {}) =>
-  pos.create(w.ownerCookie, { tableLabel: "Carrera", items: [], ...body });
+  scopedPos(w.ownerCookie, scope).create({
+    createRequestId: randomUUID(),
+    saleType: "table",
+    orderLabel: "Carrera",
+    locationId: null,
+    tableId: null,
+    note: null,
+    items: [],
+    ...body,
+  });
 const toggle = (moduleId: string, enabled: boolean) =>
   pos.setModule(w.ownerCookie, enabled, moduleId);
 
@@ -211,7 +233,9 @@ describe.skipIf(!posIntegrationEnabled)(
       const table = await newDiningTable("Mesa guardada");
       await setModuleRow(businessId(), "tables", false);
 
-      const listed = await pos.tables(w.ownerCookie, w.seed.locationId);
+      const listed = await scopedPos(w.ownerCookie, scope).tables(
+        w.seed.locationId,
+      );
       expect(listed.status).toBe(200);
       expect(await listed.json()).toEqual({ tables: [] });
       const withTable = await create({ tableId: table });
@@ -222,7 +246,7 @@ describe.skipIf(!posIntegrationEnabled)(
 
       await setModuleRow(businessId(), "tables", true);
       const back = await (
-        await pos.tables(w.ownerCookie, w.seed.locationId)
+        await scopedPos(w.ownerCookie, scope).tables(w.seed.locationId)
       ).json();
       expect(back.tables.map((t: { id: string }) => t.id)).toContain(table);
       await voidAll();
@@ -274,10 +298,10 @@ describe.skipIf(!posIntegrationEnabled)(
       await setModuleRow(businessId(), "pos", true);
       const { latch: l, reached } = latch();
       h.lock = l;
-      const first = create({ tableLabel: "Primera" });
+      const first = create({ orderLabel: "Primera" });
       await reached;
       const second = await Promise.race([
-        create({ tableLabel: "Segunda" }),
+        create({ orderLabel: "Segunda" }),
         new Promise<"esperando">((r) =>
           setTimeout(() => r("esperando"), 8_000),
         ),
@@ -289,3 +313,40 @@ describe.skipIf(!posIntegrationEnabled)(
     }, 120_000);
   },
 );
+
+/** Retire only identities created by these fixtures, after their business roots are gone. */
+async function retireFixtureIdentities(
+  targets: { seed: { userId: string }; extraUsers: string[] }[],
+  consumers: string[] = [],
+) {
+  if (consumers.length) {
+    await getDb()
+      .delete(consumerAccounts)
+      .where(inArray(consumerAccounts.id, consumers));
+    expect(
+      await getDb()
+        .select({ id: consumerAccounts.id })
+        .from(consumerAccounts)
+        .where(inArray(consumerAccounts.id, consumers)),
+    ).toEqual([]);
+  }
+  const owners = targets.flatMap((target) => [
+    target.seed.userId,
+    ...target.extraUsers,
+  ]);
+  if (owners.length) {
+    await getDb().delete(users).where(inArray(users.id, owners));
+    expect(
+      await getDb()
+        .select({ id: users.id })
+        .from(users)
+        .where(inArray(users.id, owners)),
+    ).toEqual([]);
+    expect(
+      await getDb()
+        .select({ id: sessions.id })
+        .from(sessions)
+        .where(inArray(sessions.userId, owners)),
+    ).toEqual([]);
+  }
+}

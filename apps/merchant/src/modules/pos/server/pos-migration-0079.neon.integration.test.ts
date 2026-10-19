@@ -1,3 +1,6 @@
+import { inArray } from "drizzle-orm";
+import { users, sessions } from "@mi-pasaporte/db/schema";
+import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { eq, sql } from "drizzle-orm";
@@ -7,7 +10,8 @@ import { diningTables } from "@mi-pasaporte/db/schema";
 import {
   type PosWorld,
   dropPosWorld,
-  pos,
+  capturePosScope,
+  scopedPos,
   posIntegrationEnabled,
   seedPosWorld,
   setModuleRow,
@@ -54,13 +58,26 @@ beforeAll(async () => {
       name: "Mesa 0079",
     })
     .returning({ id: diningTables.id });
-  const created = await pos.create(on.ownerCookie, {
+  const scope = await capturePosScope(on.ownerCookie, on.seed.business.id);
+  const created = await scopedPos(on.ownerCookie, scope).create({
+    createRequestId: randomUUID(),
+    saleType: "table",
+    orderLabel: "Mesa",
+    locationId: null,
+    note: null,
     tableId: table.id,
-    items: [{ productId: on.cafe, quantity: 2 }],
+    items: [
+      {
+        productId: on.cafe,
+        quantity: "2",
+        quantityUnit: "unit",
+        catalogRevision: "1",
+      },
+    ],
   });
   if (created.status !== 201) throw new Error(`orden: ${created.status}`);
   openOrderId = (await created.json()).id;
-  const ticket = await pos.saveTicketSettings(on.ownerCookie, {
+  const ticket = await scopedPos(on.ownerCookie, scope).saveTicketSettings({
     printingEnabled: true,
     showBusinessName: false,
     showTable: true,
@@ -81,6 +98,22 @@ beforeAll(async () => {
 afterAll(async () => {
   await dropPosWorld(on);
   await dropPosWorld(off);
+  const owners = [on, off].filter(Boolean).map((target) => target.seed.userId);
+  if (owners.length) {
+    await getDb().delete(users).where(inArray(users.id, owners));
+    expect(
+      await getDb()
+        .select({ id: users.id })
+        .from(users)
+        .where(inArray(users.id, owners)),
+    ).toEqual([]);
+    expect(
+      await getDb()
+        .select({ id: sessions.id })
+        .from(sessions)
+        .where(inArray(sessions.userId, owners)),
+    ).toEqual([]);
+  }
 }, 240_000);
 
 type Snapshot = Record<string, { rows: number; hash: string }>;

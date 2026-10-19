@@ -20,15 +20,19 @@ import {
 } from "../../../server/counter/coupon-cycle-support";
 import {
   dropPosWorld,
-  openOrder,
-  pos,
+  capturePosScope,
+  scopedPos,
+  seedLegacyOrder,
   posStaff,
   posIntegrationEnabled,
   seedPosWorld,
   seedProduct,
   type PosWorld,
 } from "./pos-integration-support";
+import { getPosOrder } from "./read";
+import { readPosCatalog } from "./measured-catalog";
 import { closeWithCash } from "./pos-payment-integration-support";
+const scopes = new Map<string, string>();
 let a: PosWorld, b: PosWorld;
 let allowed: string, denied: string, scope: string;
 function request(
@@ -49,9 +53,14 @@ async function call(
   cookie: string,
   path: string,
   version: string | null = "2",
-  scope?: string,
+  scope?: string | null,
 ) {
-  const req = request(cookie, path, version, scope);
+  const req = request(
+    cookie,
+    path,
+    version,
+    scope === undefined ? scopes.get(cookie) : (scope ?? undefined),
+  );
   const response = await dispatchModuleRequest("GET", req, {
     moduleId: "pos",
     path: path.split("?")[0].split("/"),
@@ -68,13 +77,18 @@ async function closed(
   items: { productId: string; quantity: number }[],
   membershipId?: string,
 ) {
-  const order = await openOrder(a, items);
+  const order = await seedLegacyOrder(a, items);
   return body(
-    await closeWithCash(a.ownerCookie, order.id, {
-      version: order.version,
-      clientRequestId: randomUUID(),
-      ...(membershipId ? { membershipId } : {}),
-    }),
+    await closeWithCash(
+      a.ownerCookie,
+      order.id,
+      {
+        version: order.version,
+        clientRequestId: randomUUID(),
+        ...(membershipId ? { membershipId } : {}),
+      },
+      { scope: scopes.get(a.ownerCookie)! },
+    ),
   );
 }
 describe.skipIf(!posIntegrationEnabled)(
@@ -96,6 +110,14 @@ describe.skipIf(!posIntegrationEnabled)(
         },
         process.env.BETTER_AUTH_SECRET,
       );
+      for (const [cookie, businessId] of [
+        [a.ownerCookie, a.seed.business.id],
+        [b.ownerCookie, b.seed.business.id],
+        [allowed, a.seed.business.id],
+        [denied, a.seed.business.id],
+      ]) {
+        scopes.set(cookie, await capturePosScope(cookie, businessId));
+      }
     }, 240000);
     afterAll(async () => {
       const worlds = [a, b].filter(Boolean);
@@ -119,7 +141,9 @@ describe.skipIf(!posIntegrationEnabled)(
       ).toEqual([]);
     }, 240000);
     it("guard and scope precede unknown contracts on both GETs; no effects", async () => {
-      const order = await openOrder(a, [{ productId: a.cafe, quantity: 1 }]);
+      const order = await seedLegacyOrder(a, [
+        { productId: a.cafe, quantity: 1 },
+      ]);
       const before = await getDb()
         .select()
         .from(posOrders)
@@ -133,6 +157,9 @@ describe.skipIf(!posIntegrationEnabled)(
         expect(
           await body(await call(a.ownerCookie, path, "99", scope), 409),
         ).toHaveProperty("code", "pos_client_upgrade_required");
+        expect(
+          (await body(await call(a.ownerCookie, path, "2", null), 409)).code,
+        ).toBe("backoffice_context_changed");
         expect((await call(allowed, path)).status).toBe(200);
       }
       expect(
@@ -198,16 +225,22 @@ describe.skipIf(!posIntegrationEnabled)(
       expect(
         (await body(await call(allowed, "catalog"))).salesMassUnits,
       ).toEqual(["lb", "g"]);
-      const legacy = await body(await call(allowed, "catalog", null));
-      expect(legacy).not.toHaveProperty("salesMassUnits");
-      expect(legacy).toHaveProperty("bestSellingProductIds");
-      expect(
-        legacy.products.find((p: { id: string }) => p.id === free).unitPrice,
-      ).toBe(0);
+      // The internal legacy projection remains covered; HTTP V1 is retired.
+      const legacyCatalog = await readPosCatalog(a.seed.business.id, null, 1);
+      expect(legacyCatalog).not.toHaveProperty("salesMassUnits");
+      expect(legacyCatalog).toHaveProperty("bestSellingProductIds");
+      expect(legacyCatalog.products.find((p) => p.id === free)!.unitPrice).toBe(
+        0,
+      );
+      for (const contract of [null, "1"]) {
+        expect(
+          (await body(await call(allowed, "catalog", contract), 409)).code,
+        ).toBe("pos_client_upgrade_required");
+      }
     }, 120000);
     it("detail keeps stored sale type, aliases, exact legacy high snapshots, deleted product and empty/voided orders", async () => {
       const high = await seedProduct(a, "Tarifa antigua", "9999999999.99");
-      const order = await openOrder(
+      const order = await seedLegacyOrder(
         a,
         [{ productId: high, quantity: 1 }],
         "Mesa literal no FK",
@@ -240,13 +273,69 @@ describe.skipIf(!posIntegrationEnabled)(
           },
         ],
       });
+      expect(Object.keys(detail).sort()).toEqual(
+        [
+          "contractVersion",
+          "id",
+          "status",
+          "version",
+          "saleType",
+          "orderLabel",
+          "tableLabel",
+          "tableId",
+          "location",
+          "note",
+          "business",
+          "items",
+          "total",
+          "createdAt",
+          "createdBy",
+          "closedAt",
+          "closedBy",
+          "sale",
+          "settlement",
+        ].sort(),
+      );
+      expect(Object.keys(detail.items[0]).sort()).toEqual(
+        [
+          "lineId",
+          "productId",
+          "name",
+          "quantity",
+          "unitPrice",
+          "measure",
+          "lineTotal",
+          "financialSnapshot",
+        ].sort(),
+      );
+      expect(Object.keys(detail.items[0].measure).sort()).toEqual(
+        ["kind", "quantityUnit", "priceUnit", "conversionVersion"].sort(),
+      );
+      expect(Object.keys(detail.business).sort()).toEqual(
+        ["name", "currencyCode"].sort(),
+      );
       expect(detail).not.toHaveProperty("lines");
       expect(detail).not.toHaveProperty("createRequestId");
-      const legacy = await body(
-        await call(a.ownerCookie, `orders/${order.id}`, "1"),
-      );
-      expect(legacy.items[0].quantity).toBe(1);
-      expect(legacy.total).toBe(detail.total);
+      const beforeLegacyRead = await getDb()
+        .select()
+        .from(posOrders)
+        .where(eq(posOrders.id, order.id));
+      for (const contract of [null, "1"]) {
+        expect(
+          (
+            await body(
+              await call(a.ownerCookie, `orders/${order.id}`, contract),
+              409,
+            )
+          ).code,
+        ).toBe("pos_client_upgrade_required");
+      }
+      expect(
+        await getDb()
+          .select()
+          .from(posOrders)
+          .where(eq(posOrders.id, order.id)),
+      ).toEqual(beforeLegacyRead);
       await getDb()
         .update(posOrders)
         .set({ saleType: "pickup" })
@@ -274,7 +363,7 @@ describe.skipIf(!posIntegrationEnabled)(
         orderLabel: "Mesa literal no FK",
       });
       const zero = await seedProduct(a, "Cantidad antigua", "0.00");
-      const many = await openOrder(a, [
+      const many = await seedLegacyOrder(a, [
         { productId: zero, quantity: 2147483647 },
       ]);
       expect(
@@ -285,11 +374,17 @@ describe.skipIf(!posIntegrationEnabled)(
           { quantity: "2147483647", unitPrice: "0", financialSnapshot: null },
         ],
       });
-      const empty = await openOrder(a, []);
+      const empty = await seedLegacyOrder(a, []);
       expect(
         await body(await call(a.ownerCookie, `orders/${empty.id}`)),
       ).toMatchObject({ total: "0.00", items: [] });
-      expect((await pos.void(a.ownerCookie, empty.id)).status).toBe(200);
+      expect(
+        (
+          await scopedPos(a.ownerCookie, scopes.get(a.ownerCookie)!).void(
+            empty.id,
+          )
+        ).status,
+      ).toBe(200);
       expect(
         (await body(await call(a.ownerCookie, `orders/${empty.id}`))).status,
       ).toBe("voided");
@@ -331,14 +426,21 @@ describe.skipIf(!posIntegrationEnabled)(
         discountValue: "50",
       });
       await choose(customer, couponId);
-      const order = await openOrder(a, [{ productId: a.cafe, quantity: 1 }]);
+      const order = await seedLegacyOrder(a, [
+        { productId: a.cafe, quantity: 1 },
+      ]);
       const stored = await body(
-        await closeWithCash(a.ownerCookie, order.id, {
-          clientRequestId: randomUUID(),
-          version: order.version,
-          membershipId: customer.membershipId,
-          coupon: { couponId },
-        }),
+        await closeWithCash(
+          a.ownerCookie,
+          order.id,
+          {
+            clientRequestId: randomUUID(),
+            version: order.version,
+            membershipId: customer.membershipId,
+            coupon: { couponId },
+          },
+          { scope: scopes.get(a.ownerCookie)! },
+        ),
       );
       expect(stored.settlement).toMatchObject({
         gross: "2.00",
@@ -376,8 +478,8 @@ describe.skipIf(!posIntegrationEnabled)(
     it("preserves closed and voided legacy COP cents without financial captures", async () => {
       const product = await seedProduct(a, "Centavos históricos", "0.49");
       const historicalOrders = [
-        await openOrder(a, [{ productId: product, quantity: 2 }]),
-        await openOrder(a, [{ productId: product, quantity: 2 }]),
+        await seedLegacyOrder(a, [{ productId: product, quantity: 2 }]),
+        await seedLegacyOrder(a, [{ productId: product, quantity: 2 }]),
       ];
       await getDb()
         .update(businesses)
@@ -394,9 +496,16 @@ describe.skipIf(!posIntegrationEnabled)(
               closedByUserId: a.seed.userId,
             })
             .where(eq(posOrders.id, order.id));
-          const legacy = await body(
-            await call(a.ownerCookie, `orders/${order.id}`, "1"),
-          );
+          // SQL fixture and internal historical reader preserve exact cents.
+          const legacy = await getPosOrder(a.seed.business.id, order.id);
+          expect(
+            (
+              await body(
+                await call(a.ownerCookie, `orders/${order.id}`, "1"),
+                409,
+              )
+            ).code,
+          ).toBe("pos_client_upgrade_required");
           const measured = await body(
             await call(a.ownerCookie, `orders/${order.id}`),
           );
@@ -432,15 +541,14 @@ describe.skipIf(!posIntegrationEnabled)(
         )
       ).frequentProductIds;
       expect(ids.indexOf(second)).toBeLessThan(ids.indexOf(first));
-      const legacy = (
-        await body(
-          await call(
-            a.ownerCookie,
-            `catalog?locationId=${a.seed.locationId}`,
-            "1",
-          ),
-        )
-      ).bestSellingProductIds;
+      const legacyCatalogAtLocation = await readPosCatalog(
+        a.seed.business.id,
+        a.seed.locationId,
+        1,
+      );
+      if (!("bestSellingProductIds" in legacyCatalogAtLocation))
+        throw new Error("Expected internal legacy catalog projection");
+      const legacy = legacyCatalogAtLocation.bestSellingProductIds;
       expect(legacy.indexOf(first)).toBeLessThan(legacy.indexOf(second));
       const old = await closed([{ productId: first, quantity: 1 }]);
       await getDb()

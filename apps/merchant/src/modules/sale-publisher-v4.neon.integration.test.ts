@@ -1,3 +1,7 @@
+import {
+  capturePosScope,
+  scopedPos,
+} from "./pos/server/pos-integration-support";
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { and, eq, inArray } from "drizzle-orm";
@@ -12,6 +16,7 @@ import {
   moduleEventDeliveries,
   paymentMethods,
   posOrderItems,
+  products,
   recipeSaleResolutions,
 } from "@mi-pasaporte/db/schema";
 import {
@@ -26,7 +31,6 @@ import {
   enableModules,
   seedProduct,
   newItem,
-  callModuleRoute,
   type ModuleWorld,
 } from "./modules-integration-support";
 import { createRecipe } from "./recipes/server/library";
@@ -45,6 +49,7 @@ import { decodeMeasuredSaleClosedEvent } from "../server/module-events/decode";
 
 let world: ModuleWorld;
 let productId: string;
+let posScope: string;
 let method: typeof paymentMethods.$inferSelect;
 let resolutionId: string;
 let revisionId: string;
@@ -54,6 +59,7 @@ beforeAll(async () => {
   if (!modulesIntegrationEnabled) return;
   world = await seedModuleWorld("0242 sale publisher V4");
   await enableModules(world, ["pos", "stock", "recipes"]);
+  posScope = await capturePosScope(world.cookie, world.businessId);
   await withDbTransaction((tx) =>
     initializePaymentMethods(tx, { businessId: world.businessId }),
   );
@@ -147,16 +153,32 @@ async function fixture(
       },
     ];
   } else {
-    const response = await callModuleRoute(
-      "POST",
-      "/api/modules/pos/orders",
-      world.cookie,
-      {
-        locationId: world.locationId,
-        tableLabel: "Publisher interno",
-        items: [{ productId, quantity: 1 }],
-      },
-    );
+    const [product] = await getDb()
+      .select({ revision: products.salesRevision })
+      .from(products)
+      .where(
+        and(
+          eq(products.id, productId),
+          eq(products.businessId, world.businessId),
+        ),
+      );
+    if (!product) throw new Error("Publisher fixture requires its own product");
+    const response = await scopedPos(world.cookie, posScope).create({
+      locationId: world.locationId,
+      createRequestId: randomUUID(),
+      saleType: "pickup",
+      orderLabel: "Publisher interno",
+      tableId: null,
+      note: null,
+      items: [
+        {
+          productId,
+          quantity: "1",
+          quantityUnit: "unit",
+          catalogRevision: String(product.revision),
+        },
+      ],
+    });
     expect(response.status).toBe(201);
     sourceOrderId = (await response.json()).id;
     const rows = await getDb()
@@ -308,6 +330,7 @@ describe.skipIf(!modulesIntegrationEnabled)(
         expect(await stored(input.sourceOrderId)).toEqual(before);
       } finally {
         await enableModules(world, ["pos", "stock", "recipes"]);
+        posScope = await capturePosScope(world.cookie, world.businessId);
         await withDbTransaction((tx) =>
           setResourceVersion(tx, {
             businessId: world.businessId,

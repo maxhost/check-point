@@ -1,3 +1,5 @@
+import { sessions } from "@mi-pasaporte/db/schema";
+import { readPosCatalog } from "./measured-catalog";
 import { createHash, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { eq, sql } from "drizzle-orm";
@@ -21,8 +23,9 @@ import {
 } from "../../../server/business/configuration";
 import {
   dropPosWorld,
-  openOrder,
-  pos,
+  openOrderV2,
+  capturePosScope,
+  scopedPos,
   posIntegrationEnabled,
   seedPosWorld,
   type PosWorld,
@@ -49,6 +52,7 @@ const cloneSchema = `catalog_measure_${randomUUID().replaceAll("-", "")}`;
 const productTable = `"${cloneSchema}"."product"`;
 const configTable = `"${cloneSchema}"."business_configuration"`;
 let world: PosWorld | undefined;
+let scope: string;
 
 async function execute(statement: string) {
   return getDb().execute(sql.raw(statement));
@@ -60,6 +64,7 @@ describe.skipIf(!posIntegrationEnabled)(
   () => {
     beforeAll(async () => {
       world = await seedPosWorld("CP2a catalog measure storage");
+      scope = await capturePosScope(world.ownerCookie, world.seed.business.id);
     }, 180_000);
 
     afterAll(async () => {
@@ -76,6 +81,13 @@ describe.skipIf(!posIntegrationEnabled)(
             .where(eq(users.id, ownerId)),
         ).toEqual([]);
       }
+      if (ownerId)
+        expect(
+          await getDb()
+            .select({ id: sessions.id })
+            .from(sessions)
+            .where(eq(sessions.userId, ownerId)),
+        ).toEqual([]);
       if (businessId)
         expect(
           await getDb()
@@ -144,14 +156,19 @@ describe.skipIf(!posIntegrationEnabled)(
       );
       for (const conname of [
         "product_sale_measure_check",
-        "product_sale_measure_legacy_check",
         "product_sales_revision_check",
-        "product_unit_price_legacy_check",
-        "product_unit_cost_legacy_check",
+        "product_unit_price_shape_check",
+        "product_unit_cost_shape_check",
         "business_configuration_sales_mass_units_check",
         "business_configuration_revision_check",
       ])
         expect(checks.rows).toContainEqual({ conname });
+      for (const conname of [
+        "product_sale_measure_legacy_check",
+        "product_unit_price_legacy_check",
+        "product_unit_cost_legacy_check",
+      ])
+        expect(checks.rows).not.toContainEqual({ conname });
     });
 
     it("applies only canonical table-identifier substitutions to own old-definition tables, preserving complete rows and absence", async () => {
@@ -170,6 +187,22 @@ describe.skipIf(!posIntegrationEnabled)(
       await execute(
         `ALTER TABLE ${configTable} DROP COLUMN sales_mass_units CASCADE`,
       );
+      // Reconstruct the immediately preceding origin definition only in this private clone.
+      const tariffExpand = readFileSync(
+        new URL(
+          "../../../../../../packages/db/drizzle/0102_catalog_legacy_storage_expand.sql",
+          import.meta.url,
+        ),
+        "utf8",
+      );
+      for (const statement of tariffExpand
+        .split("--> statement-breakpoint")
+        .map((s) => s.trim())
+        .filter((s) => s.includes(" ADD CONSTRAINT "))) {
+        const isolated = statement.replaceAll('"core"."product"', productTable);
+        expect(isolated).not.toContain('"core".');
+        await execute(isolated);
+      }
       const configId = randomUUID();
       const absentConfigId = randomUUID();
       await getDb().execute(
@@ -257,7 +290,21 @@ describe.skipIf(!posIntegrationEnabled)(
         { sold_by_weight: false, pricing_unit: "unit", sales_revision: 1 },
       ]);
 
-      // The real core barrier stays installed. Only this own table exercises the final model.
+      // Preserve dormant-mass and cent-only negatives at the canonical expand checkpoint.
+      for (const unit of ["kg", "lb", "g"])
+        await expect(
+          execute(
+            `UPDATE ${productTable} SET sold_by_weight = true, pricing_unit = '${unit}' WHERE name = 'New legacy insert'`,
+          ),
+        ).rejects.toMatchObject({ cause: { code: "23514" } });
+      for (const column of ["unit_price", "unit_cost"])
+        for (const value of ["-0.01", "10000000000", "0.001", "NaN"])
+          await expect(
+            execute(
+              `UPDATE ${productTable} SET ${column} = '${value}'::numeric WHERE name = 'New legacy insert'`,
+            ),
+          ).rejects.toMatchObject({ cause: { code: "23514" } });
+      // Only this private origin table advances to the final model here.
       await execute(
         `ALTER TABLE ${productTable} DROP CONSTRAINT product_sale_measure_legacy_check`,
       );
@@ -281,7 +328,7 @@ describe.skipIf(!posIntegrationEnabled)(
         ).rejects.toMatchObject({ cause: { code: "23514" } });
     }, 120_000);
 
-    it("keeps mass dormant, rejects nonpositive revisions/nulls and preserves tariff barriers in real core", async () => {
+    it("keeps active mass shapes, rejects nonpositive revisions/nulls and preserves permanent tariff barriers in real core", async () => {
       const [product] = await getDb()
         .insert(products)
         .values({
@@ -296,13 +343,27 @@ describe.skipIf(!posIntegrationEnabled)(
         pricingUnit: "unit",
         salesRevision: 1,
       });
-      for (const unit of ["kg", "lb", "g"])
-        await expect(
-          getDb()
-            .update(products)
-            .set({ soldByWeight: true, pricingUnit: unit })
-            .where(eq(products.id, product.id)),
-        ).rejects.toMatchObject({ cause: { code: "23514" } });
+      await getDb()
+        .insert(businessConfiguration)
+        .values({
+          businessId: world!.seed.business.id,
+          salesMassUnits: ["kg", "lb", "g"],
+        });
+      for (const unit of ["kg", "lb", "g"]) {
+        const [active] = await getDb()
+          .update(products)
+          .set({ soldByWeight: true, pricingUnit: unit })
+          .where(eq(products.id, product.id))
+          .returning();
+        expect(active).toMatchObject({ soldByWeight: true, pricingUnit: unit });
+      }
+      await getDb()
+        .update(products)
+        .set({ soldByWeight: false, pricingUnit: "unit" })
+        .where(eq(products.id, product.id));
+      await getDb()
+        .delete(businessConfiguration)
+        .where(eq(businessConfiguration.businessId, world!.seed.business.id));
       for (const revision of [0, -1])
         await expect(
           getDb()
@@ -317,7 +378,7 @@ describe.skipIf(!posIntegrationEnabled)(
           ),
         ).rejects.toMatchObject({ cause: { code: "23502" } });
       for (const column of ["unitPrice", "unitCost"] as const)
-        for (const value of ["-0.01", "10000000000", "0.001", "NaN"])
+        for (const value of ["-0.01", "10000000000", "NaN"])
           await expect(
             getDb()
               .update(products)
@@ -480,12 +541,14 @@ describe.skipIf(!posIntegrationEnabled)(
         unitCost: "9999999999.990000000",
         soldByWeight: false,
         pricingUnit: "unit",
-        salesRevision: 1,
+        salesRevision: 2,
       });
       const catalog = await listCatalog(owner);
-      const response = await pos.catalog(w.ownerCookie, w.seed.locationId);
-      expect(response.status).toBe(200);
-      const posCatalog = await response.json();
+      const posCatalog = await readPosCatalog(
+        w.seed.business.id,
+        w.seed.locationId,
+        1,
+      );
       for (const [index, row] of rows.entries()) {
         const expected = [null, 0, 9999999999.99][index];
         expect(catalog.products.find((p) => p.id === row.id)).toMatchObject({
@@ -498,7 +561,7 @@ describe.skipIf(!posIntegrationEnabled)(
         if (expected === null) expect(projected).toBeUndefined();
         else expect(projected).toMatchObject({ unitPrice: expected });
       }
-      const order = await openOrder(w, [
+      const order = await openOrderV2(w, scope, [
         { productId: rows[2].id, quantity: 1 },
       ]);
       expect(order).toMatchObject({
@@ -506,15 +569,15 @@ describe.skipIf(!posIntegrationEnabled)(
         items: [
           {
             productId: rows[2].id,
-            quantity: 1,
+            quantity: "1",
             unitPrice: "9999999999.99",
             lineTotal: "9999999999.99",
           },
         ],
       });
-      expect(await (await pos.read(w.ownerCookie, order.id)).json()).toEqual(
-        order,
-      );
+      expect(
+        await (await scopedPos(w.ownerCookie, scope).read(order.id)).json(),
+      ).toEqual(order);
     }, 120_000);
   },
 );

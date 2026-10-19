@@ -13,6 +13,7 @@ import { closeMeasuredPosOrder } from "./measured-close";
 import { getPosOrderV2 } from "./read";
 import {
   dropPosWorld,
+  capturePosScope,
   posIntegrationEnabled,
   seedPosWorld,
   seedProduct,
@@ -31,21 +32,29 @@ vi.mock("next/server", async (original) => ({
 }));
 
 const worlds: PosWorld[] = [];
+const scopes = new Map<string, string>();
 let a: PosWorld, b: PosWorld, productId: string;
 function request(
   id: string,
   body?: string,
   contract: string | null = "2",
   identity = "a",
-  scope?: string,
+  scope?: string | null,
 ) {
   return new Request(`http://localhost/api/modules/pos/orders/${id}/void`, {
     method: "POST",
     headers: {
       "content-type": "application/json",
       "X-Test-Identity": identity,
+      cookie: identity === "b" ? b.ownerCookie : a.ownerCookie,
       ...(contract === null ? {} : { "X-Pos-Contract": contract }),
-      ...(scope === undefined ? {} : { "X-Backoffice-Scope": scope }),
+      ...((scope === undefined ? scopes.get(identity) : scope) == null
+        ? {}
+        : {
+            "X-Backoffice-Scope": (scope === undefined
+              ? scopes.get(identity)
+              : scope)!,
+          }),
     },
     ...(body === undefined ? {} : { body }),
   });
@@ -139,6 +148,14 @@ describe.skipIf(!posIntegrationEnabled)(
         worlds.push(a);
         b = await seedPosWorld("void HTTP B");
         worlds.push(b);
+        scopes.set(
+          "a",
+          await capturePosScope(a.ownerCookie, a.seed.business.id),
+        );
+        scopes.set(
+          "b",
+          await capturePosScope(b.ownerCookie, b.seed.business.id),
+        );
         productId = await seedProduct(a, "HTTP frozen product", "3.25");
         vi.mocked(requireModuleAccess).mockImplementation(
           async (req, moduleId, permission) => {
@@ -179,6 +196,7 @@ describe.skipIf(!posIntegrationEnabled)(
           ["anonymous", undefined, 401, "unauthorized"],
           ["denied", undefined, 403, "missing_permission"],
           ["a", "stale-scope", 409, "backoffice_context_changed"],
+          ["a", null, 409, "backoffice_context_changed"],
           ["a", undefined, 409, "pos_client_upgrade_required"],
         ] as const) {
           const req = request(order.id, "{", "99", identity, scope);
@@ -253,26 +271,27 @@ describe.skipIf(!posIntegrationEnabled)(
       }
     });
 
-    it("absent/1 keep legacy writer/DTO and ignore even malformed bodies", async () => {
+    it("absent/1 reject before body or either writer without effects", async () => {
       const measuredSpy = vi.spyOn(measured, "voidMeasuredPosOrder");
+      const legacySpy = vi.spyOn(legacy, "voidPosOrder");
       try {
         for (const contract of [null, "1"]) {
           const order = await open();
+          const before = await state();
           const req = request(order.id, "{", contract);
-          const voided = await call(req, order.id);
+          const json = vi.spyOn(req, "json");
+          expect((await call(req, order.id, 409)).code).toBe(
+            "pos_client_upgrade_required",
+          );
+          expect(json).not.toHaveBeenCalled();
           expect(req.bodyUsed).toBe(false);
-          expect(voided).toMatchObject({
-            id: order.id,
-            status: "voided",
-            tableLabel: "HTTP frozen void",
-            total: "6.50",
-            items: [{ quantity: 2, unitPrice: "3.25" }],
-          });
-          expect(voided).not.toHaveProperty("contractVersion");
+          expect(await state()).toEqual(before);
         }
         expect(measuredSpy).not.toHaveBeenCalled();
+        expect(legacySpy).not.toHaveBeenCalled();
       } finally {
         measuredSpy.mockRestore();
+        legacySpy.mockRestore();
       }
     });
 

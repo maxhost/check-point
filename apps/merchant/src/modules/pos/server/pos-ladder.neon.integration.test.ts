@@ -15,7 +15,11 @@ import {
   seedMember,
 } from "../../../server/counter-integration-support";
 import { openMerchantSession } from "../../../server/merchant-session";
-import { pos, setPosModule } from "./pos-integration-support";
+import {
+  capturePosScope,
+  scopedPos,
+  setPosModule,
+} from "./pos-integration-support";
 
 /**
  * Spec 0220 §Autorizacion — LA ESCALERA DEL POS ES LA DEL DESPACHADOR (`requireApiPermission` y
@@ -29,9 +33,14 @@ let a: Seed;
 let ownerCookie: string;
 const extraUsers: string[] = [];
 
-const cookieOf = async (userId: string) =>
-  (await openMerchantSession(userId)).split(";")[0];
-const orders = (cookie: string) => pos.list(cookie);
+const scopes = new Map<string, string>();
+const cookieOf = async (userId: string) => {
+  const cookie = (await openMerchantSession(userId)).split(";")[0];
+  scopes.set(cookie, await capturePosScope(cookie, a.business.id));
+  return cookie;
+};
+const orders = (cookie: string) =>
+  scopedPos(cookie, scopes.get(cookie)!).list();
 
 beforeAll(async () => {
   a = await seedBusiness({
