@@ -1,0 +1,29 @@
+# QA independiente 0242 CP2b.6 PUT V2 — PASS focal
+
+Candidato final `c653563a635cc2a7b43c01d4599eeedd40de5d7c`, entrega autor `79b6b4b0e0cb0cfdd8e9ce596ca8e8b73650969c`. Comprobaciones propias sobre congelado `7b9b34bede3bce525bd79ed89cc57c4adc6f7b23`, base integrada `8f8f9e27695b5476185a224ad6c5e8732eed56d7`; producto autor `7d512a76af0f08de1434b4cee8c96c07f1ff3cf6`. Entre congelado y final solo se adjuntaron handoff y ficha siguiente: diff de los siete archivos EXIT0, evidencia reutilizable. Handoff final leído y coherente con logs. Worktree `/private/tmp/checkpass-pos-0242/pos-qa-0242`, limpio al iniciar y tras comprobaciones. Ninguna ejecución DB/env/wrapper de QA. Sin cambios de producto/tests/refs ni subdelegación.
+
+Revisión de AGENTS/protocolos/ficha y contrato0242 §1/3; diff de siete archivos PUT/captura/tests contra base. Los siete archivos son idénticos al SHA autor7d (`git diff --exit-code 7d512a76 HEAD -- <siete archivos>` EXIT0); lockfile SHA256 `4cfe18864f12af4fe3b0cd84ab477e936ecd52d96847579cc087e6e13b020821`, idéntico a offline autor.
+
+## Comprobaciones independientes
+
+- Node24.20.0. Desde `apps/merchant`: `pnpm exec vitest run src/modules/pos/server/measured-line-input.test.ts src/modules/pos/server/measured-update.test.ts src/modules/pos/server/measured-create.test.ts` EXIT0, 35/35, tres archivos, sin skips. Log completo `/private/tmp/checkpass-pos-0242/qa-update-pure-corrected.log`.
+- Desde `apps/merchant`: `pnpm exec tsc --noEmit` EXIT0 sobre candidato integrado. Log `/private/tmp/checkpass-pos-0242/qa-update-types.log`.
+- Primer intento propio desde raíz usando `--config apps/merchant/vitest.config.ts` con filtros prefijados falló EXIT1 `No test files found` por root/include. No es cobertura ni fallo de producto. Conservado `/private/tmp/checkpass-pos-0242/qa-update-pure.log`; corregido por cwd merchant sin editar configuración/tests.
+
+## Revisión estática y límites
+
+PUT selecciona V2 tras guard/scope en dispatcher y capacidad antes de efectos; ausencia/1 deriva a V1 existente. Un único transaction: módulo compartido (reutilizado por Mesas), mutex business-config, moneda business share, orden propia update, contexto, líneas propias update y productos nuevos share ordenados. Configuración se lee bajo mutex; no se observó nueva inversión con creación/configuración/productos/mesas en caminos revisados. Esto no es prueba exhaustiva de todos los interleavings.
+
+Lista completa: parser impide lineId duplicado; resolver exige ID propio/productId coincidente incluso null; fuentes DB conservan nombre/tarifa/priceUnit/conversionVersion. Solo cantidad/unidad compatible/posición se actualizan; solo IDs propios omitidos se eliminan. Nuevas capturas no fusionan por producto y validan disponibilidad en destino/revisión/unidades actuales. Legacy alta solo se conserva idéntica a fuente confiable; unidades mass deshabilitadas solo mantienen captura exacta previa. Total racional de fuentes confiables antes de escribir, sin snapshot financiero inventado ni catálogo como fuente para reprecificar existentes. Misma mesa/local preserva contexto histórico; cambios validan destino y nueva disponibilidad. Version conflict sale tras rollback y lee DTO V2 canónico.
+
+Captura compartida ahora devuelve exclusivamente `products: PosCatalogProductV2[]`, con `satisfies` y allowlist id/categoryId/imagePath/name/unitPrice/soldByWeight/pricingUnit/catalogRevision; imagen pública sin objectKey/costo ni alias singular. Hallazgo posterior a aceptación create explicitado, sin reetiquetar QA anterior. Puros mass son álgebra/fuentes, no venta canónica. Barreras0102/0103/0105 no cambiaron.
+
+## Evidencia del autor reutilizada
+
+`/private/tmp/checkpass-pos-0242/evidence/update-7d512a76/{sha.txt,offline.log,offline.exit,ci.log,ci.exit}`. Offline final EXIT0: tipos3/lint/formato/UIguard y 35 puros; identidad de archivos y lockfile compatible con candidato. El historial previo de configuración inválida/fixtureTS del autor queda conservado, sin contar como PASS.
+
+CI exclusiva del autor, wrapper `tools/neon-test.sh`, env CI seleccionado por coordinador y dos suites seriales: 11create+8update, 19/19, EXIT0, sin skips/retries. QA leyó log completo y fixtures, sin abrir DB ni env. El aviso NEON_CI_CONSUMER_DATABASE_URL ausente no afecta estas suites POS y no certifica oráculo de rol consumidor. Migraciones del wrapper aplicadas; barreras siguen vigentes. Teardown de ambas suites afirma ausencia de negocios/usuarios/sesiones propios.
+
+POST+PUT cubren conflicto catálogo con allowlist completa `products[]` y ausencia de alias, regresión V1, autorización/scope/tenant/status, versión concurrente una ganadora/409DTO canónico, snapshot histórico+nueva captura mismo producto, ID/posición/eliminación, producto borrado/cantidad alta, contexto histórico/cambio de local/mesa ajena u ocupada y efecto0. No se observó fallo natural de producto. `22012` de create y update son errores SQL deliberados; PUT usa proxy del transaction solo para insertar realmente y comprobar cabecera/version, borrado, actualización e inserción ya visibles dentro de la transacción antes de `select 1 / 0`; luego exige igualdad completa de cabecera/líneas tras rollback. La prueba de línea inválida/revisión vieja, por separado, falla antes de escrituras; no se presenta como evidencia de fallo tardío.
+
+Veredicto: PASS focal de entrega e interacción PUT V2/captura compartida en candidato final, sin hallazgos pendientes. El defecto `products[]` posterior a aceptación create queda cerrado por revisión y regresión POST+PUT, sin reescribir evidencia histórica. Autor declaró y documentó cero procesos propios y liberación CI tras teardown; QA terminó sus checks y dejó solo este informe. No se certifican cierreV4, APIresolve, GET listado, UI/browser/build, fullverify, publicación ni PROD. Ningún push ni operación PROD.
