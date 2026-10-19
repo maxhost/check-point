@@ -13,6 +13,7 @@ import {
   resolveScan,
 } from "../../../server/counter";
 import { readPosCatalog } from "./measured-catalog";
+import { createPosOrderV2 } from "./measured-create";
 import type { ModuleRoute, ModuleServer } from "../../route-table";
 import { closePosOrder } from "./close";
 import { posOrderId } from "./errors";
@@ -87,11 +88,16 @@ const routes: readonly ModuleRoute[] = [
     method: "POST",
     path: "orders",
     failure: "No pudimos guardar la orden.",
-    handler: async ({ request, business, userId }) =>
-      NextResponse.json(
-        await createPosOrder(business, userId, await readPosBody(request)),
+    handler: async ({ request, business, userId }) => {
+      const contract = posReadContract(request);
+      const body = await readPosBody(request);
+      return NextResponse.json(
+        await (contract === 2
+          ? createPosOrderV2(business, userId, body)
+          : createPosOrder(business, userId, body)),
         { status: 201 },
-      ),
+      );
+    },
   }),
   /** → `PosOrder`; de otro negocio → 404 `unknown_pos_order`. */
   posRoute({
