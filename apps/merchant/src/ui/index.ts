@@ -14,6 +14,7 @@ export * from "./card";
 export * from "./page-header";
 export * from "./form";
 export * from "./dialog";
+export * from "./sheet";
 export * from "./combobox";
 export * from "./tabs";
 export * from "./segmented-control";

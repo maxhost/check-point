@@ -178,3 +178,103 @@
     --duration-base: 0ms;
   }
 }
+
+/* Reusable modal bottom sheet. */
+@layer components {
+  .cp-sheet-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: grid;
+    align-items: end;
+    justify-items: center;
+    padding-top: 2rem;
+    background: var(--ui-overlay);
+  }
+
+  .cp-sheet-overlay[data-entering] {
+    animation: sheet-backdrop-in var(--duration-base) var(--ease-standard);
+  }
+
+  .cp-sheet-overlay[data-exiting] {
+    animation: sheet-backdrop-in var(--duration-base) var(--ease-standard)
+      reverse;
+  }
+
+  .cp-sheet-panel {
+    width: 100%;
+    max-width: 40rem;
+    max-height: calc(var(--visual-viewport-height, 100dvh) - 2rem);
+    overflow: hidden;
+    border: 1px solid var(--ui-border);
+    border-bottom: 0;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    background: var(--ui-surface-raised);
+    color: var(--ui-text);
+    box-shadow: 0 -0.5rem 2rem var(--ui-shadow-md);
+  }
+
+  .cp-sheet-panel[data-entering] {
+    animation: sheet-slide-in 240ms var(--ease-standard);
+  }
+
+  .cp-sheet-panel[data-exiting] {
+    animation: sheet-slide-in var(--duration-base) var(--ease-standard) reverse;
+  }
+
+  .cp-sheet-dialog {
+    display: flex;
+    flex-direction: column;
+    max-height: inherit;
+    outline: none;
+  }
+
+  .cp-sheet-handle {
+    width: 2.5rem;
+    height: 0.25rem;
+    flex-shrink: 0;
+    margin: 0.75rem auto;
+    border-radius: var(--radius-full);
+    background: var(--ui-border-strong);
+  }
+
+  .cp-sheet-body {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0.25rem 1.25rem max(1.25rem, env(safe-area-inset-bottom));
+  }
+
+  .cp-sheet-footer {
+    flex-shrink: 0;
+    border-top: 1px solid var(--ui-border);
+    padding: 1rem 1.25rem max(1rem, env(safe-area-inset-bottom));
+  }
+
+  @keyframes sheet-slide-in {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes sheet-backdrop-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cp-sheet-overlay[data-entering],
+    .cp-sheet-overlay[data-exiting],
+    .cp-sheet-panel[data-entering],
+    .cp-sheet-panel[data-exiting] {
+      animation: none;
+    }
+  }
+}
