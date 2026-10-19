@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { Button, Heading, SelectField, Text } from "../../../ui";
-import type { PosHistoryV2, PosLocationV2 } from "../contracts";
+import type { PosHistoryV2, PosLocationV2, PosOrderV2 } from "../contracts";
 import { MeasuredOrderCard } from "./measured-order-card";
 
 export function MeasuredOrderList({
@@ -10,6 +10,7 @@ export function MeasuredOrderList({
   currencyCode,
   disabled,
   onOpen,
+  onLoadProducts,
   onNew,
   onRefresh,
 }: {
@@ -18,6 +19,7 @@ export function MeasuredOrderList({
   locations: PosLocationV2[];
   disabled: boolean;
   onOpen: (id: string) => void;
+  onLoadProducts?: (id: string) => Promise<PosOrderV2["items"]>;
   onNew: (locationId: string) => void;
   onRefresh: () => void;
 }) {
@@ -75,7 +77,7 @@ export function MeasuredOrderList({
       {rows.length ? (
         <ul
           aria-label="Órdenes"
-          className="grid min-w-0 grid-cols-2 gap-3 lg:grid-cols-3 lg:gap-4"
+          className="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 lg:gap-4"
         >
           {rows.map((order) => (
             <li key={order.id} className="min-w-0">
@@ -84,6 +86,7 @@ export function MeasuredOrderList({
                 currencyCode={currencyCode}
                 disabled={disabled}
                 onOpen={onOpen}
+                onLoadProducts={onLoadProducts}
               />
             </li>
           ))}
