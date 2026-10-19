@@ -4,6 +4,8 @@ L3; [spec](../specs/0242-pos-unificado-y-venta-por-peso.md), [contratos](../spec
 
 ## Prioridades vigentes del owner después de la primera prueba manual
 
+Aclaración posterior del owner para la prioridad1: **él dará la lista específica de arreglos UI L0**; dos implementadores nuevos, paths separados, revisión manual del owner en navegador y ejecución rápida. Sin agente QA ni batería extensa para estos ajustes. No iniciar auditoría/comparación general ni escoger un rediseño de superficies antes de su lista. Checks de diff/estáticos focales pertinentes, sin repetir matrices/DB por presentación. Esta instrucción explícita sustituye las exigencias anteriores de QA independiente por corte para ESTA fase UI; el orden funcional restante se conserva.
+
 Este orden sustituye el orden de trabajo pendiente comunicado anteriormente. Los nombres históricos CP0–CP4 de abajo identifican ámbitos y evidencia, no obligan a posponer la UI ni a repetir trabajo aceptado.
 
 1. **Corregir la UI contra el diseño ya aprobado.** Listado, creación/editor, detalle, revisión/cobro y resultado; jerarquía y ubicación de acciones, móvil/escritorio, notas accesibles, textos/unidades/importes y contenido repetido. Usar el laboratorio aprobado y kit como referencia, sin nuevo diseño de producto ni cambios de dominio por oficio. Mostrar un corte utilizable al owner antes de dar esta prioridad por aceptada; los PASS de componentes previos no sustituyen esa revisión. No iniciar retirada ni activación de peso mientras este corte siga sin resolver.
@@ -13,7 +15,7 @@ Este orden sustituye el orden de trabajo pendiente comunicado anteriormente. Los
 5. **Fidelización y cupones integrados.** Completar los escenarios y la prueba manual pendientes por falta de pase; conservar las pruebas ya aceptadas y no rehacer la política del programa. Puede verificarse oportunamente en los cortes anteriores sin desplazar la prioridad de UI.
 6. **Regresión del conjunto, accesos y rendimiento.** Compatibilidad histórica, sesiones/contextos/permisos reales y medición M1. Ningún cierre previo certifica por sí solo carga fría, seguridad global o venta mass canónica. Publicación/PROD siguen fuera de autorización.
 
-Mantener dos implementadores y QA independiente, encargos manejables y agentes nuevos por bloque aceptado; autores conservan fixes. Toda tarea de UI requiere ficha/paths exclusivos y alcance concreto antes de código. No expandir este cambio de orden a kit/guardias/tooling ni iniciar tareas gigantes. Sin push ni operaciones PROD.
+Mantener dos implementadores y, fuera de la fase UI L0 expresamente exceptuada arriba, QA independiente; encargos manejables y agentes nuevos por bloque aceptado, autores conservan fixes. En UI L0, alcance específico del owner y paths exclusivos antes de código, sin nueva fase documental extensa. No expandir este cambio de orden a kit/guardias/tooling ni iniciar tareas gigantes. Sin push ni operaciones PROD.
 
 ## Equipo y operación
 
