@@ -2,6 +2,8 @@
 
 ## Última instrucción y segunda ronda
 
+Tercera ronda DIRECTA: badge local retirado de tarjetas; filtro local inicia primer local disponible (convención actual del POS) y muestra «Todos los locales» solo si hay varios; nuevo filtro por tipo de orden combinado con estado/local. Dos archivos de presentación, sin HTTP/DB. Formato/lint/UIguard/diff-check/typecheckMerchant PASS. Pendiente prueba manual en3201.
+
 Owner confirmó: **a partir de la siguiente ronda, ajustes ligeros directos por el coordinador, SIN agentes**. Sustituye instrucciones anteriores de dos implementadores para próximos arreglos. Segunda ronda integrada en dev `afc164cd`: iconos junto al nombre con colores por tipo; badge local bajo precio y badge productos que abre panel de contenido cargado por demanda desde caché/cliente actuales; móvil UNA columna compacta (icono/nombre/total/Abrir). Autores `4e0fc014` y `9f985d18`, más ajuste directo final de padding/prioridad de color y precio móvil. Formato/lint3archivos/UIguard/diff-check/typecheckMerchant PASS. Pendiente revisión manual del owner en3201. Sin QA independiente/browserautomatizado/DB/push/PROD. Factory delivered/WTs conservados; main sin avance. El primer ajuste y reglas anteriores siguen solo como historia cuando contradicen este bloque.
 
 ## Avance vigente: primera tarjeta entregada a prueba manual

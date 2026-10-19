@@ -142,13 +142,6 @@ function OrderCard({
         <Text variant="metric" className="min-w-0 break-words">
           {formatTotal(order.total, currencyCode)}
         </Text>
-        <Text
-          as="span"
-          variant="small"
-          className="mt-3 inline-block max-w-full break-words rounded-full bg-primary-soft px-3 py-1 text-primary"
-        >
-          {order.location?.name ?? "Sin local"}
-        </Text>
       </div>
       <div className="relative hidden md:block">
         <Button

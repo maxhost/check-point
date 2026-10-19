@@ -24,13 +24,13 @@ export function MeasuredOrderList({
   onRefresh: () => void;
 }) {
   const [status, setStatus] = useState("open");
-  const [location, setLocation] = useState(
-    locations.length === 1 ? locations[0].id : "all",
-  );
+  const [location, setLocation] = useState(locations[0]?.id ?? "all");
+  const [saleType, setSaleType] = useState("all");
   const rows = (status === "open" ? history.open : history.closedToday).filter(
     (row) =>
       row.status === status &&
-      (location === "all" || row.location?.id === location),
+      (location === "all" || row.location?.id === location) &&
+      (saleType === "all" || row.saleType === saleType),
   );
   return (
     <section
@@ -46,7 +46,7 @@ export function MeasuredOrderList({
           Nueva orden
         </Button>
       </div>
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-3">
         <SelectField
           label="Estado"
           selectedKey={status}
@@ -63,10 +63,26 @@ export function MeasuredOrderList({
           selectedKey={location}
           isDisabled={disabled}
           options={[
-            { id: "all", label: "Todos los locales" },
+            ...(locations.length > 1
+              ? [{ id: "all", label: "Todos los locales" }]
+              : []),
             ...locations.map((l) => ({ id: l.id, label: l.name })),
           ]}
           onSelectionChange={(key) => setLocation(String(key))}
+        />
+        <SelectField
+          label="Tipo de orden"
+          selectedKey={saleType}
+          isDisabled={disabled}
+          options={[
+            { id: "all", label: "Todos los tipos" },
+            { id: "table", label: "Mesa" },
+            { id: "counter", label: "Mostrador" },
+            { id: "delivery", label: "Delivery" },
+            { id: "pickup", label: "Para retirar" },
+            { id: "legacy", label: "Pedido anterior" },
+          ]}
+          onSelectionChange={(key) => setSaleType(String(key))}
         />
       </div>
       {status !== "open" && (
