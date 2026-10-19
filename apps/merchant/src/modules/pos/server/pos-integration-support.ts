@@ -12,6 +12,7 @@ import {
   orderItems,
   orders,
   posOrders,
+  posOrderItems,
   products,
   users,
   walletPushQueue,
@@ -22,6 +23,10 @@ import {
   seedCycleWorld,
 } from "../../../server/counter/coupon-cycle-support";
 import { seedMember } from "../../../server/counter-integration-support";
+import { dispatchModuleRequest } from "../../dispatch";
+import { getBackofficeRequestContext } from "../../../server/backoffice-context";
+import { backofficeScopeKey } from "../../../server/backoffice-scope";
+import { getPosOrderV2 } from "./read";
 import { callModuleRoute } from "../../modules-integration-support";
 
 /**
@@ -249,4 +254,143 @@ export async function pushesOf(consumerId: string) {
     .select({ class: walletPushQueue.class, body: walletPushQueue.body })
     .from(walletPushQueue)
     .where(eq(walletPushQueue.consumerId, consumerId));
+}
+
+/** Capture the caller's native identity once, before any command/retry. No body adaptation. */
+export async function capturePosScope(cookie: string, businessId: string) {
+  const session = await getBackofficeRequestContext(
+    new Request("http://localhost/api/modules/pos/orders", {
+      headers: { cookie },
+    }),
+  ).readSession();
+  if (!session) throw new Error("POS fixture requires a native session");
+  return backofficeScopeKey(
+    { sessionId: session.session.id, userId: session.user.id, businessId },
+    process.env.BETTER_AUTH_SECRET,
+  );
+}
+
+/** Explicit adopted caller. The raw pos fixture above stays raw for rejection tests. */
+export function scopedPos(cookie: string, scope: string) {
+  const call = (
+    method: "GET" | "POST" | "PUT",
+    path: string,
+    body?: unknown,
+  ) => {
+    const request = new Request(`http://localhost${POS}/${path}`, {
+      method,
+      headers: {
+        cookie,
+        "X-Pos-Contract": "2",
+        "X-Backoffice-Scope": scope,
+        "content-type": "application/json",
+      },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    });
+    return dispatchModuleRequest(method, request, {
+      moduleId: "pos",
+      path: path.split("?")[0].split("/"),
+    });
+  };
+  return {
+    list: () => call("GET", "orders"),
+    ticket: () => call("GET", "ticket"),
+    ticketSettings: () => call("GET", "ticket-settings"),
+    saveTicketSettings: (body: unknown) => call("PUT", "ticket-settings", body),
+    tables: (locationId: string) =>
+      call("GET", `tables?locationId=${locationId}`),
+    create: (body: unknown) => call("POST", "orders", body),
+    read: (id: string) => call("GET", `orders/${id}`),
+    update: (id: string, body: unknown) => call("PUT", `orders/${id}`, body),
+    void: (id: string) => call("POST", `orders/${id}/void`, {}),
+    close: (id: string, body: unknown) =>
+      call("POST", `orders/${id}/close`, body),
+    paymentMethods: () => call("GET", "payment-methods"),
+  };
+}
+
+/** Positive unit fixture only; invalid payloads must call the raw route explicitly. */
+export async function openOrderV2(
+  world: PosWorld,
+  scope: string,
+  items: { productId: string; quantity: number }[],
+  orderLabel = "Pedido",
+) {
+  const snapshots = items.length
+    ? await getDb()
+        .select({ id: products.id, revision: products.salesRevision })
+        .from(products)
+        .where(
+          inArray(
+            products.id,
+            items.map((item) => item.productId),
+          ),
+        )
+    : [];
+  const command = {
+    createRequestId: randomUUID(),
+    saleType: "pickup",
+    orderLabel,
+    locationId: world.seed.locationId,
+    tableId: null,
+    note: null,
+    items: items.map((item) => {
+      const product = snapshots.find(
+        (product) => product.id === item.productId,
+      );
+      if (!product)
+        throw new Error("Positive fixture requires its existing product");
+      return {
+        productId: item.productId,
+        quantity: String(item.quantity),
+        quantityUnit: "unit",
+        catalogRevision: String(product.revision),
+      };
+    }),
+  };
+  const response = await scopedPos(world.ownerCookie, scope).create(command);
+  if (response.status !== 201)
+    throw new Error(`openOrderV2: ${response.status} ${await response.text()}`);
+  return response.json();
+}
+
+/** Historical pre-cutover rows, mounted by SQL with real snapshots and active constraints. */
+export async function seedLegacyOrder(
+  world: PosWorld,
+  items: { productId: string; quantity: number }[],
+  tableLabel = "Histórica",
+) {
+  const id = await withDbTransaction(async (tx) => {
+    const [order] = await tx
+      .insert(posOrders)
+      .values({
+        businessId: world.seed.business.id,
+        locationId: world.seed.locationId,
+        tableLabel,
+        createdByUserId: world.seed.userId,
+      })
+      .returning({ id: posOrders.id });
+    for (const [position, item] of items.entries()) {
+      const [product] = await tx
+        .select()
+        .from(products)
+        .where(
+          sql`${products.id} = ${item.productId} and ${products.businessId} = ${world.seed.business.id}`,
+        );
+      if (!product || product.unitPrice === null || product.soldByWeight)
+        throw new Error(
+          "Legacy fixture requires a priced unit product in its tenant",
+        );
+      await tx.insert(posOrderItems).values({
+        posOrderId: order.id,
+        productId: product.id,
+        nameSnapshot: product.name,
+        unitPriceSnapshot: product.unitPrice,
+        quantity: String(item.quantity),
+        position,
+      });
+    }
+    return order.id;
+  });
+  return getPosOrderV2(world.seed.business.id, id);
 }

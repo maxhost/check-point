@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { getDb } from "@mi-pasaporte/db";
@@ -5,7 +6,8 @@ import { diningTables, posOrders } from "@mi-pasaporte/db/schema";
 import {
   type PosWorld,
   dropPosWorld,
-  pos,
+  capturePosScope,
+  scopedPos,
   posIntegrationEnabled,
   posStaff,
   seedPosWorld,
@@ -22,12 +24,14 @@ import { newTable, tables } from "./tables-integration-support";
  * rutas son las del despachador (`tables-integration-support.ts`).
  */
 
+let scope: string;
 let world: PosWorld;
 let other: PosWorld;
 
 beforeAll(async () => {
   world = await seedPosWorld("Mesas");
   other = await seedPosWorld("Mesas ajeno");
+  scope = await capturePosScope(world.ownerCookie, world.seed.business.id);
   for (const w of [world, other])
     await setModuleRow(w.seed.business.id, "tables", true);
 }, 240_000);
@@ -154,9 +158,13 @@ describe.skipIf(!posIntegrationEnabled)("Mesas del local (spec 0182)", () => {
 
   it("POS: orden con mesa fotografia el nombre, deriva el local, ocupa la mesa y la libera al anular", async () => {
     const t = await newTable(world, "Mesa POS", 2);
-    const created = await pos.create(world.ownerCookie, {
+    const created = await scopedPos(world.ownerCookie, scope).create({
+      createRequestId: randomUUID(),
+      saleType: "table",
+      orderLabel: "Mesa",
+      locationId: null,
+      note: null,
       tableId: t.id,
-      tableLabel: "ignorado",
       items: [],
     });
     expect(created.status).toBe(201);
@@ -167,7 +175,12 @@ describe.skipIf(!posIntegrationEnabled)("Mesas del local (spec 0182)", () => {
       location: { id: world.seed.locationId },
     });
 
-    const busy = await pos.create(world.ownerCookie, {
+    const busy = await scopedPos(world.ownerCookie, scope).create({
+      createRequestId: randomUUID(),
+      saleType: "table",
+      orderLabel: "Mesa",
+      locationId: null,
+      note: null,
       tableId: t.id,
       items: [],
     });
@@ -175,7 +188,7 @@ describe.skipIf(!posIntegrationEnabled)("Mesas del local (spec 0182)", () => {
     expect((await busy.json()).code).toBe("table_occupied");
 
     const listed = await (
-      await tables.pos(world.ownerCookie, world.seed.locationId)
+      await scopedPos(world.ownerCookie, scope).tables(world.seed.locationId)
     ).json();
     expect(
       listed.tables.find((x: { id: string }) => x.id === t.id),
@@ -190,8 +203,15 @@ describe.skipIf(!posIntegrationEnabled)("Mesas del local (spec 0182)", () => {
     expect(archive.status).toBe(409);
     expect((await archive.json()).code).toBe("table_has_open_order");
 
-    expect((await pos.void(world.ownerCookie, order.id)).status).toBe(200);
-    const again = await pos.create(world.ownerCookie, {
+    expect(
+      (await scopedPos(world.ownerCookie, scope).void(order.id)).status,
+    ).toBe(200);
+    const again = await scopedPos(world.ownerCookie, scope).create({
+      createRequestId: randomUUID(),
+      saleType: "table",
+      orderLabel: "Mesa",
+      locationId: null,
+      note: null,
       tableId: t.id,
       items: [],
     });
@@ -207,13 +227,33 @@ describe.skipIf(!posIntegrationEnabled)("Mesas del local (spec 0182)", () => {
     const a = await newTable(world, "Mover A");
     const b = await newTable(world, "Mover B");
     const onA = await (
-      await pos.create(world.ownerCookie, { tableId: a.id, items: [] })
+      await scopedPos(world.ownerCookie, scope).create({
+        createRequestId: randomUUID(),
+        saleType: "table",
+        orderLabel: "Mesa",
+        locationId: null,
+        note: null,
+        tableId: a.id,
+        items: [],
+      })
     ).json();
     const onB = await (
-      await pos.create(world.ownerCookie, { tableId: b.id, items: [] })
+      await scopedPos(world.ownerCookie, scope).create({
+        createRequestId: randomUUID(),
+        saleType: "table",
+        orderLabel: "Mesa",
+        locationId: null,
+        note: null,
+        tableId: b.id,
+        items: [],
+      })
     ).json();
 
-    const move = await pos.update(world.ownerCookie, onB.id, {
+    const move = await scopedPos(world.ownerCookie, scope).update(onB.id, {
+      saleType: "table",
+      orderLabel: "Mesa",
+      locationId: null,
+      note: null,
       version: onB.version,
       tableId: a.id,
       items: [],
@@ -221,18 +261,26 @@ describe.skipIf(!posIntegrationEnabled)("Mesas del local (spec 0182)", () => {
     expect(move.status).toBe(409);
     expect((await move.json()).code).toBe("table_occupied");
 
-    const free = await pos.update(world.ownerCookie, onA.id, {
+    const free = await scopedPos(world.ownerCookie, scope).update(onA.id, {
+      saleType: "table",
+      locationId: world.seed.locationId,
+      note: null,
       version: onA.version,
       tableId: null,
-      tableLabel: "Para llevar",
+      orderLabel: "Para llevar",
       items: [],
     });
     expect(free.status).toBe(200);
     expect(await free.json()).toMatchObject({
       tableId: null,
+      orderLabel: "Para llevar",
       tableLabel: "Para llevar",
     });
-    const moved = await pos.update(world.ownerCookie, onB.id, {
+    const moved = await scopedPos(world.ownerCookie, scope).update(onB.id, {
+      saleType: "table",
+      orderLabel: "Mesa",
+      locationId: null,
+      note: null,
       version: onB.version,
       tableId: a.id,
       items: [],
@@ -246,7 +294,12 @@ describe.skipIf(!posIntegrationEnabled)("Mesas del local (spec 0182)", () => {
 
   it("ORACULO DE M1 — POS: la mesa de OTRO negocio es 422 `unknown_table`; local distinto al de la mesa es 422", async () => {
     const foreign = await newTable(other, "Ajena POS");
-    const r = await pos.create(world.ownerCookie, {
+    const r = await scopedPos(world.ownerCookie, scope).create({
+      createRequestId: randomUUID(),
+      saleType: "table",
+      orderLabel: "Mesa",
+      locationId: null,
+      note: null,
       tableId: foreign.id,
       items: [],
     });
@@ -254,7 +307,11 @@ describe.skipIf(!posIntegrationEnabled)("Mesas del local (spec 0182)", () => {
     expect((await r.json()).code).toBe("unknown_table");
 
     const mine = await newTable(world, "Mesa local");
-    const mismatch = await pos.create(world.ownerCookie, {
+    const mismatch = await scopedPos(world.ownerCookie, scope).create({
+      createRequestId: randomUUID(),
+      saleType: "table",
+      orderLabel: "Mesa",
+      note: null,
       tableId: mine.id,
       locationId: other.seed.locationId,
       items: [],
@@ -264,14 +321,19 @@ describe.skipIf(!posIntegrationEnabled)("Mesas del local (spec 0182)", () => {
   }, 120_000);
 
   it("POS sin mesa sigue como antes (texto libre, `tableId: null`)", async () => {
-    const r = await pos.create(world.ownerCookie, {
-      tableLabel: "Mesa libre",
+    const r = await scopedPos(world.ownerCookie, scope).create({
+      createRequestId: randomUUID(),
+      saleType: "table",
+      note: null,
+      orderLabel: "Mesa libre",
+      tableId: null,
       locationId: world.seed.locationId,
       items: [],
     });
     expect(r.status).toBe(201);
     expect(await r.json()).toMatchObject({
       tableId: null,
+      orderLabel: "Mesa libre",
       tableLabel: "Mesa libre",
     });
   }, 120_000);

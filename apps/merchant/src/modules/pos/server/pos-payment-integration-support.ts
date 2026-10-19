@@ -8,7 +8,7 @@ import {
 import { formatDecimal, fromDb } from "../../decimal";
 import { decideCouponDiscount } from "../../../server/counter/coupon-discount";
 import { callModuleRoute } from "../../modules-integration-support";
-import { pos } from "./pos-integration-support";
+import { pos, scopedPos } from "./pos-integration-support";
 
 /** Explicit fixture adapter for pre-P1 positive-close oracles. The raw pos.close
  * stays unchanged for validation tests: production never supplies a missing payment. */
@@ -16,17 +16,22 @@ export async function closeWithCash(
   cookie: string,
   id: string,
   body: Record<string, unknown>,
+  options?: { scope: string },
 ) {
-  if (body.payments !== undefined) return pos.close(cookie, id, body);
-  const read = await pos.read(cookie, id);
-  if (read.status !== 200) return pos.close(cookie, id, body);
+  const caller = options
+    ? scopedPos(cookie, options.scope)
+    : {
+        read: (id: string) => pos.read(cookie, id),
+        close: (id: string, value: unknown) => pos.close(cookie, id, value),
+        paymentMethods: () =>
+          callModuleRoute("GET", "/api/modules/pos/payment-methods", cookie),
+      };
+  if (body.payments !== undefined) return caller.close(id, body);
+  const read = await caller.read(id);
+  if (read.status !== 200) return caller.close(id, body);
   const order = await read.json();
-  const methodsResponse = await callModuleRoute(
-    "GET",
-    "/api/modules/pos/payment-methods",
-    cookie,
-  );
-  if (methodsResponse.status !== 200) return pos.close(cookie, id, body);
+  const methodsResponse = await caller.paymentMethods();
+  if (methodsResponse.status !== 200) return caller.close(id, body);
   const methods = await methodsResponse.json();
   let cents = fromDb(order.total, 2);
   const couponId = (body.coupon as { couponId?: string } | undefined)?.couponId;
@@ -67,7 +72,7 @@ export async function closeWithCash(
     formatDecimal(cents, 2),
     minorUnitForCurrency(order.business.currencyCode),
   );
-  return pos.close(cookie, id, {
+  return caller.close(id, {
     ...body,
     payments:
       fromDb(amount, 2) === 0n

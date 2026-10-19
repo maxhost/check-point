@@ -27,8 +27,9 @@ import { dispatchModuleRequest } from "../../dispatch";
 import { closeWithCash } from "./pos-payment-integration-support";
 import {
   dropPosWorld,
-  openOrder,
-  pos,
+  capturePosScope,
+  scopedPos,
+  openOrderV2,
   posIntegrationEnabled,
   posStaff,
   seedPosWorld,
@@ -37,6 +38,7 @@ import {
   type PosWorld,
 } from "./pos-integration-support";
 
+const scopes = new Map<string, string>();
 let a: PosWorld, b: PosWorld;
 let allowed: string, denied: string, scope: string;
 const consumers: string[] = [];
@@ -71,12 +73,19 @@ async function call(
   cookie = a.ownerCookie,
   contract: string | null = "2",
   value?: unknown,
-  scopeKey?: string,
+  scopeKey?: string | null,
   suffix = "",
 ) {
   const response = await dispatchModuleRequest(
     path === "orders" ? "GET" : "POST",
-    request(path, cookie, contract, value, scopeKey, suffix),
+    request(
+      path,
+      cookie,
+      contract,
+      value,
+      scopeKey === undefined ? scopes.get(cookie) : (scopeKey ?? undefined),
+      suffix,
+    ),
     { moduleId: "pos", path: [path] },
   );
   expect(response.headers.get("cache-control")).toBe("private, no-store");
@@ -133,6 +142,14 @@ describe.skipIf(!posIntegrationEnabled)(
         },
         process.env.BETTER_AUTH_SECRET,
       );
+      for (const [cookie, businessId] of [
+        [a.ownerCookie, a.seed.business.id],
+        [b.ownerCookie, b.seed.business.id],
+        [allowed, a.seed.business.id],
+        [denied, a.seed.business.id],
+      ]) {
+        scopes.set(cookie, await capturePosScope(cookie, businessId));
+      }
     }, 240000);
     afterAll(async () => {
       vi.restoreAllMocks();
@@ -187,7 +204,7 @@ describe.skipIf(!posIntegrationEnabled)(
       }
     }, 240000);
 
-    it("guards and optional scope precede contract/body, including disabled module, without identity effects", async () => {
+    it("guards and required scope precede contract/body, including disabled module, without identity effects", async () => {
       const c = await seedConsumer();
       consumers.push(c.id);
       const before = await effects();
@@ -233,13 +250,22 @@ describe.skipIf(!posIntegrationEnabled)(
       expect(await effects()).toEqual(before);
       expect(await memberships(c.id)).toEqual([]);
       expect(await identity(c.id)).toEqual([]);
+      expect(
+        (
+          await body(
+            await call("orders", a.ownerCookie, "2", undefined, null),
+            409,
+          )
+        ).code,
+      ).toBe("backoffice_context_changed");
       expect((await call("orders", allowed)).status).toBe(200);
     });
 
-    it("negotiates exact V2 summaries, V1 shape, void query and tenant isolation through HTTP", async () => {
+    it("negotiates exact V2 summaries, V1 rejection, void query and tenant isolation through HTTP", async () => {
       const productId = await seedProduct(a, "HTTP price", "3.25");
-      const pickup = await openOrder(
+      const pickup = await openOrderV2(
         a,
+        scopes.get(a.ownerCookie)!,
         [{ productId, quantity: 2 }],
         "Recoger Ana",
       );
@@ -255,26 +281,61 @@ describe.skipIf(!posIntegrationEnabled)(
           name: "Real table",
         })
         .returning();
-      const tableOrder = await openOrder(
+      const tableOrder = await openOrderV2(
         a,
+        scopes.get(a.ownerCookie)!,
         [{ productId, quantity: 1 }],
         "Mesa congelada",
       );
       await getDb()
         .update(posOrders)
-        .set({ diningTableId: table.id })
+        .set({ diningTableId: table.id, saleType: "table" })
         .where(eq(posOrders.id, tableOrder.id));
-      const closed = await openOrder(a, [{ productId, quantity: 2 }]);
+      const closed = await openOrderV2(a, scopes.get(a.ownerCookie)!, [
+        { productId, quantity: 2 },
+      ]);
       await body(
-        await closeWithCash(a.ownerCookie, closed.id, {
-          clientRequestId: randomUUID(),
-          version: closed.version,
-        }),
+        await closeWithCash(
+          a.ownerCookie,
+          closed.id,
+          {
+            clientRequestId: randomUUID(),
+            version: closed.version,
+          },
+          { scope: scopes.get(a.ownerCookie)! },
+        ),
       );
-      const voided = await openOrder(a, [{ productId, quantity: 3 }]);
-      await body(await pos.void(a.ownerCookie, voided.id));
-      const foreign = await openOrder(b, [{ productId: b.cafe, quantity: 1 }]);
+      const voided = await openOrderV2(a, scopes.get(a.ownerCookie)!, [
+        { productId, quantity: 3 },
+      ]);
+      await body(
+        await scopedPos(a.ownerCookie, scopes.get(a.ownerCookie)!).void(
+          voided.id,
+        ),
+      );
+      const foreign = await openOrderV2(b, scopes.get(b.ownerCookie)!, [
+        { productId: b.cafe, quantity: 1 },
+      ]);
       const v2 = await body(await call("orders", allowed));
+      expect(Object.keys(v2).sort()).toEqual(["open", "closedToday"].sort());
+      for (const summary of [...v2.open, ...v2.closedToday]) {
+        expect(Object.keys(summary).sort()).toEqual(
+          [
+            "id",
+            "status",
+            "version",
+            "saleType",
+            "orderLabel",
+            "tableId",
+            "location",
+            "createdAt",
+            "closedAt",
+            "lineCount",
+            "total",
+            "saleTotal",
+          ].sort(),
+        );
+      }
       expect(
         v2.open.find((o: { id: string }) => o.id === pickup.id),
       ).toMatchObject({
@@ -302,17 +363,13 @@ describe.skipIf(!posIntegrationEnabled)(
       expect(JSON.stringify(v2)).not.toContain(foreign.id);
       expect(v2.open[0]).not.toHaveProperty("items");
       expect(v2.open[0]).not.toHaveProperty("itemCount");
-      const v1 = await body(await call("orders", a.ownerCookie, null));
-      expect(await body(await call("orders", a.ownerCookie, "1"))).toEqual(v1);
-      expect(
-        v1.open.find((o: { id: string }) => o.id === pickup.id),
-      ).toMatchObject({
-        itemCount: 2,
-        tableLabel: "Recoger Ana",
-        total: "6.50",
-      });
-      expect(v1.open[0]).not.toHaveProperty("lineCount");
-      expect(v1.open[0]).not.toHaveProperty("saleType");
+      const beforeLegacyRead = await effects();
+      for (const contract of [null, "1"]) {
+        expect(
+          (await body(await call("orders", a.ownerCookie, contract), 409)).code,
+        ).toBe("pos_client_upgrade_required");
+      }
+      expect(await effects()).toEqual(beforeLegacyRead);
       const history = await body(
         await call(
           "orders",
@@ -327,7 +384,7 @@ describe.skipIf(!posIntegrationEnabled)(
       expect(history.closedToday.map((o: { id: string }) => o.id)).toEqual([
         voided.id,
       ]);
-      for (const contract of [null, "1", "2"])
+      for (const contract of ["2"])
         expect(
           (
             await body(
@@ -433,7 +490,7 @@ describe.skipIf(!posIntegrationEnabled)(
       expect(await effects()).toEqual(before);
     });
 
-    it("minimal QR enrols once, updates last_scan, never loads legacy data, and preserves legacy shape", async () => {
+    it("minimal QR enrols once, updates last_scan, never loads legacy data, and rejects legacy before catalog or identity effects", async () => {
       const c = await seedConsumer();
       consumers.push(c.id);
       const before = await effects();
@@ -459,6 +516,12 @@ describe.skipIf(!posIntegrationEnabled)(
           "kind",
         ]);
         expect(Object.keys(first.consumer)).toEqual(["displayName"]);
+        expect(Object.keys(first.membership).sort()).toEqual(
+          ["id", "pointsBalance", "stampsCount", "justEnrolled"].sort(),
+        );
+        expect(Object.keys(first.program.accrual).sort()).toEqual(
+          ["mode", "grant", "blockAmount"].sort(),
+        );
         expect(first.membership).toMatchObject({
           justEnrolled: true,
           pointsBalance: 0,
@@ -505,7 +568,7 @@ describe.skipIf(!posIntegrationEnabled)(
             )
           ).code,
         ).toBe("pos_client_upgrade_required");
-        expect(catalogSpy).toHaveBeenCalledTimes(1);
+        expect(catalogSpy).not.toHaveBeenCalled();
         expect(await memberships(c.id)).toHaveLength(1);
         expect(await identity(c.id)).toEqual([
           { business_id: a.seed.business.id, scanned: true, visited: false },
@@ -513,22 +576,22 @@ describe.skipIf(!posIntegrationEnabled)(
       } finally {
         vi.restoreAllMocks();
       }
-      const legacy = await body(
-        await call("resolve", a.ownerCookie, null, { qrToken: c.qrToken }),
-      );
-      expect(Object.keys(legacy).sort()).toEqual([
-        "catalog",
-        "consumer",
-        "couponState",
-        "membership",
-        "program",
-        "rewards",
-      ]);
-      expect(
-        await body(
-          await call("resolve", a.ownerCookie, "1", { qrToken: c.qrToken }),
-        ),
-      ).toEqual(legacy);
+      const identityBeforeLegacy = await identity(c.id),
+        membershipsBeforeLegacy = await memberships(c.id);
+      for (const contract of [null, "1"]) {
+        expect(
+          (
+            await body(
+              await call("resolve", a.ownerCookie, contract, {
+                qrToken: c.qrToken,
+              }),
+              409,
+            )
+          ).code,
+        ).toBe("pos_client_upgrade_required");
+        expect(await identity(c.id)).toEqual(identityBeforeLegacy);
+        expect(await memberships(c.id)).toEqual(membershipsBeforeLegacy);
+      }
       expect(await effects()).toEqual(before);
     });
 

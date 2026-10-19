@@ -7,13 +7,15 @@ import { callModuleRoute } from "../../modules-integration-support";
 import { initializePaymentMethods } from "../../../server/business/payment-catalog";
 import {
   dropPosWorld,
+  capturePosScope,
+  scopedPos,
   pos,
   posIntegrationEnabled,
   posStaff,
   seedPosWorld,
   type PosWorld,
 } from "./pos-integration-support";
-const ROOT = "/api/modules/pos";
+const scopes = new Map<string, string>();
 let world: PosWorld, fallback: PosWorld;
 const route = (
   method: Parameters<typeof callModuleRoute>[0],
@@ -22,7 +24,7 @@ const route = (
   cookie = world.ownerCookie,
 ) => {
   if (path === "payment-methods" && method === "GET")
-    return callModuleRoute(method, `${ROOT}/${path}`, cookie, body);
+    return scopedPos(cookie, scopes.get(cookie) ?? "").paymentMethods();
   const url = new URL("http://localhost:3001/api/business/" + path);
   return businessHttp(
     new Request(url, {
@@ -36,6 +38,11 @@ const route = (
 beforeAll(async () => {
   world = await seedPosWorld("P1 medios EC");
   fallback = await seedPosWorld("P1 medios fallback", "CO", "COP");
+  for (const w of [world, fallback])
+    scopes.set(
+      w.ownerCookie,
+      await capturePosScope(w.ownerCookie, w.seed.business.id),
+    );
 }, 240_000);
 afterAll(async () => {
   await dropPosWorld(world);
@@ -198,6 +205,10 @@ describe.skipIf(!posIntegrationEnabled)("P1 medios comerciales reales", () => {
       ).status,
     ).toBe(404);
     const staff = await posStaff(world, ["counter"]);
+    scopes.set(
+      staff.cookie,
+      await capturePosScope(staff.cookie, world.seed.business.id),
+    );
     for (const path of ["payment-methods", "payment-method-catalog"])
       expect((await route("GET", path, undefined, staff.cookie)).status).toBe(
         403,
