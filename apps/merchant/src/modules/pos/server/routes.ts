@@ -19,6 +19,7 @@ import { resolveMeasuredScan } from "./measured-resolve";
 import type { ModuleRoute, ModuleServer } from "../../route-table";
 import { closePosOrder } from "./close";
 import { closeMeasuredPosOrder } from "./measured-close";
+import { voidMeasuredPosOrder } from "./measured-void";
 import { posOrderId } from "./errors";
 import { posRoute, readPosBody, posReadContract } from "./http";
 import { listPosOrders } from "./list";
@@ -161,10 +162,20 @@ const routes: readonly ModuleRoute[] = [
     method: "POST",
     path: "orders/:id/void",
     failure: "No pudimos anular la orden.",
-    handler: async ({ business, userId, params }) =>
-      NextResponse.json(
-        await voidPosOrder(business, userId, posOrderId(params.id)),
-      ),
+    handler: async ({ request, business, userId, params }) => {
+      const contract = posReadContract(request);
+      const id = posOrderId(params.id);
+      return NextResponse.json(
+        await (contract === 2
+          ? voidMeasuredPosOrder(
+              business,
+              userId,
+              id,
+              request.body === null ? undefined : await readPosBody(request),
+            )
+          : voidPosOrder(business, userId, id)),
+      );
+    },
   }),
   /** El escaneo del pase al cobrar: la MISMA resolucion que `POST /api/counter/resolve`. */
   posRoute({
