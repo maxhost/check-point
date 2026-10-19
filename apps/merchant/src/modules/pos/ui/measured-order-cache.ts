@@ -18,10 +18,25 @@ export class MeasuredOrderCache {
     private readonly historyStatus: "active" | "voided",
   ) {}
 
-  accept(order: PosOrderV2): PosOrderV2 {
+  accept(
+    order: PosOrderV2,
+    options?: { historyWindow: { timeZone: string; now: Date } },
+  ): PosOrderV2 {
     const key = detailKey(order.id);
     const previous = this.cache.peek<PosOrderV2>(key, true);
     const result = previous && ahead(previous, order) ? previous : order;
+    const window = options?.historyWindow;
+    const day = (date: Date) =>
+      new Intl.DateTimeFormat("en-CA", {
+        timeZone: window!.timeZone,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(date);
+    const inWindow =
+      window && result.closedAt
+        ? day(new Date(result.closedAt)) === day(window.now)
+        : false;
     const history = this.cache.peek<PosHistoryV2>(historyKey, true);
     const existing =
       history &&
@@ -75,7 +90,9 @@ export class MeasuredOrderCache {
     else if (
       result.status !== "open" &&
       (this.historyStatus === "active" || result.status === "voided") &&
-      history.closedToday.some((item) => item.id === result.id)
+      (window
+        ? inWindow
+        : history.closedToday.some((item) => item.id === result.id))
     )
       closedToday.push(summary);
     this.cache.put(

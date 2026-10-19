@@ -57,6 +57,35 @@ const order = (
     },
   ],
 });
+it("projects a canonical close only into the explicit business-local day without marking stale history fresh", () => {
+  const cache = new PosCache();
+  cache.put(historyKey, { open: [], closedToday: [] }, false);
+  const facade = new MeasuredOrderCache(cache, "active");
+  const closed = { ...order(1, "closed"), closedAt: "2026-10-19T03:59:59Z" };
+  const window = {
+    timeZone: "America/Guayaquil",
+    now: new Date("2026-10-19T04:59:59Z"),
+  };
+  facade.accept(closed, { historyWindow: window });
+  expect(cache.peek(historyKey)).toBeNull();
+  expect(cache.peek<PosHistoryV2>(historyKey, true)?.closedToday).toHaveLength(
+    1,
+  );
+  // A replay after the business midnight removes the row from today's projection.
+  facade.accept(closed, {
+    historyWindow: { ...window, now: new Date("2026-10-19T05:00:00Z") },
+  });
+  expect(cache.peek<PosHistoryV2>(historyKey, true)?.closedToday).toHaveLength(
+    0,
+  );
+  // The same instant belongs to the next day in UTC, not in the business zone.
+  facade.accept(closed, {
+    historyWindow: { timeZone: "UTC", now: new Date("2026-10-19T05:00:00Z") },
+  });
+  expect(cache.peek<PosHistoryV2>(historyKey, true)?.closedToday).toHaveLength(
+    1,
+  );
+});
 it("uses the same cache, keeps the highest version and patches lineCount without summing quantities", () => {
   const cache = new PosCache();
   cache.bind("A");

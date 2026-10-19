@@ -3,7 +3,7 @@ import { and, asc, eq } from "drizzle-orm";
 import { getDb } from "@mi-pasaporte/db";
 import { locations } from "@mi-pasaporte/db/schema";
 import { requireBackofficeSession } from "../../../server/auth-guards";
-import { PosConsole } from "./pos-console";
+import { PosEntry } from "./pos-entry";
 export async function PosScreen() {
   const session = await requireBackofficeSession();
   const locationList = await getDb()
@@ -18,7 +18,10 @@ export async function PosScreen() {
     .orderBy(asc(locations.name));
   return (
     <Suspense>
-      <PosConsole locations={locationList} />
+      <PosEntry
+        locations={locationList}
+        previewEnabled={process.env.NODE_ENV === "development"}
+      />
     </Suspense>
   );
 }
