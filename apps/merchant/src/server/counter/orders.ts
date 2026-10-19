@@ -1,4 +1,12 @@
-import { trustedUnitQuantityNumber } from "@mi-pasaporte/domain/measures";
+import {
+  trustedUnitQuantityNumber,
+  UNIT_MEASURE,
+} from "@mi-pasaporte/domain/measures";
+import {
+  measuredGrantItems,
+  type MeasuredGrantItem,
+} from "./measured-order-input";
+import type { FinancialSettlement } from "@mi-pasaporte/domain/financial";
 import { visitEventCtes } from "./analytics-events";
 import type { DiscountOrigin } from "@mi-pasaporte/domain/financial";
 import { type SQL, sql } from "drizzle-orm";
@@ -60,11 +68,11 @@ export type GrantedOrder = {
 export type OrderExecutor = { execute: (query: SQL) => Promise<unknown> };
 
 /** A `(VALUES …)` list for the order items, every column explicitly cast. */
-function itemValuesSql(items: GrantItem[]) {
+function itemValuesSql(items: MeasuredGrantItem[]) {
   return sql.join(
     items.map(
       (it) =>
-        sql`(${it.productId}::uuid, ${it.nameSnapshot}::text, ${it.unitPrice}::numeric, ${String(trustedUnitQuantityNumber(it.quantity))}::numeric, ${it.lineTotal}::numeric)`,
+        sql`(${it.productId}::uuid, ${it.nameSnapshot}::text, ${it.unitPrice}::numeric, ${it.quantity}::numeric, ${it.lineTotal}::numeric, ${it.measure.kind}::text, ${it.measure.quantityUnit}::text, ${it.measure.priceUnit}::text, ${it.measure.conversionVersion}::text)`,
     ),
     sql`, `,
   );
@@ -132,17 +140,52 @@ export async function persistGrant(
   input: PersistGrantInput,
   executor: OrderExecutor = getDb(),
 ): Promise<GrantedOrder | null> {
+  return persistGrantStatement(
+    input,
+    input.items.map((item, position) => ({
+      ...item,
+      sourceLineId: item.sourceLineId ?? String(position),
+      quantity: String(trustedUnitQuantityNumber(item.quantity)),
+      measure: UNIT_MEASURE,
+    })),
+    executor,
+  );
+}
+
+export type PersistMeasuredGrantInput = Omit<PersistGrantInput, "items"> & {
+  items: MeasuredGrantItem[];
+  settlement: FinancialSettlement;
+};
+
+/** Internal trusted snapshots; same statement and retry/23505 contract as persistGrant.
+ * This does not authorize a producer, change accrual units, or dispatch external effects.
+ */
+export async function persistMeasuredGrant(
+  input: PersistMeasuredGrantInput,
+  executor: OrderExecutor = getDb(),
+): Promise<GrantedOrder | null> {
+  return persistGrantStatement(input, measuredGrantItems(input), executor);
+}
+
+async function persistGrantStatement(
+  input: Omit<PersistGrantInput, "items">,
+  items: MeasuredGrantItem[],
+  executor: OrderExecutor,
+): Promise<GrantedOrder | null> {
   const pointsDelta = input.accrualKind === "points" ? input.units : 0;
   const stampsDelta = input.accrualKind === "stamps" ? input.units : 0;
   const pushBody = buildTransactionalBody(input.units, input.accrualKind);
-  const itemsCte = input.items.length
+  const itemsCte = items.length
     ? sql`, items AS (
         INSERT INTO core.order_item
-          (order_id, product_id, name_snapshot, unit_price_snapshot, quantity, line_total)
-        SELECT ins.id, v.product_id, v.name_snapshot, v.unit_price, v.quantity, v.line_total
+          (order_id, product_id, name_snapshot, unit_price_snapshot, quantity, line_total,
+           measure_kind, quantity_unit, price_unit, conversion_version)
+        SELECT ins.id, v.product_id, v.name_snapshot, v.unit_price, v.quantity, v.line_total,
+               v.measure_kind, v.quantity_unit, v.price_unit, v.conversion_version
         FROM ins
-        CROSS JOIN (VALUES ${itemValuesSql(input.items)})
-          AS v(product_id, name_snapshot, unit_price, quantity, line_total)
+        CROSS JOIN (VALUES ${itemValuesSql(items)})
+          AS v(product_id, name_snapshot, unit_price, quantity, line_total,
+               measure_kind, quantity_unit, price_unit, conversion_version)
       )`
     : sql``;
 
