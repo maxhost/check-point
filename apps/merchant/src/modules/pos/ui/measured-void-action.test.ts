@@ -128,6 +128,9 @@ describe("console void owner", () => {
       readModules: async () => {
         throw new Error("Unexpected modules read");
       },
+      readSummary: async () => {
+        throw new Error("Unexpected summary read");
+      },
       requestRefresh: () => {},
       navigate: () => {},
     });
@@ -208,6 +211,9 @@ describe("console void owner", () => {
       },
       readModules: async () => {
         throw new Error("Unexpected modules read");
+      },
+      readSummary: async () => {
+        throw new Error("Unexpected summary read");
       },
       requestRefresh: () => {},
       navigate: () => {},

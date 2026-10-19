@@ -13,6 +13,9 @@ function context(scope = "a") {
     readModules: async () => {
       throw new Error("Unexpected modules read");
     },
+    readSummary: async () => {
+      throw new Error("Unexpected summary read");
+    },
     requestRefresh: () => {},
     navigate: () => {},
   });
