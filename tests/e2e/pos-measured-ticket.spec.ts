@@ -115,6 +115,67 @@ test("selection stays in gesture and requires another explicit gesture to print;
     ),
   ).toBe(true);
 });
+for (const failure of ["unsupported", "cancelled", "write_failed"]) {
+  test(`${failure} selection never prints; a separate retry gesture can use fallback`, async ({
+    page,
+  }) => {
+    const requests = await open(page);
+    await ready(page);
+    await page
+      .getByRole("button", { name: "Imprimir precuenta", exact: true })
+      .click();
+    await expect(
+      page.getByRole("button", { name: "Elegir impresora", exact: true }),
+    ).toBeVisible();
+    await page.evaluate((reason) => {
+      Object.defineProperty(navigator, "bluetooth", {
+        configurable: true,
+        value:
+          reason === "unsupported"
+            ? undefined
+            : {
+                requestDevice() {
+                  return Promise.reject(
+                    reason === "cancelled"
+                      ? new DOMException(
+                          "User cancelled the requestDevice() chooser",
+                          "NotFoundError",
+                        )
+                      : new Error("selection failed"),
+                  );
+                },
+              },
+      });
+    }, failure);
+    await page
+      .getByRole("button", { name: "Elegir impresora", exact: true })
+      .click();
+    await expect(
+      page.getByRole("button", { name: "Reintentar impresión", exact: true }),
+    ).toBeVisible();
+    expect(
+      await page.evaluate(() => ({
+        browsers: window.ticketTest.browsers,
+        writes: window.ticketTest.writes,
+      })),
+    ).toEqual({ browsers: 0, writes: 0 });
+    // Support is absent now; only the next explicit print gesture may fall back.
+    await page.evaluate(() =>
+      Object.defineProperty(navigator, "bluetooth", {
+        value: undefined,
+        configurable: true,
+      }),
+    );
+    await page
+      .getByRole("button", { name: "Reintentar impresión", exact: true })
+      .click();
+    await expect
+      .poll(() => page.evaluate(() => window.ticketTest.browsers))
+      .toBe(1);
+    expect(requests).toHaveLength(1);
+    expect(requests[0].method).toBe("GET");
+  });
+}
 test("cancel and write failure can retry without issuing sale commands", async ({
   page,
 }) => {
