@@ -2,6 +2,8 @@
 
 ## Checkpoint vigente: anulación interna aceptada; cobro cerrando entrega y HTTP void con autor nuevo
 
+Último: fixticketbc59c03e (producto8136b5a0) deliveredfactorylimpio15/15browser/tipos/gatesPASS;chooseerrornofallback,print/retrygestoseparado. MISMOQAreactivado CONGELADOd0bcd4e8, reejecutareprooriginalexpected0conFAIL7bbbpreservado. TodavíaNOaceptado/cableadoconsola. Fichaconsolaacciones eb65fd19 lista paraautorNUEVOtrasaceptación;sinWT/reserva/despacho. Main707bcdb4,sinpushPROD.
+
 Punto1 sigue abierto: QA ticket FAIL7bbb5697 en73bda997, choose unsupported abría window.print sin gesto print separado. Autor ce76 rechazadofactory→reserved y MISMOautor reactivadofix; QAFAILentregado/rechazado→reserved para revalidarMISMO bloque trasfreeze. Falla reproducible externa /private/tmp/measured-ticket-qa, informe versionado. No aceptar/conectar aún ticket. Ficha0242-cp2d-console-actions preparada paraautorNUEVO despuésaceptación, conecta impresión/ticket/anulación local;sinWT/reserva/despacho. Main707bcdb4, sinpushPROD. Detalles gpt vigente.
 
 ACTUAL: consolaeb093108/QA180175f5sobre49576a39 ACEPTADOS mainlocal707bcdb4a99f92e64d12eaa5fcfaba08fdefd961,identidad/CAS verificados yWTretiradofactorylimpio0procesos/main. QA58purospropiosPASS,compatible6browser/nativeunit1traswarmup/inspect1/cleanup1,NOcoldfirstloadglobalPASS/M1. Ticketce76a92f ENTREGADO12paths limpio39puros/13browser/gatesPASS/capturasABIERTAS/0procesos; QA NUEVOmeasured_ticket_cp2d_qa sobreCONGELADO73bda997 (dev707+autor),sinDB/env,únicoinforme0242-cp2d-measured-ticket-qa.md. Ticketpreparadoaúnsinconectar niaceptar. Próximoincrementoconexiónimpresión/ticket/anulaciónpreviewconautorNUEVO/fichaaúnpendiente. Detallesestado vigente;sinpushPROD.
