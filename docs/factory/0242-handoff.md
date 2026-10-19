@@ -2,6 +2,8 @@
 
 ## Checkpoint vigente: anulación interna aceptada; cobro cerrando entrega y HTTP void con autor nuevo
 
+Owner confirma pruebas manuales adicionales propuestas FUNCIONAN: Recetas/Stock/dinero/cambio/precio congelado/recarga sin duplicados e históricos. Fidelización y Cupones NO probados por falta de pase, quedan pendientes sin considerarlos fallo. Evidencia humana sin SHA/fixture instrumentado: no extrapolar a masa/seguridad/rendimiento ni sustituir QA. UI sigue pendiente según divergencias reportadas. Ver gpt vigente; sin push/PROD.
+
 OWNER probó circuito unitpreview y confirmafunciona; reporta UIalejadadiseño, NOaceptaciónvisual, pide terminarimplementaciones ycorregirUI después. PidepruebasRecetas/Stock/dinero. Punto1acciones QAFAILdb4030c0 en675e2d9e:remountreal sourceClient invalida capture retenidavoid yretiraunknown/cache. Author007yQAFAILrejectedfactoryreserved, MISMOautorreactivado proponerfix/regresiónlifecycleREAL, mismoQArevalidará. Aúnnoaccionesintegradas,main2bd56ab2,sinpushPROD. Ver gptvigente.
 
 Punto1 conexión007b1d27 ENTREGADA (7unit/15browser/gatesPASS/0procesos). QA NUEVOconsole_actions_cp2d_qa sobreCONGELADO675e2d9e,sinDB/env/server,informe0242-cp2d-console-actions-qa.md pendiente. Main2bd56ab2,conexiónaúnnointegrada. OwnerquiereprimeraQAmanualYA: servidor existente3201 comprobadoNextdevdelprincipal, preview http://localhost:3201/backoffice/pos?posV2=1 (sin sesión307→/). Puede probar UNIT circuitoaceptado sinesperar puntospeso/retiro/rendimiento;ticket/anulación de nuevoincremento solo trasQA/merge. No afirmarpruebamanualejecutada ni loginverificado,nitocar3201/túnel/demos. Ver gpt vigente.
