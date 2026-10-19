@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Button, Dialog, Heading, Text } from "../../../ui";
+import { Alert, Button, Dialog, Text } from "../../../ui";
 import type {
   PosHistoryV2,
   PosLocationV2,
@@ -538,61 +538,44 @@ export function MeasuredConsoleContent({
           }
           className="grid w-full min-w-0 max-w-none gap-5 p-3 md:p-4"
         >
-          <Heading level={1}>
-            {view === "result" ? "Venta completada" : order.orderLabel}
-          </Heading>
-          <Text variant="label">
-            Total: {order.business.currencyCode}{" "}
-            {order.settlement?.collected ?? order.sale?.total ?? order.total}
-          </Text>
-          {order.items.map((line) => (
-            <Text key={line.lineId}>
-              {line.name} · {line.quantity} {line.measure.quantityUnit} ·{" "}
-              {line.lineTotal}
-            </Text>
-          ))}
-          {order.note && <Text>{order.note}</Text>}
-          <div className="flex flex-wrap gap-3">
-            {order.status === "open" && (
-              <>
-                <Button
-                  isDisabled={blocked || !order.items.length}
-                  onPress={() => prepare(order)}
-                >
-                  Cobrar
-                </Button>
-                <Button
-                  variant="danger"
-                  isDisabled={blocked}
-                  onPress={() => setConfirmVoid(true)}
-                >
-                  Anular pedido
-                </Button>
-                <Button
-                  variant="secondary"
-                  isDisabled={blocked}
-                  onPress={() => selectEditor(order)}
-                >
-                  Editar pedido
-                </Button>
-              </>
-            )}
-            <Button
-              variant="secondary"
-              isDisabled={blocked}
-              onPress={() => {
+          {order.status === "open" && (
+            <div className="flex flex-wrap gap-3">
+              <Button
+                isDisabled={blocked || !order.items.length}
+                onPress={() => prepare(order)}
+              >
+                Cobrar
+              </Button>
+              <Button
+                variant="danger"
+                isDisabled={blocked}
+                onPress={() => setConfirmVoid(true)}
+              >
+                Anular pedido
+              </Button>
+              <Button
+                variant="secondary"
+                isDisabled={blocked}
+                onPress={() => selectEditor(order)}
+              >
+                Editar pedido
+              </Button>
+            </div>
+          )}
+          {accessEnabled && !denied && (
+            <MeasuredTicket
+              order={order}
+              printing={printing}
+              timeZone={timeZone}
+              disabled={blocked}
+              onBack={() => {
                 if (!blocked) {
                   setEditor(null);
                   setView("list");
                   syncHistory();
                 }
               }}
-            >
-              Volver al listado
-            </Button>
-          </div>
-          {accessEnabled && !denied && (
-            <MeasuredTicket order={order} printing={printing} />
+            />
           )}
         </section>
       )}
