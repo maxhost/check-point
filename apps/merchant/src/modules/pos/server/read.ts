@@ -9,6 +9,7 @@ import {
   businesses,
   consumerAccounts,
   locations,
+  moduleEvents,
   orders,
   posOrderItems,
   posOrders,
@@ -30,6 +31,11 @@ import {
 import type { PosOrderV2 } from "../contracts";
 import { lineTotalOf, totalOf, unitQuantityOf, unitPriceOf } from "./lines";
 import { unknownPosOrder } from "./errors";
+import {
+  frozenVoidFromRow,
+  voidSnapshotColumns,
+  voidSnapshotJoin,
+} from "./void-snapshot";
 
 /**
  * Spec 0169 §Contrato — `PosOrder`, la forma que devuelven crear/leer/editar/anular/cerrar. Lo
@@ -157,6 +163,7 @@ export async function readPosOrder(
   const db = getDb();
   const [row] = await db
     .select({
+      ...voidSnapshotColumns,
       id: posOrders.id,
       status: posOrders.status,
       version: posOrders.version,
@@ -179,6 +186,7 @@ export async function readPosOrder(
       closerEmail: closer.email,
     })
     .from(posOrders)
+    .leftJoin(moduleEvents, voidSnapshotJoin)
     .innerJoin(businesses, eq(businesses.id, posOrders.businessId))
     .leftJoin(locations, eq(locations.id, posOrders.locationId))
     .innerJoin(creator, eq(creator.id, posOrders.createdByUserId))
@@ -186,6 +194,7 @@ export async function readPosOrder(
     .where(and(eq(posOrders.id, id), eq(posOrders.businessId, businessId)))
     .limit(1);
   if (!row) return null;
+  const frozenVoid = frozenVoidFromRow(row);
 
   const lines = await db
     .select({
@@ -210,7 +219,9 @@ export async function readPosOrder(
     contract === 2
       ? measuredItems(
           lines,
-          row.settlement?.currencyCode ?? row.currencyCode,
+          row.settlement?.currencyCode ??
+            frozenVoid?.currencyCode ??
+            row.currencyCode,
           row.status !== "open",
           row.settlement,
         )
@@ -239,10 +250,14 @@ export async function readPosOrder(
     note: row.note,
     business: {
       name: row.businessName,
-      currencyCode: row.settlement?.currencyCode ?? row.currencyCode,
+      currencyCode:
+        row.settlement?.currencyCode ??
+        frozenVoid?.currencyCode ??
+        row.currencyCode,
     },
     items,
     total:
+      frozenVoid?.gross ??
       row.settlement?.gross ??
       (contract === 2
         ? measuredTotal(items, row.currencyCode, row.status !== "open")

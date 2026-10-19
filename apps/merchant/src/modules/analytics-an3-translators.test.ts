@@ -109,6 +109,57 @@ describe("AN3 pure captured translators", () => {
       }),
     ]);
   });
+  it("void V2 accepts captured measured lines but emits only the void ticket", () => {
+    const p = {
+      eventVersion: 2,
+      sourceOrderId: randomUUID(),
+      locationId: randomUUID(),
+      voidedAt: "2026-10-18T04:30:00Z",
+      userId: "staff",
+      lines: [{ quantity: "0.001", measure: { kind: "mass" } }],
+      amountMinor: "9007199254740993",
+      currencyCode: "USD",
+      minorUnit: 2,
+    };
+    expect(translate("pos.order.voided", p).rows).toEqual([
+      expect.objectContaining({
+        metric: "voided_tickets",
+        count: 1,
+        amountMinor: "9007199254740993",
+        currencyCode: "USD",
+        minorUnit: 2,
+      }),
+    ]);
+    const translator = pos.find((t) => t.eventType === "pos.order.voided")!;
+    for (const patch of [
+      { eventVersion: 1 },
+      { sourceOrderId: "bad" },
+      { locationId: "bad" },
+      { voidedAt: "bad" },
+      { amountMinor: 12 },
+      { amountMinor: "1.5" },
+      { currencyCode: "usd" },
+      { minorUnit: 0 },
+    ])
+      expect(() =>
+        translator.translate({
+          id: randomUUID(),
+          businessId: randomUUID(),
+          eventType: "pos.order.voided",
+          eventVersion: 2,
+          payload: { ...p, ...patch },
+        }),
+      ).toThrow();
+    expect(() =>
+      translator.translate({
+        id: randomUUID(),
+        businessId: randomUUID(),
+        eventType: "pos.order.voided",
+        eventVersion: 4,
+        payload: p,
+      }),
+    ).toThrow();
+  });
   it("coupon cost has an independent source so the POS priority cannot erase it", () => {
     const p = {
       eventVersion: 1,

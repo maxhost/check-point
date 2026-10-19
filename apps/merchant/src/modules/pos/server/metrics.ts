@@ -9,6 +9,8 @@ import {
 } from "@mi-pasaporte/domain/financial/rational";
 import { exactGrams } from "@mi-pasaporte/domain/measures";
 import { decodeMeasuredSaleClosedEvent } from "../../../server/module-events/decode";
+import { decodeVoidMetricSnapshot } from "./void-snapshot";
+export type { OrderVoidedV2 } from "./void-snapshot";
 export type OrderVoided = {
   eventVersion: 1;
   sourceOrderId: string;
@@ -147,7 +149,7 @@ export const metricTranslators: readonly MetricTranslator[] = [
   {
     eventType: "pos.order.voided",
     translate(event) {
-      const p = event.payload as OrderVoided;
+      const p = decodeVoidMetricSnapshot(event.payload, event.eventVersion);
       return {
         sourceKey: `voided:${p.sourceOrderId}`,
         sourceRevision: 1,
