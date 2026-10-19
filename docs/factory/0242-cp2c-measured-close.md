@@ -20,6 +20,7 @@ Capturar recursos reales con captureSaleResources, preparar comisión, publicar 
 - apps/merchant/src/modules/pos/server/measured-close-input.ts, si separación evita límite de tamaño
 - apps/merchant/src/modules/pos/server/measured-close.test.ts
 - apps/merchant/src/modules/pos/server/measured-close.neon.integration.test.ts
+- apps/merchant/src/modules/measured-close-0242.neon.integration.test.ts, ensamblado cross-module real autorizado; usar en lugar de suite POS si importa Recipes/Stock, no duplicar batería
 - docs/factory/0242-cp2c-measured-close-handoff.md
 
 Sin rutas/close legacy/void/Counter legacy/contratos/schema/journal/publisher/accredit/commission/settlement/kit/UI/guardias/tooling/deps/estados/índices. Si necesita helper reutilizable común o ajuste de executor/error, pedir extensión concreta antes editar, no sortear autoridad con copia de implementación.
