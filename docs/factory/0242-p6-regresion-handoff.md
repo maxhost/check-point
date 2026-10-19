@@ -29,9 +29,9 @@ Base `01445a86bdec433e8d7bc75b94dfca1ce8184c19`, WT/ref `pos-ui-card-0242`. Cort
 
 | Archivo real | Tratamiento |
 | --- | --- |
-| `apps/merchant/src/modules/analytics-an3-events.neon.integration.test.ts` | Residual8 actualizado, checks offline PASS; DB pendiente de devolución |
-| `apps/merchant/src/modules/brand-fiscal-inert.neon.integration.test.ts` | Residual8 actualizado, checks offline PASS; DB pendiente de devolución |
-| `apps/merchant/src/modules/negocio-retirement.neon.integration.test.ts` | Residual8 actualizado, checks offline PASS; DB pendiente de devolución |
+| `apps/merchant/src/modules/analytics-an3-events.neon.integration.test.ts` | 5d095652 4/7, tres fixtures/oráculos corregidos offline; retest pendiente |
+| `apps/merchant/src/modules/brand-fiscal-inert.neon.integration.test.ts` | PASS DB1/1 en5d095652, fuente compatible |
+| `apps/merchant/src/modules/negocio-retirement.neon.integration.test.ts` | PASS DB5/5 en5d095652, fuente compatible |
 | `apps/merchant/src/modules/pos/server/business-access.neon.integration.test.ts` | Compatible por lectura: usa sólo seed/módulo o caller nativo/raw de cutover explícito; no cambiar por el soporte |
 | `apps/merchant/src/modules/pos/server/business-failures.neon.integration.test.ts` | PASS DB compatible por corte660add97/25bc5a27/d9d0b8bd; ver resultados y límites abajo |
 | `apps/merchant/src/modules/pos/server/business-financial.neon.integration.test.ts` | PASS DB compatible por corte660add97/25bc5a27/d9d0b8bd; ver resultados y límites abajo |
@@ -53,11 +53,11 @@ Base `01445a86bdec433e8d7bc75b94dfca1ce8184c19`, WT/ref `pos-ui-card-0242`. Cort
 | `apps/merchant/src/modules/pos/server/pos-close-reuse.neon.integration.test.ts` | PASS DB compatible por corte660add97/25bc5a27/d9d0b8bd; ver resultados y límites abajo |
 | `apps/merchant/src/modules/pos/server/pos-close.neon.integration.test.ts` | PASS DB compatible por corte660add97/25bc5a27/d9d0b8bd; ver resultados y límites abajo |
 | `apps/merchant/src/modules/pos/server/pos-context-native.neon.integration.test.ts` | Compatible por lectura: usa sólo seed/módulo o caller nativo/raw de cutover explícito; no cambiar por el soporte |
-| `apps/merchant/src/modules/pos/server/pos-disable-tables.neon.integration.test.ts` | 98ffe933 1/2, timeout120s primer caso; spy/contención/finally corregidos enbaf2a979, retest pendiente |
+| `apps/merchant/src/modules/pos/server/pos-disable-tables.neon.integration.test.ts` | PASS retest DB2/2 en5d095652; dos direcciones con contención exacta/finally |
 | `apps/merchant/src/modules/pos/server/pos-disable.neon.integration.test.ts` | PASS DB6/6 en98ffe933 incluidas carreras, fuente compatible |
 | `apps/merchant/src/modules/pos/server/pos-ladder.neon.integration.test.ts` | Ampliación5 PASS DB en afe7060d |
 | `apps/merchant/src/modules/pos/server/pos-migration-0079.neon.integration.test.ts` | Histórico6 actualizado; SQL canónico/clones/constraints de origen conservados y shape0108 activo separado; DB serial pendiente |
-| `apps/merchant/src/modules/pos/server/pos-orders.neon.integration.test.ts` | 98ffe933 7/8, unknown_line→invalid_input422 corregido enbaf2a979; retest focal pendiente |
+| `apps/merchant/src/modules/pos/server/pos-orders.neon.integration.test.ts` | PASS retest DB8/8 en5d095652; invalid_input422 y snapshot sin efectos |
 | `apps/merchant/src/modules/pos/server/pos-scope.neon.integration.test.ts` | Compatible por lectura: usa sólo seed/módulo o caller nativo/raw de cutover explícito; no cambiar por el soporte |
 | `apps/merchant/src/modules/pos/server/pos-staff-entry.neon.integration.test.ts` | Compatible por lectura: usa sólo seed/módulo o caller nativo/raw de cutover explícito; no cambiar por el soporte |
 | `apps/merchant/src/modules/pos/server/quantity-storage-expand.neon.integration.test.ts` | Histórico6 actualizado; SQL canónico/clones/constraints de origen conservados y shape0108 activo separado; DB serial pendiente |
@@ -66,8 +66,8 @@ Base `01445a86bdec433e8d7bc75b94dfca1ce8184c19`, WT/ref `pos-ui-card-0242`. Cort
 | `apps/merchant/src/modules/pos/server/ticket-settings.neon.integration.test.ts` | Ampliación5 PASS DB en afe7060d |
 | `apps/merchant/src/modules/pos/server/unit-expand-compat.neon.integration.test.ts` | Histórico6 actualizado; SQL canónico/clones/constraints de origen conservados y shape0108 activo separado; DB serial pendiente |
 | `apps/merchant/src/modules/pos/server/void-api-v2.neon.integration.test.ts` | Corte inicial PASS DB en afe7060d |
-| `apps/merchant/src/modules/stock-local-recipes.neon.integration.test.ts` | Indirecto vía stock-local-integration-support; opt-inV2 actualizado, checks offline PASS, DB pendiente |
-| `apps/merchant/src/modules/stock-local.neon.integration.test.ts` | Residual8 actualizado, checks offline PASS; DB pendiente de devolución |
+| `apps/merchant/src/modules/stock-local-recipes.neon.integration.test.ts` | PASS DB2/2 en5d095652, fuente compatible |
+| `apps/merchant/src/modules/stock-local.neon.integration.test.ts` | 5d095652 0/4, V4/spy/cascada y suscriptores corregidos offline; retest pendiente |
 | `apps/merchant/src/modules/tables/server/tables.neon.integration.test.ts` | Ampliación5 PASS DB en afe7060d |
 
 ## Checks e intentos
@@ -157,3 +157,24 @@ Consultas de cierre: `rg -l '(api/(modules/)?pos|api/counter|pos/orders)' apps/m
 Fuera de las46, coincidencias compatibles por lectura: business-status prueba requireOperator directo, counter-email-gate prueba guard/estructura, counter-redeem-races usa dominio (ruta sólo comentario), counter-coupon-support y coupon-cycle-support usan grantAccrual interno. No se reescribe historia/SQL/dominio Counter. Unit/UItests POS/retirement y boundaries encontrados por literales ya prueban contratos actuales o estructura; sin nuevos writersHTTPV1 demostrados. Los7compatibles del grafo original conservan clasificación por lectura, sin atribuirlesPASSDB nuevo.
 
 Estado observable:20suites completas/115casos compatiblesPASSpor cortes (18/107anteriores +pos-disable6 +best-sellers2),2suites parciales con fallos preservados (orders7/8,tables1/2).19suites pendientes de DB sobre fuente final (incluidas esas2corregidas),7compatibles por lectura. Esto no es verifyglobal niQAfinal. Nuevos7checks: typecheck1FAIL por unionSaleClosedV1-3 obsoleta; unionmeasured corregida y typecheck2PASS; cleanup añadido y typecheck3PASS. ESLint7,Prettier8(incluyehandoff) y diff whitespacePASS al congelar. NoDB durante reservaM1.
+
+
+## Retest2 y residual5 sobre5d095652
+
+Retest corregidos pos-orders8/8 +pos-disable-tables2/2:EXIT0,10/10casos,2/2suites,0skips/retries,85.74s. Ambas direcciones de carrera demostraron latchA y waiterB del mutex propio exacto; afterAll íntegros. PIDs66715,67192,67194,67201ausentes e inspectorreadonly0waiters/actividadtx=[] antes de siguiente lote. Log `p6-residual2-attempt2.log`; inspección `p6-residual2-diagnostic.log` no añade cobertura (8omitidos diagnósticos).
+
+Luego lista5confirmada contra inventario, mismoSHA limpio sin editar durante corrida: stock-local,stock-local-recipes,analytics-an3-events,brand-fiscal-inert,negocio-retirement. EXIT1,3/5suitesPASS,12/19casosPASS,7FAIL,0skips/retries,261.64s. PASS completos recipes2,brand1,retirement5. AN3 4/7; Stock0/4. TodosafterAll completos sinerror, identidadown comprobada por fixtures; PIDs69830,70307,70309,70316ausentes al cierre. Inspectorreadonly posterior:waiters0/actividadtx=[];8omitidos no sonPASS. Logs `p6-residual5-attempt1.log`, `p6-residual5-diagnostic.log`. SQL23505 en AN3void es la inyección real de duplicado fuente con respuesta503 y rollbackopen comprobados; no es el fallo del caso.
+
+| Caso fallido | Esperado/observado en intento1 y corrección offline |
+| --- | --- |
+| AN3voidhistorial | GETrawV1esperaba200, recibió409; callerV2 local explícito conserva status=voided, cookie/scope de cada owner, histórico2días y aislamiento |
+| AN3COP | Esperaba close200, recibió422; helpercentavos operaba total ya normalizadoCOP10 antes de restar0.60. Comando explícito payment10, originales exactos1040−60=980centavos=9.80 y normalizaciónCOP10 comprobados sin Number/helper |
+| AN3campaign | Consulta day=today no encontraba fila; persistencia actual ancla candidato a period.to=finishday. Consulta subject exacto mantiene readyday=today,assertdayfin e identidad estable del candidato/edición/replay |
+| Stockatomic | Esperaba eventV2, recibióV4. OráculoV4/cantidadstring/medida exacta; inyección ahora sobre capturedMeasuredConsumption real, conservando rollback, fallo, revisión congelada y replay |
+| Stockrecovery | Spy legacycapturedConsumption no recibía llamadas del adapterV4; spymeasured corrige el punto real. Conserva cierre/mesalibre/evento/deliveryfallida/borradoproducto y recoverycapturadounico; restore spy/local/producto en finally |
+| Stockdisabled | create409location_archived, cascada del assertanterior que salía antes de restaurar local; finally del caso2 elimina esa dependencia. Caso3 conserva skipterminal y composiciónvacía, restaurarecipes en finally |
+| Stockwithpass | Esperaba applied1, recibió2. Oráculo ahora exige ambos IDs(core.analytics,recipes), estadosapplied exactos, eventoV4 del negocio/orden/línea reales, replay0applied/0claimed y payloadigual. Consumo−750gúnico/acreditación siguen intactos; ningún ajuste global de conteos |
+
+Las correcciones sólo tocan AN3/Stock y handoff; ninguna modificación de producto/soportes/guardas/esquema. Primera typecheckmerchant de correcciónPASS. SuitesPASScompatibles acumuladas25/133casos completos (22/125 tras retest2 +3/8nuevas), sin sumar parcialesAN3. Quedan14suites por DB:afectadas2 +nuevas6eventos/Counter +6históricasDDL;7compatiblesporlectura. DB devuelta a M1 porfactory; no nuevaDB hasta reasignación. Todos los intentos anteriores siguen conservados.
+
+Checks del congelado AN3/Stock: typecheckmerchant inicial y final PASS, ESLint2 PASS, Prettier3 PASS y diff whitespace PASS. Sólo3paths propios cambiados. Sin corridas DB sobre esta corrección todavía.

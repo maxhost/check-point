@@ -47,7 +47,7 @@ import {
 } from "../server/analytics/ingestion/apply";
 import { retryModuleEvents } from "../server/module-events";
 import { captureCountCut, validateCountCut } from "./stock/count";
-import { callModuleRoute } from "./modules-integration-support";
+import { dispatchModuleRequest } from "./dispatch";
 
 describe.runIf(posIntegrationEnabled)(
   "AN3 atomic real producers and generic dedup",
@@ -298,22 +298,26 @@ describe.runIf(posIntegrationEnabled)(
         .update(posOrders)
         .set({ closedAt: new Date(Date.now() - 2 * 86400000) })
         .where(eq(posOrders.id, order.id));
-      const response = await callModuleRoute(
-        "GET",
-        "/api/modules/pos/orders?status=voided",
-        world.ownerCookie,
-      );
+      const historyCaller = (owner: PosWorld) =>
+        dispatchModuleRequest(
+          "GET",
+          new Request("http://localhost/api/modules/pos/orders?status=voided", {
+            headers: {
+              cookie: owner.ownerCookie,
+              "X-Pos-Contract": "2",
+              "X-Backoffice-Scope": scopes.get(owner.ownerCookie)!,
+            },
+          }),
+          { moduleId: "pos", path: ["orders"] },
+        );
+      const response = await historyCaller(world);
       expect(response.status).toBe(200);
       const history = await response.json();
       expect(history.open).toEqual([]);
       expect(
         history.closedToday.map((row: { id: string }) => row.id),
       ).toContain(order.id);
-      const other = await callModuleRoute(
-        "GET",
-        "/api/modules/pos/orders?status=voided",
-        cop.ownerCookie,
-      );
+      const other = await historyCaller(cop);
       expect((await other.json()).closedToday).toEqual([]);
     });
     it("coupon and POS preserve atomic rollback and count full ticket once in both delivery orders, including line-only discounts", async () => {
@@ -427,17 +431,18 @@ describe.runIf(posIntegrationEnabled)(
       const order = await openOrderV2(cop, scopes.get(cop.ownerCookie)!, [
         { productId: product, quantity: 1 },
       ]);
-      const response = await closeWithCash(
-        cop.ownerCookie,
-        order.id,
-        {
-          clientRequestId: randomUUID(),
-          version: order.version,
-          membershipId: customer.membershipId,
-          coupon: { couponId },
-        },
-        { scope: scopes.get(cop.ownerCookie)! },
-      );
+      const caller = scopedPos(cop.ownerCookie, scopes.get(cop.ownerCookie)!);
+      const methodsResponse = await caller.paymentMethods();
+      expect(methodsResponse.status).toBe(200);
+      const methods = await methodsResponse.json();
+      // Exact originals:10.40-0.60=9.80, normalized to COP10 once.
+      const response = await caller.close(order.id, {
+        clientRequestId: randomUUID(),
+        version: order.version,
+        membershipId: customer.membershipId,
+        coupon: { couponId },
+        payments: [{ methodId: methods.defaultMethodId, amount: "10" }],
+      });
       expect(response.status).toBe(200);
       const captured = await events(cop),
         coupon = captured.find(
@@ -447,6 +452,18 @@ describe.runIf(posIntegrationEnabled)(
           (e) => e.eventType === "sale.closed" && e.sourceId === order.id,
         )!,
         visit = captured.find((e) => e.eventType === "visit.recorded")!;
+      expect(sale.payload).toMatchObject({
+        eventVersion: 4,
+        money: {
+          collected: "10",
+          currencyCode: "COP",
+          minorUnit: 0,
+          originalGross: { numerator: "1040", denominator: "1", scale: 2 },
+          originalDiscount: { numerator: "60", denominator: "1", scale: 2 },
+          originalNet: { numerator: "980", denominator: "1", scale: 2 },
+        },
+        payments: [{ amount: "10", methodId: methods.defaultMethodId }],
+      });
       expect(coupon.payload).toMatchObject({
         discountMinor: "1",
         salesMinor: "10",
@@ -614,7 +631,7 @@ describe.runIf(posIntegrationEnabled)(
           .where(
             and(
               eq(analyticsCardCandidates.businessId, world.seed.business.id),
-              eq(analyticsCardCandidates.day, today),
+              eq(analyticsCardCandidates.subjectKey, `campaign:${campaignId}`),
               eq(analyticsCardCandidates.cardKey, "12"),
             ),
           );
@@ -652,6 +669,7 @@ describe.runIf(posIntegrationEnabled)(
       const [first] = await read();
       expect(first).toBeDefined();
       expect(first.amountMinor).toBe(0n);
+      expect(first.day).toBe(localMetricDay(occurredAt, "America/Guayaquil"));
       // The coupon produces its main and cost source groups before reconciliation reads this same transaction.
       const redeemed = {
         eventVersion: 1 as const,
