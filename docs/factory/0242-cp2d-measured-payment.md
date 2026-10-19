@@ -22,6 +22,7 @@ Confirmar es ÚNICO comando de cierre. Congelar antes await clientRequestId/vers
 - apps/merchant/src/modules/pos/ui/measured-payment-preview.test.ts
 - apps/merchant/src/modules/pos/ui/measured-payment-session.ts
 - apps/merchant/src/modules/pos/ui/measured-payment-session.test.ts
+- apps/merchant/src/modules/pos/ui/measured-payment-close.ts, controlador interno del cierre para separar tamaño/timeout/replay sin framework genérico
 - apps/merchant/src/modules/pos/ui/measured-checkout.tsx
 - apps/merchant/src/modules/pos/ui/measured-coupon.tsx
 - apps/merchant/src/modules/pos/ui/measured-scan.tsx
