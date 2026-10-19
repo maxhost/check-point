@@ -1,9 +1,10 @@
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { getBackofficeRenderContext } from "./backoffice-context";
 import { getDb } from "@mi-pasaporte/db";
 import { sessions } from "@mi-pasaporte/db/schema";
 import { memberPermissions } from "../modules/permissions";
+import { readBackofficeDestination } from "./backoffice-destination";
 import { PIN_CHANGE_PAGE, pinChangeRequired } from "./pin-change-gate";
 
 /**
@@ -223,13 +224,14 @@ export async function requireBackofficeSession(
 }
 
 /**
- * Owner-only guard: a staff member is redirected to the counter console (never to
+ * Owner-only guard: a staff member is redirected to an authorized destination (never to
  * onboarding). Used by every owner-only page (brand, loyalty, catalog, staff, home).
  */
 export async function requireOwner(
   options: { allowBlocked?: boolean } = {},
 ): Promise<BackofficeSession> {
   const ctx = await requireBackofficeSession(options);
-  if (ctx.membership.role !== "owner") redirect("/backoffice/counter");
+  if (ctx.membership.role !== "owner")
+    redirect((await readBackofficeDestination(ctx)) ?? notFound());
   return ctx;
 }

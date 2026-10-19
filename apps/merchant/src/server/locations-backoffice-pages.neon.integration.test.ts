@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { dropBusiness } from "./counter-integration-support";
 import {
   integrationEnabled,
@@ -8,7 +8,7 @@ import {
   seedLocationsBusiness,
 } from "./locations-integration-support";
 import { getDb } from "@mi-pasaporte/db";
-import { locations } from "@mi-pasaporte/db/schema";
+import { businessModules, locations } from "@mi-pasaporte/db/schema";
 
 /** The session the two pages under test run with. Filled by `beforeAll` with the seeded
  * business; the guard itself (ADR 0044) has its own tests and is not re-tested here. */
@@ -22,7 +22,7 @@ const ctx = vi.hoisted(() => ({
       currencyCode: string;
       timezone: string;
     };
-    membership: { role: string; status: string };
+    membership: { role: string; status: string; permissions: string[] };
   },
 }));
 
@@ -34,6 +34,21 @@ vi.mock("./auth-guards", async (importOriginal) => {
     requireOwner: async () => ctx.session,
   };
 });
+
+import { MODULES } from "../modules/registry";
+import { moduleHref } from "../modules/navigation";
+// The tile test isolates presentation from request-scoped billing; guards/billing have their own suites.
+vi.mock("./backoffice-initial-context", () => ({
+  readBackofficePagePlan: async () => ({ plan: "plus", status: "active" }),
+}));
+
+// These client widgets require their provider and are outside the tile/redirect contract.
+vi.mock("../app/backoffice/analytics/dashboard-summary", () => ({
+  DashboardSummary: () => null,
+}));
+vi.mock("../app/backoffice/analytics/inbox", () => ({
+  AnalyticsInbox: () => null,
+}));
 
 import CounterPage from "../app/backoffice/counter/page";
 import BackofficePage from "../app/backoffice/page";
@@ -69,7 +84,11 @@ describe.skipIf(!integrationEnabled)(
           currencyCode: "USD",
           timezone: "America/Guayaquil",
         },
-        membership: { role: "owner", status: "active" },
+        membership: {
+          role: "owner",
+          status: "active",
+          permissions: ["counter", "analytics"],
+        },
       };
     }, 60_000);
 
@@ -77,36 +96,60 @@ describe.skipIf(!integrationEnabled)(
       await dropBusiness(businessId);
     }, 60_000);
 
-    it("the counter page hands down ONLY the active locations", async () => {
-      const element = (await CounterPage({
-        searchParams: Promise.resolve({}),
-      })) as { props: { locations: { id: string; name: string }[] } };
+    async function redirectedLocation(location?: string): Promise<string> {
+      try {
+        await CounterPage({ searchParams: Promise.resolve({ location }) });
+      } catch (error) {
+        const digest = (error as { digest?: string }).digest;
+        if (digest?.startsWith("NEXT_REDIRECT;")) return digest.split(";")[2];
+        throw error;
+      }
+      throw new Error("Counter must redirect after retirement");
+    }
 
-      const ids = element.props.locations.map((l) => l.id);
-      // Anti-false-green: the active one IS there, so an empty/short list is the status
-      // filter and not a broken query or an empty seed.
-      expect(ids).toContain(activeId);
-      expect(ids).not.toContain(archivedId);
-      expect(ids).toHaveLength(1);
+    it("retired counter redirects and keeps only active locations of this business", async () => {
+      expect(await redirectedLocation(activeId)).toBe(
+        `/backoffice?location=${activeId}`,
+      );
+      expect(await redirectedLocation(archivedId)).toBe("/backoffice");
+      expect(
+        await redirectedLocation("00000000-0000-4000-8000-000000000001"),
+      ).toBe("/backoffice");
+      expect(await redirectedLocation()).toBe("/backoffice");
     }, 60_000);
 
-    it("an archived `?location=` is not preselected, because it is not in the list", async () => {
-      const element = (await CounterPage({
-        searchParams: Promise.resolve({ location: archivedId }),
-      })) as {
-        props: {
-          locations: { id: string }[];
-          preselectedLocationId?: string;
+    it("staff with only the active module permission can follow the old URL", async () => {
+      const module = MODULES.find((entry) => entry.startPage);
+      if (!module?.startPage || !ctx.session)
+        throw new Error("module/session fixture missing");
+      await getDb()
+        .insert(businessModules)
+        .values({ businessId, moduleId: module.id, enabled: true });
+      const ownerMembership = ctx.session.membership;
+      try {
+        ctx.session.membership = {
+          role: "staff",
+          status: "active",
+          permissions: [module.startPage.permission],
         };
-      };
-      // The page passes the raw query param through; what makes it harmless is that the
-      // console only honours a preselect present in `locations` (pinned by
-      // `locations-counter-surface.test.ts`) and that `assertLocationInBusiness` refuses
-      // it server-side anyway (pinned by `locations-counter-guard.neon.integration.test.ts`).
-      expect(element.props.preselectedLocationId).toBe(archivedId);
-      expect(element.props.locations.map((l) => l.id)).not.toContain(
-        archivedId,
-      );
+        expect(await redirectedLocation(activeId)).toBe(
+          `${moduleHref(module.id, module.startPage.path)}?location=${activeId}`,
+        );
+        ctx.session.membership.permissions = ["counter"];
+        expect(await redirectedLocation(activeId)).toBe(
+          `/backoffice/customers?location=${activeId}`,
+        );
+      } finally {
+        ctx.session.membership = ownerMembership;
+        await getDb()
+          .delete(businessModules)
+          .where(
+            and(
+              eq(businessModules.businessId, businessId),
+              eq(businessModules.moduleId, module.id),
+            ),
+          );
+      }
     }, 60_000);
 
     it("the «Locales» tile points at the real screen, not at the spec 0015 mock", async () => {

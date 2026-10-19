@@ -1,10 +1,11 @@
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { requireBackofficeSession } from "../../../server/auth-guards";
 import {
   HISTORY_PERIODS,
   type HistoryPeriod,
 } from "@mi-pasaporte/domain/analytics/history";
 import { validDay } from "@mi-pasaporte/domain/analytics/date";
+import { readBackofficeDestination } from "../../../server/backoffice-destination";
 import AnalyticsConsole from "./analytics-console";
 export const dynamic = "force-dynamic";
 export default async function Page({
@@ -14,7 +15,7 @@ export default async function Page({
 }) {
   const session = await requireBackofficeSession();
   if (!session.membership.permissions.includes("analytics"))
-    redirect("/backoffice/counter");
+    redirect((await readBackofficeDestination(session)) ?? notFound());
   const query = await searchParams;
   return (
     <AnalyticsConsole

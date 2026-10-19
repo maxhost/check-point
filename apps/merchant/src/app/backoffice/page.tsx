@@ -1,6 +1,6 @@
 import { billingPlanName } from "./subscription/billing-state";
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import {
   ArrowRight,
   CreditCard,
@@ -12,6 +12,7 @@ import {
   Shop,
 } from "iconoir-react";
 import { requireBackofficeSession } from "../../server/auth-guards";
+import { readBackofficeDestination } from "../../server/backoffice-destination";
 import { statusLabel } from "../../server/billing";
 import { readBackofficePagePlan } from "../../server/backoffice-initial-context";
 
@@ -97,14 +98,11 @@ function SectionItem({
 }
 
 export default async function BackofficePage() {
-  const {
-    business: owned,
-    userName,
-    membership,
-  } = await requireBackofficeSession();
+  const session = await requireBackofficeSession();
+  const { business: owned, userName, membership } = session;
   const isOwner = membership.role === "owner";
   if (!isOwner && !membership.permissions.includes("analytics"))
-    redirect("/backoffice/counter");
+    redirect((await readBackofficeDestination(session)) ?? notFound());
   const { plan, status } = await readBackofficePagePlan();
   const firstName = userName.trim().split(/\s+/)[0];
   const greeting = firstName ? `Hola, ${firstName}` : "Hola";
