@@ -51,6 +51,16 @@ paths exactos antes de cambiarlos. Portar recorridos pertinentes a UI/contratos
 vigentes con mapping de cobertura; no quitar negativos para obtener verde. P6
 mantiene conversión de suites HTTP V1, fuera de este writer inicial.
 
+Ampliación autorizada tras inventario y antes de editar: `server/counter.test.ts`
+actualiza import compartido conservando pruebas; `modules/pos/ui/use-pos-close-navigation.ts`
+se retira si no tiene consumidor vigente. Bajo `tests/e2e/support/`:
+`counter-harness.tsx`, `pos-counter-harness.tsx`, `tables-harness.tsx`,
+`pos-context-fixture.tsx`, `pos-payment-methods-fixture.tsx`. Bajo `tests/e2e/`:
+`pos.spec.ts`, `tables.spec.ts`, `pos-context.spec.ts`, `pos-payment-methods.spec.ts`,
+`counter-mobile.spec.ts`, `counter-coupon-verdict.spec.ts`, `pos-printing.spec.ts`.
+No existen counter.spec.ts/pos-counter.spec.ts en esta base. Mantener cobertura
+vigente con contratos nuevos y dejar mapa de sustitución de pruebas obsoletas.
+
 ## Checks y entrega
 
 Tipos/lint/UIguard focales, búsqueda de consumidores y pruebas proporcionales de
