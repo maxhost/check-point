@@ -4,6 +4,8 @@ import { eq, inArray, sql } from "drizzle-orm";
 import { getDb } from "@mi-pasaporte/db";
 import {
   businesses,
+  businessCustomers,
+  memberships as businessMemberships,
   campaignCoupons,
   consumerAccounts,
   locations,
@@ -93,6 +95,20 @@ describe.skipIf(!integrationEnabled)(
             .from(businesses)
             .where(inArray(businesses.id, businessIds)),
         ).toEqual([]);
+      if (businessIds.length) {
+        expect(
+          await getDb()
+            .select({ id: businessCustomers.consumerId })
+            .from(businessCustomers)
+            .where(inArray(businessCustomers.businessId, businessIds)),
+        ).toEqual([]);
+        expect(
+          await getDb()
+            .select({ id: businessMemberships.id })
+            .from(businessMemberships)
+            .where(inArray(businessMemberships.businessId, businessIds)),
+        ).toEqual([]);
+      }
       if (consumers.length) {
         expect(
           await getDb()
@@ -121,6 +137,9 @@ describe.skipIf(!integrationEnabled)(
             .where(inArray(sessions.userId, ownerIds)),
         ).toEqual([]);
       }
+      console.info(
+        "CP2c cleanup: businesses/projections/business-memberships/consumers/program-memberships/owners/sessions absent; no staff or auth sessions seeded.",
+      );
     });
 
     it("enrols once, touches last_scan, preserves balances and exact accrual, without legacy reads or purchase effects", async () => {
