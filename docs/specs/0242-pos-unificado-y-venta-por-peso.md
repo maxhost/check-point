@@ -1,7 +1,7 @@
 ---
 spec: 0242
 fecha: 2026-10-18
-estado: funcional cerrada; puntos1–5 aceptados localmente, regresión y M1 final en curso
+estado: funcional cerrada; puntos1–5 y regresión aceptados localmente; M1 R2 final en curso
 resumen: Rediseño integral del POS con Mostrador integrado, órdenes por tipo, medidas de catálogo, retiro de Mostrador legacy y mejora de carga/autorización basada en0238.
 disjunta: no; POS, catálogo/business, auth compartida, financial, eventos, Stock/Recetas y analíticas
 archivos: ámbitos y escritores definidos en docs/factory/0242-plan-implementacion.md
@@ -113,7 +113,7 @@ Puntos1–5 del [plan](../factory/0242-plan-implementacion.md) aceptados localme
 UI por el owner, masa/invariantes0108, corte HTTPV2 y retirada de accesos/UI
 anteriores, fidelización y cadena de efectos con QA independiente. Combinado
 funcional a9d32924, entrega QA29b8592c. Regresión dirigida del autor39suites/197casos
-PASS compatibles, QA final del combinado pendiente; otras7 sólo por lectura.
+PASS compatibles, aceptada3a5b98a7/QA cbd8cd75 en main local5c158325; otras7 sólo por lectura.
 M1 R1.3 acredita listado, con QA independiente; rutas críticas R2 y cierre global
 siguen pendientes. No publicación ni PROD. Evidencia y límites en el plan y sus
 handoffs; la aceptación funcional no sustituye el gate de rendimiento.
