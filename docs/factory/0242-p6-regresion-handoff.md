@@ -25,7 +25,7 @@ Base `01445a86bdec433e8d7bc75b94dfca1ce8184c19`, WT/ref `pos-ui-card-0242`. Cort
 
 ## Inventario directo y cierre recursivo de soportes
 
-39 consumidores directos únicos de ambos soportes: seis iniciales +33 fuera del corte inicial. El cierre recursivo posterior descubre40, agregando stock-local-recipes vía stock-local-integration-support;39 nunca fue el universo indirecto completo. Cinco ya autorizados después; otros siete dinero/soporte indirecto en preparación. Los14 residuales/históricos están autorizados y preparados sólo en patches privados. “Compatible por lectura” no significa PASS ejecutado.
+39 consumidores directos únicos de ambos soportes: seis iniciales +33 fuera del corte inicial. El cierre recursivo posterior descubre40, agregando stock-local-recipes vía stock-local-integration-support;39 nunca fue el universo indirecto completo. Estado actual:18suites con107casos PASS compatibles por cortes;15suites residuales/históricas preparadas offline y pendientesDB;7consumidores noeditados compatibles por lectura. “Compatible por lectura” no significa PASS ejecutado.
 
 | Archivo real | Tratamiento |
 | --- | --- |
@@ -72,11 +72,11 @@ Base `01445a86bdec433e8d7bc75b94dfca1ce8184c19`, WT/ref `pos-ui-card-0242`. Cort
 
 ## Checks e intentos
 
-- Runtime Node24.20.0/pnpm11.4.0 del lock existente. No Next/browser/DB/puerto ni accesoPROD.
+- Runtime Node24.20.0/pnpm11.4.0 del lock existente. Preparación inicial offline; corridasCI posteriores abajo. Ningún Next/browser/puerto ni accesoPROD.
 - Intento preliminar seis: typecheck merchant FAIL por import seedLegacyOrder faltante y ESLint FAIL por cuatro imports pos sobrantes; corregidos.
 - Segundo intento seis: `pnpm --filter @mi-pasaporte/merchant typecheck` PASS y ESLint focal8 PASS.
 - Intento ampliación5: ESLint focal13 PASS; typecheck merchant FAIL por clave duplicada en fixture mesas; corregida. Tercer intento typecheck merchant PASS.
-- Prettier focal ejecutado; diff whitespace limpio. Evidencia offline no certifica comportamiento DB. No skips/retries DB ejecutados.
+- Prettier focal ejecutado; diff whitespace limpio. Evidencia offline no certifica comportamiento DB. Ningún PASS atribuido a skips/retries; corridasDB reales abajo.
 
 ## Resultado DB inicial congelado
 
@@ -86,7 +86,7 @@ EXIT0,11/11 suites,75/75 casos,0skips/0retries,616.03s. SHA limpio antes/durante
 
 ## Pendiente
 
-DB transferida explícitamente y reservada incluyendo teardown. Continuar sólo wrapper `tools/neon-test.sh` y selección privada existente, sin mostrar/copiar secretos. Siguiente corte autorizado cbbb8c83/b6375774: siete suites dinero y business-core-support (opt-in). Residual8 autorizado b1867cad e histórico6 cbbce442 siguen sólo patches privados hasta cerrar siguiente congelado. Registrar cada intento y congelar para QA NUEVO independiente. closeWithCash sólo unit legacy; no certificar masa con ese helper. No factory/estados/índices/push/PROD.
+DB devuelta al coordinador/reservaM1 después del cierre d9d0b8bd/0de105f0. Candidato residual fuente ebb9ebd9, con checks offline PASS y sin nuevas corridasDB. Esperar devolución explícita antes de ejecutar9residuales y6históricosDDL seriales/aislados, exclusivamente wrapper `tools/neon-test.sh`/selección privada existente. QA NUEVO independiente sobre congelado, sin repetir107compatibles por ceremonia. closeWithCash sólo unit legacy; masa/precisión nueva exige pagos/oráculo exactos explícitos. No factory/estados/índices/push/PROD.
 
 ## Corte dinero en660add97: primer intento completo
 
@@ -94,9 +94,9 @@ WrapperCI serial6, EXIT1:4/6 suites PASS,25/28 casos PASS,3fallos,0skips,430.71s
 
 Los tres fallos son oráculos/fixturesV1 demostrados: summary cerrado sin pase ahora saleTotal9.00 del settlement (esperaba null); V2 preserva note:null literal (esperaba prefijo Mesa automático del writer viejo); cierreV2 publica exactamente1SaleClosedV4 (esperaba0 por flag histórico). La corrección conserva todos los assertions de dinero/comisión/acreditación y añade identidad de evento tras replay; la nota Mesa esperada se declara explícitamente en comando de fixtureV2table. Sin producto cambiado.
 
-Límite de cleanup del primer intento dinero: soporte histórico elimina negocios/dominio/extraUsers, pero no todos los owner/consumerAccounts huérfanos. No se conservaron IDs exactos de esas identidades para retirarlas después del proceso; no se hizo barrido por patrón. Para siguiente revisión de pos-close/business-financial/business-failures se capturan IDs propios y se verifican consumidores/owners/sesiones vacíos tras eliminar sus negocios. Esto no invalida los75 iniciales compatibles ni los4archivosPASS dinero no cambiados.
+Límite de cleanup del primer intento dinero: soporte histórico elimina negocios/dominio/extraUsers, pero no todos los owner/consumerAccounts huérfanos. No se conservaron IDs exactos de esas identidades para retirarlas después del proceso; no se hizo barrido por patrón. En25bc5a27 y d9d0b8bd pos-close/business-financial/business-failures ya capturan IDs propios y se verifican consumidores/owners/sesiones vacíos tras eliminar sus negocios. Esto no invalida los75 iniciales compatibles ni los4archivosPASS dinero no cambiados.
 
-Checks de la corrección: primer typecheck FAIL por import `other` propio faltante; corregido. Segundo typecheck merchant PASS, ESLint3 PASS, Prettier4 PASS y diff whitespace PASS. Se repetirán sólo pos-close/business-financial; business-failures se prueba por primera vez en invocación DDL aislada.
+Checks de la corrección: primer typecheck FAIL por import `other` propio faltante; corregido. Segundo typecheck merchant PASS, ESLint3 PASS, Prettier4 PASS y diff whitespace PASS. Se repitieron sólo pos-close/business-financial; business-failures se probó después en invocación DDL aislada, con resultados abajo.
 
 ## Revisión25bc5a27 y fallo del montaje de carrera
 
