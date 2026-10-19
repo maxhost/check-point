@@ -1,5 +1,9 @@
 # 0242 — Handoff para retomar después de clear
 
+## Checkpoint vigente: lectores corregidos y CI del listado en curso
+
+Main local aa58db72 (input V2 aceptado); dev conserva coordinación documental. A lectores: producto23cf4a21, freeze143af6c7 solo tests/handoff; corregidos histórico COP y financialSnapshot abierto fabricado. CI23cf12PASS1FAIL por fixture que violaba inmutabilidad, corregida sin tocar producto ni trigger; unit-expand6PASS compatible y27purosPASS. Falta HTTP7 cuando vuelva CI. QA49a18c8f reproduce correcciones y espera entrega final. B listado freezef62609ef:9puros/estáticosPASS, V1 preservado, V2 agregado exacto; wrapper serial listado+regresión V1 en curso, DB CI exclusiva transferida mediante factory después del teardown de A. Logs readers-evidence y pos-list-logs fueraWT. GETordersV2 aún no está cableado. Ver bloque vigente gpt.md para secuencia; lo que sigue es historia conservada. No hace falta respuesta del owner para continuar; sin push/PROD.
+
 ## Reanudación del18oct: expansiones unit y cálculo puro de Recetas aceptados
 
 Owner exige entregables pequeños y **agentes nuevos/contexto vacío por bloque aceptado**, incluidos QA. Gratis/2x1 no aplican a líneas por peso; decisión cerrada. CP0 aceptado: contratos329c7917, LISTAc379c9a8, flujos8dca14ee y sus QA. Después se aceptaron financiale9d409ac/QA9a4a52a6, scope servidor1af3d7f3/QA0b52df93, lectores unit8624cda8/QA745bff45 y cliente scopeb0127037/QA7f9dce96. Ver sus fichas/handoffs/QA y el bloque vigente de estado. No confundir M0 descriptivo con POSV2/M1.
