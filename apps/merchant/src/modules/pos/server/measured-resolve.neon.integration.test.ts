@@ -6,7 +6,6 @@ import {
   businesses,
   campaignCoupons,
   consumerAccounts,
-  couponRedemptions,
   locations,
   loyaltyPrograms,
   programMemberships,
@@ -30,6 +29,7 @@ import {
   forceChoice,
   newCouponCard,
   seedCouponWorld,
+  sellCoupon,
 } from "../../../server/counter-coupon-support";
 import { resolveMeasuredScan } from "./measured-resolve";
 
@@ -327,30 +327,17 @@ describe.skipIf(!integrationEnabled)(
         .from(consumerAccounts)
         .where(eq(consumerAccounts.id, card.consumerId));
       expect(account.selected).toBe(card.couponId);
+      // Prepare used_today through a real sale, which creates its order/redemption and
+      // clears the selection. Only the subsequent scan is under the no-purchase assertion.
       await getDb()
-        .update(consumerAccounts)
-        .set({ selectedCouponId: null, couponSelectedAt: null })
-        .where(eq(consumerAccounts.id, card.consumerId));
-      await getDb()
-        .insert(couponRedemptions)
-        .values({
-          couponId: card.couponId,
-          campaignId: a.campaignId,
-          businessId: a.seed.business.id,
-          consumerId: card.consumerId,
-          membershipId: card.membershipId,
-          locationId: a.seed.locationId,
-          createdAt: new Date(Date.now() - 120000),
-          labelSnapshot: "Histórico de hoy",
-          costSnapshot: "2.50",
-          kindSnapshot: "free_product",
-          createdByUserId: a.seed.userId,
-          clientRequestId: randomUUID(),
-        });
+        .update(campaignCoupons)
+        .set({ validUntil: a.endsAt })
+        .where(eq(campaignCoupons.id, card.couponId));
+      await sellCoupon(a, card);
       const historical = await effects(a.seed.business.id);
       expect(
         (await resolveMeasuredScan(a.seed.business, card.qrToken)).couponState,
-      ).toEqual({ status: "used_today", label: "Histórico de hoy" });
+      ).toEqual({ status: "used_today", label: "2x1 en picadas" });
       expect(await effects(a.seed.business.id)).toEqual(historical);
     });
   },
