@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { Xmark } from "iconoir-react";
 import { Button, SearchField, SelectField, Text } from "../../../ui";
 import type { PosCatalogProductV2, PosCatalogV2 } from "../contracts";
 import { unitLabel } from "./measured-cart-model";
@@ -34,17 +35,29 @@ export function MeasuredProductCatalog({
           value={search}
           onChange={setSearch}
         />
-        <SelectField
-          className="min-w-0"
-          label="Categoría"
-          selectedKey={category}
-          onSelectionChange={(key) => setCategory(String(key))}
-          options={[
-            { id: "all", label: "Todos" },
-            { id: "frequent", label: "Frecuentes" },
-            ...catalog.categories.map((c) => ({ id: c.id, label: c.name })),
-          ]}
-        />
+        <div className="flex min-w-0 items-end gap-2">
+          <SelectField
+            className="min-w-0 flex-1"
+            label="Categoría"
+            selectedKey={category}
+            onSelectionChange={(key) => setCategory(String(key))}
+            options={[
+              { id: "all", label: "Todos" },
+              { id: "frequent", label: "Frecuentes" },
+              ...catalog.categories.map((c) => ({ id: c.id, label: c.name })),
+            ]}
+          />
+          {category !== "all" && (
+            <Button
+              variant="quiet"
+              className="mb-0.5 size-11 shrink-0 p-0!"
+              aria-label="Mostrar todas las categorías"
+              onPress={() => setCategory("all")}
+            >
+              <Xmark className="size-5" aria-hidden="true" />
+            </Button>
+          )}
+        </div>
       </div>
       <div className="grid gap-2 sm:grid-cols-2">
         {products.map((product) => (
