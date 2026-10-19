@@ -56,7 +56,14 @@ const summaryColumns = {
   version: posOrders.version,
   saleType: posOrders.saleType,
   totalSnapshot: posOrders.totalSnapshot,
-  settlement: posOrders.settlement,
+  hasSettlement: sql<boolean>`${posOrders.settlement} is not null`,
+  settlementGross: sql<string | null>`${posOrders.settlement}->>'gross'`,
+  settlementCollected: sql<
+    string | null
+  >`${posOrders.settlement}->>'collected'`,
+  settlementCurrency: sql<
+    string | null
+  >`${posOrders.settlement}->>'currencyCode'`,
   tableId: posOrders.diningTableId,
   locationId: locations.id,
   locationName: locations.name,
@@ -165,10 +172,25 @@ export async function listPosOrders(
       row.amounts?.lineCount === null
         ? EMPTY_SUMMARY
         : (row.amounts ?? EMPTY_SUMMARY);
+    // Select scalar frozen amounts only: settlement contains per-line JSON we do not need.
+    if (
+      row.hasSettlement &&
+      (!row.settlementGross ||
+        !row.settlementCollected ||
+        !row.settlementCurrency)
+    )
+      upgradeRequired();
+    const settlement = row.hasSettlement
+      ? {
+          gross: row.settlementGross!,
+          collected: row.settlementCollected!,
+          currencyCode: row.settlementCurrency!,
+        }
+      : null;
     // Only compatible unit snapshots can supply historical cents without a frozen amount.
     if (
       row.status !== "open" &&
-      !row.settlement &&
+      !settlement &&
       row.saleTotal === null &&
       row.totalSnapshot === null &&
       aggregate.incompatible
@@ -179,13 +201,13 @@ export async function listPosOrders(
       aggregate,
       row.status === "open"
         ? (business?.currencyCode ?? "USD")
-        : (row.settlement?.currencyCode ?? "USD"),
+        : (settlement?.currencyCode ?? "USD"),
       version,
     );
     const frozen = frozenSummaryTotals(
       {
         status: row.status as PosOrderSummary["status"],
-        settlement: row.settlement,
+        settlement,
         coreNet: row.saleTotal,
         totalSnapshot: row.totalSnapshot,
         legacyGross: amounts.total,
