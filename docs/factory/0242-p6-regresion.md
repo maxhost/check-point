@@ -123,3 +123,14 @@ proyecciones históricas internas y rechazo HTTPV1 siguen teniendo oráculos.
 Cada suite con DDL se ejecuta aislada, serial, sin otros procesos DB, incluido
 teardown. No convertir pruebas de expand antiguo en afirmaciones de dormancia
 vigente después de0108; separar historia de invariantes actuales.
+
+## Ampliación transitiva Stock previa a código
+
+Asignados `apps/merchant/src/modules/stock-local-integration-support.ts` y
+`apps/merchant/src/modules/stock-local-recipes.neon.integration.test.ts`.
+El helper aún contiene createV1/close raw: añadir adopción V2 explícita por caller,
+manteniendo default raw para no cambiar otros consumidores en silencio. Adaptar
+stock-local ya reservado y stock-local-recipes preservando recetas/eventos/locks.
+Actualizar inventario recursivo:39 era el universo directo conocido, no prueba de
+ausencia de dependencias indirectas. Cualquier nuevo path se reserva antes de
+editar; preparación sólo offline mientras M1 posee DB.
