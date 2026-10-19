@@ -4,7 +4,7 @@ import { renderBackofficeSeedFixture } from "./backoffice-seed-fixture";
 import { LocationsConsole } from "../../../apps/merchant/src/app/backoffice/locations/locations-console";
 import { locationModulePanels } from "../../../apps/merchant/src/app/backoffice/locations/module-panels";
 import type { LocationView } from "../../../apps/merchant/src/app/backoffice/locations/location-form";
-import { PosConsole } from "../../../apps/merchant/src/modules/pos/ui/pos-console";
+import { MeasuredConsole } from "../../../apps/merchant/src/modules/pos/ui/measured-console";
 import { BackofficeNavigation } from "../../../apps/merchant/src/app/backoffice/backoffice-navigation";
 
 export const locations = [
@@ -59,7 +59,7 @@ void renderBackofficeSeedFixture(
     <div className="backoffice-layout">
       <BackofficeNavigation />
       <div className="backoffice-content">
-        <PosConsole locations={locations} />
+        <MeasuredConsole locations={locations} />
       </div>
     </div>
   ),

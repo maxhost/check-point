@@ -6,7 +6,7 @@ import {
   balanceFor,
   cartTotal,
   unitLabel,
-} from "../app/backoffice/counter/types";
+} from "../sales-contract";
 
 const perAmount: AccrualInput = {
   mode: "per_amount",

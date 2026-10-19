@@ -19,7 +19,35 @@ test.beforeAll(async () => {
 test.afterAll(async () => {
   await harness.close();
 });
+async function closeDetails(page: Page) {
+  const done = page.getByRole("button", { name: "Listo", exact: true });
+  if (await done.isVisible()) await done.click();
+}
+async function noteField(page: Page) {
+  const field = page.getByRole("textbox", {
+    name: "Nota del pedido",
+    exact: true,
+  });
+  if (!(await field.isVisible())) {
+    const edit = page.getByRole("button", {
+      name: /Añadir nota al pedido|Editar nota del pedido/,
+    });
+    if (await edit.isVisible()) await edit.click();
+    else {
+      await page
+        .getByRole("button", { name: "Opciones de la orden", exact: true })
+        .click();
+      await page.getByRole("button", { name: "Notas", exact: true }).click();
+    }
+  }
+  return field;
+}
 async function select(page: Page, label: string, value: string) {
+  await closeDetails(page);
+  if (label === "Local")
+    await page.getByRole("button", { name: /^Editar local:/ }).click();
+  if (label === "Tipo de venta")
+    await page.getByRole("button", { name: /^Editar mesa u orden:/ }).click();
   await page
     .getByRole("button", { name: new RegExp(label + "$"), exact: false })
     .click();
@@ -178,8 +206,12 @@ test("cuatro tipos, mesa real, local y guardar canónico sin GET extra", async (
   await start(page, "?tables");
   await select(page, "Tipo de venta", "Mesa");
   await page.getByRole("button", { name: "Mesa 1 · Libre" }).click();
+  await closeDetails(page);
   await page
-    .getByRole("button", { name: "Confirmar pedido", exact: true })
+    .getByRole("button", {
+      name: /Confirmar orden|Guardar cambios/,
+      exact: true,
+    })
     .click();
   await expect(page.getByRole("status", { name: "Guardado" })).toContainText(
     "table1",
@@ -188,8 +220,12 @@ test("cuatro tipos, mesa real, local y guardar canónico sin GET extra", async (
   await page
     .getByRole("textbox", { name: "Nombre o referencia" })
     .fill("Retiro Ana");
+  await closeDetails(page);
   await page
-    .getByRole("button", { name: "Confirmar pedido", exact: true })
+    .getByRole("button", {
+      name: /Confirmar orden|Guardar cambios/,
+      exact: true,
+    })
     .click();
   await expect(page.getByRole("status", { name: "Guardado" })).toContainText(
     "Retiro Ana",
@@ -198,8 +234,12 @@ test("cuatro tipos, mesa real, local y guardar canónico sin GET extra", async (
   await page
     .getByRole("textbox", { name: "Nombre o referencia" })
     .fill("Delivery Luis");
+  await closeDetails(page);
   await page
-    .getByRole("button", { name: "Confirmar pedido", exact: true })
+    .getByRole("button", {
+      name: /Confirmar orden|Guardar cambios/,
+      exact: true,
+    })
     .click();
   await expect(page.getByRole("status", { name: "Guardado" })).toContainText(
     "Delivery Luis",
@@ -226,14 +266,12 @@ test("captura mass vacía, cero/null, nota, vistas y Mostrador interno", async (
   await page.getByRole("button", { name: "Confirmar cantidad" }).click();
   await page.getByRole("button", { name: "Añadir Agua", exact: true }).click();
   await page.getByRole("button", { name: "Orden (2)", exact: true }).click();
-  await page
-    .getByRole("textbox", { name: "Nota del pedido" })
-    .fill("Sin azúcar");
+  await (await noteField(page)).fill("Sin azúcar");
+  await closeDetails(page);
   await page.getByRole("button", { name: "Catálogo", exact: true }).click();
   await page.getByRole("button", { name: "Orden (2)", exact: true }).click();
-  await expect(
-    page.getByRole("textbox", { name: "Nota del pedido" }),
-  ).toHaveValue("Sin azúcar");
+  await expect(await noteField(page)).toHaveValue("Sin azúcar");
+  await closeDetails(page);
   await page
     .getByRole("button", { name: "Continuar al cobro", exact: true })
     .click();
@@ -245,6 +283,7 @@ test("captura mass vacía, cero/null, nota, vistas y Mostrador interno", async (
     quantity: "0.5",
     quantityUnit: "lb",
   });
+  await closeDetails(page);
   await page.getByRole("button", { name: "Salir", exact: true }).click();
   await expect(page.getByText("Editor cerrado")).toBeVisible();
 });
@@ -254,6 +293,7 @@ test("recovery misma clave/cuerpo incluso remount; cerrado no prepara cobro", as
   const requests = await mock(page, "lost");
   await start(page);
   await page.getByRole("button", { name: "Añadir Café", exact: true }).click();
+  await closeDetails(page);
   await page
     .getByRole("button", { name: "Continuar al cobro", exact: true })
     .click();
@@ -276,29 +316,37 @@ test("version conflict revisión explícita conserva nota y snapshots", async ({
 }) => {
   const requests = await mock(page, "version");
   await start(page, "?existing");
+  await (await noteField(page)).fill("Mi borrador");
+  await closeDetails(page);
   await page
-    .getByRole("textbox", { name: "Nota del pedido" })
-    .fill("Mi borrador");
-  await page
-    .getByRole("button", { name: "Confirmar pedido", exact: true })
+    .getByRole("button", {
+      name: /Confirmar orden|Guardar cambios/,
+      exact: true,
+    })
     .click();
   await expect(
     page.getByText("Nota de otra persona", { exact: true }),
   ).toBeVisible();
-  await expect(
-    page.getByRole("textbox", { name: "Nota del pedido" }),
-  ).toHaveValue("Mi borrador");
+  await expect(await noteField(page)).toHaveValue("Mi borrador");
+  await closeDetails(page);
   expect(requests).toHaveLength(1);
   await expect(
-    page.getByRole("button", { name: "Confirmar pedido", exact: true }),
+    page.getByRole("button", {
+      name: /Confirmar orden|Guardar cambios/,
+      exact: true,
+    }),
   ).toBeDisabled();
   await page
     .getByRole("button", {
       name: "He revisado la orden actual; conservar mi borrador",
     })
     .click();
+  await closeDetails(page);
   await page
-    .getByRole("button", { name: "Confirmar pedido", exact: true })
+    .getByRole("button", {
+      name: /Confirmar orden|Guardar cambios/,
+      exact: true,
+    })
     .click();
   await expect.poll(() => requests.length).toBe(2);
   expect((requests[1].body as PosUpdateV2).version).toBe(2);
@@ -310,6 +358,7 @@ test("catalog conflict requiere revisión antes de actualizar líneas nuevas", a
   const requests = await mock(page, "catalog");
   await start(page);
   await page.getByRole("button", { name: "Añadir Café", exact: true }).click();
+  await closeDetails(page);
   await page
     .getByRole("button", { name: "Continuar al cobro", exact: true })
     .click();
@@ -322,6 +371,7 @@ test("catalog conflict requiere revisión antes de actualizar líneas nuevas", a
       name: "He revisado los productos; actualizar las líneas nuevas",
     })
     .click();
+  await closeDetails(page);
   await page
     .getByRole("button", { name: "Continuar al cobro", exact: true })
     .click();
@@ -334,6 +384,7 @@ test("identidad cambia y respuesta tardía no produce callbacks", async ({
   await mock(page, "late");
   await start(page);
   await page.getByRole("button", { name: "Añadir Café", exact: true }).click();
+  await closeDetails(page);
   await page
     .getByRole("button", { name: "Continuar al cobro", exact: true })
     .click();
@@ -352,6 +403,7 @@ test("canónico recuperado cerrado se informa sin preparar", async ({
   await mock(page, "closed");
   await start(page);
   await page.getByRole("button", { name: "Añadir Café", exact: true }).click();
+  await closeDetails(page);
   await page
     .getByRole("button", { name: "Continuar al cobro", exact: true })
     .click();
@@ -362,37 +414,6 @@ test("canónico recuperado cerrado se informa sin preparar", async ({
     page.getByRole("status", { name: "Cobro preparado" }),
   ).toBeEmpty();
 });
-test("inspección agrupada 390/1280 y salida con descarte explícito", async ({
-  page,
-}) => {
-  await mock(page);
-  await start(page, "?existing");
-  await page
-    .getByRole("textbox", { name: "Nota del pedido" })
-    .fill(
-      "Nota larga con detalles del pedido para preparar y entregar con cuidado.",
-    );
-  for (const width of [390, 1280]) {
-    await page.setViewportSize({ width, height: 950 });
-    await page.screenshot({
-      path: `/private/tmp/checkpass-pos-0242/editor-${width}.png`,
-      fullPage: true,
-    });
-    expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= innerWidth,
-      ),
-    ).toBe(true);
-  }
-  await page.setViewportSize({ width: 1280, height: 950 });
-  await page.getByRole("button", { name: "Salir", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Seguir trabajando", exact: true })
-    .click();
-  await expect(
-    page.getByRole("textbox", { name: "Nota del pedido" }),
-  ).toHaveValue(/Nota larga/);
-});
 
 test("local requiere descarte explícito; buscar y frecuentes no añaden llamadas; snapshot anterior separado", async ({
   page,
@@ -402,15 +423,15 @@ test("local requiere descarte explícito; buscar y frecuentes no añaden llamada
   await page.getByRole("button", { name: "Añadir Café", exact: true }).click();
   await expect(
     page.getByRole("group", { name: "Café anterior, línea 1" }),
-  ).toContainText("USD 2 por unidad");
+  ).toContainText("$2,00 / unidad");
   await expect(
     page.getByRole("group", { name: "Café, línea 4" }),
-  ).toContainText("USD 3 por unidad");
-  await page.getByRole("textbox", { name: "Buscar productos" }).fill("Agua");
+  ).toContainText("$3,00 / unidad");
+  await page.getByRole("searchbox", { name: "Buscar productos" }).fill("Agua");
   await expect(
     page.getByRole("button", { name: "Añadir Agua", exact: true }),
   ).toBeVisible();
-  await page.getByRole("textbox", { name: "Buscar productos" }).fill("");
+  await page.getByRole("searchbox", { name: "Buscar productos" }).fill("");
   await select(page, "Categoría", "Frecuentes");
   await expect(
     page.getByRole("button", { name: "Añadir Agua", exact: true }),
@@ -435,6 +456,33 @@ test("local requiere descarte explícito; buscar y frecuentes no añaden llamada
   ).toBeVisible();
 });
 
+test("inspección agrupada 390/1280 y salida con descarte explícito", async ({
+  page,
+}) => {
+  await mock(page);
+  await start(page, "?existing");
+  await (
+    await noteField(page)
+  ).fill(
+    "Nota larga con detalles del pedido para preparar y entregar con cuidado.",
+  );
+  for (const width of [390, 1280]) {
+    await page.setViewportSize({ width, height: 950 });
+
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+  }
+  await page.setViewportSize({ width: 1280, height: 950 });
+  await closeDetails(page);
+  await page.getByRole("button", { name: "Salir", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Seguir trabajando", exact: true })
+    .click();
+  await expect(await noteField(page)).toHaveValue(/Nota larga/);
+});
 test("COP distribuye el total global en filas y no conserva importe para cantidad parcial", async ({
   page,
 }) => {
@@ -452,10 +500,7 @@ test("COP distribuye el total global en filas y no conserva importe para cantida
       await page
         .getByRole("button", { name: "Orden (2)", exact: true })
         .click();
-    await page.screenshot({
-      path: `/private/tmp/checkpass-pos-0242/editor-cop-${width}.png`,
-      fullPage: true,
-    });
+
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,

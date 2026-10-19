@@ -3,7 +3,6 @@ import { NumberDraftField } from "../number-draft-field";
 import {
   Alert,
   Button,
-  CheckboxField,
   ChoiceGroup,
   SelectField,
   TextField,
@@ -207,13 +206,6 @@ export function StepRewards({
         </>
       )}
       <section data-tour="loyalty-redemption-policy" className="loyalty-fields">
-        <h3>Configuración avanzada</h3>
-        <CheckboxField
-          label="Permitir canjes sin saldo suficiente"
-          isSelected={earn.allowInsufficient}
-          onChange={earn.setAllowInsufficient}
-          description={`Si está activo, tu mostrador puede entregar un premio aunque al cliente le falten ${vm.kind === "points" ? "puntos" : "sellos"}: se descuenta lo que tenga y su saldo queda en 0. Queda registrado como entrega sin saldo.`}
-        />
         {navigation}
       </section>
     </>

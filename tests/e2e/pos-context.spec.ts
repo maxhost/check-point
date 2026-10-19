@@ -22,7 +22,12 @@ async function setup(page: Page, loading = false) {
       json: path.endsWith("/orders")
         ? { open: [], closedToday: [] }
         : path.endsWith("/catalog")
-          ? { products: [], categories: [], bestSellingProductIds: [] }
+          ? {
+              products: [],
+              categories: [],
+              frequentProductIds: [],
+              salesMassUnits: [],
+            }
           : { printingEnabled: false, showBusinessName: true, showTable: true },
     });
   });
@@ -104,12 +109,16 @@ test("same scope update preserves a draft and makes no resource cascade", async 
   const requests = await setup(page);
   await page.getByRole("button", { name: "Nueva orden", exact: true }).click();
   const table = page.getByRole("textbox", {
-    name: "Nombre de mesa",
+    name: "Nombre o referencia",
     exact: true,
   });
+  await page.getByRole("button", { name: "Para retirar", exact: true }).click();
   await table.fill("Mi borrador");
   const count = requests.length;
-  await page.getByRole("button", { name: "Actualizar mismo ámbito" }).click();
+  // External context delivery may occur while the product dialog has focus.
+  await page
+    .getByRole("button", { name: "Actualizar mismo ámbito" })
+    .evaluate((button: HTMLButtonElement) => button.click());
   await expect(
     page.getByText("Contexto actualizado", { exact: true }),
   ).toBeVisible();
@@ -128,7 +137,12 @@ test("same user/business with another scope clears draft and ignores late A with
       json: path.endsWith("/orders")
         ? { open: [], closedToday: [] }
         : path.endsWith("/catalog")
-          ? { products: [], categories: [], bestSellingProductIds: [] }
+          ? {
+              products: [],
+              categories: [],
+              frequentProductIds: [],
+              salesMassUnits: [],
+            }
           : { printingEnabled: false, showBusinessName: true, showTable: true },
     });
   });
@@ -155,12 +169,15 @@ test("same user/business with another scope clears draft and ignores late A with
   await page.goto(harness.url);
   await expect.poll(() => !!finish).toBe(true);
   await page.getByRole("button", { name: "Nueva orden", exact: true }).click();
+  await page.getByRole("button", { name: "Para retirar", exact: true }).click();
   await page
-    .getByRole("textbox", { name: "Nombre de mesa", exact: true })
+    .getByRole("textbox", { name: "Nombre o referencia", exact: true })
     .fill("Borrador A");
-  await page.getByRole("button", { name: "Cambiar a B" }).click();
+  await page
+    .getByRole("button", { name: "Cambiar a B" })
+    .evaluate((button: HTMLButtonElement) => button.click());
   await expect(
-    page.getByRole("textbox", { name: "Nombre de mesa", exact: true }),
+    page.getByRole("textbox", { name: "Nombre o referencia", exact: true }),
   ).toHaveCount(0);
   await finish();
   await expect(

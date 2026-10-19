@@ -7,7 +7,7 @@ import {
   PanelRequestError,
 } from "../../../app/backoffice/panel-request";
 import type { BackofficeRequestOptions } from "../../../app/backoffice/backoffice-scope-request";
-import type { CounterProduct } from "../../../app/backoffice/counter/types";
+import type { CounterProduct } from "../../../sales-contract";
 export type PosPaymentMethod = {
   id: string;
   name: string;

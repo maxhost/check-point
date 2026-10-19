@@ -1,5 +1,5 @@
 "use client";
-import { useSyncExternalStore } from "react";
+import { useId, useState, useSyncExternalStore } from "react";
 import { Alert, Button, SelectField, Text } from "../../../ui";
 import type { MeasuredPaymentSession } from "./measured-payment-session";
 export function MeasuredCoupon({
@@ -9,6 +9,8 @@ export function MeasuredCoupon({
   session: MeasuredPaymentSession;
   compact?: boolean;
 }) {
+  const [showRule, setShowRule] = useState(false);
+  const ruleId = useId();
   const state = useSyncExternalStore(
     session.subscribe,
     session.getSnapshot,
@@ -34,7 +36,28 @@ export function MeasuredCoupon({
   return (
     <div className="grid gap-3">
       {compact && verdict.valid ? (
-        <Text variant="label">Cupón: {coupon.label}</Text>
+        <>
+          <Text variant="label">Cupón: {coupon.label}</Text>
+          {state.review && coupon.rule && (
+            <>
+              {coupon.rule.length > 160 && (
+                <Button
+                  variant="quiet"
+                  aria-expanded={showRule}
+                  aria-controls={ruleId}
+                  onPress={() => setShowRule(!showRule)}
+                >
+                  {showRule
+                    ? "Ocultar condiciones del cupón"
+                    : "Ver condiciones del cupón"}
+                </Button>
+              )}
+              {(coupon.rule.length <= 160 || showRule) && (
+                <Text id={ruleId}>{coupon.rule}</Text>
+              )}
+            </>
+          )}
+        </>
       ) : (
         <Alert kind={verdict.valid ? "success" : "error"} title={coupon.label}>
           {!compact && (
@@ -62,7 +85,25 @@ export function MeasuredCoupon({
           {coupon.extraUnits !== null && (
             <Text>Extras: {coupon.extraUnits}</Text>
           )}
-          {!compact && coupon.rule && <Text>{coupon.rule}</Text>}
+          {(!compact || state.review) && coupon.rule && (
+            <>
+              {coupon.rule.length > 160 && (
+                <Button
+                  variant="quiet"
+                  aria-expanded={showRule}
+                  aria-controls={ruleId}
+                  onPress={() => setShowRule(!showRule)}
+                >
+                  {showRule
+                    ? "Ocultar condiciones del cupón"
+                    : "Ver condiciones del cupón"}
+                </Button>
+              )}
+              {(coupon.rule.length <= 160 || showRule) && (
+                <Text id={ruleId}>{coupon.rule}</Text>
+              )}
+            </>
+          )}
           {!verdict.valid && <Text>{verdict.message}</Text>}
         </Alert>
       )}

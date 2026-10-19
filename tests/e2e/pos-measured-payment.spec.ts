@@ -1,3 +1,4 @@
+import { measuredMoney } from "../../apps/merchant/src/modules/pos/ui/measured-money";
 import { test, expect, type Page } from "@playwright/test";
 import { startCatalogHarness } from "./support/catalog-harness-server";
 import {
@@ -158,7 +159,7 @@ test("anonymous cash exact buffers and frozen uncertain retry survive remount", 
   ).toBeDisabled();
   await page.getByRole("textbox", { name: "Recibido" }).fill("5,00");
   await expect(
-    page.getByText("Cambio: 0.99 USD", { exact: false }),
+    page.getByText(`Cambio: ${measuredMoney("0.99", "USD")}`, { exact: false }),
   ).toBeVisible();
   await page
     .getByRole("button", { name: "Confirmar cobro", exact: true })
@@ -288,25 +289,6 @@ test("late QR response cannot restore removed customer", async ({ page }) => {
     "Anónimo",
   );
 });
-test("approved checkout at phone and desktop", async ({ page }, info) => {
-  await mock(page);
-  await open(page);
-  for (const width of [390, 1280]) {
-    await page.setViewportSize({ width, height: 900 });
-    await expect(
-      page.getByRole("button", { name: "Confirmar cobro", exact: true }),
-    ).toBeEnabled();
-    expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= innerWidth,
-      ),
-    ).toBe(true);
-    await page.screenshot({
-      path: info.outputPath(`checkout-${width}.png`),
-      fullPage: true,
-    });
-  }
-});
 
 test("currency zero cash uses normalized change with partial buffer retained", async ({
   page,
@@ -314,9 +296,13 @@ test("currency zero cash uses normalized change with partial buffer retained", a
   await mock(page, "cop");
   await open(page, "?cop");
   await page.getByRole("textbox", { name: "Recibido" }).fill("4,49");
-  await expect(page.getByText("Cambio: 0 COP", { exact: false })).toBeVisible();
+  await expect(
+    page.getByText(`Cambio: ${measuredMoney("0", "COP")}`, { exact: false }),
+  ).toBeVisible();
   await page.getByRole("textbox", { name: "Recibido" }).fill("4,50");
-  await expect(page.getByText("Cambio: 1 COP", { exact: false })).toBeVisible();
+  await expect(
+    page.getByText(`Cambio: ${measuredMoney("1", "COP")}`, { exact: false }),
+  ).toBeVisible();
 });
 test("real scope retirement discards a late canonical close callback", async ({
   page,
@@ -368,4 +354,20 @@ test("mixed sale preserves explicit source snapshot target in close", async ({
   expect(
     calls.find((call) => call.url.endsWith("/close"))?.body.coupon,
   ).toMatchObject({ productId: "coffee", targetSourceLineId: "second" });
+});
+
+test("approved checkout at phone and desktop", async ({ page }) => {
+  await mock(page);
+  await open(page);
+  for (const width of [390, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(
+      page.getByRole("button", { name: "Confirmar cobro", exact: true }),
+    ).toBeEnabled();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+  }
 });

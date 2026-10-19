@@ -10,7 +10,7 @@ import {
   Xmark,
 } from "iconoir-react";
 import { useEffect, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Button } from "../../../ui";
 import { useBackofficeContext } from "../backoffice-context";
 import {
@@ -32,7 +32,6 @@ type SendState = "idle" | "sending" | "sent" | "error";
 
 export function OnboardingChecklist() {
   const router = useRouter();
-  const isCounter = usePathname() === "/backoffice/counter";
   const { state, acquireChecklist, refreshChecklist, verifyChecklistEmail } =
     useBackofficeContext();
   const items = state.checklist.data?.items ?? null;
@@ -76,8 +75,8 @@ export function OnboardingChecklist() {
   }, []);
 
   useEffect(() => {
-    if (!isCounter) return acquireChecklist();
-  }, [isCounter, acquireChecklist]);
+    return acquireChecklist();
+  }, [acquireChecklist]);
 
   async function sendVerification() {
     setSendState("sending");
@@ -85,8 +84,6 @@ export function OnboardingChecklist() {
     if (result === "obsolete") return;
     setSendState(result === "verified" ? "idle" : result);
   }
-
-  if (isCounter) return null;
 
   if (loadFailed)
     return (
