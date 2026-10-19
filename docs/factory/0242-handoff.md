@@ -2,6 +2,8 @@
 
 ## Checkpoint vigente: anulación interna aceptada; cobro cerrando entrega y HTTP void con autor nuevo
 
+ACTUAL punto1: ticketfixbc59/QA2910857sobred0bcd4e8 ACEPTADOS; reprooriginalPASS1/1,FAIL7bbbpreservado,identidad/CASmain2bd56ab2bd173c34274b432da53c4c269fec3654 yWTretiradofactorylimpio0procesos/main. Conexión ticket/impresión/anulación DESPACHADA a NUEVOconsole_actions_cp2d_impl en pos-console-actions-0242 base2bd56ab2,factorySIETEpathsde0242-cp2d-console-actions/doc,SINDB/env;proponeantescódigo, luego gatescableado/QAnuevo. Punto1todavíano cerrado. QA WTlimpio2910857accepteddisponible. SinpushPROD;detallesgptvigente.
+
 Último: fixticketbc59c03e (producto8136b5a0) deliveredfactorylimpio15/15browser/tipos/gatesPASS;chooseerrornofallback,print/retrygestoseparado. MISMOQAreactivado CONGELADOd0bcd4e8, reejecutareprooriginalexpected0conFAIL7bbbpreservado. TodavíaNOaceptado/cableadoconsola. Fichaconsolaacciones eb65fd19 lista paraautorNUEVOtrasaceptación;sinWT/reserva/despacho. Main707bcdb4,sinpushPROD.
 
 Punto1 sigue abierto: QA ticket FAIL7bbb5697 en73bda997, choose unsupported abría window.print sin gesto print separado. Autor ce76 rechazadofactory→reserved y MISMOautor reactivadofix; QAFAILentregado/rechazado→reserved para revalidarMISMO bloque trasfreeze. Falla reproducible externa /private/tmp/measured-ticket-qa, informe versionado. No aceptar/conectar aún ticket. Ficha0242-cp2d-console-actions preparada paraautorNUEVO despuésaceptación, conecta impresión/ticket/anulación local;sinWT/reserva/despacho. Main707bcdb4, sinpushPROD. Detalles gpt vigente.
