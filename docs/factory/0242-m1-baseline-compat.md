@@ -329,3 +329,25 @@ R1/GRID/preload ni inventar código producto. JSonly permite reutilizar tscFINAL
 unit/lint/diff/formato+receta nueva/SHAclean y QA focal ANTES nuevoNS/COPY/fixtures.
 No instalar/build/DB/browser/OTP mientras se implementa. No cambiar datos ni reusar
 identidades del intento fallido, no resetear bucketOTP ni ampliar scope sin contrato.
+
+## Recovery cleanup083: array SQL parametrizado
+
+CleanupDIRECTO24034 falló1test/SQL42846 antes del primer ownershipallocation y
+antes UPDATE/DELETE; logff088df5012a4be01ec66f472fea1ea29bb5b527b4bbe943568e8629fe99af27.
+Queryguardada ANY(($1,...,$9)::text[]) muestra que interpolar arrayJS produce un
+record SQL, no text[]. No se produjo cleanup0, fixture083 permanece reservado.
+
+MISMOautor4paths está autorizado a corregir únicamente ownedRows usando
+ANY(ARRAY[sql.join(ids.map(id=>sql`${id}`),sql`, `)]::text[]) parametrizado;
+conservar exactamente roots/closure/tablas/passes/ownership/SELECT0 y helpers
+de borrado. No quitar guard, no SQLraw con IDs literales ni interpolar secretos.
+Documentar fallo y nuevoSHAfixture; lint/formato/diff/tscFINAL trasTS. Prueba
+compilación SQL real de Drizzle si viable sinDB, sin otra suite por ceremonia.
+QA focal previo a nueva invocación recovery. Esta corrección precede policy3b67.
+
+Después QA+rootGO, una nueva invocación DIRECTA existingNeonwrapper cleanup podrá
+usar fixtureCORREGIDO en NS083 antiguo, declarando ambos SHAs (runtime083fallido y
+fixturecleanupnuevo). Sólo recuperación/teardown de IDspropios registrados; no es
+reintento de venta ni PASS runtime, no cambiar compiled/auth/run-result originales.
+Logs/proceso nuevoswx600, conservar failureff08, ownershipprecleanup yselect0 reales.
+DBCARDexclusiva hasta auditar0; si errorSTOP sin barrido ni retry automático.
