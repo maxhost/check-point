@@ -102,7 +102,7 @@ POST orders v2:
 }
 ```
 
-→201 PosOrderV2. Reintento idéntico devuelve mismo DTO/id, sin duplicar abierta; misma createRequestId distinto payload→409 create_request_reused. Scope original y body se congelan antes de await. Resultado incierto se recupera con la misma intención, sin generar otra clave. Se requiere unique business+createRequestId y huella canónica; no convertir una clave enviada por otro tenant en lookup público.
+→201 PosOrderV2. Reintento idéntico devuelve mismo DTO/id, sin duplicar abierta; misma createRequestId distinto payload→409 create_request_reused. La recuperación identifica el mismo recurso: si otro comando ya lo editó, cerró o anuló, devuelve su DTO canónico actual; sin comandos posteriores conserva el mismo DTO. No recaptura catálogo/local/mesa ni genera otra etiqueta al recuperar una intención existente. Scope original y body se congelan antes de await. Resultado incierto se recupera con la misma intención, sin generar otra clave. Se requiere unique business+createRequestId y huella canónica; no convertir una clave enviada por otro tenant en lookup público.
 
 Mesa: tableId real determina local/nombre; sin módulo Mesas, orderLabel libre según flujo actual. pickup/delivery: orderLabel1–60 obligatorio, tableId null. counter: etiqueta automática estable, sin mesa. legacy solo lectura/migración. items=[] permitido para abrir orden; cierre exige líneas.
 
