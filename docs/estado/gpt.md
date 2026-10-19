@@ -5,6 +5,8 @@
 
 ## ESTADO — 0242: PRIMER AJUSTE UI EN PREVIEW; PENDIENTE PRUEBA DEL OWNER (2026-10-18)
 
+ÚLTIMA CORRECCIÓN DIRECTA: owner pide también mobile Abrir(>)→editoractual, revocando excepción anterior de mantener detallemobile. Eliminado gateviewport al abrir ordenabierta; editor existente inicia pestañaOrden (nuevo iniciaCatálogo). Cobrar desde editor conserva editor subyacente también mobile y cancelar vuelve ahí; terminales siguen detalle/ticket. AccionesX/Sheet/navbaroculta son las ya existentes de editor. Typecheck/lint/formato/UIguard contra7ae3dbeb/diff-check PASS. Smoke /private/tmp/checkpass-open-order-0242/mobile.ts PASSdesktop/móvil: Abrir sinwrite, Ordenaria-pressedtrue/Ventaactual/Cobrar, sinEditar pedido, guardar al editar, cancelar cobro conserva editor,0pageerrors. APIs simuladas/sin DB/capturas/agentes/push/PROD,3201 intacto; ownerprueba.
+
 ÚLTIMO AJUSTE L0: texto de nota en Venta actual mobile lleva Notes Iconoir y prefijo «Notas:», conserva texto completo/saltos. Icono/prefijo ocultosdesktop. Solo presentación measured-pos-editor; formato/lint/UIguard contra74d9e3e1/diff-check PASS. Sin nuevos tests/browser/capturas/DB/agentes/push/PROD; ownerprueba3201.
 
 ÚLTIMO AJUSTE L0: Venta actual mobile oculta bloqueIdentificarcliente + explicación cuando aún nohaycliente, sin reservar hueco; identificación vía SheetEscanearQR/portal sigue montada. Cliente yaidentificado y beneficio permanecen visibles; desktop conserva bloque inicial. Solo wrapperresponsive measured-editor-customer; formato/lint/UIguard contra94b7a474/diff-check PASS. Sin browser/capturas/tests nuevos/DB/agentes/push/PROD, ownerprueba3201.

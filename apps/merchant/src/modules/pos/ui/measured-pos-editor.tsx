@@ -115,7 +115,9 @@ export function MeasuredPosEditor({
   const [detailsEditor, setDetailsEditor] = useState<
     "order" | "location" | null
   >(null);
-  const [view, setView] = useState<"catalog" | "order">("catalog");
+  const [view, setView] = useState<"catalog" | "order">(() =>
+    session.order ? "order" : "catalog",
+  );
   const [exitOpen, setExitOpen] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);

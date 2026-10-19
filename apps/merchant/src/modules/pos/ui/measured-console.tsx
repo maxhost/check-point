@@ -368,10 +368,7 @@ export function MeasuredConsoleContent({
       );
       if (!active.current || token !== navigation.current) return;
       setPayment(payments.current.get(id) ?? null);
-      if (
-        result.status === "open" &&
-        window.matchMedia("(min-width: 768px)").matches
-      ) {
+      if (result.status === "open") {
         selectEditor(result);
       } else {
         setOrder(result);
@@ -432,11 +429,7 @@ export function MeasuredConsoleContent({
       customerSelections.current.delete(value.id);
     setPayment(current);
     setOrder(value);
-    if (!(
-      view === "edit" &&
-      editor?.order?.id === value.id &&
-      window.matchMedia("(min-width: 768px)").matches
-    )) {
+    if (!(view === "edit" && editor?.order?.id === value.id)) {
       setView("detail");
     }
     void current.prepare();
