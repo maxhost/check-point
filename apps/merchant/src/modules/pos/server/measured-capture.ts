@@ -11,7 +11,7 @@ import {
 } from "@mi-pasaporte/domain/measures";
 import { CounterError } from "@mi-pasaporte/domain/server/counter/core";
 import { availableAtCounter } from "../../../server/counter/catalog-visibility";
-import type { PosNewLineV2 } from "../contracts";
+import type { PosNewLineV2, PosCatalogProductV2 } from "../contracts";
 import { PosError } from "./errors";
 
 /** Caller holds lockBusiness before entering; catalog writers take that same mutex.
@@ -34,6 +34,9 @@ export async function captureMeasuredLines(
         .select({
           id: products.id,
           name: products.name,
+          categoryId: products.categoryId,
+          imageObjectKey: products.imageObjectKey,
+          imageVersion: products.imageVersion,
           unitPrice: products.unitPrice,
           soldByWeight: products.soldByWeight,
           pricingUnit: products.pricingUnit,
@@ -69,14 +72,25 @@ export async function captureMeasuredLines(
           "catalog_changed",
           "El producto cambió. Revisa la orden.",
           {
-            product: {
-              id: product.id,
-              name: product.name,
-              unitPrice,
-              soldByWeight: product.soldByWeight,
-              pricingUnit: product.pricingUnit,
-              catalogRevision: String(product.revision),
-            },
+            products: [
+              {
+                id: product.id,
+                categoryId: product.categoryId,
+                imagePath: product.imageObjectKey
+                  ? `/api/public/catalog/${product.id}/image?v=${product.imageVersion}`
+                  : null,
+                name: product.name,
+                unitPrice,
+                soldByWeight: product.soldByWeight,
+                pricingUnit: parseMeasure({
+                  kind: product.soldByWeight ? "mass" : "unit",
+                  quantityUnit: product.pricingUnit,
+                  priceUnit: product.pricingUnit,
+                  conversionVersion: "mass-si-1",
+                }).priceUnit,
+                catalogRevision: String(product.revision),
+              } satisfies PosCatalogProductV2,
+            ],
           },
         );
       const measure = parseMeasure({
