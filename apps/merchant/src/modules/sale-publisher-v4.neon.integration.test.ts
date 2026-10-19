@@ -12,6 +12,7 @@ import {
   moduleEventDeliveries,
   paymentMethods,
   posOrderItems,
+  recipeSaleResolutions,
 } from "@mi-pasaporte/db/schema";
 import {
   buildFinancialAmountsFromSnapshots,
@@ -27,24 +28,25 @@ import {
   newItem,
   callModuleRoute,
   type ModuleWorld,
-} from "../../modules-integration-support";
-import { createRecipe } from "../../recipes/server/library";
-import { saveComposition } from "../../recipes/server/compositions";
-import { initializePaymentMethods } from "../../../server/business/payment-catalog";
+} from "./modules-integration-support";
+import { createRecipe } from "./recipes/server/library";
+import { saveComposition } from "./recipes/server/compositions";
+import { initializePaymentMethods } from "../server/business/payment-catalog";
 import {
   captureSaleResources,
   publishSaleClosed,
   setResourceVersion,
-} from "../../../server/module-events/publish";
+} from "../server/module-events/publish";
 import {
   publishMeasuredSaleClosed,
   type MeasuredSaleClosedInput,
-} from "../../../server/module-events/publish-measured";
-import { decodeMeasuredSaleClosedEvent } from "../../../server/module-events/decode";
+} from "../server/module-events/publish-measured";
+import { decodeMeasuredSaleClosedEvent } from "../server/module-events/decode";
 
 let world: ModuleWorld;
 let productId: string;
 let method: typeof paymentMethods.$inferSelect;
+let resolutionId: string;
 let revisionId: string;
 const eventIds: string[] = [];
 
@@ -75,6 +77,7 @@ beforeAll(async () => {
     recipes: [{ recipeId: recipe.id, quantity: "1.000" }],
     expectedRevisionId: null,
   });
+  resolutionId = composition.resolutionId!;
   revisionId = composition.revisionId!;
 }, 120000);
 
@@ -251,10 +254,19 @@ describe.skipIf(!modulesIntegrationEnabled)(
       expect(decodeMeasuredSaleClosedEvent(result.payload, 4)).toEqual(
         result.payload,
       );
+      const [resolution] = await getDb()
+        .select()
+        .from(recipeSaleResolutions)
+        .where(eq(recipeSaleResolutions.id, resolutionId));
+      expect(resolution).toMatchObject({
+        businessId: world.businessId,
+        productId,
+        compositionRevisionId: revisionId,
+      });
       expect(result.payload.lines[0].resourceVersions).toContainEqual({
         providerId: "recipes",
         slot: "composition",
-        versionId: revisionId,
+        versionId: resolutionId,
       });
       expect(result.payload.lines[0]).not.toHaveProperty("unitPrice");
       expect(result.payload.lines[0].money).toEqual(
@@ -303,7 +315,7 @@ describe.skipIf(!modulesIntegrationEnabled)(
             resourceId: productId,
             providerId: "recipes",
             slot: "composition",
-            versionId: revisionId,
+            versionId: resolutionId,
           }),
         );
       }

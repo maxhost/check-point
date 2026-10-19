@@ -103,6 +103,40 @@ describe("opt-in measured sale payload", () => {
       );
     },
   );
+  it.each([
+    (v: MeasuredSaleClosedInput) => {
+      v.lines[0].quantity = "250.000000002";
+    },
+    (v: MeasuredSaleClosedInput) => {
+      v.lines[0].measure = { ...mass, quantityUnit: "kg" };
+    },
+  ])(
+    "rejects changed physical originals despite frozen settled money %#",
+    (mutate) => {
+      const args = input("250.000000001", "0.000000001", mass);
+      mutate(args);
+      expect(() => buildMeasuredSaleClosedPayload(args)).toThrow(
+        "original mismatch",
+      );
+    },
+  );
+  it("requires unique positions even when line IDs and financial money remain valid", () => {
+    const args = input();
+    args.lines = [
+      ...args.lines,
+      { ...args.lines[0], sourceLineId: randomUUID() },
+    ];
+    args.commissionByLine = Object.fromEntries(
+      args.lines.map((line) => [line.sourceLineId, null]),
+    );
+    args.settlement = buildFinancialSettlementFromSnapshots({
+      currencyCode: "USD",
+      lines: args.lines,
+      discount: null,
+      payments: [{ ...args.settlement.payments[0], amount: "2" }],
+    });
+    expect(() => buildMeasuredSaleClosedPayload(args)).toThrow("sources");
+  });
   it("does not compare only aggregate originals across lines", () => {
     const args = input();
     const second = {
