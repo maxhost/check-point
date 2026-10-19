@@ -6,6 +6,7 @@ import {
   panelRequest,
   PanelRequestError,
 } from "../../../app/backoffice/panel-request";
+import type { BackofficeRequestOptions } from "../../../app/backoffice/backoffice-scope-request";
 import type { CounterProduct } from "../../../app/backoffice/counter/types";
 export type PosPaymentMethod = {
   id: string;
@@ -90,6 +91,7 @@ export class PosError extends Error {
     public order?: PosOrder,
     public openCount?: number,
     public status?: number,
+    public payload: Record<string, unknown> = {},
   ) {
     super(message);
   }
@@ -98,7 +100,7 @@ export async function posRequest<T>(
   url: string,
   method = "GET",
   body?: unknown,
-  options?: { scopeKey?: string },
+  options?: BackofficeRequestOptions,
 ): Promise<T> {
   try {
     return await panelRequest<T>(url, method, body, options);
@@ -110,6 +112,7 @@ export async function posRequest<T>(
         cause.payload.order as PosOrder | undefined,
         cause.payload.openCount as number | undefined,
         cause.status,
+        cause.payload,
       );
     throw cause;
   }
