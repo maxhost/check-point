@@ -58,6 +58,7 @@ export class MeasuredOrderCommands {
     intent: MeasuredOrderIntent;
     request: PosRequest;
     epoch: number;
+    uncertainCreate: boolean;
   };
   private pending?: Promise<MeasuredOrderCommandState>;
   private readonly canonical: MeasuredOrderCache;
@@ -115,7 +116,12 @@ export class MeasuredOrderCommands {
     const intent = frozenCopy({ method, url, body });
     const request = this.client.capture();
     this.cache.beginWrite(id);
-    this.attempt = { intent, request, epoch: this.cache.epoch };
+    this.attempt = {
+      intent,
+      request,
+      epoch: this.cache.epoch,
+      uncertainCreate: false,
+    };
     return this.send(this.attempt);
   }
   retry(): Promise<MeasuredOrderCommandState> {
@@ -175,6 +181,8 @@ export class MeasuredOrderCommands {
           )
         )
           throw new Error("invalid_pos_order_response");
+        // The resource is known even if the cache subsequently requires review.
+        attempt.uncertainCreate = false;
         const canonical = this.canonical.accept(order);
         this.publish({
           status: "confirmed",
@@ -202,12 +210,17 @@ export class MeasuredOrderCommands {
             error.status >= 400 &&
             error.status < 500 &&
             error.status !== 408;
+          // A rejected recovery says nothing about the earlier POST's commit.
+          // Only a usable canonical DTO or identity withdrawal resolves that risk.
+          if (attempt.intent.method === "POST" && !definitive)
+            attempt.uncertainCreate = true;
           this.publish({
-            status: definitive
-              ? error.status === 409
-                ? "conflict"
-                : "rejected"
-              : "uncertain",
+            status:
+              definitive && !attempt.uncertainCreate
+                ? error.status === 409
+                  ? "conflict"
+                  : "rejected"
+                : "uncertain",
             intent: attempt.intent,
             error,
           });

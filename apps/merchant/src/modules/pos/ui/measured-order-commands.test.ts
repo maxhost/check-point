@@ -70,6 +70,133 @@ function deferred<T>() {
 }
 afterEach(() => vi.unstubAllGlobals());
 
+it.each([403, 422, 409])(
+  "keeps a lost POST uncertain after recovery HTTP %s until a canonical resource arrives",
+  async (status) => {
+    const payload = {
+      code: status === 409 ? "create_request_reused" : "recovery_rejected",
+      fields: { items: "review" },
+      products: [{ id: "p", extra: { preserved: true } }],
+    };
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockRejectedValueOnce(new TypeError("lost"))
+      .mockResolvedValueOnce(Response.json(payload, { status }))
+      .mockResolvedValueOnce(
+        Response.json(order({ status: "closed", version: 3 })),
+      );
+    vi.stubGlobal("fetch", fetcher);
+    const { commands, uuid, context } = setup();
+    const input = structuredClone(draft);
+    expect((await commands.create(input)).status).toBe("uncertain");
+    const original = commands.getSnapshot();
+    const result = await commands.retry();
+    expect(result.status).toBe("uncertain");
+    if (result.status === "uncertain") {
+      expect((result.error as PosError).status).toBe(status);
+      expect((result.error as PosError).payload).toEqual(payload);
+      if ("intent" in original) expect(result.intent).toBe(original.intent);
+    }
+    input.items[0].quantity = "500";
+    context.scopeKey = "b".repeat(64);
+    await commands.create(input);
+    await commands.update("other", {
+      ...input,
+      orderLabel: "Pedido",
+      version: 1,
+    });
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(uuid).toHaveBeenCalledTimes(1);
+    const recovered = await commands.retry();
+    expect(recovered.status).toBe("confirmed");
+    if (recovered.status === "confirmed")
+      expect(recovered.order).toEqual(order({ status: "closed", version: 3 }));
+    expect(fetcher.mock.calls.map(([, options]) => options)).toEqual([
+      fetcher.mock.calls[0][1],
+      fetcher.mock.calls[0][1],
+      fetcher.mock.calls[0][1],
+    ]);
+    expect(fetcher).toHaveBeenCalledTimes(3);
+    expect(uuid).toHaveBeenCalledTimes(1);
+  },
+);
+
+it.each([403, 422, 409])(
+  "allows a deliberate new create after first HTTP %s without prior ambiguity",
+  async (status) => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(Response.json({ code: "rejected" }, { status }))
+      .mockResolvedValueOnce(Response.json(order()));
+    vi.stubGlobal("fetch", fetcher);
+    const { commands, uuid } = setup();
+    uuid.mockReturnValueOnce("first").mockReturnValueOnce("second");
+    expect((await commands.create(draft)).status).toBe(
+      status === 409 ? "conflict" : "rejected",
+    );
+    await commands.retry();
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect((await commands.create(draft)).status).toBe("confirmed");
+    expect(uuid).toHaveBeenCalledTimes(2);
+  },
+);
+
+it.each(["identity", "401", "context_changed"])(
+  "retires unresolved recovery after %s without sending under another identity",
+  async (kind) => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockRejectedValueOnce(new TypeError("lost"))
+      .mockResolvedValueOnce(Response.json({ code: "denied" }, { status: 403 }))
+      .mockResolvedValueOnce(
+        Response.json(
+          {
+            code:
+              kind === "401" ? "unauthorized" : "backoffice_context_changed",
+          },
+          { status: kind === "401" ? 401 : 409 },
+        ),
+      );
+    vi.stubGlobal("fetch", fetcher);
+    const { commands, context, uuid } = setup();
+    await commands.create(draft);
+    await commands.retry();
+    if (kind === "identity") context.identity = "B";
+    expect((await commands.retry()).status).toBe("retired");
+    await commands.create(draft);
+    await commands.retry();
+    expect(fetcher).toHaveBeenCalledTimes(kind === "identity" ? 2 : 3);
+    expect(uuid).toHaveBeenCalledTimes(1);
+  },
+);
+
+it("resolves POST ambiguity on canonical DTO while retaining local cache review", async () => {
+  const fetcher = vi
+    .fn<typeof fetch>()
+    .mockRejectedValueOnce(new TypeError("lost"))
+    .mockResolvedValueOnce(Response.json(order({ version: 2 })))
+    .mockResolvedValueOnce(Response.json(order({ id: "another" })));
+  vi.stubGlobal("fetch", fetcher);
+  const { commands, cache, uuid } = setup();
+  await commands.create(draft);
+  const summary = { ...order({ version: 9 }), lineCount: 0, saleTotal: null };
+  cache.put(historyKey, { open: [summary], closedToday: [] });
+  const result = await commands.retry();
+  expect(result.status).toBe("conflict");
+  if (result.status === "conflict") {
+    expect((result.error as PosError).code).toBe("cache_revision_ahead");
+    expect((result.error as PosError).payload).toEqual({
+      receivedOrder: order({ version: 2 }),
+      summary,
+    });
+    expect((result.error as PosError).order).toBeUndefined();
+  }
+  await commands.retry();
+  expect(fetcher).toHaveBeenCalledTimes(2);
+  expect((await commands.create(draft)).status).toBe("confirmed");
+  expect(uuid).toHaveBeenCalledTimes(2);
+});
+
 describe("measured order commands through captured V2 transport", () => {
   it.each(["closed", "voided"] as const)(
     "recovers a lost create as current %s with exactly the frozen body/key/headers",
@@ -282,6 +409,9 @@ it("a lost PUT retries its frozen version and reports current full order conflic
       order({ version: 3 }),
     );
   expect(fetcher.mock.calls[0][1]).toEqual(fetcher.mock.calls[1][1]);
+  fetcher.mockResolvedValueOnce(Response.json(order({ version: 4 })));
+  expect((await commands.update("o", input)).status).toBe("confirmed");
+  expect(fetcher).toHaveBeenCalledTimes(3);
 });
 it.each(["scope", "retire"])(
   "captures before notifying pending subscribers; %s withdrawal sends nothing",
