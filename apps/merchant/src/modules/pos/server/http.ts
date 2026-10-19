@@ -60,3 +60,15 @@ export async function readPosBody(
   }
   return body as Record<string, unknown>;
 }
+
+/** Called inside the route handler, after dispatcher guard and scope validation. */
+export function posReadContract(request: Request): 1 | 2 {
+  const value = request.headers.get("X-Pos-Contract");
+  if (value === null || value === "1") return 1;
+  if (value === "2") return 2;
+  throw new CounterError(
+    409,
+    "pos_client_upgrade_required",
+    "Actualiza la aplicación para leer esta venta.",
+  );
+}

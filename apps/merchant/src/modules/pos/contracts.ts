@@ -114,6 +114,7 @@ export type PosCatalogProductV2 = Pick<
   | "imagePath"
 >;
 export type PosCatalogV2 = {
+  salesMassUnits: MassUnit[];
   products: PosCatalogProductV2[];
   categories: { id: string; name: string }[];
   frequentProductIds: string[];
