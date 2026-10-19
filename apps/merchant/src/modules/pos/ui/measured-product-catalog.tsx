@@ -59,7 +59,7 @@ export function MeasuredProductCatalog({
           )}
         </div>
       </div>
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid gap-2 @sm/catalog:grid-cols-2 @3xl/catalog:grid-cols-3">
         {products.map((product) => (
           <Button
             key={product.id}

@@ -401,7 +401,7 @@ export function MeasuredConsoleContent({
   const paymentState = payment?.getSnapshot();
   return (
     <>
-      <div className="mx-auto max-w-6xl px-4 pt-4 md:px-6">
+      <div className="w-full px-3 pt-3 md:px-4">
         <Text variant="small">Vista previa local del punto de venta.</Text>
       </div>
       {error && <Alert kind="error" title={error} />}
@@ -487,7 +487,7 @@ export function MeasuredConsoleContent({
           aria-label={
             view === "result" ? "Resultado de la venta" : "Detalle del pedido"
           }
-          className="mx-auto grid max-w-6xl gap-6 p-4 md:p-6"
+          className="grid w-full min-w-0 max-w-none gap-5 p-3 md:p-4"
         >
           <Heading level={1}>
             {view === "result" ? "Venta completada" : order.orderLabel}

@@ -274,7 +274,7 @@ export function MeasuredPosEditor({
     </div>
   );
   return (
-    <div className="mx-auto grid max-w-6xl gap-6 p-4 pb-36 md:p-6 md:pb-6">
+    <div className="grid w-full min-w-0 max-w-none gap-5 p-3 pb-36 md:p-4 md:pb-4">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 break-words">
           <Heading level={1}>
@@ -517,102 +517,99 @@ export function MeasuredPosEditor({
           Orden ({draft.lines.length})
         </Button>
       </div>
-      <div className="grid min-w-0 gap-6 md:grid-cols-2 xl:grid-cols-3">
-        <section
-          aria-label="Catálogo"
-          className={`${view === "catalog" ? "" : "hidden"} min-w-0 md:block xl:col-span-2`}
-        >
-          <div className="mb-4">
-            <Heading level={2}>Catálogo</Heading>
-          </div>
-          {!draft.locationId ? (
-            <Text>Elige un local para ver sus productos.</Text>
-          ) : session.catalogLoading ? (
-            <Text>Cargando catálogo…</Text>
-          ) : catalog ? (
-            <MeasuredProductCatalog
-              key={draft.locationId}
-              catalog={catalog}
-              currencyCode={context.currencyCode}
-              disabled={blocked}
-              onAdd={add}
-            />
-          ) : (
-            <Button
-              variant="secondary"
-              onPress={() => void session.loadCatalog()}
-            >
-              Reintentar catálogo
-            </Button>
-          )}
-        </section>
-        <section
-          aria-label="Orden"
-          className={`${view === "order" ? "" : "hidden"} min-w-0 md:block`}
-        >
-          <Card as="div" className="overflow-hidden rounded-2xl p-0! sm:p-0!">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5">
-              <Heading level={2}>Venta actual</Heading>
-              <Text
-                as="span"
-                variant="small"
-                className="rounded-sm border border-border px-2 py-1"
-              >
-                {session.order
-                  ? session.dirty
-                    ? "Cambios sin guardar"
-                    : "Guardado"
-                  : "Borrador"}
-              </Text>
+      <div className="@container min-w-0">
+        <div className="grid min-w-0 gap-4 @3xl:grid-cols-2 @5xl:grid-cols-3">
+          <section
+            aria-label="Catálogo"
+            className={`${view === "catalog" ? "" : "hidden"} @container/catalog min-w-0 md:block @5xl:col-span-2`}
+          >
+            <div className="mb-4">
+              <Heading level={2}>Catálogo</Heading>
             </div>
-            <MeasuredEditorCustomer
-              session={session}
-              onAccessError={onAccessError}
-            />
-            <div className="grid gap-4 p-5">
-              <MeasuredCart
-                lineAmounts={lineAmounts}
-                lines={draft.lines}
-                enabledUnits={units}
+            {!draft.locationId ? (
+              <Text>Elige un local para ver sus productos.</Text>
+            ) : session.catalogLoading ? (
+              <Text>Cargando catálogo…</Text>
+            ) : catalog ? (
+              <MeasuredProductCatalog
+                key={draft.locationId}
+                catalog={catalog}
                 currencyCode={context.currencyCode}
-                busy={blocked}
-                onChange={(lines) => session.change({ lines })}
+                disabled={blocked}
+                onAdd={add}
               />
-              <div className="grid gap-2">
-                <Button
-                  variant="quiet"
-                  className="justify-start! px-0!"
-                  isDisabled={blocked}
-                  onPress={() => setNoteOpen(true)}
+            ) : (
+              <Button
+                variant="secondary"
+                onPress={() => void session.loadCatalog()}
+              >
+                Reintentar catálogo
+              </Button>
+            )}
+          </section>
+          <section
+            aria-label="Orden"
+            className={`${view === "order" ? "" : "hidden"} min-w-0 md:block`}
+          >
+            <Card as="div" className="overflow-hidden rounded-2xl p-0! sm:p-0!">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5">
+                <Heading level={2}>Venta actual</Heading>
+                <Text
+                  as="span"
+                  variant="small"
+                  className="rounded-sm border border-border px-2 py-1"
                 >
-                  <EditPencil className="size-4" aria-hidden="true" />
-                  {draft.note
-                    ? "Editar nota del pedido"
-                    : "Añadir nota al pedido"}
-                </Button>
-                {draft.note && (
-                  <Text variant="small" className="line-clamp-2 break-words">
-                    {draft.note}
-                  </Text>
+                  {session.order
+                    ? session.dirty
+                      ? "Cambios sin guardar"
+                      : "Guardado"
+                    : "Borrador"}
+                </Text>
+              </div>
+              <MeasuredEditorCustomer
+                session={session}
+                onAccessError={onAccessError}
+              />
+              <div className="grid gap-4 p-5">
+                <MeasuredCart
+                  lineAmounts={lineAmounts}
+                  lines={draft.lines}
+                  enabledUnits={units}
+                  currencyCode={context.currencyCode}
+                  busy={blocked}
+                  onChange={(lines) => session.change({ lines })}
+                />
+                <div className="grid gap-2">
+                  <Button
+                    variant="quiet"
+                    className="justify-start! px-0!"
+                    isDisabled={blocked}
+                    onPress={() => setNoteOpen(true)}
+                  >
+                    <EditPencil className="size-4" aria-hidden="true" />
+                    {draft.note
+                      ? "Editar nota del pedido"
+                      : "Añadir nota al pedido"}
+                  </Button>
+                  {draft.note && (
+                    <Text variant="small" className="line-clamp-2 break-words">
+                      {draft.note}
+                    </Text>
+                  )}
+                </div>
+                {validation && (
+                  <div role="status">
+                    <Text variant="small">{validation}</Text>
+                  </div>
                 )}
               </div>
-              {validation && (
-                <div role="status">
-                  <Text variant="small">{validation}</Text>
-                </div>
-              )}
-            </div>
-            <div className="hidden md:block">{primary}</div>
-          </Card>
-          <div className="fixed inset-x-0 bottom-0 z-20 md:hidden">
-            {mobilePrimary}
-          </div>
-        </section>
-        {view === "catalog" && (
-          <div className="fixed inset-x-0 bottom-0 z-20 md:hidden">
-            {mobilePrimary}
-          </div>
-        )}
+              <div className="hidden md:block">{primary}</div>
+            </Card>
+          </section>
+        </div>
+      </div>
+      <div className="fixed inset-x-0 bottom-0 z-20 md:hidden">
+        {mobilePrimary}
       </div>
       <Dialog
         title="Nota del pedido"

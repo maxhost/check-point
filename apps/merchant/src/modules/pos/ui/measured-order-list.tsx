@@ -45,7 +45,7 @@ export function MeasuredOrderList({
   return (
     <section
       aria-label="Pedidos"
-      className="mx-auto grid max-w-6xl gap-6 p-4 md:p-6"
+      className="grid w-full min-w-0 max-w-none gap-5 p-3 md:p-4"
     >
       <div className="flex flex-wrap items-center justify-between gap-4">
         <Heading level={1}>Pedidos</Heading>
