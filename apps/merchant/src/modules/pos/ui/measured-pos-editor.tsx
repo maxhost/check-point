@@ -734,20 +734,27 @@ export function MeasuredPosEditor({
                   busy={blocked}
                   onChange={(lines) => session.change({ lines })}
                 />
-                <div className="grid gap-2">
-                  <Button
-                    variant="quiet"
-                    className="justify-start! px-3!"
-                    isDisabled={blocked}
-                    onPress={() => setNoteOpen(true)}
-                  >
-                    <EditPencil className="size-4" aria-hidden="true" />
-                    {draft.note
-                      ? "Editar nota del pedido"
-                      : "Añadir nota al pedido"}
-                  </Button>
+                <div
+                  className={draft.note ? "grid gap-2" : "hidden gap-2 md:grid"}
+                >
+                  <div className="hidden md:block">
+                    <Button
+                      variant="quiet"
+                      className="justify-start! px-3!"
+                      isDisabled={blocked}
+                      onPress={() => setNoteOpen(true)}
+                    >
+                      <EditPencil className="size-4" aria-hidden="true" />
+                      {draft.note
+                        ? "Editar nota del pedido"
+                        : "Añadir nota al pedido"}
+                    </Button>
+                  </div>
                   {draft.note && (
-                    <Text variant="small" className="line-clamp-2 break-words">
+                    <Text
+                      variant="small"
+                      className="whitespace-pre-wrap break-words md:line-clamp-2"
+                    >
                       {draft.note}
                     </Text>
                   )}
@@ -783,7 +790,7 @@ export function MeasuredPosEditor({
       >
         <div className="grid gap-2">
           <Button
-            variant="quiet"
+            variant="secondary"
             className="justify-start!"
             isDisabled={blocked}
             onPress={() => {
@@ -795,7 +802,7 @@ export function MeasuredPosEditor({
             Notas
           </Button>
           <Button
-            variant="quiet"
+            variant="secondary"
             className="justify-start!"
             isDisabled={printDisabled}
             isLoading={printing.busy}
@@ -810,25 +817,7 @@ export function MeasuredPosEditor({
             Imprimir
           </Button>
           <Button
-            variant="quiet"
-            className="justify-start! text-danger!"
-            isDisabled={
-              blocked ||
-              (session.order
-                ? session.order.status !== "open" || !onVoid
-                : !session.dirty)
-            }
-            onPress={() => {
-              setOptionsOpen(false);
-              if (session.order) onVoid?.();
-              else setExitOpen(true);
-            }}
-          >
-            <Trash className="size-5" aria-hidden="true" />
-            Anular orden
-          </Button>
-          <Button
-            variant="quiet"
+            variant="secondary"
             className="justify-start!"
             isDisabled={blocked || !draft.locationId}
             onPress={() => {
@@ -839,6 +828,27 @@ export function MeasuredPosEditor({
             <QrCode className="size-5" aria-hidden="true" />
             Escanear QR
           </Button>
+          <div className="mt-2 border-t border-border pt-3">
+            <Button
+              variant="secondary"
+              fullWidth
+              className="justify-start! text-danger!"
+              isDisabled={
+                blocked ||
+                (session.order
+                  ? session.order.status !== "open" || !onVoid
+                  : !session.dirty)
+              }
+              onPress={() => {
+                setOptionsOpen(false);
+                if (session.order) onVoid?.();
+                else setExitOpen(true);
+              }}
+            >
+              <Trash className="size-5" aria-hidden="true" />
+              Anular orden
+            </Button>
+          </div>
         </div>
       </Sheet>
       <Dialog
