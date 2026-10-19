@@ -19,12 +19,15 @@ export function MeasuredCart({
   enabledUnits,
   currencyCode,
   busy = false,
+  lineAmounts,
   onChange,
 }: {
   lines: MeasuredCartLine[];
   enabledUnits: readonly MassUnit[];
   currencyCode: string;
   busy?: boolean;
+  /** Canonical kernel distribution from the parent; absent preserves standalone use. */
+  lineAmounts?: Readonly<Record<string, string>>;
   onChange: (lines: MeasuredCartLine[]) => void;
 }) {
   const [editing, setEditing] = useState<{
@@ -59,7 +62,8 @@ export function MeasuredCart({
           const view = editorPresentation(line.editor);
           let amount: string | undefined;
           try {
-            amount = cartLineAmount(line, enabledUnits, currencyCode);
+            const validated = cartLineAmount(line, enabledUnits, currencyCode);
+            amount = lineAmounts ? lineAmounts[line.key] : validated;
           } catch {
             /* Invalid edits remain visible and cannot become a stale amount. */
           }
