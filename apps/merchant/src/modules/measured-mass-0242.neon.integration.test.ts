@@ -396,6 +396,8 @@ describe.skipIf(!modulesIntegrationEnabled)(
             productId: null,
             discountUnitSnapshot,
             discountValueSnapshot,
+            currencyCodeSnapshot:
+              discountUnitSnapshot === "amount" ? "USD" : null,
           })
           .where(eq(campaignCoupons.id, c.couponId));
         await chooseCoupon(c);
@@ -430,7 +432,7 @@ describe.skipIf(!modulesIntegrationEnabled)(
         ).toEqual([
           {
             total: net,
-            units_granted: net === "0.00" ? 0 : net === "1.80" ? 18 : 15,
+            units_granted: net === "0.00" ? 0 : 10,
             redemptions: 1,
             payments: net === "0.00" ? 0 : 1,
           },

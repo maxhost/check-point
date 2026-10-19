@@ -141,7 +141,7 @@ if (["fixture", "domain", "server"].includes(mode)) {
       .click();
     await page.getByRole("button", { name: "Mostrador", exact: true }).click();
     await page
-      .getByRole("button", { name: "Agregar Masa nativa", exact: true })
+      .getByRole("button", { name: "Añadir Masa nativa", exact: true })
       .click();
     const quantity = page.getByRole("dialog", {
       name: "Cantidad de Masa nativa",
