@@ -8,6 +8,7 @@ export type {
   CounterOperator,
   OperatorBusiness,
 } from "@mi-pasaporte/domain/server/counter/core";
+export { resolveScanContext } from "./counter/resolve-context";
 export { resolveScan } from "./counter/resolve";
 export type { ResolveResult } from "./counter/resolve";
 export { grantAccrual } from "./counter/grant";
