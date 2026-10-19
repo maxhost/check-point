@@ -2,12 +2,14 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useMemo,
   useState,
   useSyncExternalStore,
 } from "react";
 import { EditPencil, Printer } from "iconoir-react";
+import { useMobileNavigation } from "../../../app/backoffice/backoffice-shell";
 import { ConfirmationToast } from "../../../app/components/confirmation-toast";
 import {
   Alert,
@@ -81,6 +83,11 @@ export function MeasuredPosEditor({
   actionsDisabled = false,
   onVoid,
 }: MeasuredPosEditorProps) {
+  const { setHidden: setMobileNavigationHidden } = useMobileNavigation();
+  useLayoutEffect(() => {
+    setMobileNavigationHidden(true);
+    return () => setMobileNavigationHidden(false);
+  }, [setMobileNavigationHidden]);
   useSyncExternalStore(
     session.subscribe,
     session.getSnapshot,

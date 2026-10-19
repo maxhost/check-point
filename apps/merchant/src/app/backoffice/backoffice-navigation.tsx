@@ -30,7 +30,7 @@ import { openOnboardingChecklist } from "./onboarding/onboarding-checklist-visib
 import { moduleNavigation } from "../../modules/navigation";
 
 import { moduleIcon } from "./module-icon";
-import { useNavigationWidth } from "./backoffice-shell";
+import { useMobileNavigation, useNavigationWidth } from "./backoffice-shell";
 
 type MenuName = "business" | "loyalty" | "more";
 
@@ -276,6 +276,7 @@ export function BackofficeNavigation() {
   );
   const compact = !!operation && expandedOperation !== segment;
   const setNavigationWidth = useNavigationWidth();
+  const { hidden: mobileNavigationHidden } = useMobileNavigation();
   useLayoutEffect(() => {
     setNavigationWidth(compact);
     return () => setNavigationWidth(false);
@@ -468,7 +469,7 @@ export function BackofficeNavigation() {
 
       <nav
         aria-label="Navegación principal"
-        className={`backoffice-mobile-nav print:hidden ${operation ? "grid-cols-3" : ""}`}
+        className={`backoffice-mobile-nav print:hidden ${mobileNavigationHidden ? "hidden!" : ""} ${operation ? "grid-cols-3" : ""}`}
         data-owner={isOwner || undefined}
       >
         {operation ? (
