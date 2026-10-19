@@ -98,8 +98,8 @@ describe.skipIf(process.env.POS_CONNECTED_CONSOLE_NATIVE !== "true")(
             .where(eq(posOrderItems.posOrderId, orders[0].id));
           expect(lines).toHaveLength(1);
           expect(lines[0]).toMatchObject({
-            quantity: "1",
-            unitPriceSnapshot: "3.50",
+            quantity: "1.000000000",
+            unitPriceSnapshot: "3.500000000",
             measureKind: "unit",
           });
           const payments = await getDb()
