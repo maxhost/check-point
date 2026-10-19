@@ -11,7 +11,7 @@ Este orden sustituye las instrucciones pendientes de la ronda visual. CP0–CP4,
 | Punto | Estado real | Cierre pendiente |
 | --- | --- | --- |
 | 1. UI POS | **Aceptado por el owner.** Listado, creación/editor, QR, cobro modal/Sheet, resultado y navegación desktop/móvil. | No reabrir auditoría/rediseño sin un fallo concreto o nuevo encargo. |
-| 2. Impresión y anulación | Acciones implementadas; el owner confirmó impresión funcional. Hay evidencia focal previa. | Validar sobre el candidato actual precuenta, notas, reimpresión y anulación persistida, incluidos reintentos/conflictos y permisos; corregir fallos encontrados. |
+| 2. Impresión y anulación | **Cerrado funcionalmente con QA independiente**, candidato `9a43796b`, entrega `4405da73`. | Evidencia y límites en [corte actual](0242-p2-acciones-actuales.md): 50/50 unit; 14 browser compatibles más 1/1 focal. Hardware confirmado por owner, sin nueva certificación DB/hardware. |
 | 3. Venta por peso | Infraestructura exacta, APIs y consumidores preparados; activación canónica completa pendiente. | Cerrar compatibilidad, barreras temporales y circuito real masa→cobro→Recetas/Stock/costos/comisiones/analíticas en desarrollo/CI protegidos. |
 | 4. Retirada anterior y accesos | Navegación visual ajustada. El flujo legacy sigue usado sin `posV2=1`. | Corte funcional, entradas/permisos del personal, redirects y writers antiguos; Counter conservado para Clientes, canje directo suspendido, saldos e históricos intactos. |
 | 5. Fidelización/cupones | Integración y reglas con pruebas previas; falta cobertura real con pase. | Identificación real, cupón aplicado/revalidado, cancelación/reintento, combinaciones unit/masa permitidas y neto cero; conservar política aceptada. |

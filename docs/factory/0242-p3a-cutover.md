@@ -52,6 +52,8 @@ de POS apagado. Incluir inventario/preflight reproducible, sin ejecutar PROD.
 Único writer de migración/journal en este corte. DB CI protegida reservada a B,
 incluido teardown, exclusivamente mediante tools/neon-test.sh; sin otras suites DB
 concurrentes. No copiar env productivo. Fixtures solo propias, limpiar por ownership.
+Ampliación explícita antes de editar: `server/auth-guards.test.ts`, para verificar
+fallback autorizado de requireOwner, Clientes para counter-only y ausencia de loop.
 
 ## Integración y continuación
 
