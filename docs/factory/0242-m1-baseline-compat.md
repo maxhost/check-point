@@ -216,3 +216,32 @@ transformextra/espacios/otrofile/driftpost, incluido el puente real contra el ar
 actual en sólolectura. JSonly permite reutilizar tsc8181; lint/unit/diff/nuevareceta/
 SHA limpio y QA delta antes cualquier recurso nuevo. Nuevo namespace y authCOPYONLY
 para SHA final; el fallido af6 no se recicla. No DB, OTP, rebuild ni instalación.
+
+## Readiness del mismo contexto antes de primera escritura MASA
+
+QA5b61d6a67c1df6a953a296b6a25f100cff9b993b aprobó db467 generadoNext/COPY y
+helperREAL3616/2277/822, proof286541cb61c610d6f9eac247ead59b53c571d03cf05334799b94539026e53fb4.
+Todavía no se ejecutó un segundo COPY. Se incorpora fix acotado antes del SHA final:
+el gate de errores antes era tardío, después de venta/replay; no debe consumir una
+venta si ese contexto ya observó errores en navegación readonly.
+
+Asignado en los cuatro paths MASA: justo ANTES del primer POSTcreate (sin mover
+acciones UI/datos ni cambiar Nextprefetch/viewport), esperar quiescencia común
+red+request/sql/phase500ms/max15s, observers asentados, registrar snapshot de
+readiness y exigir requestFailures/pageErrors/HTTPstatuses>=400 cero después de
+esa espera. Error tardío durante la espera también bloquea. No convertir una
+falla en retry ni continuar confirmación. Gate final posterior sigue intacto;
+modo Nextdev histórico conserva su comportamiento.
+
+Capturar además CDP raw de red y sus ExtraInfo/initiator stack/timing/status/
+loadingFailed/cancelled/bytes en archivo privado0600 por eventos, con tag y stage,
+desde antes de navegación. Sólo observación, sin interceptar/repair requests ni
+alterar el producto. Es diagnóstico n0, no comparación de rendimiento ni gate
+inferencial. Permite investigar el error real sin inventar una causa a partir de
+ERR_ABORTED. No autoriza excepción general RSC ni clasificador/permisos nuevos.
+Cualquier futura política exacta requiere observación real+QA+contrato previo.
+
+Negativos útiles: quiescencia añade fallo tardío y no se ejecuta primera acción
+mutante; fallo status/pageerror/requestfailed original preservado; positivo limpio
+habilita exactamente la acción prevista. Tests/lint/diff/recetaSHA+QA source antes
+COPY nuevo; reusar tsc8181 si JSonly. No DB/OTP/browserreal/build/install aquí.
