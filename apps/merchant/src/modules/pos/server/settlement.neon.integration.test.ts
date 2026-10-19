@@ -11,6 +11,7 @@ import {
   moduleEvents,
   orders,
   posOrderItems,
+  products,
   posOrderPayments,
   posOrders,
 } from "@mi-pasaporte/db/schema";
@@ -19,8 +20,9 @@ import { readModuleResources } from "../../resources";
 import { listPaymentMethods } from "./payment-methods";
 import {
   dropPosWorld,
-  openOrder,
-  pos,
+  openOrderV2,
+  capturePosScope,
+  scopedPos,
   posIntegrationEnabled,
   seedPosWorld,
   seedProduct,
@@ -32,11 +34,17 @@ import {
   scannedCustomer,
   welcomeCoupon,
 } from "../../../server/counter/coupon-cycle-support";
+const scopes = new Map<string, string>();
 let usd: PosWorld, cop: PosWorld;
 let usdCash: string, copCash: string;
 beforeAll(async () => {
   usd = await seedPosWorld("P1 snapshot USD");
   cop = await seedPosWorld("P1 snapshot COP", "CO", "COP");
+  for (const w of [usd, cop])
+    scopes.set(
+      w.ownerCookie,
+      await capturePosScope(w.ownerCookie, w.seed.business.id),
+    );
   usdCash = (await listPaymentMethods(usd.seed.business.id)).defaultMethodId!;
   copCash = (await listPaymentMethods(cop.seed.business.id)).defaultMethodId!;
 }, 240_000);
@@ -50,7 +58,7 @@ const close = (
   payments: unknown,
   extra: Record<string, unknown> = {},
 ) =>
-  pos.close(world.ownerCookie, order.id, {
+  scopedPos(world.ownerCookie, scopes.get(world.ownerCookie)!).close(order.id, {
     clientRequestId: randomUUID(),
     version: order.version,
     ...(payments === undefined ? {} : { payments }),
@@ -74,7 +82,7 @@ describe.skipIf(!posIntegrationEnabled)(
   "P1 cierre y snapshot financiero reales",
   () => {
     it("cobro positivo exige pagos; errores de suma/duplicado/negativo y tenant revierten todo", async () => {
-      const order = await openOrder(usd, [
+      const order = await openOrderV2(usd, scopes.get(usd.ownerCookie)!, [
         { productId: usd.cafe, quantity: 1 },
       ]);
       for (const [payments, code] of [
@@ -110,7 +118,7 @@ describe.skipIf(!posIntegrationEnabled)(
         name: "Transferencia prueba",
         chargeShape: "none",
       });
-      const order = await openOrder(usd, [
+      const order = await openOrderV2(usd, scopes.get(usd.ownerCookie)!, [
         { productId: usd.cafe, quantity: 1 },
       ]);
       const key = randomUUID();
@@ -149,7 +157,7 @@ describe.skipIf(!posIntegrationEnabled)(
       expect(retry.status).toBe(200);
       expect((await retry.json()).settlement).toEqual(body.settlement);
       expect(await storedPayments(order.id)).toHaveLength(1);
-      const newOrder = await openOrder(usd, [
+      const newOrder = await openOrderV2(usd, scopes.get(usd.ownerCookie)!, [
         { productId: usd.cafe, quantity: 1 },
       ]);
       const archived = await close(usd, newOrder, [payment(method.id, "2.00")]);
@@ -167,7 +175,9 @@ describe.skipIf(!posIntegrationEnabled)(
         discountValue: "0.60",
       });
       await choose(customer, couponId);
-      const order = await openOrder(cop, [{ productId: product, quantity: 1 }]);
+      const order = await openOrderV2(cop, scopes.get(cop.ownerCookie)!, [
+        { productId: product, quantity: 1 },
+      ]);
       const response = await close(cop, order, [payment(copCash, "10")], {
         membershipId: customer.membershipId,
         coupon: { couponId },
@@ -213,7 +223,7 @@ describe.skipIf(!posIntegrationEnabled)(
       });
       const event = await storedEvent(order.id);
       expect(event).toMatchObject({
-        eventVersion: 2,
+        eventVersion: 4,
         money: {
           gross: "10",
           discount: "1",
@@ -233,7 +243,7 @@ describe.skipIf(!posIntegrationEnabled)(
         discountValue: "50",
       });
       await choose(customer, couponId);
-      const order = await openOrder(usd, [
+      const order = await openOrderV2(usd, scopes.get(usd.ownerCookie)!, [
         { productId: usd.cafe, quantity: 1 },
       ]);
       const key = randomUUID();
@@ -280,17 +290,50 @@ describe.skipIf(!posIntegrationEnabled)(
     }, 120_000);
 
     it("gratis elige primera línea repetida y una unidad; la cantidad física no cambia", async () => {
-      const product = await seedProduct(usd, "Servicio repetido", null);
+      const product = await seedProduct(usd, "Servicio repetido", "1.25");
       const customer = await scannedCustomer(usd);
       const couponId = await welcomeCoupon(usd, customer, {
         kind: "free_product",
         label: "Una unidad",
       });
       await choose(customer, couponId);
-      const order = await openOrder(usd, [
-        { productId: product, quantity: 2, unitPrice: "1.25" },
-        { productId: product, quantity: 1, unitPrice: "3.50" },
-      ]);
+      const firstCapture = await openOrderV2(
+        usd,
+        scopes.get(usd.ownerCookie)!,
+        [{ productId: product, quantity: 2 }],
+      );
+      // A later addition captures another real catalog revision, preserving the first tariff.
+      await getDb()
+        .update(products)
+        .set({ unitPrice: "3.50", salesRevision: 2 })
+        .where(eq(products.id, product));
+      const added = await scopedPos(
+        usd.ownerCookie,
+        scopes.get(usd.ownerCookie)!,
+      ).update(firstCapture.id, {
+        version: firstCapture.version,
+        saleType: firstCapture.saleType,
+        orderLabel: firstCapture.orderLabel,
+        locationId: usd.seed.locationId,
+        tableId: null,
+        note: null,
+        items: [
+          {
+            lineId: firstCapture.items[0].lineId,
+            productId: product,
+            quantity: "2",
+            quantityUnit: "unit",
+          },
+          {
+            productId: product,
+            quantity: "1",
+            quantityUnit: "unit",
+            catalogRevision: "2",
+          },
+        ],
+      });
+      expect(added.status).toBe(200);
+      const order = await added.json();
       const response = await close(usd, order, [payment(usdCash, "4.75")], {
         membershipId: customer.membershipId,
         coupon: { couponId, productId: product },
@@ -313,8 +356,8 @@ describe.skipIf(!posIntegrationEnabled)(
       });
       expect(await storedEvent(order.id)).toMatchObject({
         lines: [
-          { sourceLineId: first.sourceLineId, quantity: 2 },
-          { sourceLineId: second.sourceLineId, quantity: 1 },
+          { sourceLineId: first.sourceLineId, quantity: "2" },
+          { sourceLineId: second.sourceLineId, quantity: "1" },
         ],
       });
     }, 120_000);
@@ -325,7 +368,9 @@ describe.skipIf(!posIntegrationEnabled)(
         name: "Pago fijo",
         chargeShape: "fixed",
       });
-      const order = await openOrder(cop, [{ productId: product, quantity: 1 }]);
+      const order = await openOrderV2(cop, scopes.get(cop.ownerCookie)!, [
+        { productId: product, quantity: 1 },
+      ]);
       const response = await close(cop, order, [
         payment(other.id, "0.40"),
         payment(copCash, "10.00"),
@@ -352,7 +397,9 @@ describe.skipIf(!posIntegrationEnabled)(
         discountValue: "100",
       });
       await choose(customer, couponId);
-      const order = await openOrder(cop, [{ productId: product, quantity: 1 }]);
+      const order = await openOrderV2(cop, scopes.get(cop.ownerCookie)!, [
+        { productId: product, quantity: 1 },
+      ]);
       const extra = {
         membershipId: customer.membershipId,
         coupon: { couponId },
@@ -367,7 +414,7 @@ describe.skipIf(!posIntegrationEnabled)(
       expect((await invalid.json()).code).toBe("payments_not_expected");
       const accepted = await close(cop, order, [], extra);
       expect(accepted.status).toBe(200);
-      expect(await storedEvent(order.id)).toMatchObject({eventVersion:3});
+      expect(await storedEvent(order.id)).toMatchObject({ eventVersion: 4 });
       expect((await accepted.json()).settlement).toMatchObject({
         gross: "1",
         discount: "1",

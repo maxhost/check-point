@@ -9,9 +9,9 @@ import {
   posOrderPayments,
 } from "@mi-pasaporte/db/schema";
 import {
-  openOrder,
+  openOrderV2,
   seedProduct,
-  pos,
+  scopedPos,
   posIntegrationEnabled,
 } from "./pos-integration-support";
 
@@ -19,9 +19,14 @@ import { createPaymentMethod } from "../../../server/business/payment-methods";
 import { saveCommission } from "../../../server/business/commission-config";
 import { readSaleCommissions } from "../../../server/business/commission-read";
 
-import { world, close, setupBusinessWorld } from "./business-core-support";
+import {
+  world,
+  worldScope,
+  close,
+  setupBusinessWorld,
+} from "./business-core-support";
 describe.skipIf(!posIntegrationEnabled)("0235 business-financial", () => {
-  setupBusinessWorld();
+  setupBusinessWorld({ posContract: 2 });
   it("flagOFF still closes with core method and durable provisional0; retry keeps it after new configuration", async () => {
     const method = await createPaymentMethod(world.seed.business.id, {
       name: "No tariff",
@@ -51,9 +56,10 @@ describe.skipIf(!posIntegrationEnabled)("0235 business-financial", () => {
       expectedRevisionId: null,
       percent: "10",
     });
-    expect((await pos.close(world.ownerCookie, order.id, body)).status).toBe(
-      200,
-    );
+    expect(
+      (await scopedPos(world.ownerCookie, worldScope!).close(order.id, body))
+        .status,
+    ).toBe(200);
     expect(
       await readSaleCommissions(
         world.seed.business.id,
@@ -167,13 +173,18 @@ describe.skipIf(!posIntegrationEnabled)("0235 business-financial", () => {
   }, 120000);
   it("net0 flagOFF has an explicit durable core header and no fake payment; absence is unknown", async () => {
     const free = await seedProduct(world, "Free test", "0.00");
-    const order = await openOrder(world, [{ productId: free, quantity: 1 }]);
+    const order = await openOrderV2(world, worldScope!, [
+      { productId: free, quantity: 1 },
+    ]);
     // Use the existing POS-authorized free product, not a browser-supplied net.
-    const response = await pos.close(world.ownerCookie, order.id, {
-      clientRequestId: randomUUID(),
-      version: order.version,
-      payments: [],
-    });
+    const response = await scopedPos(world.ownerCookie, worldScope!).close(
+      order.id,
+      {
+        clientRequestId: randomUUID(),
+        version: order.version,
+        payments: [],
+      },
+    );
     expect(response.status).toBe(200);
     expect(
       await readSaleCommissions(

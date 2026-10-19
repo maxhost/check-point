@@ -8,7 +8,8 @@ import { afterGrant } from "../../../server/counter/after-grant";
 import {
   type PosWorld,
   dropPosWorld,
-  openOrder,
+  openOrderV2,
+  capturePosScope,
   posIntegrationEnabled,
   posRow,
   seedPosWorld,
@@ -30,8 +31,10 @@ import {
  * este caso da 503 y las demas suites siguen verdes).
  */
 let a: PosWorld;
+let scope: string;
 beforeAll(async () => {
   a = await seedPosWorld("POS REUSE");
+  scope = await capturePosScope(a.ownerCookie, a.seed.business.id);
 }, 240_000);
 afterAll(async () => {
   await dropPosWorld(a);
@@ -46,47 +49,58 @@ describe.skipIf(!posIntegrationEnabled)(
     it("afterGrant: una vez al crear la venta, nunca en el reintento ni sin pase", async () => {
       spy.mockClear();
       const c = await scannedCustomer(a);
-      const order = await openOrder(a, cart());
+      const order = await openOrderV2(a, scope, cart());
       const body = {
         clientRequestId: randomUUID(),
         version: order.version,
         membershipId: c.membershipId,
       };
-      expect((await closeWithCash(a.ownerCookie, order.id, body)).status).toBe(
-        200,
-      );
+      expect(
+        (await closeWithCash(a.ownerCookie, order.id, body, { scope })).status,
+      ).toBe(200);
       expect(spy).toHaveBeenCalledTimes(1);
       expect(spy.mock.calls[0][0].id).toBe((await posRow(order.id)).orderId);
       expect(spy.mock.calls[0][0].pushQueueId).not.toBeNull();
-      expect((await closeWithCash(a.ownerCookie, order.id, body)).status).toBe(
-        200,
-      );
-      const plain = await openOrder(a, cart());
+      expect(
+        (await closeWithCash(a.ownerCookie, order.id, body, { scope })).status,
+      ).toBe(200);
+      const plain = await openOrderV2(a, scope, cart());
       const noPass = { clientRequestId: randomUUID(), version: plain.version };
       expect(
-        (await closeWithCash(a.ownerCookie, plain.id, noPass)).status,
+        (await closeWithCash(a.ownerCookie, plain.id, noPass, { scope }))
+          .status,
       ).toBe(200);
       expect(spy).toHaveBeenCalledTimes(1);
     }, 180_000);
 
     it("clave ya usada por otra venta (sin y con cupon) → 409 `request_reused`; la mesa sigue abierta", async () => {
       const c1 = await scannedCustomer(a);
-      const first = await openOrder(a, cart());
+      const first = await openOrderV2(a, scope, cart());
       const key = randomUUID();
-      const firstClose = await closeWithCash(a.ownerCookie, first.id, {
-        clientRequestId: key,
-        version: first.version,
-        membershipId: c1.membershipId,
-      });
+      const firstClose = await closeWithCash(
+        a.ownerCookie,
+        first.id,
+        {
+          clientRequestId: key,
+          version: first.version,
+          membershipId: c1.membershipId,
+        },
+        { scope },
+      );
       expect(firstClose.status).toBe(200);
 
       const c2 = await scannedCustomer(a);
-      const noCoupon = await openOrder(a, cart());
-      const r1 = await closeWithCash(a.ownerCookie, noCoupon.id, {
-        clientRequestId: key,
-        version: noCoupon.version,
-        membershipId: c2.membershipId,
-      });
+      const noCoupon = await openOrderV2(a, scope, cart());
+      const r1 = await closeWithCash(
+        a.ownerCookie,
+        noCoupon.id,
+        {
+          clientRequestId: key,
+          version: noCoupon.version,
+          membershipId: c2.membershipId,
+        },
+        { scope },
+      );
       expect(r1.status).toBe(409);
       expect((await r1.json()).code).toBe("request_reused");
       expect(await posRow(noCoupon.id)).toMatchObject({
@@ -101,13 +115,18 @@ describe.skipIf(!posIntegrationEnabled)(
         discountValue: "1.00",
       });
       await choose(c2, couponId);
-      const withCoupon = await openOrder(a, cart());
-      const r2 = await closeWithCash(a.ownerCookie, withCoupon.id, {
-        clientRequestId: key,
-        version: withCoupon.version,
-        membershipId: c2.membershipId,
-        coupon: { couponId },
-      });
+      const withCoupon = await openOrderV2(a, scope, cart());
+      const r2 = await closeWithCash(
+        a.ownerCookie,
+        withCoupon.id,
+        {
+          clientRequestId: key,
+          version: withCoupon.version,
+          membershipId: c2.membershipId,
+          coupon: { couponId },
+        },
+        { scope },
+      );
       expect(r2.status).toBe(409);
       expect((await r2.json()).code).toBe("request_reused");
       expect(await posRow(withCoupon.id)).toMatchObject({

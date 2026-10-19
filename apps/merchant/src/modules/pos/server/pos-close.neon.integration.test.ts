@@ -5,9 +5,10 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   type PosWorld,
   dropPosWorld,
-  openOrder,
+  openOrderV2,
+  capturePosScope,
+  scopedPos,
   ordersWithItems,
-  pos,
   posIntegrationEnabled,
   posRow,
   pushesOf,
@@ -36,9 +37,11 @@ import {
  */
 
 let world: PosWorld;
+let scope: string;
 
 beforeAll(async () => {
   world = await seedPosWorld("POS cierre");
+  scope = await capturePosScope(world.ownerCookie, world.seed.business.id);
 }, 180_000);
 
 afterAll(async () => {
@@ -55,13 +58,18 @@ async function closeWithPass(
   customer: Customer,
   coupon?: { couponId: string },
 ) {
-  const order = await openOrder(world, cart(), "Mesa 4");
-  const response = await closeWithCash(world.ownerCookie, order.id, {
-    clientRequestId: randomUUID(),
-    version: order.version,
-    membershipId: customer.membershipId,
-    ...(coupon ? { coupon } : {}),
-  });
+  const order = await openOrderV2(world, scope, cart(), "Mesa 4");
+  const response = await closeWithCash(
+    world.ownerCookie,
+    order.id,
+    {
+      clientRequestId: randomUUID(),
+      version: order.version,
+      membershipId: customer.membershipId,
+      ...(coupon ? { coupon } : {}),
+    },
+    { scope },
+  );
   return { order, response };
 }
 
@@ -80,11 +88,16 @@ describe.skipIf(!posIntegrationEnabled)(
   "POS: cerrar la venta (spec 0169)",
   () => {
     it("CASO 3 — sin pase: `closed`, `order_id` null, ninguna `core.order`", async () => {
-      const order = await openOrder(world, cart());
-      const response = await closeWithCash(world.ownerCookie, order.id, {
-        clientRequestId: randomUUID(),
-        version: order.version,
-      });
+      const order = await openOrderV2(world, scope, cart());
+      const response = await closeWithCash(
+        world.ownerCookie,
+        order.id,
+        {
+          clientRequestId: randomUUID(),
+          version: order.version,
+        },
+        { scope },
+      );
       expect(response.status).toBe(200);
       const body = await response.json();
       expect(body).toMatchObject({
@@ -97,19 +110,26 @@ describe.skipIf(!posIntegrationEnabled)(
         status: "closed",
         orderId: null,
       });
-      const { closedToday } = await (await pos.list(world.ownerCookie)).json();
+      const { closedToday } = await (
+        await scopedPos(world.ownerCookie, scope).list()
+      ).json();
       expect(closedToday).toContainEqual(
         expect.objectContaining({ id: order.id, saleTotal: null }),
       );
     }, 120_000);
 
     it("un cupon SIN pase → 422 `invalid_input`, y la orden sigue abierta", async () => {
-      const order = await openOrder(world, cart());
-      const response = await closeWithCash(world.ownerCookie, order.id, {
-        clientRequestId: randomUUID(),
-        version: order.version,
-        coupon: { couponId: randomUUID() },
-      });
+      const order = await openOrderV2(world, scope, cart());
+      const response = await closeWithCash(
+        world.ownerCookie,
+        order.id,
+        {
+          clientRequestId: randomUUID(),
+          version: order.version,
+          coupon: { couponId: randomUUID() },
+        },
+        { scope },
+      );
       expect(response.status).toBe(422);
       expect((await response.json()).code).toBe("invalid_input");
       expect(await posRow(order.id)).toMatchObject({ status: "open" });

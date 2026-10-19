@@ -26,7 +26,7 @@ import { readSaleCommissions } from "../../../server/business/commission-read";
 
 import { world, close, setupBusinessWorld } from "./business-core-support";
 describe.skipIf(!posIntegrationEnabled)("0235 business-failures", () => {
-  setupBusinessWorld();
+  setupBusinessWorld({ posContract: 2 });
   it("technical database write failure rolls back close, payment, header and accreditation", async () => {
     const cash = (await listPaymentMethods(world.seed.business.id))
       .defaultMethodId!;

@@ -4,7 +4,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   type PosWorld,
   dropPosWorld,
-  openOrder,
+  openOrderV2,
+  capturePosScope,
   ordersWithItems,
   posIntegrationEnabled,
   posRow,
@@ -29,9 +30,11 @@ import { scannedCustomer } from "../../../server/counter/coupon-cycle-support";
  */
 
 let world: PosWorld;
+let scope: string;
 
 beforeAll(async () => {
   world = await seedPosWorld("POS carreras");
+  scope = await capturePosScope(world.ownerCookie, world.seed.business.id);
 }, 180_000);
 
 afterAll(async () => {
@@ -49,14 +52,18 @@ describe.skipIf(!posIntegrationEnabled)(
   () => {
     it("reintento secuencial con la misma clave: el mismo resultado y un solo grant", async () => {
       const customer = await scannedCustomer(world);
-      const order = await openOrder(world, cart());
+      const order = await openOrderV2(world, scope, cart());
       const body = {
         clientRequestId: randomUUID(),
         version: order.version,
         membershipId: customer.membershipId,
       };
-      const first = await closeWithCash(world.ownerCookie, order.id, body);
-      const again = await closeWithCash(world.ownerCookie, order.id, body);
+      const first = await closeWithCash(world.ownerCookie, order.id, body, {
+        scope,
+      });
+      const again = await closeWithCash(world.ownerCookie, order.id, body, {
+        scope,
+      });
       expect(first.status).toBe(200);
       expect(again.status).toBe(200);
       expect(await again.json()).toEqual(await first.json());
@@ -69,15 +76,15 @@ describe.skipIf(!posIntegrationEnabled)(
     it("ORACULO DE M2 — la MISMA clave en paralelo: los dos 200 con la misma venta, un solo grant", async () => {
       for (let round = 0; round < 3; round += 1) {
         const customer = await scannedCustomer(world);
-        const order = await openOrder(world, cart());
+        const order = await openOrderV2(world, scope, cart());
         const body = {
           clientRequestId: randomUUID(),
           version: order.version,
           membershipId: customer.membershipId,
         };
         const [a, b] = await Promise.all([
-          closeWithCash(world.ownerCookie, order.id, body),
-          closeWithCash(world.ownerCookie, order.id, body),
+          closeWithCash(world.ownerCookie, order.id, body, { scope }),
+          closeWithCash(world.ownerCookie, order.id, body, { scope }),
         ]);
         expect([a.status, b.status]).toEqual([200, 200]);
         const [bodyA, bodyB] = [await a.json(), await b.json()];
@@ -92,15 +99,15 @@ describe.skipIf(!posIntegrationEnabled)(
     it("claves DISTINTAS en paralelo: una cierra, la otra 409 `pos_order_not_open`; el saldo sube una vez", async () => {
       for (let round = 0; round < 3; round += 1) {
         const customer = await scannedCustomer(world);
-        const order = await openOrder(world, cart());
+        const order = await openOrderV2(world, scope, cart());
         const body = () => ({
           clientRequestId: randomUUID(),
           version: order.version,
           membershipId: customer.membershipId,
         });
         const responses = await Promise.all([
-          closeWithCash(world.ownerCookie, order.id, body()),
-          closeWithCash(world.ownerCookie, order.id, body()),
+          closeWithCash(world.ownerCookie, order.id, body(), { scope }),
+          closeWithCash(world.ownerCookie, order.id, body(), { scope }),
         ]);
         const statuses = responses.map((r) => r.status).sort();
         expect(statuses).toEqual([200, 409]);
