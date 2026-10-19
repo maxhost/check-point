@@ -5,6 +5,8 @@
 
 ## ESTADO — 0242: PRIMER AJUSTE UI EN PREVIEW; PENDIENTE PRUEBA DEL OWNER (2026-10-18)
 
+ÚLTIMO AJUSTE L0: texto de nota en Venta actual mobile lleva Notes Iconoir y prefijo «Notas:», conserva texto completo/saltos. Icono/prefijo ocultosdesktop. Solo presentación measured-pos-editor; formato/lint/UIguard contra74d9e3e1/diff-check PASS. Sin nuevos tests/browser/capturas/DB/agentes/push/PROD; ownerprueba3201.
+
 ÚLTIMO AJUSTE L0: Venta actual mobile oculta bloqueIdentificarcliente + explicación cuando aún nohaycliente, sin reservar hueco; identificación vía SheetEscanearQR/portal sigue montada. Cliente yaidentificado y beneficio permanecen visibles; desktop conserva bloque inicial. Solo wrapperresponsive measured-editor-customer; formato/lint/UIguard contra94b7a474/diff-check PASS. Sin browser/capturas/tests nuevos/DB/agentes/push/PROD, ownerprueba3201.
 
 ÚLTIMO AJUSTE L0: Venta actual mobile oculta botónAñadir/Editar nota; muestra solo texto existente completo con saltosdelínea (vacío sin espacio reservado); desktop conserva botón y resumen. SheetOpciones pasa a botones secondary conborde, orden Notas→Imprimir→Escanear QR→divisoria→Anular orden, destructiva con texto peligro y fullwidth. Handlers/bloqueos/confirmaciónsin cambios. Formato/lint/UIguard contra9a473a82/diff-check PASS; sin nuevos tests/batería/browser/capturas por presentación mínima. Ownerprueba3201. Sin agentes/DB/push/PROD.

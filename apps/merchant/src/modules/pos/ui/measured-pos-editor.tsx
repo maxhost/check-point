@@ -751,12 +751,19 @@ export function MeasuredPosEditor({
                     </Button>
                   </div>
                   {draft.note && (
-                    <Text
-                      variant="small"
-                      className="whitespace-pre-wrap break-words md:line-clamp-2"
-                    >
-                      {draft.note}
-                    </Text>
+                    <div className="flex items-start gap-2">
+                      <Notes
+                        className="mt-0.5 size-4 shrink-0 md:hidden"
+                        aria-hidden="true"
+                      />
+                      <Text
+                        variant="small"
+                        className="min-w-0 whitespace-pre-wrap break-words md:line-clamp-2"
+                      >
+                        <span className="md:hidden">Notas: </span>
+                        {draft.note}
+                      </Text>
+                    </div>
                   )}
                 </div>
                 {validation && (
