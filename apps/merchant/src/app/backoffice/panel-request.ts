@@ -34,6 +34,15 @@ export async function panelRequest<T>(
   options?: BackofficeRequestOptions,
 ): Promise<T> {
   const scopeHeaders = backofficeScopeHeaders(options?.scopeKey);
+  let additionalHeaders: Headers | undefined;
+  if (options?.headers !== undefined) {
+    additionalHeaders = new Headers(options.headers);
+    if (body instanceof FormData) additionalHeaders.delete("content-type");
+    else if (body !== undefined)
+      additionalHeaders.set("content-type", "application/json");
+    for (const [name, value] of Object.entries(scopeHeaders ?? {}))
+      additionalHeaders.set(name, value);
+  }
   const response = await fetch(url, {
     method,
     cache: "no-store",
@@ -55,6 +64,7 @@ export async function panelRequest<T>(
           },
         }
       : {}),
+    ...(additionalHeaders ? { headers: additionalHeaders } : {}),
     ...(options?.signal ? { signal: options.signal } : {}),
   });
   const payload = await response.json().catch(() => null);
