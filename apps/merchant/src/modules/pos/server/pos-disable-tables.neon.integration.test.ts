@@ -62,25 +62,6 @@ vi.mock("../../guard", async (importOriginal) => {
     },
   };
 });
-vi.mock("../../server-registry", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../server-registry")>();
-  const real = actual.SERVER_MODULES["tables"];
-  return {
-    SERVER_MODULES: {
-      ...actual.SERVER_MODULES,
-      ["tables"]: {
-        ...real,
-        beforeDisable: async (
-          ...args: Parameters<NonNullable<typeof real.beforeDisable>>
-        ) => {
-          const result = await real.beforeDisable!(...args);
-          await pause("tablesRule");
-          return result;
-        },
-      },
-    },
-  };
-});
 
 const {
   dropPosWorld,
@@ -93,15 +74,29 @@ const {
 } = await import("./pos-integration-support");
 type PosWorld = Awaited<ReturnType<typeof seedPosWorld>>;
 
+const { SERVER_MODULES } = await import("../../server-registry");
+const { moduleLockKey } = await import("../../guard");
+
 let w: PosWorld;
 let scope: string;
 beforeAll(async () => {
+  // Spy on the live registry entry after loading it. Replacing the registry during
+  // its activation/routes import cycle can leave the toggle with another object.
+  const real = SERVER_MODULES.tables.beforeDisable!;
+  vi.spyOn(SERVER_MODULES.tables, "beforeDisable").mockImplementation(
+    async (...args) => {
+      const result = await real(...args);
+      await pause("tablesRule");
+      return result;
+    },
+  );
   w = await seedPosWorld("POS apagar Mesas");
   scope = await capturePosScope(w.ownerCookie, w.seed.business.id);
 }, 240_000);
 afterAll(async () => {
   await dropPosWorld(w);
   await retireFixtureIdentities([w], []);
+  vi.restoreAllMocks();
 }, 240_000);
 
 const businessId = () => w.seed.business.id;
@@ -155,16 +150,23 @@ async function newDiningTable(name: string): Promise<string> {
 }
 
 /** Hasta que la base muestre un advisory lock esperando, o `other` termine (≤ 8 s). */
-async function untilBlockedOrDone(other: Promise<unknown>): Promise<void> {
+async function untilBlockedOrDone(other: Promise<unknown>): Promise<boolean> {
   let done = false;
-  void other.finally(() => (done = true));
+  void other.then(
+    () => (done = true),
+    () => (done = true),
+  );
+  const key = moduleLockKey(businessId());
   for (let i = 0; i < 40 && !done; i += 1) {
     const { rows } = await getDb().execute<{ n: number }>(
-      sql`select count(*)::int as n from pg_locks where locktype = 'advisory' and not granted`,
+      sql`select count(*)::int as n from pg_locks where locktype = 'advisory' and not granted
+        and classid::bigint = ((hashtextextended(${key},0) >> 32) & 4294967295)
+        and objid::bigint = (hashtextextended(${key},0) & 4294967295)`,
     );
-    if (rows[0].n > 0) return;
+    if (rows[0].n > 0) return !done;
     await new Promise((r) => setTimeout(r, 200));
   }
+  return false;
 }
 
 const withTimeout = <T>(p: Promise<T>, ms: number) =>
@@ -182,26 +184,33 @@ describe.skipIf(!posIntegrationEnabled)(
       const { latch: l, reached } = latch();
       h.tablesRule = l;
       const off = pos.setModule(w.ownerCookie, false, "tables");
-      await reached; // la regla de Mesas ya conto 0 ordenes con mesa, con el lock EXCLUSIVO
-      const created = scopedPos(w.ownerCookie, scope).create({
-        createRequestId: randomUUID(),
-        saleType: "table",
-        orderLabel: "Mesa",
-        locationId: null,
-        tableId: table,
-        note: null,
-        items: [],
-      });
-      await untilBlockedOrDone(created);
-      l.release();
-      const [offRes, createdRes] = await Promise.all([off, created]);
-      expect(offRes.status).toBe(200);
-      expect(createdRes.status).toBe(422);
-      expect(await createdRes.json()).toMatchObject({
-        code: "tables_disabled",
-      });
-      expect(await tablesOn()).toBe(false);
-      expect(await openWithTable()).toBe(0);
+      let created: Promise<Response> | undefined;
+      try {
+        expect(await withTimeout(reached, 8_000)).toBe("llego");
+        // The real rule has counted zero orders under the exclusive lock.
+        created = scopedPos(w.ownerCookie, scope).create({
+          createRequestId: randomUUID(),
+          saleType: "table",
+          orderLabel: "Mesa",
+          locationId: null,
+          tableId: table,
+          note: null,
+          items: [],
+        });
+        expect(await untilBlockedOrDone(created)).toBe(true);
+        l.release();
+        const [offRes, createdRes] = await Promise.all([off, created]);
+        expect(offRes.status).toBe(200);
+        expect(createdRes.status).toBe(422);
+        expect(await createdRes.json()).toMatchObject({
+          code: "tables_disabled",
+        });
+        expect(await tablesOn()).toBe(false);
+        expect(await openWithTable()).toBe(0);
+      } finally {
+        l.release();
+        await Promise.allSettled([off, ...(created ? [created] : [])]);
+      }
       await voidAll();
     }, 120_000);
 
@@ -219,19 +228,25 @@ describe.skipIf(!posIntegrationEnabled)(
         note: null,
         items: [],
       });
-      // Cableado: la apertura con mesa TIENE que releer Mesas bajo el lock (`lockTablesEnabled`).
-      expect(await withTimeout(reached, 8_000)).toBe("llego");
-      const off = pos.setModule(w.ownerCookie, false, "tables");
-      await untilBlockedOrDone(off);
-      l.release();
-      const [createdRes, offRes] = await Promise.all([created, off]);
-      expect(createdRes.status).toBe(201);
-      expect(offRes.status).toBe(409);
-      expect(await offRes.json()).toMatchObject({
-        code: "tables_has_open_orders",
-      });
-      expect(await tablesOn()).toBe(true);
-      expect(await openWithTable()).toBe(1);
+      let off: Promise<Response> | undefined;
+      try {
+        // Cableado: la apertura con mesa TIENE que releer Mesas bajo el lock (`lockTablesEnabled`).
+        expect(await withTimeout(reached, 8_000)).toBe("llego");
+        off = pos.setModule(w.ownerCookie, false, "tables");
+        expect(await untilBlockedOrDone(off)).toBe(true);
+        l.release();
+        const [createdRes, offRes] = await Promise.all([created, off]);
+        expect(createdRes.status).toBe(201);
+        expect(offRes.status).toBe(409);
+        expect(await offRes.json()).toMatchObject({
+          code: "tables_has_open_orders",
+        });
+        expect(await tablesOn()).toBe(true);
+        expect(await openWithTable()).toBe(1);
+      } finally {
+        l.release();
+        await Promise.allSettled([created, ...(off ? [off] : [])]);
+      }
       await voidAll();
     }, 120_000);
   },

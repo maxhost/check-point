@@ -216,7 +216,7 @@ describe.skipIf(!posIntegrationEnabled)(
       expect(await posRow(order.id)).toMatchObject({ version: 2 });
     }, 120_000);
 
-    it("un `lineId` que no es de la orden → 422 `unknown_line`, y la orden no cambia", async () => {
+    it("un `lineId` que no es de la orden → 422 `invalid_input` V2, y la orden no cambia", async () => {
       const order = await openOrderV2(world, scope, [
         { productId: world.cafe, quantity: 1 },
       ]);
@@ -240,7 +240,8 @@ describe.skipIf(!posIntegrationEnabled)(
         },
       );
       expect(response.status).toBe(422);
-      expect((await response.json()).code).toBe("unknown_line");
+      // V2 rejects an unmatched authoritative line with the input error family.
+      expect((await response.json()).code).toBe("invalid_input");
       expect(await posRow(order.id)).toMatchObject({ version: 1 });
     }, 120_000);
 
