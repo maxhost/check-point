@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { QrCode } from "iconoir-react";
 import { Alert, Button, Dialog, Text, TextField } from "../../../ui";
 import { QrScanner } from "../../../app/backoffice/counter/qr-scanner";
@@ -17,6 +17,9 @@ export function MeasuredEditorCustomer({
   const customer = session.customer;
   const { resolved, scanning, resolving, error, excluded } = customer.state;
   const coupon = resolved?.couponState;
+  useEffect(() => {
+    if (scanning) setCode("");
+  }, [scanning]);
   const identify = useCallback(
     async (value: string) => {
       const cause = await customer.resolve(

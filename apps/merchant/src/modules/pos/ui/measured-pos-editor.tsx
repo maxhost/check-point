@@ -8,7 +8,15 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { EditPencil, Printer, Xmark } from "iconoir-react";
+import {
+  EditPencil,
+  MoreVert,
+  Notes,
+  Printer,
+  QrCode,
+  Trash,
+  Xmark,
+} from "iconoir-react";
 import { useMobileNavigation } from "../../../app/backoffice/backoffice-shell";
 import { ConfirmationToast } from "../../../app/components/confirmation-toast";
 import {
@@ -19,6 +27,7 @@ import {
   FormActions,
   Heading,
   SelectField,
+  Sheet,
   Text,
   TextAreaField,
   TextField,
@@ -109,6 +118,7 @@ export function MeasuredPosEditor({
   const [view, setView] = useState<"catalog" | "order">("catalog");
   const [exitOpen, setExitOpen] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
+  const [optionsOpen, setOptionsOpen] = useState(false);
   const [locationChange, setLocationChange] = useState<string | null>(null);
   const [pending, setPending] = useState<{
     product: PosCatalogProductV2;
@@ -280,18 +290,18 @@ export function MeasuredPosEditor({
     prepared: printingConfiguration,
     onError: (cause) => onAccessError?.(cause),
   });
+  const printDisabled =
+    blocked ||
+    !draft.lines.length ||
+    !printing.doc ||
+    !!benefitPreview?.error ||
+    (!!session.order && session.order.status !== "open");
   const printButton = (
     <Button
       variant="secondary"
       className="size-11 shrink-0 rounded-full! p-0!"
       aria-label="Imprimir precuenta"
-      isDisabled={
-        blocked ||
-        !draft.lines.length ||
-        !printing.doc ||
-        !!benefitPreview?.error ||
-        (!!session.order && session.order.status !== "open")
-      }
+      isDisabled={printDisabled}
       isLoading={printing.busy}
       onPress={printing.print}
     >
@@ -401,7 +411,17 @@ export function MeasuredPosEditor({
       </div>
       <div className="flex min-w-0 items-center gap-2">
         {confirmation}
-        {printButton}
+        <Button
+          variant="quiet"
+          className="size-11 shrink-0 rounded-full! bg-primary-soft! p-0!"
+          aria-label="Opciones de la orden"
+          aria-haspopup="dialog"
+          aria-expanded={optionsOpen}
+          isDisabled={blocked || printing.busy}
+          onPress={() => setOptionsOpen(true)}
+        >
+          <MoreVert className="size-6" aria-hidden="true" />
+        </Button>
       </div>
     </div>
   );
@@ -746,6 +766,81 @@ export function MeasuredPosEditor({
       <div className="fixed inset-x-0 bottom-0 z-20 md:hidden">
         {mobilePrimary}
       </div>
+      <Sheet
+        title="Opciones de la orden"
+        isOpen={optionsOpen && !blocked}
+        onOpenChange={setOptionsOpen}
+        showCloseButton={false}
+        footer={
+          <Button
+            variant="secondary"
+            fullWidth
+            onPress={() => setOptionsOpen(false)}
+          >
+            Cancelar
+          </Button>
+        }
+      >
+        <div className="grid gap-2">
+          <Button
+            variant="quiet"
+            className="justify-start!"
+            isDisabled={blocked}
+            onPress={() => {
+              setOptionsOpen(false);
+              setNoteOpen(true);
+            }}
+          >
+            <Notes className="size-5" aria-hidden="true" />
+            Notas
+          </Button>
+          <Button
+            variant="quiet"
+            className="justify-start!"
+            isDisabled={printDisabled}
+            isLoading={printing.busy}
+            onPress={() => {
+              setOptionsOpen(false);
+              void printing.print();
+            }}
+          >
+            {!printing.busy && (
+              <Printer className="size-5" aria-hidden="true" />
+            )}
+            Imprimir
+          </Button>
+          <Button
+            variant="quiet"
+            className="justify-start! text-danger!"
+            isDisabled={
+              blocked ||
+              (session.order
+                ? session.order.status !== "open" || !onVoid
+                : !session.dirty)
+            }
+            onPress={() => {
+              setOptionsOpen(false);
+              if (session.order) onVoid?.();
+              else setExitOpen(true);
+            }}
+          >
+            <Trash className="size-5" aria-hidden="true" />
+            Anular orden
+          </Button>
+          <Button
+            variant="quiet"
+            className="justify-start!"
+            isDisabled={blocked || !draft.locationId}
+            onPress={() => {
+              setOptionsOpen(false);
+              session.customer.start();
+            }}
+          >
+            <QrCode className="size-5" aria-hidden="true" />
+            Escanear QR
+          </Button>
+        </div>
+      </Sheet>
       <Dialog
         title="Nota del pedido"
         isOpen={noteOpen && !blocked}
