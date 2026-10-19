@@ -25,6 +25,12 @@ Sin DB asignada a A en esta primera entrega; tipos/lint y pruebas puras focales.
 Ampliación explícita antes de editar: `pos/server/pos-scope.neon.integration.test.ts`
 para sustituir expectativas de scope opcional/cliente legacy por contrato requerido.
 A prepara assertions, B/QA ejecuta después con reserva DB; sin relajar seguridad.
+Ampliación de A: `pos/server/measured-read.test.ts` actualiza parser de contrato;
+`pos/server/legacy-cutover.neon.integration.test.ts` prepara gate real acotado de
+guard/scope/clienteviejo/Counter410/tenant/permiso/módulo, sin ejecutar DB concurrente.
+Las seis suites HTTP históricas measured-create/update/read y read/close/void-api-v2
+usan helpers V1: su conversión explícita queda para P6, no se declaran PASS aquí.
+No adaptar globalmente pos-integration-support de forma que oculte negativos.
 
 ## B — entrada y accesos
 
