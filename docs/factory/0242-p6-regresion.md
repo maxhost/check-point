@@ -134,3 +134,19 @@ stock-local ya reservado y stock-local-recipes preservando recetas/eventos/locks
 Actualizar inventario recursivo:39 era el universo directo conocido, no prueba de
 ausencia de dependencias indirectas. Cualquier nuevo path se reserva antes de
 editar; preparación sólo offline mientras M1 posee DB.
+
+## Ampliación independiente eventos y Counter previa a código
+
+Paths explícitos bajo `apps/merchant/src/modules/`:
+`module-events-integration-support.ts`, `module-events.neon.integration.test.ts`,
+`analytics-covered.neon.integration.test.ts`, `sale-publisher-v4.neon.integration.test.ts`.
+Adopción V2 por caller, sin cambiar post genérico/raw, con dinero/eventos/replay y
+negativos conservados. Históricos mediante publisher interno/SQL según intención.
+
+Paths bajo `apps/merchant/src/server/`: `billing-guards.neon.integration.test.ts`,
+`permisos-mostrador.neon.integration.test.ts`, `staff-entry.neon.integration.test.ts`.
+Positivos Counter retirados esperan410feature_retired después del guard original;
+conservar precedencia billing/PIN/permisos/status y APIs200 no retiradas. No migrar
+esas pruebas a POS ni cambiar producto. business-status/soportes de dominio intactos.
+Inventario provisional46 suites pertinentes; no afirmar exhaustividad por un grafo
+de imports previo. DB sólo al transferirse explícitamente, DDL siempre serial.
