@@ -108,29 +108,34 @@ export function MeasuredEditorCustomer({
           if (!open) customer.cancel();
         }}
       >
-        <div className="grid gap-4">
-          <Text>Escanea el QR o pega el código del pase.</Text>
+        <div className="grid max-h-80 gap-3 overflow-y-auto">
+          <Text variant="small">Escanea el QR o pega el código del pase.</Text>
           {error && <Alert kind="error" title={error} />}
           {resolving ? (
             <Text>Identificando cliente…</Text>
           ) : (
             <>
-              <QrScanner onDecode={identify} />
+              <div className="[&_video]:h-40! [&_video]:aspect-auto!">
+                <QrScanner onDecode={identify} />
+              </div>
               <TextField
                 label="Código del pase"
                 value={code}
                 onChange={setCode}
               />
-              <Button
-                isDisabled={!code.trim()}
-                onPress={() => void identify(code)}
-              >
-                Identificar
-              </Button>
             </>
           )}
+        </div>
+        <div className="mt-4 flex flex-wrap justify-end gap-3 border-t border-border pt-4">
           <Button variant="secondary" onPress={() => customer.cancel()}>
             Cancelar
+          </Button>
+          <Button
+            isDisabled={resolving || !code.trim()}
+            isLoading={resolving}
+            onPress={() => void identify(code)}
+          >
+            Identificar
           </Button>
         </div>
       </Dialog>
