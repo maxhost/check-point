@@ -1,0 +1,52 @@
+# 0242 P6A — regresión HTTP tras el corte V2
+
+Ficha del coordinador, previa a implementación. Autor NUEVO/contexto vacío en
+WT/ref `pos-ui-card-0242`, después de aceptar P4 y continuar factory sobre el
+commit documental integrado. No reactivar autores históricos para este bloque.
+Spec0242 y contratos existentes cerrados; no cambiar producto para acomodar tests.
+
+## Objetivo y corte inicial
+
+Las suites HTTP anteriores aún omiten scope/contract2 o esperan respuestas V1.
+Actualizar sus fixtures y oráculos al corte aceptado conservando casos negativos,
+aislamiento, dinero, snapshots, concurrencia e idempotencia. Primero inventariar
+dependencias y proponer estrategia al coordinador; después implementar por cortes.
+No añadir headers globales al despachador genérico, no traducir silenciosamente
+cuerpos inválidos, no eliminar assertions/casos por estar rojos.
+
+Paths iniciales exclusivos, todos bajo `apps/merchant/src/modules/pos/server/`:
+
+- `pos-integration-support.ts`, `pos-payment-integration-support.ts`.
+- `measured-create.neon.integration.test.ts`, `measured-update.neon.integration.test.ts`,
+  `measured-read.neon.integration.test.ts`, `read-api-v2.neon.integration.test.ts`,
+  `close-api-v2.neon.integration.test.ts`, `void-api-v2.neon.integration.test.ts`.
+- Informe propio `docs/factory/0242-p6-regresion-handoff.md`.
+
+Scope/cookie deben representar la intención real del caller. Mantener llamadas
+raw explícitas para missing/mismatch/upgrade y escalera auth. Fixture positiva V2
+puede construir un comando válido explícito (note:null, UUID, unidades, revisión),
+pero no reparar automáticamente una entrada negativa ni volver a capturar otra
+identidad durante un reintento. Conservar lectura de filas históricas mediante
+seed SQL controlado cuando el writer HTTP V1 ya está retirado. Probar V1 rechazado
+sin efectos; no intentar reabrirlo. DTOs exactos deben seguir comprobando todas las
+claves del contrato actual. Neto0 usa payments[], nunca efectivo ficticio.
+
+Inventariar también consumidores transitivos del soporte (POS, Mesas, eventos,
+storage-expand y pruebas Counter antiguas). Antes de editar otros archivos,
+solicitar ampliación concreta de paths. No borrar dominio histórico/compartido,
+editar migraciones viejas, desactivar constraints0108 ni cambiar guards/baselines.
+
+## Recursos y aceptación
+
+Preparación offline mientras QA anterior usa DB. CI protegida SOLO cuando el
+coordinador transfiera `db:neon-ci`; incluye teardown. Exclusivamente wrapper
+`tools/neon-test.sh`, configuración seleccionada privada existente, sin mostrar
+secretos ni copiar env general. Suites con DDL seriales y separadas de las demás.
+No Next/browser requerido en este corte; M1 usa otro writer y recursos seriales.
+
+Node24; tipos/lint/formato pertinentes. Ejecutar suites afectadas con casos reales
+y registrar cada intento/skips/fallo. La señal de aceptación inicial son los seis
+archivos HTTP más soporte compatible; ampliar por impacto demostrado. QA NUEVO
+independiente revisará diff/matriz y reproducirá señales decisivas en congelado.
+Commit limpio sólo propio; entregar SHA al coordinador, sin factory/estados/índices.
+Sin capturas, push, PROD ni tocar3201/túnel/procesos/cambios ajenos.
