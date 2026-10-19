@@ -1,3 +1,67 @@
+# 0242 R1.3 — campaña de listado completa, revisión QA final pendiente
+
+Runner ejecutado dcd5434c3a98433590976e3fc641df2f179a869c, limpio al congelar.
+Namespace privado `/private/tmp/checkpass-pos-0242/m1-r13-dcd5434c` (0700),
+artefactos0600. No rebuild: control6f/VLV2 y COPY nueva candidato1fd/mQAE,
+freeze anterior1617 verificado, producto/instrumentación/dependencias sin diff.
+Prepare plan3cce52df; fixture setup/inspect/login PASS sin skips; copias basales
+wx0600 antes freezeFINAL d0a0293d4960064a73db88cab3f7f1cd78b301cc7234e40ca4db94c14bbdfca2.
+Metadata prepare=execution4b03b10e…46f7c, changedKeys[]. Receta ejecutada SHA256
+af682c3fe7fcb74ef4a7a031ddd86da58416100bf42bc1e9167ece4598d7c43c.
+
+Campaña exacta EXIT0, complete=true:240observaciones/240warmups/20preparaciones,
+todos válidos y preservados; sin retries, reemplazos o descartes. Mismas30parejas
+normales por rol, ABBA y estimadores predeclarados. Resultados de LISTADO normal:
+
+| Rol | Mediana control→candidato | Delta mediana CI95(ms) | p95 control→candidato | Delta p95 CI95(ms) |
+| --- | --- | --- | --- | --- |
+| OWNER | 2319→1593.90ms (−31.27%) | [−743.20,−696.50] | 2368.20→1662.30ms | [−738.20,−685.80] |
+| STAFF[pos] | 2330.40→1636.55ms (−29.77%) | [−711.35,−668.60] | 2537.20→1670.80ms | [−905.40,−684.10] |
+
+El analizador versionado da medianImprovement/listNonRegression PASS para ambos
+roles; no es PASS global0242 ni de rutas críticas mutantes. Assets nuevos,
+empty/volume e ida/retorno son diagnósticos separados sin inferencia. Detalle es
+algo más lento en candidato: mediana OWNER783.20→827.80ms y STAFF790.80→835.20ms;
+retorno17.50→27.30ms y23.20→30.90ms. No se borra ni declara no-regresión de R2.
+La categoría especulativa sólo opera con conjunción R1.3: errores/bytesparciales y
+strictFunctionalValid originales permanecen. R1.2 FAIL y D1 EXIT2 históricos
+siguen intactos; ningún resultado anterior se reinterpretó como PASS.
+
+Reconciliación PRIVADA exhaustiva, 500tags exactos con RID:63,112filas;
+14,796requestSTART=END;15,180SQLSTART=END;1,580phaseSTART=END;0SQLfallidos,
+0tags desconocidos y0eventos posteriores al audit previo a close donde existe.
+20tags sin trace corresponden exactamente a retorno sinHTTP/CDP0, no skips.
+Se preservan2avisos diagnósticos adicionales de alineación de reloj: diferencias
+5.441/5.212ms entre SQLduration y end.at−start.at, ambos START/ENDoktrue completos.
+queryStart muestrea performance.now antes HMAC/record, cuyos timestamps se toman
+después; el umbral5ms fue chequeo auxiliar, no gate de campaña. Los avisos NO se
+borraron: explicación en trace-reconciliation-clock-notes.json, raw intacto.
+SQL normal por observación OWNER27→45 y STAFF23→41: aumento18, no reducciónglobal.
+Precargas explícitas de2locales y todos sus costos permanecen observados.
+
+Identidad poststop válida, runtimeDeltas[] en ambas fuentes;240PIDs propios
+comprobados ausentes y43242sinlistener. Cleanup MISMOdcd EXIT0,1PASS0skips,
+14conteos propios0/phasecleaned, sin postinspect que reescriba basal. DB devuelta
+por factory a regresión; no más acceso DB autorizado para este corte.
+
+Artefactos privados principales (hashes completos también en
+final-artifact-manifest.json):
+
+- list-results.json:6930983e5c9be729da330470bd5a8e4d5e160689340596e1db700f60caf1387e.
+- server-trace.jsonl:b2bd03cd8a46e10a793d8237ec43eccb2f23174440f7c096b1b656a3fbe6c3ec.
+- analysis.json:c18896485c79a5cea1449b210f825c079c8f934c2bc861c727972a28c3277cc3.
+- trace-reconciliation.json:e919db7343b03f784efef79aed12521ebfb44831fe715a3fb6158b40d613f806.
+- trace-reconciliation-clock-notes.json:439a27846746ce53c8b453bfddac8b604fe0a60939210dbd41a00e617e4cb83b.
+- identity-after-stop.json:1dd4cfa49b14e7de47c06e67f8fa96c98d786817fcc2e5602fe8f325d17cb2eb.
+- cleanup.json:19c333c69d438c417b425628abc67edf587a50711f760732f984dc1b326f1680.
+
+QA independiente final verifica raw/identidades/CI/reconciliación. R2 permanece
+pendiente, propuesta privada r2-proposal-readonly.md no ejecutada: fichas/paths y
+receta nueva deben fijar tamaño/estratos/6relojes/cámara/tail/DB/replay antes datos.
+No capturas/push/PROD, no cambios a3201/túnel/M0 ni originales congelados.
+
+---
+
 # 0242 R1.3 — política terminal previa a nuevos datos
 
 D1 ejecutado exactamente sobre ebf20fbe en namespace privado m1-d1-ebf20fbe:
