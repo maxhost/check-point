@@ -65,3 +65,14 @@ Conservar escalera de guard y controles positivos scoped2, aislamiento/permisos,
 ajustes owner/noowner sin autoenable y locks/Mesas. No nuevo acceso entre módulos
 ni cambios de guard/baseline. Los demás33transitivos siguen pidiendo ampliación
 por grupo; no editar todos de forma implícita. Recursos DB aún no transferidos.
+
+## Ampliación dinero/concurrencia previa a código
+
+Paths adicionales exclusivos bajo `apps/merchant/src/modules/pos/server/`:
+`pos-close.neon.integration.test.ts`, `pos-close-reuse.neon.integration.test.ts`,
+`pos-close-races.neon.integration.test.ts`, `settlement.neon.integration.test.ts`,
+`business-financial.neon.integration.test.ts`, `measured-summary.neon.integration.test.ts`.
+Conservar oráculos monetarios/durables y carreras reales, errores antes/después
+commit, orden de locks y UUID/cuerpo/versiones. No sustituirlos por assertions de
+status aisladas ni mocks. Preparación offline permitida; DB sigue pendiente de
+transferencia exclusiva al terminar QA nativa y teardown.
