@@ -378,6 +378,10 @@ describe.skipIf(!posIntegrationEnabled)(
           },
         },
       ];
+      cases.push(
+        { quantity: "1", unitPrice: "0.005", measure },
+        { quantity: "1", unitPrice: "0.5", measure },
+      );
       const aggregate = async (lines: typeof cases) => {
         const c = measuredSummaryColumns({
           quantity: sql`q`,
