@@ -270,7 +270,7 @@ describe.skipIf(!posIntegrationEnabled)(
         expect.objectContaining({
           productId: null,
           nameSnapshot: "Plato del dia",
-          unitPrice: "8.00",
+          unitPrice: "8.000000000",
         }),
       ]);
       expect(sale.unitsGranted).toBe(80);
