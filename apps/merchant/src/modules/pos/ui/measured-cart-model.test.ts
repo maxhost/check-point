@@ -179,6 +179,21 @@ describe("measured cart source and commands", () => {
       ),
     ).toThrow();
   });
+  it("rejects overflow of the exact combined order even when each line fits", () => {
+    const one = existingCartLine({
+      ...existing[0],
+      lineId: "a",
+      quantity: "1",
+      unitPrice: "6000000000",
+    });
+    const two = existingCartLine({
+      ...existing[0],
+      lineId: "b",
+      quantity: "1",
+      unitPrice: "6000000000",
+    });
+    expect(() => serializeMeasuredCart([one, two], enabled, "USD")).toThrow();
+  });
   it("unit integers, dimension and fresh enabled units", () => {
     expect(() =>
       newCartLine(

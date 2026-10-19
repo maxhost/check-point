@@ -9,7 +9,6 @@ import {
   newCartLine,
   quantityEditor,
   serializeMeasuredCart,
-  cartLineAmount,
   type QuantityEditor,
 } from "../../../apps/merchant/src/modules/pos/ui/measured-cart-model";
 import { existing, products } from "./pos-measured-cart-fixture";
@@ -31,16 +30,13 @@ function Harness() {
   let error: string | undefined;
   if (pending)
     try {
-      cartLineAmount(
-        newCartLine(
-          products[pending.index],
-          "preview",
-          pending.editor,
-          enabled,
-        ),
+      const candidate = newCartLine(
+        products[pending.index],
+        "preview",
+        pending.editor,
         enabled,
-        "USD",
       );
+      serializeMeasuredCart([...lines, candidate], enabled, "USD");
     } catch (cause) {
       error = (cause as Error).message;
     }

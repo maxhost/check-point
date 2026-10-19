@@ -5,6 +5,7 @@ import { Button, Text } from "../../../ui";
 import { MeasuredQuantityDialog } from "./measured-quantity-dialog";
 import {
   cartLineAmount,
+  serializeMeasuredCart,
   editorPresentation,
   editQuantity,
   resolveQuantity,
@@ -36,7 +37,7 @@ export function MeasuredCart({
   let selectedError: string | undefined;
   if (selected) {
     try {
-      cartLineAmount(selected, enabledUnits, currencyCode);
+      serializeMeasuredCart(lines, enabledUnits, currencyCode);
     } catch {
       selectedError =
         "Revisa la cantidad y el límite del importe antes de confirmar.";
