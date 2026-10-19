@@ -19,6 +19,7 @@ export type SheetProps = {
   children: ReactNode;
   footer?: ReactNode;
   isDismissable?: boolean;
+  showCloseButton?: boolean;
 };
 
 /** Bottom sheet with modal focus, scroll locking and an optional fixed footer. */
@@ -30,6 +31,7 @@ export function Sheet({
   children,
   footer,
   isDismissable = true,
+  showCloseButton = true,
 }: SheetProps) {
   const descriptionId = useId();
   return (
@@ -60,7 +62,7 @@ export function Sheet({
                 </Text>
               )}
             </div>
-            {isDismissable && (
+            {isDismissable && showCloseButton && (
               <Button
                 variant="quiet"
                 aria-label="Cerrar"

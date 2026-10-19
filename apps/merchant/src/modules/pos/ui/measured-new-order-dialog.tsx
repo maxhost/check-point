@@ -278,40 +278,53 @@ export function MeasuredNewOrderDialog({
       )}
     </>
   );
-  const footer = (
-    <div
-      className={
-        asSheet
-          ? "flex justify-between gap-3"
-          : "mt-5 flex justify-between gap-3"
-      }
+  const cancelButton = (
+    <Button variant="quiet" onPress={onClose}>
+      Cancelar
+    </Button>
+  );
+  const backButton = (
+    <Button
+      variant="secondary"
+      isDisabled={disabled}
+      onPress={() => setStep("type")}
     >
-      <Button variant="quiet" onPress={onClose}>
-        Cancelar
-      </Button>
+      Atrás
+    </Button>
+  );
+  const continueButton = (
+    <Button
+      isDisabled={!canContinue}
+      onPress={() => {
+        if (canContinue && saleType)
+          onContinue({
+            saleType,
+            locationId,
+            tableId,
+            orderLabel: orderLabel.trim(),
+          });
+      }}
+    >
+      Continuar
+    </Button>
+  );
+  const footer = asSheet ? (
+    <div className="grid gap-3">
+      {step === "details" && (
+        <>
+          {continueButton}
+          {backButton}
+        </>
+      )}
+      {cancelButton}
+    </div>
+  ) : (
+    <div className="mt-5 flex justify-between gap-3">
+      {cancelButton}
       {step === "details" && (
         <div className="flex gap-3">
-          <Button
-            variant="secondary"
-            isDisabled={disabled}
-            onPress={() => setStep("type")}
-          >
-            Atrás
-          </Button>
-          <Button
-            isDisabled={!canContinue}
-            onPress={() => {
-              if (canContinue && saleType)
-                onContinue({
-                  saleType,
-                  locationId,
-                  tableId,
-                  orderLabel: orderLabel.trim(),
-                });
-            }}
-          >
-            Continuar
-          </Button>
+          {backButton}
+          {continueButton}
         </div>
       )}
     </div>
@@ -326,6 +339,7 @@ export function MeasuredNewOrderDialog({
       isOpen={isOpen}
       onOpenChange={onOpenChange}
       footer={footer}
+      showCloseButton={false}
     >
       {content}
     </Sheet>
