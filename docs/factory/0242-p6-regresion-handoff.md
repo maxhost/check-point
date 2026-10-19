@@ -200,3 +200,21 @@ QA detectó que el único pendingCase podía sobrescribirse si afterEach agotaba
 Se mantienen30s de los4casos,120s hookdefault,180s teardown; sin nuevos retries/polls ni causa atribuida a los timeouts. eventOf sale.closed exacto y todas las aserciones previas intactos. Únicamente Stocktest/handoff cambiados; ninguna DB durante reservaM1.
 
 Checks lifecycle: typecheckmerchant PASS, ESLint1 PASS, Prettier2 PASS y diff whitespace PASS. Ningún testDB/reintento ejecutado sobre esta revisión.
+
+
+## Stock diagnóstico3 sobre5c81063c con30s conservados
+
+Selección sólo stock-local, wrapperCI privado serial:EXIT1,1suiteFAIL,2/4casosPASS,2timeouts30s,0skips/retries,118.88s. Archivo congelado y limpio antes/durante/cierre. RecoveryPASS21.819s; customer-passPASS26.655s con ambos subscribersapplied, replay0claimed/applied y payloadsale.closedidéntico. No nuevas6 porque gate de suitePASS no satisfecho; AN3compatible no se repitió. Logprivado `p6-stock-diagnostic-attempt3.log`.
+
+Atomic callback liquidó en32.455s y disabled-empty en30.634s, ambos con todas sus fases/assertions y finalmente terminados sin rechazo posterior; los2timeouts Vitest siguenFAIL. afterEach esperó owner antes de pasar al siguiente caso, sin sobrescribirpromesas ni restaurar mocks mientras trabajaban. No hubo hookFAIL ni callbackreject adicional. Evidencia por operación:
+
+| Caso | Fases medidas (s) |
+| --- | --- |
+| atomic | put4.286;pointer0.355/resolution0.349/revision0.122;create2.263;close5.039;event0.123;expire0.127;drainfault4.967;put3.512;movements0.352;expire0.120;recoverydrains concurrentes0.808/3.782;replayclose2.963;nuevokeyclose2.565;drain0.459;lecturas0.185/0.122;restauración incluida total32.455 |
+| disabled-empty | put4.599;create2.742;close4.694;event0.125;drain4.458;movements0.343;create2.281;close4.773;event0.124;drain3.054;movements0.121;queries/restauración incluidas total30.634 |
+
+Los límites se superaron por duración acumulada de operaciones reales observadas en este intento, sin operación única detenida ni assertion distinta observada; no se extrapola ausencia de bloqueo a otro intento. No se alteró presupuesto antes de medir. Propuesta al coordinador:45s sólo para estos2casos, resto30s/polls/retry inalterados, en nueva fuente antes de futuro retest. Coordinador autorizó45s únicamente para atomic/disabled-empty tras revisar esta evidencia; resto30s/polls/retry/producto/M1 intactos. Retest espera QA de lectura del nuevo congelado.
+
+Frontera final:afterAll completo y ownidentitiesvacías por assertions; PIDs59239,59721,59723,59730ausentes. Inspectorreadonly `p6-stock-diagnostic-attempt3-inspector.log` waiters0/actividadtx=[];8omitidos diagnósticos NO sonPASS. Ningún proceso/escritura pendiente. DB disponible al coordinador, sin corridas adicionales tras esta inspección. La cifra26suites/140casos completos sigue igual; Stock2parciales no se suman como suitePASS.
+
+Congelado de presupuesto45s: diff de test sólo2valores30→45 y comentarios de motivo. Typecheckmerchant PASS, ESLint1 PASS, Prettier2 PASS y diff whitespace PASS. No DB sobre esta revisión; espera QAlectura/GO explícito antes de Stock4 y cualquier nueva6.

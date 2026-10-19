@@ -290,7 +290,8 @@ describe.skipIf(!modulesIntegrationEnabled)(
             .where(eq(stockItems.id, flourId));
         }
       }),
-      30_000,
+      // Measured complete callback exceeds30s; DB operations/polls retain their own limits.
+      45_000,
     );
     it(
       "revision expansion failure leaves sale closed and table free; recovery uses exact captured revision after product deletion",
@@ -439,7 +440,8 @@ describe.skipIf(!modulesIntegrationEnabled)(
           await enableModules(world, ["recipes"]);
         }
       }),
-      30_000,
+      // Measured complete callback exceeds30s; DB operations/polls retain their own limits.
+      45_000,
     );
     it(
       "sale with customer pass accrues normally and consumes normalized recipe once",
