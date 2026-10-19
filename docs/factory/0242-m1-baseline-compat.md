@@ -152,3 +152,31 @@ para normalizar HTTP/cerrar financiero de6f ni añadir endpoints. Commit limpio 
 QA de nuevo source/receta antes cualquier recurso real. Luego D2 NUEVO24funcionales
 cleanup0 antes R2 NUEVO360; no reutilizar datos/identidades/OTPledger ni ampliar por
 resultado favorable. Todo futuro push/PROD sigue sin autorización.
+
+## Corrección del supuesto de almacenes físicos independientes
+
+QA b9a68d87017e50ce228aeff8d7120584c4c06c55 rechazó fd16 antes de COPY:
+ambos .pnpm-store de worktree son symlinks legítimos del setup de worktrees al
+almacén compartido del checkout principal. Root verificó lstat/readlink/realpath
+actuales: lexical source y runner siguen sus rutas WT/.pnpm-store/v11 respectivas,
+ambos links apuntan literalmente a
+/Users/maxi/Documents/claude-workspace/check-point/.pnpm-store y ambos realpaths
+terminan en /Users/maxi/Documents/claude-workspace/check-point/.pnpm-store/v11.
+No son stores físicamente independientes; la suposición anterior queda sustituida.
+No mover/store/install/editar metadatos para simular otro layout.
+
+Se asigna fix mínimo dentro cuatro paths MASA: auth metadataCompatibility debe
+ligar además la provenance actual EXACTA de ambos paths lexicales, sus symlinks,
+linktargets literales y realtarget compartido. Rechazar target ajeno, repoint o
+deriva después del prepare. Validar lstat/readlink/realpath antes/después y al
+verifyRuntime, registrar layout observado/copias/auth/provenance0600. Sharedstore
+sólo se lee, nunca instalar/prunar/modificarlo durante esta operación. Hashes
+source415/runner8e8, keysdiff/valores exactos, restoJSONigual y semanticdepsstrict
+no cambian. Roots source/grid y runner/card siguen canónicos privados; el destino
+físico autorizado es el compartido explícito, no una excepción general a symlinks.
+
+Nuevo negativo/positivo de frontera REAL: dos roots con dos symlinks a un único
+store físico, autorización exacta aceptada; destino ajeno, enlace cambiado o
+resolución distinta fallan incluso con metadata/hashválidos. Revisión QA delta y
+nueva receta antes authCOPY/rootresource; ningún recurso real fue ejecutado por
+fd16. La falta de este caso se conserva como NO GO, nunca PASS por14tests offline.
