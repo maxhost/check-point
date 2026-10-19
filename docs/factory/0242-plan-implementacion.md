@@ -60,6 +60,17 @@ Congelar scope/cuerpo/UUID antes await, epochs y caché monotónica; 409scope an
 
 ## CP2 — POS completo, catálogo/business y servidor de venta
 
+### Orden vigente: integración funcional incremental
+
+Ajuste del owner tras revisar el avance: integrar commits aceptados en main local no basta para reducir el riesgo del ensamblado. Adelantar recorridos conectados en la aplicación, con QA independiente por corte, sin esperar a tener todas las capacidades pendientes. No acumular toda la consola detrás de ticket/impresión ni reservar la primera prueba nativa para CP4.
+
+1. Tras aceptar cobro preparado, el siguiente autor nuevo conecta una primera sección vertical: listado V2 → abrir/crear → editor → cobro → resultado canónico → vuelta al listado, usando productos unit reales, HTTP y autenticación nativa en desarrollo/CI. Mantener la sesión de intención en el padre y la misma caché; probar recuperación y cambio de contexto en esa conexión. Antes de código, ficha y contrato del montaje local; conservar la entrada legacy hasta que la nueva cubra sus capacidades, sin exponer un cambio incompleto en producción ni activar masa.
+2. Conectar anulación HTTP aceptada y tickets/impresión como incrementos sobre ese recorrido. Preparar sus contratos para permitir dos implementadores en paths independientes; ningún agente acumula toda la tarea. Cada incremento comprueba la interacción nueva sobre las piezas ya aceptadas y puede integrarse localmente tras QA.
+3. Retirada legacy/permisos y activación compatible mantienen su orden de seguridad. En cuanto ese corte lo permita, ejecutar una venta mass canónica completa y sus efectos reales; no postergar esa primera prueba a M1.
+4. CP4 conserva regresión del conjunto, aceptación pendiente y medición M1. Su finalidad es confirmar el conjunto y medir rendimiento; los recorridos principales ya deben haberse ejecutado en los cortes anteriores. No se elimina incertidumbre por decreto ni se declara PASS de una integración aún no probada.
+
+Las fichas existentes de cobro y HTTP void conservan scope y candidato congelado. La ficha de ticket sigue siendo un bloque independiente: deja de ser dependencia previa de la primera conexión de consola. Reservar los paths de esa conexión antes de asignarla a un agente nuevo. Sin push ni PROD autorizados.
+
 ### A: backend POS + cadena de efectos
 
 Crear/editar/listar/cerrar/anular sobre contratoV2, createRequestId idempotente y campos tipo/etiqueta. Reusar locks de POS/Mesas y transacción cierre. Respuesta canonical para caché; agregado de lista sin descargar todas líneas. QR mínimo mantiene efectos/eligibilidad. Rechazar gratis/2x1 sobre líneas mass, conservar unit elegible en órdenes mixtas y porcentaje/importe sobre peso; reglas prose no se parsean.
