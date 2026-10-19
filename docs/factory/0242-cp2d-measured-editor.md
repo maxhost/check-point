@@ -22,6 +22,7 @@ Incierto muestra explicación+recuperación explícita, conserva UUID/body/scope
 - apps/merchant/src/modules/pos/ui/measured-editor-model.ts
 - apps/merchant/src/modules/pos/ui/measured-editor-model.test.ts
 - apps/merchant/src/modules/pos/ui/measured-product-catalog.tsx
+- apps/merchant/src/modules/pos/ui/measured-cart.tsx, solo prop opcional lineAmounts para importes distribuidos por el kernel del padre; default compatible
 - apps/merchant/src/modules/pos/ui/pos-tables.tsx, solo opción tipada de contrato/transporteV2 compatible defaultlegacy si necesaria
 - tests/e2e/pos-measured-editor.spec.ts
 - tests/e2e/support/pos-measured-editor-harness.tsx
@@ -29,6 +30,8 @@ Incierto muestra explicación+recuperación explícita, conserva UUID/body/scope
 - docs/factory/0242-cp2d-measured-editor-handoff.md
 
 Sin console/rutas/checkouts/QR/cupones/pagos/impresión/Counter legacy/cachecomandos/modelo aceptados/backend/contratos/schema/kit/guardias/tooling/deps/estados/índices. Pedir extensión concreta antes editar fuera scope. Harness reutiliza startCatalogHarness; no backend ficticio que omita transporte real hasta fetch boundary cuando se prueba recovery/header.
+
+Interacción monetaria confirmada al componer: dos líneas0.49 COP tienen total global1, pero el componente aislado redondeaba cada fila por separado. Editor y fixture reutilizan buildFinancialAmountsFromSnapshots para gross y lines[].money.gross (orden fuente/posición), y pasan lineAmounts por key a MeasuredCart. No sumar redondeos independientes ni duplicar allocateCumulative. Datos inválidos no muestran importes viejos; default del componente conserva otros callers. Extensión coordinada antes de código.
 
 ## Gate
 
