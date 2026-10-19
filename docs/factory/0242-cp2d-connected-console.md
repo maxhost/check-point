@@ -18,13 +18,17 @@ Antes de código, presentar API/ownership/flujo, montaje local y receta de prueb
 - apps/merchant/src/modules/pos/ui/pos-entry.tsx.
 - apps/merchant/src/modules/pos/ui/measured-console.tsx.
 - apps/merchant/src/modules/pos/ui/measured-order-list.tsx.
+- apps/merchant/src/modules/pos/ui/measured-order-cache.ts, solo opción explícita para proyectar una respuesta terminal nueva en la ventana local del historial, sin alterar default de callers anteriores.
+- apps/merchant/src/modules/pos/ui/measured-order-cache.test.ts, regresiones de esa proyección y límites de día/replay.
 - tests/e2e/pos-connected-console.spec.ts.
 - tests/e2e/support/pos-connected-console-harness.tsx.
 - tests/e2e/support/pos-connected-console-fixture.ts.
 - apps/merchant/src/modules/pos/server/console-native.neon.integration.test.ts, fixture nativa propia con setup/inspect/cleanup protegidos.
 - docs/factory/0242-cp2d-connected-console-handoff.md.
 
-Sin editar editor/cobro/caché/helpers exactos/contratos/backend de producto/legacy/kit/guardias/tooling/dependencias/schema/índices/estados. Si una dependencia aceptada falla o falta un helper de formato compartido, presentar extensión concreta antes de editar fuera de reserva. Puertos, DB CI y configuración de runner propios se asignan explícitamente; no reutilizar sesiones privadas antiguas ni M0/control/3201/túnel/demos.
+Extensión explícita previa a código: la fachada aceptada no añade una cerrada nueva a closedToday sin conocer el día local. Padre usa timezone del provider y now explícito para clasificar closedAt canónico real, sin asumir que todo replay recibido ahora se cerró hoy. Opción nueva conserva comportamiento default y monotonicidad, no revive lecturas pendientes ni declara fresco un historial ya invalidado. La consola puede mostrar su misma caché con peek stale sin GET automático. Probar medianoche/zona local, replay de ayer excluido y actualización de fila conocida. No ampliar al helper de cobro ni modificar aritmética.
+
+Sin editar editor/cobro/PosCache/helpers exactos/contratos/backend de producto/legacy/kit/guardias/tooling/dependencias/schema/índices/estados. Si otra dependencia aceptada falla o falta un helper de formato compartido, presentar extensión concreta antes de editar fuera de reserva. Puertos, DB CI y configuración de runner propios se asignan explícitamente; no reutilizar sesiones privadas antiguas ni M0/control/3201/túnel/demos.
 
 ## Aceptación y evidencia
 
