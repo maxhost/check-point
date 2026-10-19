@@ -394,12 +394,12 @@ export function MeasuredPosEditor({
     </div>
   );
   const mobilePrimary = (
-    <div className="flex items-center justify-between gap-4 border-t border-border bg-surface p-4">
+    <div className="grid gap-3 border-t border-border bg-surface p-4">
       <div className="min-w-0">
         <Text variant="small">Total del pedido</Text>
         <Text variant="label">{totalLabel}</Text>
       </div>
-      <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
+      <div className="flex min-w-0 items-center gap-2">
         {confirmation}
         {printButton}
       </div>
