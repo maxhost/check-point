@@ -60,6 +60,10 @@ incluido teardown, exclusivamente mediante tools/neon-test.sh; sin otras suites 
 concurrentes. No copiar env productivo. Fixtures solo propias, limpiar por ownership.
 Ampliación explícita antes de editar: `server/auth-guards.test.ts`, para verificar
 fallback autorizado de requireOwner, Clientes para counter-only y ausencia de loop.
+Ampliación B: `server/locations-backoffice-pages.neon.integration.test.ts` adapta
+el contrato antiguo CounterConsole a redirect con local activo/archivado/ajeno.
+PosEntry puede ordenar una copia con el local validado primero para transmitir
+la selección efectiva al listado/nueva orden existentes, sin mutar datos ni rediseño.
 
 ## Integración y continuación
 
