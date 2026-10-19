@@ -1,5 +1,7 @@
 # 0242 — QA independiente CP2d.6 ticket e impresión preparados
 
+**Dictamen vigente: PASS** sobre `d0bcd4e828410f501be51685f75b4627d7f0c2ab`, tras la revalidación documentada al final. El FAIL siguiente se conserva como historial de la revisión anterior.
+
 **FAIL** sobre candidato congelado `73bda9975bf19210ef5f7c18d0866f93f0d68170`, base de integración `707bcdb4` (consola aceptada). QA en `/private/tmp/checkpass-pos-0242/pos-qa-0242`, sin cambios de producto, refs ni factory. Requiere corrección del autor y nueva revisión antes de aceptar este bloque.
 
 ## Hallazgo bloqueante: seleccionar puede iniciar impresión
@@ -38,3 +40,24 @@ Correcciones iniciales `8203ce48 → bac6219e` auditadas: identity estructural p
 Primer intento QA browser: fallo de setup antes del caso por sandbox MachPortRendezvous1100; log `/private/tmp/measured-ticket-qa/choose.log`. Avisado inmediatamente al coordinador, resuelto con escalación propia acotada autorizada. La segunda ejecución anterior es un caso nuevo completo, retries0; se conserva el fallo de setup y no se declara PASS por repetirlo. `ps` dio EPERM, avisado y escalado solo lectura junto a lsof: ningún runner ni servidor QA vivo; solo observadores Python/lsof durante auditoría, ya terminados al entregar.
 
 Sin DB/env/wrapper, Next build, fullverify, M0/M1, puerto3201, túnel, demos, push ni PROD. Sin conexión nueva de tickets a consola; integración posterior requiere su propio incremento y QA de cableado. BLE/window.print simulados no acreditan papel físico, hardware ni E2E de venta por masa. Un transporte ya iniciado no se cancela desde el hook; se suprimen sus efectos UI tardíos. Único archivo versionado escrito por QA: este informe.
+
+
+## Revalidación del mismo bloque tras corrección — PASS
+
+Candidato congelado `d0bcd4e828410f501be51685f75b4627d7f0c2ab`, que contiene el informe FAIL `7bbb5697801f809ff85fd4506a0ca59200e158d7` y entrega correctiva `bc59c03e223f1232f9364f82313e9af13b2ca83d` (producto `8136b5a0f955797c35976d4970838955496a0368`). Mismo QA independiente y worktree, inicialmente limpio. **PASS para este bloque preparado**; hallazgo anterior resuelto, sin pendientes de corrección observados.
+
+Se ejecutó exactamente el caso externo original `/private/tmp/measured-ticket-qa/choose.spec.ts`, sin editarlo ni cambiar `expected0`, con la misma configuración externa y Node24.20.0. Comando:
+
+```sh
+pnpm exec playwright test --config /private/tmp/measured-ticket-qa-config.cjs --output /private/tmp/measured-ticket-qa-fix-output
+```
+
+Chromium propio escalado desde el inicio por el bloqueo MachPort1100 ya conocido y autorizado; sin nuevo fallo de setup. Resultado EXIT0, **1/1pass, 0fail, 0skip, 0retry**, log `/private/tmp/measured-ticket-qa/choose-revalidation.log`. La reproducción que antes produjo una impresión desde «Elegir impresora» ahora observa cero impresiones. El FAIL original y su log permanecen intactos.
+
+Revisión del diff afectado: `choose()` conserva invocación directa del transporte antes del await y guarda `live()` tras resolver; éxito solo muestra aviso. Fallo ahora libera `lock.current` y publica `issue`, sin llamar `finish`, montar documento de fallback ni invocar `window.print()`. `finish` permanece exclusivo de `print`, y `retry` sigue siendo `print`: requieren un gesto explícito posterior. No se tocó la guarda de identidad ni el retiro de efectos tardíos.
+
+Auditoría de evidencia del autor sobre `8136b5a0`, idéntica al candidato en hook/spec: `qa-fix-types.log` y `qa-fix-static.log` EXIT0 (tipos, ESLint, Prettier y UIguard un archivo sin aumentos), `qa-fix-browser.log` EXIT0 **15/15 funcionales, cero skips/retries**. Incluye las tres selecciones fallidas unsupported/cancelled/write_failed con cero escrituras e impresión, posterior fallback solo al retry explícito, selección correcta con impresión separada, fallo/reintento de impresión y callbacks tardíos retirados. Los tests previos se mantienen; los tres casos son adiciones, sin relajación de aserciones. La captura agrupada fue excluida expresamente por selección del comando autor, no se declara ejecutada ni skipped en esta revalidación.
+
+Identidad confirmada por diff: builder/tests puros, renderers, presentación, transportes, dispositivo, papel y harness/fixture sin cambios desde el candidato anterior. Se reutilizan los 39/39 puros y las capturas390/1280 ya abiertas e inspeccionadas, sin reiniciar matriz financiera ni ronda visual. Lockfile y configuración del autor conservan los SHA256 registrados arriba. El manifest preserva fallos originales y separa la fuente correctiva de la evidencia previa; este informe registra la aceptación independiente posterior a su estado pending.
+
+Cierre: auditoría propia ps/lsof escalada de solo lectura, PS_EXIT0, sin runners/servidores de revalidación vivos; lsof solo observó Python/lsof de la propia auditoría, ya terminados (su EXIT1 no se interpreta como gate de producto). Única edición versionada: este informe; formato comprobado. Se mantienen todos los límites anteriores: API preparada sin hookup nuevo de consola, sin DB/env/wrapper/Next/batería global/push/PROD y sin acreditar papel físico, BLE real ni E2E de masa. La conexión posterior requiere su propio incremento y validación de cableado.
