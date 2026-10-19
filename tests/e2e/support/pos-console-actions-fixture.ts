@@ -1,3 +1,4 @@
+import type { createBackofficeContextController } from "../../../apps/merchant/src/app/backoffice/backoffice-context-controller";
 import type {
   BackofficeInitialContext,
   ModuleDTO,
@@ -58,4 +59,21 @@ export const actionModule: ModuleDTO = {
   suggested: false,
   navigation: [],
   permissions: [],
+};
+
+const unexpectedContextRead = async () => {
+  throw new Error("Unexpected context I/O");
+};
+export const actionContextAdapters: Parameters<
+  typeof createBackofficeContextController
+>[1] = {
+  readSession: unexpectedContextRead,
+  readModules: unexpectedContextRead,
+  readSummary: unexpectedContextRead,
+  readInbox: unexpectedContextRead,
+  decideInbox: unexpectedContextRead,
+  readChecklist: unexpectedContextRead,
+  verifyEmail: unexpectedContextRead,
+  requestRefresh: () => {},
+  navigate: () => {},
 };

@@ -10,6 +10,7 @@ import { PosError } from "./pos-types";
 import {
   actionOpen,
   actionCore,
+  actionContextAdapters,
 } from "../../../../../../tests/e2e/support/pos-console-actions-fixture";
 import {
   createPosClient,
@@ -121,19 +122,10 @@ describe("console void owner", () => {
   });
   it("provider-owned original capture survives real source-hook retirement and same-identity remount", async () => {
     const core = actionCore();
-    const controller = createBackofficeContextController(core, {
-      readSession: async () => {
-        throw new Error("Unexpected session read");
-      },
-      readModules: async () => {
-        throw new Error("Unexpected modules read");
-      },
-      readSummary: async () => {
-        throw new Error("Unexpected summary read");
-      },
-      requestRefresh: () => {},
-      navigate: () => {},
-    });
+    const controller = createBackofficeContextController(
+      core,
+      actionContextAdapters,
+    );
     const releaseProvider = controller.attach();
     const identity = `0:${core.scopeKey}`;
     const providerOwner = {
@@ -205,19 +197,10 @@ describe("console void owner", () => {
   });
   it("real provider retirement rejects the old capture and suppresses a late response", async () => {
     const core = actionCore();
-    const controller = createBackofficeContextController(core, {
-      readSession: async () => {
-        throw new Error("Unexpected session read");
-      },
-      readModules: async () => {
-        throw new Error("Unexpected modules read");
-      },
-      readSummary: async () => {
-        throw new Error("Unexpected summary read");
-      },
-      requestRefresh: () => {},
-      navigate: () => {},
-    });
+    const controller = createBackofficeContextController(
+      core,
+      actionContextAdapters,
+    );
     const releaseProvider = controller.attach();
     let release!: (value: Response) => void;
     const fetch = vi.fn(

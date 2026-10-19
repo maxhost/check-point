@@ -3,22 +3,17 @@ import { createRoot } from "react-dom/client";
 import { MeasuredConsole } from "../../../apps/merchant/src/modules/pos/ui/measured-console";
 import { BackofficeProvider } from "../../../apps/merchant/src/app/backoffice/backoffice-context";
 import { createBackofficeContextController } from "../../../apps/merchant/src/app/backoffice/backoffice-context-controller";
-import { actionCore, actionModule } from "./pos-console-actions-fixture";
+import {
+  actionCore,
+  actionModule,
+  actionContextAdapters,
+} from "./pos-console-actions-fixture";
 function context(scope = "a") {
   const core = actionCore(scope);
-  const controller = createBackofficeContextController(core, {
-    readSession: async () => {
-      throw new Error("Unexpected session read");
-    },
-    readModules: async () => {
-      throw new Error("Unexpected modules read");
-    },
-    readSummary: async () => {
-      throw new Error("Unexpected summary read");
-    },
-    requestRefresh: () => {},
-    navigate: () => {},
-  });
+  const controller = createBackofficeContextController(
+    core,
+    actionContextAdapters,
+  );
   controller.applyModulesSeed({
     bootId: core.bootId,
     scopeKey: core.scopeKey,
