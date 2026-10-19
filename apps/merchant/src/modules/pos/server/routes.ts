@@ -18,6 +18,7 @@ import { updatePosOrderV2 } from "./measured-update";
 import { resolveMeasuredScan } from "./measured-resolve";
 import type { ModuleRoute, ModuleServer } from "../../route-table";
 import { closePosOrder } from "./close";
+import { closeMeasuredPosOrder } from "./measured-close";
 import { posOrderId } from "./errors";
 import { posRoute, readPosBody, posReadContract } from "./http";
 import { listPosOrders } from "./list";
@@ -142,9 +143,16 @@ const routes: readonly ModuleRoute[] = [
     path: "orders/:id/close",
     failure: "No pudimos cerrar la venta.",
     handler: async ({ request, business, userId, params }) => {
+      const contract = posReadContract(request);
       const id = posOrderId(params.id);
+      const body = await readPosBody(request);
       return NextResponse.json(
-        await closePosOrder(business, userId, id, await readPosBody(request)),
+        await (contract === 2 ? closeMeasuredPosOrder : closePosOrder)(
+          business,
+          userId,
+          id,
+          body,
+        ),
       );
     },
   }),
