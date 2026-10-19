@@ -180,3 +180,39 @@ store físico, autorización exacta aceptada; destino ajeno, enlace cambiado o
 resolución distinta fallan incluso con metadata/hashválidos. Revisión QA delta y
 nueva receta antes authCOPY/rootresource; ningún recurso real fue ejecutado por
 fd16. La falta de este caso se conserva como NO GO, nunca PASS por14tests offline.
+
+## Artefacto generado por Next: identidad explícita de next-env
+
+Primer COPYONLY af6 falló antes de crear candidate/compiled, sin DB/fixture/OTP/
+servidor/venta. Namespace m1-mass-af6a388b-6cee y todos sus logs/auth/error quedan
+preservados; no reintentar ni sobrescribir. Diagnóstico readonly del autor y root:
+3616tracked candidato y2277f.files con ÚNICA divergencia apps/merchant/next-env.d.ts.
+Control3268tracked sin diferencias. Los822/814 compiledmaps y ambos BUILD_ID siguen
+idénticos al freeze58df. f.files corresponde al ROOTGit antes de build; Next generó
+la declaración merchant del artefacto durante producción, sin tocar ROOT.
+
+Antes Git/f.files SHA0f70629890b72a0a82e91972cc032c04b658b26c265373cb711cf576bfbf8fcc,
+blob a419cbe4e3a5e8d4b481b851dbf4ac767de069e6. Después artefacto SHA
+1862ac4bbbc5192d4bf562161df66ea547ed3e67173100656ab606ae9797db2b,
+blob ce4e94a6b10f160ee021fe18939af160d2927dcf. ÚNICOS cambios de texto:
+'./.next/dev/types/routes.d.ts'→'./.next/types/routes.d.ts' y
+'./.next/dev/types/root-params.d.ts'→'./.next/types/root-params.d.ts'. Todos los otros
+bytes idénticos; no transformar otros imports ni ignorar el archivo.
+
+Se asigna fix mínimo en los mismos cuatro paths MASA: autorización nueva contiene
+generatedSourceCompatibility para este ÚNICO path/source6cee/freeze58df/BIDmZN/
+Next16.3.0/QAref y hashes/blobs/textos completos beforeGit/observedAfter. La función
+común valida bytes completos y las DOS sustituciones literales fijas, cada una una
+vez, además de perfil/path/source/build/identidades exactos. Auth no puede aprobar
+una transformación arbitraria ni otro archivo. f.files/Git/origen/freeze quedan
+intactos, se registra la relación prebuild→postbuild observada, sin parchear source.
+
+Usar la misma validación en sourceFreeze, bucleCOPY de TODOStracked, verificación
+COPY/origen/fin y manifest/provenance con authoriginal0600. Autorizaciones futuras
+fixture/run/cleanup conservarán EXACTO el objeto aprobado. Todo otro archivo exige
+Gitblob y digest usual, incluso otros next-env. Recheck posterior detecta cualquier
+byte o enlace cambiado. Negativos authausente/otroperfil/BID/source/path/bytes/hash/
+transformextra/espacios/otrofile/driftpost, incluido el puente real contra el archivo
+actual en sólolectura. JSonly permite reutilizar tsc8181; lint/unit/diff/nuevareceta/
+SHA limpio y QA delta antes cualquier recurso nuevo. Nuevo namespace y authCOPYONLY
+para SHA final; el fallido af6 no se recicla. No DB, OTP, rebuild ni instalación.
