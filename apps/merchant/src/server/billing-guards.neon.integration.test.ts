@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { inArray, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 // better-auth necesita estas dos para construirse; valores de test sobre la rama aislada.
@@ -14,6 +14,8 @@ import {
 } from "./counter-integration-support";
 import { getDb } from "@mi-pasaporte/db";
 import {
+  users,
+  sessions,
   businesses,
   consumerAccounts,
   subscriptions,
@@ -76,6 +78,7 @@ describe.skipIf(!integrationEnabled)(
   "el eje de acceso en los guards (spec 0189, T7)",
   () => {
     let seed: Seed;
+    const ownedUsers: string[] = [];
     let ownerCookie: string;
     let staff: { identifier: string; pin: string };
     let consumer: { id: string; qrToken: string };
@@ -95,14 +98,21 @@ describe.skipIf(!integrationEnabled)(
         grant: 10,
         blockAmount: "1.00",
       });
+      ownedUsers.push(seed.userId);
       ownerCookie = (await openMerchantSession(seed.userId)).split(";")[0];
       const created = await createStaff(
         { id: seed.business.id, slug: seed.slug },
         { name: "Cajera Cobro", permissions: ["counter"] },
         "owner",
       );
+      ownedUsers.push(created.staff.userId);
+      console.info("P6 billing fixture identities", {
+        businessId: seed.business.id,
+        userIds: ownedUsers,
+      });
       staff = { identifier: created.staff.identifier, pin: created.pin };
       consumer = await seedConsumer();
+      console.info("P6 billing consumer identity", { consumerId: consumer.id });
     }, 120_000);
 
     afterAll(async () => {
@@ -110,6 +120,25 @@ describe.skipIf(!integrationEnabled)(
       await getDb()
         .delete(consumerAccounts)
         .where(eq(consumerAccounts.id, consumer.id));
+      await getDb().delete(users).where(inArray(users.id, ownedUsers));
+      expect(
+        await getDb()
+          .select({ id: users.id })
+          .from(users)
+          .where(inArray(users.id, ownedUsers)),
+      ).toEqual([]);
+      expect(
+        await getDb()
+          .select({ id: sessions.id })
+          .from(sessions)
+          .where(inArray(sessions.userId, ownedUsers)),
+      ).toEqual([]);
+      expect(
+        await getDb()
+          .select({ id: consumerAccounts.id })
+          .from(consumerAccounts)
+          .where(eq(consumerAccounts.id, consumer.id)),
+      ).toEqual([]);
     }, 60_000);
 
     /** Las superficies que cortan, con su desenlace. */
@@ -189,9 +218,14 @@ describe.skipIf(!integrationEnabled)(
       }
     }, 60_000);
 
-    it("el MISMO negocio con la prueba vigente pasa en todas: 200", async () => {
+    it("el MISMO negocio con prueba vigente pasa los guards: APIs200 y Counter410", async () => {
       for (const [name, response] of Object.entries(await guarded())) {
-        expect(response.status, name).toBe(200);
+        expect(response.status, name).toBe(name === "counter" ? 410 : 200);
+        if (name === "counter")
+          expect(await response.json()).toEqual({
+            code: "feature_retired",
+            error: "Esta función ya no está disponible.",
+          });
       }
     }, 120_000);
   },

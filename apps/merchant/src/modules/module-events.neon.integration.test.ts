@@ -1,3 +1,4 @@
+import type { MeasuredSaleClosedEvent } from "../server/module-events/types";
 import { createPaymentMethod } from "../server/business/payment-methods";
 import { randomUUID } from "node:crypto";
 import {
@@ -41,13 +42,10 @@ const readSaleCommissions = (
   location: unknown,
 ) => readCoreSaleCommissions(businessId, id, location, "pos");
 import { businessHttp } from "../server/business/http";
-import {
-  publishSaleClosed,
-  setResourceVersion,
-  type SaleClosedEvent,
-} from "../server/module-events";
+import { publishSaleClosed, setResourceVersion } from "../server/module-events";
 import {
   setupModuleEventWorld,
+  moduleEventPos,
   cleanupModuleEventWorld,
   world,
   other,
@@ -56,14 +54,13 @@ import {
   cashId,
   foreignCashId,
   state,
-  post,
   open,
   eventOf,
   movements,
   drain,
   holdAcceleration,
 } from "./module-events-integration-support";
-beforeAll(setupModuleEventWorld, 120000);
+beforeAll(() => setupModuleEventWorld({ posContract: 2 }), 120000);
 afterAll(cleanupModuleEventWorld, 120000);
 afterEach(() => vi.restoreAllMocks());
 async function sqlState(query: Promise<unknown>, code: string) {
@@ -78,7 +75,7 @@ async function sqlState(query: Promise<unknown>, code: string) {
 describe.skipIf(!modulesIntegrationEnabled)(
   "P1 actual POS provider, R1 compatibility and schema negatives",
   () => {
-    it("real v2 freezes composition/rate in one close while Stock keeps its own application valuation", async () => {
+    it("real V4 freezes composition/rate in one close while Stock keeps its own application valuation", async () => {
       holdAcceleration();
       const a = await createRecipe(world.businessId, {
           name: "Actual recipe A",
@@ -107,18 +104,27 @@ describe.skipIf(!modulesIntegrationEnabled)(
       );
       const order = await open(productId, 2);
       state.closedId = order.id;
-      const response = await post(`orders/${order.id}/close`, {
+      const response = await moduleEventPos().close(order.id, {
         version: order.version,
         clientRequestId: randomUUID(),
         payments: [{ methodId: method.id, amount: "18.00" }],
       });
       expect(response.status).toBe(200);
       const event = await eventOf(order.id),
-        payload = event.payload as SaleClosedEvent;
-      expect(payload.eventVersion).toBe(3);
-      if (payload.eventVersion !== 3)
+        payload = event.payload as MeasuredSaleClosedEvent;
+      expect(payload.eventVersion).toBe(4);
+      if (payload.eventVersion !== 4)
         throw new Error("expected financial event");
       expect(payload.money.collected).toBe("18.00");
+      expect(payload.lines[0]).toMatchObject({
+        quantity: "2",
+        measure: {
+          kind: "unit",
+          quantityUnit: "unit",
+          priceUnit: "unit",
+          conversionVersion: "mass-si-1",
+        },
+      });
       expect(payload.lines[0].resourceVersions).toContainEqual({
         providerId: "recipes",
         slot: "composition",
@@ -290,7 +296,7 @@ describe.skipIf(!modulesIntegrationEnabled)(
       try {
         expect(
           (
-            await post(`orders/${zero.id}/close`, {
+            await moduleEventPos().close(zero.id, {
               version: zero.version,
               clientRequestId: randomUUID(),
               payments: [],
@@ -299,15 +305,15 @@ describe.skipIf(!modulesIntegrationEnabled)(
         ).toBe(200);
         expect(
           (
-            await post(`orders/${positive.id}/close`, {
+            await moduleEventPos().close(positive.id, {
               version: positive.version,
               clientRequestId: randomUUID(),
               payments: [{ methodId: cashId, amount: "9.00" }],
             })
           ).status,
         ).toBe(200);
-        expect((await eventOf(zero.id)).eventVersion).toBe(3);
-        expect((await eventOf(positive.id)).eventVersion).toBe(3);
+        expect((await eventOf(zero.id)).eventVersion).toBe(4);
+        expect((await eventOf(positive.id)).eventVersion).toBe(4);
         await setModuleEnabled(world.businessId, "pos", { enabled: false });
         const staff = await moduleStaff(world, ["business"]);
         const response = await businessHttp(
@@ -426,8 +432,8 @@ describe.skipIf(!modulesIntegrationEnabled)(
     }, 30000);
     it("a persisted contradictory zero never becomes known commission zero", async () => {
       const real = await eventOf(state.closedId),
-        payload = structuredClone(real.payload) as SaleClosedEvent;
-      if (payload.eventVersion !== 3)
+        payload = structuredClone(real.payload) as MeasuredSaleClosedEvent;
+      if (payload.eventVersion !== 4)
         throw new Error("expected financial event");
       const sourceOrderId = randomUUID();
       payload.sourceOrderId = sourceOrderId;

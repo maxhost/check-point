@@ -33,15 +33,15 @@ import { saveComposition } from "./recipes/server/compositions";
 import { modulesIntegrationEnabled } from "./modules-integration-support";
 import {
   setupModuleEventWorld,
+  moduleEventPos,
   cleanupModuleEventWorld,
   world,
   itemId,
   productId,
   open,
-  post,
   holdAcceleration,
 } from "./module-events-integration-support";
-beforeAll(setupModuleEventWorld, 120000);
+beforeAll(() => setupModuleEventWorld({ posContract: 2 }), 120000);
 afterAll(cleanupModuleEventWorld, 120000);
 afterEach(() => vi.restoreAllMocks());
 describe.skipIf(!modulesIntegrationEnabled)("AN1 exact event snapshots", () => {
@@ -153,7 +153,7 @@ describe.skipIf(!modulesIntegrationEnabled)("AN1 exact event snapshots", () => {
         .set({ unitPrice: price })
         .where(eq(products.id, productId));
       const order = await open(productId, 1);
-      const response = await post(`orders/${order.id}/close`, {
+      const response = await moduleEventPos().close(order.id, {
         version: order.version,
         clientRequestId: randomUUID(),
         payments: [{ methodId: method.id, amount: price }],
@@ -174,11 +174,11 @@ describe.skipIf(!modulesIntegrationEnabled)("AN1 exact event snapshots", () => {
     await setModuleEnabled(world.businessId, "recipes", { enabled: false });
     const second = await sell("9.00");
     expect(first.event.payload).toMatchObject({
-      eventVersion: 3,
+      eventVersion: 4,
       lines: [{ commissionMinor: "2" }],
     });
     expect(second.event.payload).toMatchObject({
-      eventVersion: 3,
+      eventVersion: 4,
       lines: [{ commissionMinor: "18" }],
     });
     const result = await retryModuleEvents({

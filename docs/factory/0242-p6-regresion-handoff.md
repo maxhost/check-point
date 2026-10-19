@@ -48,16 +48,16 @@ Base `01445a86bdec433e8d7bc75b94dfca1ce8184c19`, WT/ref `pos-ui-card-0242`. Cort
 | `apps/merchant/src/modules/pos/server/order-intent-storage.neon.integration.test.ts` | Histórico6 actualizado; SQL canónico/clones/constraints de origen conservados y shape0108 activo separado; DB serial pendiente |
 | `apps/merchant/src/modules/pos/server/payment-methods.neon.integration.test.ts` | Ampliación5 PASS DB en afe7060d |
 | `apps/merchant/src/modules/pos/server/pos-access.neon.integration.test.ts` | Ampliación5 PASS DB en afe7060d |
-| `apps/merchant/src/modules/pos/server/pos-best-sellers.neon.integration.test.ts` | Residual8 actualizado, checks offline PASS; DB pendiente de devolución |
+| `apps/merchant/src/modules/pos/server/pos-best-sellers.neon.integration.test.ts` | PASS DB2/2 en98ffe933, fuente compatible |
 | `apps/merchant/src/modules/pos/server/pos-close-races.neon.integration.test.ts` | PASS DB compatible por corte660add97/25bc5a27/d9d0b8bd; ver resultados y límites abajo |
 | `apps/merchant/src/modules/pos/server/pos-close-reuse.neon.integration.test.ts` | PASS DB compatible por corte660add97/25bc5a27/d9d0b8bd; ver resultados y límites abajo |
 | `apps/merchant/src/modules/pos/server/pos-close.neon.integration.test.ts` | PASS DB compatible por corte660add97/25bc5a27/d9d0b8bd; ver resultados y límites abajo |
 | `apps/merchant/src/modules/pos/server/pos-context-native.neon.integration.test.ts` | Compatible por lectura: usa sólo seed/módulo o caller nativo/raw de cutover explícito; no cambiar por el soporte |
-| `apps/merchant/src/modules/pos/server/pos-disable-tables.neon.integration.test.ts` | Residual8 actualizado, checks offline PASS; DB pendiente de devolución |
-| `apps/merchant/src/modules/pos/server/pos-disable.neon.integration.test.ts` | Residual8 actualizado, checks offline PASS; DB pendiente de devolución |
+| `apps/merchant/src/modules/pos/server/pos-disable-tables.neon.integration.test.ts` | 98ffe933 1/2, timeout120s primer caso; spy/contención/finally corregidos enbaf2a979, retest pendiente |
+| `apps/merchant/src/modules/pos/server/pos-disable.neon.integration.test.ts` | PASS DB6/6 en98ffe933 incluidas carreras, fuente compatible |
 | `apps/merchant/src/modules/pos/server/pos-ladder.neon.integration.test.ts` | Ampliación5 PASS DB en afe7060d |
 | `apps/merchant/src/modules/pos/server/pos-migration-0079.neon.integration.test.ts` | Histórico6 actualizado; SQL canónico/clones/constraints de origen conservados y shape0108 activo separado; DB serial pendiente |
-| `apps/merchant/src/modules/pos/server/pos-orders.neon.integration.test.ts` | Residual8 actualizado, checks offline PASS; DB pendiente de devolución |
+| `apps/merchant/src/modules/pos/server/pos-orders.neon.integration.test.ts` | 98ffe933 7/8, unknown_line→invalid_input422 corregido enbaf2a979; retest focal pendiente |
 | `apps/merchant/src/modules/pos/server/pos-scope.neon.integration.test.ts` | Compatible por lectura: usa sólo seed/módulo o caller nativo/raw de cutover explícito; no cambiar por el soporte |
 | `apps/merchant/src/modules/pos/server/pos-staff-entry.neon.integration.test.ts` | Compatible por lectura: usa sólo seed/módulo o caller nativo/raw de cutover explícito; no cambiar por el soporte |
 | `apps/merchant/src/modules/pos/server/quantity-storage-expand.neon.integration.test.ts` | Histórico6 actualizado; SQL canónico/clones/constraints de origen conservados y shape0108 activo separado; DB serial pendiente |
@@ -136,3 +136,24 @@ Checks extraStock: types merchant PASS, ESLint3 PASS y Prettier3 PASS; ningunaDB
 TransferenciaCI exclusiva posterior a M1 autorizada; wrapper privado serial ejecutó pos-orders, pos-best-sellers, pos-disable y pos-disable-tables sin editar fuente. EXIT1,4suites:2PASS/2FAIL,18casos:16PASS/2FAIL,0skips/retries,292.86s. PASS completos:pos-disable6 y best-sellers2; orders7/8 y tables1/2. Log privado `p6-residual4-attempt1.log`. Unknown_line conservó422 pero recibióinvalid_input; resolveExistingMeasuredLineV2 rechaza una línea sin snapshot autoritativo con esa familia actual. Se conserva el negativo y snapshot sin efectos al actualizar el oráculo. Tables primer caso agotó120s; segundo carreraPASS. La causa del timeout no está probada. Montaje nuevo espía la entrada real del registro tras cargarlo, exige latchA alcanzado y waiterB del mutex exacto del negocio, libera/esperaambos en finally; no cambia producto/locks. Repetición de sólo estos2archivos pendiente devoluciónCI.
 
 Los cuatroafterAll terminaron sinerror y comprobaron cleanup de owners/consumers/sesiones propios según cada fixture. PIDs27995,28472,28474,28480,28483,32775 ausentes al cierre; ningún worker/launcher restante del checkout. Inspector readonly privado autorizado mediante mismo wrapper: advisory_waiters0 y actividadnoidle/tx=[]; no fixtures/DDL/barridos del inspector. Intento diagnóstico1 EXIT1 por CLI --setupFiles no soportado; intento2 con configprivada EXIT0, inspección únicamente,8tests omitidos explícitos NO sonPASS/cobertura. Logs `p6-residual4-diagnostic.log` y `p6-residual4-diagnostic-attempt2.log`. DB transferida de vuelta a M1 por coordinador; no másDB hasta reasignación.
+
+
+## Cierre dirigido del inventario:46suites pertinentes
+
+La cifra40 era el cierre recursivo de los4soportes POS/pagos/business/Stock, no exhaustividad de writersHTTP independientes. Búsqueda dirigida adicional de literales POS/Counter y imports de sus handlers, más todos los callers de module-events-integration-support, identifica6suites más. Extensión exacta7paths autorizada9b9a1122/factory antes de editar. No se amplía por cercanía a otros módulos.
+
+| Archivo adicional | Relevancia y clasificación |
+| --- | --- |
+| `apps/merchant/src/modules/module-events-integration-support.ts` | Soporte independiente writerV1 demostrado; setup opt-inV2 por owner real, open positivo completo con revisiónSQL real, caller explícito; post genérico/default intacto. Captura/logIDs y verifica retiro propio |
+| `apps/merchant/src/modules/module-events.neon.integration.test.ts` | Adaptado offline, DBpendiente: cierresV2→eventoV4 exacto, cantidadstring/medida, snapshots composición/comisión, stockcoste, tenant/FKs/inmutabilidad/zero contradictorio conservados; publishSaleClosedV1 interno histórico intacto |
+| `apps/merchant/src/modules/analytics-covered.neon.integration.test.ts` | Adaptado offline, DBpendiente:2cierresrealesV2/V4, comisiones2/18minorunits y skipmodules/analytics exactos preservados; eventoV1 interno anterior intacto |
+| `apps/merchant/src/modules/sale-publisher-v4.neon.integration.test.ts` | Adaptado offline, DBpendiente: sólo seedunit HTTPV2/revisiónreal; masa exacta sigue payload-only sin filas fabricadas. Publisher/replay/V1histórico y cleanupSQL originales conservados |
+| `apps/merchant/src/server/billing-guards.neon.integration.test.ts` | Adaptado offline, DBpendiente: positivo tras guards Counter410feature_retired frente APIs200; precedencia402billing/403suspensión conservada. Identidades propias registradas/retiradas/verificadas localmente |
+| `apps/merchant/src/server/permisos-mostrador.neon.integration.test.ts` | Adaptado offline, DBpendiente:5endpoints staffSINcounter403missing_permission intactos; staffCONcounter atraviesa guard y obtiene410exacto; owner/staff/consumer/sesiones propios retirados y comprobados |
+| `apps/merchant/src/server/staff-entry.neon.integration.test.ts` | Adaptado offline, DBpendiente:PINtemporal403exacto, posteriorAPI200/Counter410exacto y bypassowner conservados; cleanup sóloIDsowner/staff/consumer registrados |
+
+Consultas de cierre: `rg -l '(api/(modules/)?pos|api/counter|pos/orders)' apps/merchant/src --glob '*test.ts' --glob '*support.ts'` y `rg -n 'api/counter|from.*counter/.*/route' apps/merchant/src --glob '*.neon.integration.test.ts' --glob '*support.ts'`; luego lectura de cuerpos/imports (no mera coincidencia textual). module-events support tiene exactamente2consumidores test, ambos opt-in. No otros positivosV1 demostrados en ese cierre dirigido.
+
+Fuera de las46, coincidencias compatibles por lectura: business-status prueba requireOperator directo, counter-email-gate prueba guard/estructura, counter-redeem-races usa dominio (ruta sólo comentario), counter-coupon-support y coupon-cycle-support usan grantAccrual interno. No se reescribe historia/SQL/dominio Counter. Unit/UItests POS/retirement y boundaries encontrados por literales ya prueban contratos actuales o estructura; sin nuevos writersHTTPV1 demostrados. Los7compatibles del grafo original conservan clasificación por lectura, sin atribuirlesPASSDB nuevo.
+
+Estado observable:20suites completas/115casos compatiblesPASSpor cortes (18/107anteriores +pos-disable6 +best-sellers2),2suites parciales con fallos preservados (orders7/8,tables1/2).19suites pendientes de DB sobre fuente final (incluidas esas2corregidas),7compatibles por lectura. Esto no es verifyglobal niQAfinal. Nuevos7checks: typecheck1FAIL por unionSaleClosedV1-3 obsoleta; unionmeasured corregida y typecheck2PASS; cleanup añadido y typecheck3PASS. ESLint7,Prettier8(incluyehandoff) y diff whitespacePASS al congelar. NoDB durante reservaM1.

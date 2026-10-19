@@ -1,8 +1,16 @@
 import { initializePaymentMethods } from "../server/business/payment-catalog";
+import { randomUUID } from "node:crypto";
+import {
+  capturePosScope,
+  scopedPos,
+} from "./pos/server/pos-integration-support";
 import { vi } from "vitest";
 import { getDb, withDbTransaction } from "@mi-pasaporte/db";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import {
+  products,
+  users,
+  sessions,
   moduleEvents,
   paymentMethods,
   stockItems,
@@ -26,7 +34,15 @@ export let world: ModuleWorld,
   cashId: string,
   foreignCashId: string;
 export const state = { closedId: "" };
-export async function setupModuleEventWorld() {
+const posScopes = new Map<string, string>();
+export function moduleEventPos(owner = world) {
+  const scope = posScopes.get(owner.businessId);
+  if (!scope)
+    throw new Error("Module event POS fixture requires explicit V2 setup");
+  return scopedPos(owner.cookie, scope);
+}
+export async function setupModuleEventWorld(options?: { posContract: 2 }) {
+  posScopes.clear();
   world = await seedModuleWorld("P1 real event");
   other = await seedModuleWorld("P1 schema foreign");
   for (const owner of [world, other]) {
@@ -74,23 +90,76 @@ export async function setupModuleEventWorld() {
     weightedAverageInitializedAt: new Date(),
   });
   productId = await seedProduct(world, "Actual combo", "9.00");
+  if (options?.posContract === 2)
+    for (const owner of [world, other]) {
+      posScopes.set(
+        owner.businessId,
+        await capturePosScope(owner.cookie, owner.businessId),
+      );
+      console.info("P6 event fixture identity", {
+        businessId: owner.businessId,
+        userIds: owner.users,
+      });
+    }
 }
 export async function cleanupModuleEventWorld() {
+  const identities = [world, other]
+    .filter(Boolean)
+    .flatMap((owner) => owner.users);
   await dropModuleWorld(world);
   await dropModuleWorld(other);
+  if (posScopes.size && identities.length) {
+    const remainingUsers = await getDb()
+      .select({ id: users.id })
+      .from(users)
+      .where(inArray(users.id, identities));
+    const remainingSessions = await getDb()
+      .select({ id: sessions.id })
+      .from(sessions)
+      .where(inArray(sessions.userId, identities));
+    if (remainingUsers.length || remainingSessions.length)
+      throw new Error("Owned event fixture identities were not retired");
+  }
 }
 export const post = (path: string, body: unknown, owner = world) =>
   callModuleRoute("POST", "/api/modules/pos/" + path, owner.cookie, body);
 export async function open(id = productId, quantity = 1, owner = world) {
-  const response = await post(
-    "orders",
-    {
+  let response: Response;
+  if (posScopes.has(owner.businessId)) {
+    const [product] = await getDb()
+      .select({ revision: products.salesRevision })
+      .from(products)
+      .where(
+        and(eq(products.id, id), eq(products.businessId, owner.businessId)),
+      );
+    if (!product)
+      throw new Error("Module event fixture requires its own product");
+    response = await moduleEventPos(owner).create({
+      createRequestId: randomUUID(),
+      saleType: "pickup",
+      orderLabel: "P1 event",
       locationId: owner.locationId,
-      tableLabel: "P1 event",
-      items: [{ productId: id, quantity }],
-    },
-    owner,
-  );
+      tableId: null,
+      note: null,
+      items: [
+        {
+          productId: id,
+          quantity: String(quantity),
+          quantityUnit: "unit",
+          catalogRevision: String(product.revision),
+        },
+      ],
+    });
+  } else
+    response = await post(
+      "orders",
+      {
+        locationId: owner.locationId,
+        tableLabel: "P1 event",
+        items: [{ productId: id, quantity }],
+      },
+      owner,
+    );
   if (response.status !== 201)
     throw new Error(`open actual POS:${response.status}`);
   return response.json();
