@@ -174,6 +174,7 @@ export async function listPosOrders(
         : (row.amounts ?? EMPTY_SUMMARY);
     // Select scalar frozen amounts only: settlement contains per-line JSON we do not need.
     if (
+      version === 2 &&
       row.hasSettlement &&
       (!row.settlementGross ||
         !row.settlementCollected ||
@@ -189,6 +190,7 @@ export async function listPosOrders(
       : null;
     // Only compatible unit snapshots can supply historical cents without a frozen amount.
     if (
+      version === 2 &&
       row.status !== "open" &&
       !settlement &&
       row.saleTotal === null &&

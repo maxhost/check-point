@@ -191,8 +191,30 @@ describe("0242 measured list projection", () => {
     });
     expect(frozenSummaryTotals(input, 1)).toEqual({
       total: "6.50",
-      saleTotal: "5.50",
+      saleTotal: "4.50",
     });
+    expect(
+      frozenSummaryTotals(
+        {
+          ...input,
+          settlement: { gross: "1", collected: "1" },
+          legacyGross: "0.98",
+          coreNet: null,
+        },
+        1,
+      ),
+    ).toEqual({ total: "0.98", saleTotal: null });
+    expect(
+      frozenSummaryTotals(
+        {
+          ...input,
+          settlement: { gross: "1", collected: "1" },
+          legacyGross: "0.98",
+          coreNet: null,
+        },
+        2,
+      ),
+    ).toEqual({ total: "1", saleTotal: "1" });
     // Defensive pure case only: the live writer voids an open order without settlement.
     expect(frozenSummaryTotals({ ...input, status: "voided" }, 2)).toEqual({
       total: "6.50",

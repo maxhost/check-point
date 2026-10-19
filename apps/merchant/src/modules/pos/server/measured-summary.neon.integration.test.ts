@@ -150,6 +150,44 @@ describe.skipIf(!posIntegrationEnabled)(
           closedAt: new Date("2026-11-01T05:30:00Z"),
         })
         .where(eq(posOrders.id, netOrder.id));
+      // Currency-normalized real close: V1 must retain the original historical cents.
+      const copProduct = await seedProduct(
+        worlds[0],
+        "COP historical cents",
+        "0.49",
+      );
+      await getDb()
+        .update(businesses)
+        .set({ currencyCode: "COP" })
+        .where(eq(businesses.id, worlds[0].seed.business.id));
+      try {
+        const copOrder = await openOrder(
+          worlds[0],
+          [{ productId: copProduct, quantity: 2 }],
+          "COP without customer",
+        );
+        const response = await closeWithCash(
+          worlds[0].ownerCookie,
+          copOrder.id,
+          { clientRequestId: randomUUID(), version: copOrder.version },
+        );
+        expect(response.status).toBe(200);
+        expect((await response.json()).settlement).toMatchObject({
+          gross: "1",
+          collected: "1",
+          currencyCode: "COP",
+        });
+        ids["net-cop"] = copOrder.id;
+        await getDb()
+          .update(posOrders)
+          .set({ closedAt: new Date("2026-11-01T06:10:00Z") })
+          .where(eq(posOrders.id, copOrder.id));
+      } finally {
+        await getDb()
+          .update(businesses)
+          .set({ currencyCode: "USD" })
+          .where(eq(businesses.id, worlds[0].seed.business.id));
+      }
       await getDb().insert(posOrders).values({
         businessId: worlds[1].seed.business.id,
         tableLabel: "Other tenant",
@@ -220,6 +258,7 @@ describe.skipIf(!posIntegrationEnabled)(
       expect(legacy.open[1]).toMatchObject({ total: "6.50", itemCount: 2 });
       expect(result.closedToday.map((o) => o.id)).toEqual([
         ids["today-void"],
+        ids["net-cop"],
         ids.legacy,
         ids.net,
       ]);
@@ -230,6 +269,16 @@ describe.skipIf(!posIntegrationEnabled)(
       expect(result.closedToday.find((o) => o.id === ids.legacy)).toMatchObject(
         { total: "6.50", saleTotal: "6.50" },
       );
+      expect(legacy.closedToday.find((o) => o.id === ids.net)).toMatchObject({
+        total: "6.50",
+        saleTotal: null,
+      });
+      expect(
+        legacy.closedToday.find((o) => o.id === ids["net-cop"]),
+      ).toMatchObject({ total: "0.98", saleTotal: null });
+      expect(
+        result.closedToday.find((o) => o.id === ids["net-cop"]),
+      ).toMatchObject({ total: "1", saleTotal: "1" });
       expect(result.closedToday[0]).toMatchObject({
         total: "6.50",
         saleTotal: null,

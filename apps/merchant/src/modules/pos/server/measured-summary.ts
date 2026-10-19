@@ -186,6 +186,8 @@ export function frozenSummaryTotals(
   },
   version: 1 | 2,
 ) {
+  if (version === 1)
+    return { total: input.legacyGross, saleTotal: input.coreNet };
   const gross =
     input.settlement?.gross ?? input.totalSnapshot ?? input.legacyGross;
   const net =
