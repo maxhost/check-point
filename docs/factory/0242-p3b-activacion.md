@@ -1,14 +1,33 @@
-# 0242 P3b — activación canónica medida (preparación, sin despacho)
+# 0242 P3b — activación canónica medida
 
 Depende del gate independiente P3a: entrada/accesos y bloqueo de escritores viejos.
 No se permite retirar barreras por tener solo pruebas puras del bloqueo.
-Base/candidato, writer y reserva exactos se registrarán después de aceptar P3a.
+P3a aceptado en `241089a4`, entrega QA `63ac5b1e`, en dev/main local.
+Writer nuevo en WT/ref `pos-ui-grid-0242`, reserva continuada homónima.
+Base de ejecución: commit documental que incluye esta asignación y la ficha P4.
 
 ## Corte serial previsto
 
 Asignar explícitamente un único writer de `packages/db/src/schema/catalog.ts`,
 `order.ts`, `modules/pos.ts`, nueva migración0108, journal y snapshot. B es todavía
-writer0107/DBCI en P3a: no competir. No editar migraciones0102/0103/0105.
+el slot de esquema: su nuevo autor conserva exclusividad de DBCI incluido teardown.
+No editar migraciones0102/0103/0105.
+
+Paths explícitos adicionales: `packages/db/drizzle/0108_measured_activation.sql`,
+`packages/db/drizzle/meta/0108_snapshot.json`, `packages/db/drizzle/meta/_journal.json`,
+`apps/merchant/src/modules/measured-mass-0242.neon.integration.test.ts`,
+`apps/merchant/src/modules/pos/server/mass-native.neon.integration.test.ts`,
+`tools/pos-measurement/mass-native.mjs` y
+`docs/factory/0242-p3b-mass-handoff.md`. Ficha actual es del coordinador.
+Si hay defecto de producto o fixture previa incompatible, pedir ampliación antes
+de editar. No rehacer consumidores ni modificar guards/tooling ajenos.
+
+Asignación explícita del harness nativo del corte al nuevo autor: fixture propia
+por wrapper CI y runner Next development en puerto43252 con auth/cookies/HTTP/DB
+reales y navegador sin interceptar API. Configuración seleccionada solo CI,
+antiPROD incondicional, manifiesto exclusivo previo a writes, cleanup por ownership.
+Conservar el3201/túnel y todos los artefactos M0; sin capturas ni impresión hardware.
+La configuración de este smoke no certifica M1 build/start.
 
 Sustituir las nueve constraints temporales por invariantes permanentes de forma y
 finitud: unit exige cantidad entera positiva y unidades unit/unit; mass exige ambas
