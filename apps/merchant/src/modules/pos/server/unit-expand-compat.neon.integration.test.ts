@@ -1,3 +1,5 @@
+import { sessions } from "@mi-pasaporte/db/schema";
+import { dispatchModuleRequest } from "../../dispatch";
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { eq, inArray, sql } from "drizzle-orm";
@@ -11,13 +13,15 @@ import {
   products,
   users,
 } from "@mi-pasaporte/db/schema";
+import { listPosOrders } from "./list";
 import { unitPriceOf, unitQuantityOf, lineTotalOf } from "./lines";
 import {
   type PosWorld,
   dropPosWorld,
-  openOrder,
+  seedLegacyOrder,
+  capturePosScope,
+  scopedPos,
   ordersWithItems,
-  pos,
   posIntegrationEnabled,
   posRow,
   seedPosWorld,
@@ -37,6 +41,7 @@ import {
 
 // Own world only. No persistent measurement fixtures, ALTERs or future-format writes.
 let world: PosWorld | undefined;
+let scope: string;
 const consumers: string[] = [];
 const own = () => world!;
 
@@ -45,6 +50,7 @@ describe.skipIf(!posIntegrationEnabled)(
   () => {
     beforeAll(async () => {
       world = await seedPosWorld("CP1b unit readers");
+      scope = await capturePosScope(world.ownerCookie, world.seed.business.id);
     }, 180_000);
     afterAll(async () => {
       const ownerId = world?.seed.userId;
@@ -55,6 +61,13 @@ describe.skipIf(!posIntegrationEnabled)(
           .delete(consumerAccounts)
           .where(inArray(consumerAccounts.id, consumers));
       if (ownerId) await getDb().delete(users).where(eq(users.id, ownerId));
+      if (ownerId)
+        expect(
+          await getDb()
+            .select({ id: sessions.id })
+            .from(sessions)
+            .where(eq(sessions.userId, ownerId)),
+        ).toEqual([]);
       if (businessId)
         expect(
           await getDb()
@@ -110,22 +123,74 @@ describe.skipIf(!posIntegrationEnabled)(
     it("reads/lists extreme legacy snapshots, preserves them on note edit and adds at current legacy tariff", async () => {
       const w = own();
       const productId = await seedProduct(w, "Legacy maximum", "9999999999.99");
-      const order = await openOrder(w, [{ productId, quantity: 1 }]);
+      const order = await seedLegacyOrder(w, [{ productId, quantity: 1 }]);
       expect(order).toMatchObject({
         total: "9999999999.99",
-        items: [{ quantity: 1, unitPrice: "9999999999.99" }],
+        items: [{ quantity: "1", unitPrice: "9999999999.99" }],
       });
       await getDb()
         .update(products)
-        .set({ unitPrice: "0.00" })
+        .set({ unitPrice: "0.00", salesRevision: 2 })
         .where(eq(products.id, productId));
-      const response = await pos.update(w.ownerCookie, order.id, {
+      // New captures retain the V2 limit; historical 2^31−1 snapshots are mounted separately.
+      const invalidCapture = await scopedPos(w.ownerCookie, scope).update(
+        order.id,
+        {
+          version: order.version,
+          saleType: order.saleType,
+          orderLabel: order.orderLabel,
+          tableId: null,
+          locationId: w.seed.locationId,
+          note: order.note,
+          items: [
+            {
+              lineId: order.items[0].lineId,
+              productId,
+              quantity: "1",
+              quantityUnit: "unit",
+            },
+            {
+              productId,
+              quantity: "2147483647",
+              quantityUnit: "unit",
+              catalogRevision: "2",
+            },
+          ],
+        },
+      );
+      expect(invalidCapture.status).toBe(422);
+      expect(await posRow(order.id)).toMatchObject({ version: 1 });
+      const [historicalSecond] = await getDb()
+        .insert(posOrderItems)
+        .values({
+          posOrderId: order.id,
+          productId,
+          nameSnapshot: "Legacy maximum",
+          unitPriceSnapshot: "0",
+          quantity: "2147483647",
+          position: 1,
+        })
+        .returning();
+      const response = await scopedPos(w.ownerCookie, scope).update(order.id, {
         version: order.version,
-        tableLabel: order.tableLabel,
+        saleType: order.saleType,
+        orderLabel: order.orderLabel,
+        tableId: null,
+        locationId: w.seed.locationId,
         note: "Snapshot unchanged",
         items: [
-          { lineId: order.items[0].lineId, quantity: 1 },
-          { productId, quantity: 2147483647 },
+          {
+            lineId: order.items[0].lineId,
+            productId,
+            quantity: "1",
+            quantityUnit: "unit",
+          },
+          {
+            lineId: historicalSecond.id,
+            productId,
+            quantity: "2147483647",
+            quantityUnit: "unit",
+          },
         ],
       });
       expect(response.status).toBe(200);
@@ -134,18 +199,26 @@ describe.skipIf(!posIntegrationEnabled)(
         total: "9999999999.99",
         note: "Snapshot unchanged",
         items: [
-          { unitPrice: "9999999999.99", quantity: 1 },
-          { unitPrice: "0.00", quantity: 2147483647 },
+          { unitPrice: "9999999999.99", quantity: "1" },
+          { unitPrice: "0", quantity: "2147483647" },
         ],
       });
-      expect(await (await pos.read(w.ownerCookie, order.id)).json()).toEqual(
-        edited,
-      );
-      const list = await (await pos.list(w.ownerCookie)).json();
+      expect(
+        await (await scopedPos(w.ownerCookie, scope).read(order.id)).json(),
+      ).toEqual(edited);
+      const list = await (await scopedPos(w.ownerCookie, scope).list()).json();
       expect(list.open).toContainEqual(
         expect.objectContaining({
           id: order.id,
           total: "9999999999.99",
+          lineCount: 2,
+          saleTotal: null,
+        }),
+      );
+      const legacyList = await listPosOrders(w.seed.business.id);
+      expect(legacyList.open).toContainEqual(
+        expect.objectContaining({
+          id: order.id,
           itemCount: 2147483648,
           saleTotal: null,
         }),
@@ -171,25 +244,90 @@ describe.skipIf(!posIntegrationEnabled)(
         .select({ id: posOrders.id })
         .from(posOrders)
         .where(eq(posOrders.businessId, w.seed.business.id));
-      for (const items of [
-        [{ productId, quantity: 2 }],
+      // Preserve the exact retired V1 DB-formatted-string negative as a raw caller.
+      const retired = await dispatchModuleRequest(
+        "POST",
+        new Request("http://localhost/api/modules/pos/orders", {
+          method: "POST",
+          headers: {
+            cookie: w.ownerCookie,
+            "X-Backoffice-Scope": scope,
+            "X-Pos-Contract": "1",
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            tableLabel: "Rejected",
+            locationId: w.seed.locationId,
+            items: [{ productId, quantity: "1.000000000" }],
+          }),
+        }),
+        { moduleId: "pos", path: ["orders"] },
+      );
+      expect(retired.status).toBe(409);
+      expect((await retired.json()).code).toBe("pos_client_upgrade_required");
+      for (const [items, code] of [
         [
-          { productId, quantity: 1 },
-          { productId, quantity: 1 },
+          [
+            {
+              productId,
+              quantity: "2",
+              quantityUnit: "unit",
+              catalogRevision: "1",
+            },
+          ],
+          "invalid_amount",
         ],
-        [{ productId, quantity: "1.000000000" }],
-      ]) {
-        const response = await pos.create(w.ownerCookie, {
-          tableLabel: "Rejected",
+        [
+          [
+            {
+              productId,
+              quantity: "1",
+              quantityUnit: "unit",
+              catalogRevision: "1",
+            },
+            {
+              productId,
+              quantity: "1",
+              quantityUnit: "unit",
+              catalogRevision: "1",
+            },
+          ],
+          "invalid_amount",
+        ],
+        [
+          [
+            {
+              productId,
+              quantity: 1,
+              quantityUnit: "unit",
+              catalogRevision: "1",
+            },
+          ],
+          "invalid_input",
+        ],
+        [
+          [
+            {
+              productId,
+              quantity: "1.0000000000",
+              quantityUnit: "unit",
+              catalogRevision: "1",
+            },
+          ],
+          "invalid_input",
+        ],
+      ] as const) {
+        const response = await scopedPos(w.ownerCookie, scope).create({
+          createRequestId: randomUUID(),
+          saleType: "pickup",
+          orderLabel: "Rejected",
           locationId: w.seed.locationId,
+          tableId: null,
+          note: null,
           items,
         });
         expect(response.status).toBe(422);
-        expect((await response.json()).code).toBe(
-          typeof items[0].quantity === "string"
-            ? "invalid_input"
-            : "invalid_amount",
-        );
+        expect((await response.json()).code).toBe(code);
       }
       expect(
         await getDb()
@@ -202,7 +340,7 @@ describe.skipIf(!posIntegrationEnabled)(
     it("rolls back existing-quantity and combined-new-line overflow including header/version", async () => {
       const w = own();
       const productId = await seedProduct(w, "Legal snapshot", "5000000000.00");
-      const order = await openOrder(w, [{ productId, quantity: 1 }]);
+      const order = await seedLegacyOrder(w, [{ productId, quantity: 1 }]);
       const before = await getDb()
         .select()
         .from(posOrders)
@@ -212,18 +350,41 @@ describe.skipIf(!posIntegrationEnabled)(
         .from(posOrderItems)
         .where(eq(posOrderItems.posOrderId, order.id));
       for (const items of [
-        [{ lineId: order.items[0].lineId, quantity: 2 }],
         [
-          { lineId: order.items[0].lineId, quantity: 1 },
-          { productId, quantity: 1 },
+          {
+            lineId: order.items[0].lineId,
+            productId,
+            quantity: "2",
+            quantityUnit: "unit",
+          },
+        ],
+        [
+          {
+            lineId: order.items[0].lineId,
+            productId,
+            quantity: "1",
+            quantityUnit: "unit",
+          },
+          {
+            productId,
+            quantity: "1",
+            quantityUnit: "unit",
+            catalogRevision: "1",
+          },
         ],
       ]) {
-        const response = await pos.update(w.ownerCookie, order.id, {
-          version: 1,
-          tableLabel: "Must roll back",
-          note: "Must roll back",
-          items,
-        });
+        const response = await scopedPos(w.ownerCookie, scope).update(
+          order.id,
+          {
+            version: 1,
+            saleType: order.saleType,
+            orderLabel: "Must roll back",
+            tableId: null,
+            locationId: w.seed.locationId,
+            note: "Must roll back",
+            items,
+          },
+        );
         expect(response.status).toBe(422);
         expect((await response.json()).code).toBe("invalid_amount");
         expect(
@@ -246,7 +407,7 @@ describe.skipIf(!posIntegrationEnabled)(
       async (withPass) => {
         const w = own();
         const productId = await seedProduct(w, "Exact cents", "0.10");
-        const order = await openOrder(w, [{ productId, quantity: 3 }]);
+        const order = await seedLegacyOrder(w, [{ productId, quantity: 3 }]);
         const customer = withPass ? await scannedCustomer(w) : null;
         if (customer) consumers.push(customer.consumerId);
         const couponId = customer
@@ -265,16 +426,20 @@ describe.skipIf(!posIntegrationEnabled)(
             ? { membershipId: customer.membershipId, coupon: { couponId } }
             : {}),
         };
-        const first = await closeWithCash(w.ownerCookie, order.id, body);
+        const first = await closeWithCash(w.ownerCookie, order.id, body, {
+          scope,
+        });
         expect(first.status).toBe(200);
         const closed = await first.json();
         expect(closed).toMatchObject({
           status: "closed",
           total: "0.30",
-          items: [{ unitPrice: "0.10", quantity: 3, lineTotal: "0.30" }],
+          items: [{ unitPrice: "0.1", quantity: "3", lineTotal: "0.30" }],
           settlement: { gross: "0.30", collected: withPass ? "0.20" : "0.30" },
         });
-        const replay = await closeWithCash(w.ownerCookie, order.id, body);
+        const replay = await closeWithCash(w.ownerCookie, order.id, body, {
+          scope,
+        });
         expect(replay.status).toBe(200);
         expect(await replay.json()).toEqual(closed);
         expect(await posRow(order.id)).toMatchObject({ status: "closed" });
@@ -286,8 +451,8 @@ describe.skipIf(!posIntegrationEnabled)(
           .from(moduleEvents)
           .where(eq(moduleEvents.sourceId, order.id));
         expect(events).toHaveLength(1);
-        expect(events[0].version).toBeLessThanOrEqual(3);
-        expect(events[0].payload).toMatchObject({ lines: [{ quantity: 3 }] });
+        expect(events[0].version).toBe(4);
+        expect(events[0].payload).toMatchObject({ lines: [{ quantity: "3" }] });
         if (customer && couponId) {
           const sales = await ordersWithItems(
             w.seed.business.id,

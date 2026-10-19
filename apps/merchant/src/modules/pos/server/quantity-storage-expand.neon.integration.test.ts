@@ -1,3 +1,4 @@
+import { sessions } from "@mi-pasaporte/db/schema";
 import { createHash, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { eq, sql } from "drizzle-orm";
@@ -6,7 +7,7 @@ import { getDb } from "@mi-pasaporte/db";
 import { businesses, posOrderItems, users } from "@mi-pasaporte/db/schema";
 import {
   dropPosWorld,
-  openOrder,
+  seedLegacyOrder,
   posIntegrationEnabled,
   seedPosWorld,
   seedProduct,
@@ -60,6 +61,13 @@ describe.skipIf(!posIntegrationEnabled)(
             .where(eq(users.id, ownerId)),
         ).toEqual([]);
       }
+      if (ownerId)
+        expect(
+          await getDb()
+            .select({ id: sessions.id })
+            .from(sessions)
+            .where(eq(sessions.userId, ownerId)),
+        ).toEqual([]);
       if (businessId)
         expect(
           await getDb()
@@ -127,8 +135,14 @@ describe.skipIf(!posIntegrationEnabled)(
         for (const suffix of ["quantity", "price", "measure"])
           expect(constraints).toContainEqual(
             expect.objectContaining({
-              conname: `${table.prefix}_${suffix}_legacy_check`,
+              conname: `${table.prefix}_${suffix}_shape_check`,
               contype: "c",
+            }),
+          );
+        for (const suffix of ["quantity", "price", "measure"])
+          expect(constraints).not.toContainEqual(
+            expect.objectContaining({
+              conname: `${table.prefix}_${suffix}_legacy_check`,
             }),
           );
         expect(constraints).toContainEqual(
@@ -246,12 +260,12 @@ describe.skipIf(!posIntegrationEnabled)(
 
     it("writes string quantities on the actual migrated POS table, supplies coherent defaults and preserves rows after rejected updates", async () => {
       const productId = await seedProduct(world!, "Unit barrier", "0.00");
-      const order = await openOrder(world!, [
+      const order = await seedLegacyOrder(world!, [
         { productId, quantity: 2147483647 },
       ]);
       expect(order).toMatchObject({
         total: "0.00",
-        items: [{ quantity: 2147483647, unitPrice: "0.00" }],
+        items: [{ quantity: "2147483647", unitPrice: "0" }],
       });
       const before = await getDb()
         .select()
@@ -265,10 +279,26 @@ describe.skipIf(!posIntegrationEnabled)(
         priceUnit: "unit",
         conversionVersion: "mass-si-1",
       });
+      // Precise unit tariffs are active after 0108; old 0.001 rejection remains in the origin clone.
+      await getDb()
+        .update(posOrderItems)
+        .set({ unitPriceSnapshot: "0.001" })
+        .where(eq(posOrderItems.posOrderId, order.id));
+      expect(
+        (
+          await getDb()
+            .select()
+            .from(posOrderItems)
+            .where(eq(posOrderItems.posOrderId, order.id))
+        )[0].unitPriceSnapshot,
+      ).toBe("0.001000000");
+      await getDb()
+        .update(posOrderItems)
+        .set({ unitPriceSnapshot: before[0].unitPriceSnapshot })
+        .where(eq(posOrderItems.posOrderId, order.id));
       for (const patch of [
         { quantity: "1.1" },
         { quantity: "2147483648" },
-        { unitPriceSnapshot: "0.001" },
         { unitPriceSnapshot: "-0.01" },
         { measureKind: "mass" },
         { quantityUnit: "g" },
