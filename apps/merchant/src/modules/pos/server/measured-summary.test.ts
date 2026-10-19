@@ -15,6 +15,7 @@ import {
   SUMMARY_DENOMINATOR,
   measuredSummaryColumns,
   summaryAmounts,
+  frozenSummaryTotals,
 } from "./measured-summary";
 
 export const measuredCases = [
@@ -175,6 +176,35 @@ describe("0242 measured list projection", () => {
         2,
       ),
     ).toThrow();
+  });
+  it("selects frozen collected over gross/core and preserves voided gross without income (synthetic projection, not a close)", () => {
+    const input = {
+      status: "closed" as const,
+      settlement: { gross: "6.50", collected: "5.50" },
+      coreNet: "4.50",
+      totalSnapshot: "6.50",
+      legacyGross: "6.50",
+    };
+    expect(frozenSummaryTotals(input, 2)).toEqual({
+      total: "5.50",
+      saleTotal: "5.50",
+    });
+    expect(frozenSummaryTotals(input, 1)).toEqual({
+      total: "6.50",
+      saleTotal: "5.50",
+    });
+    // Defensive pure case only: the live writer voids an open order without settlement.
+    expect(frozenSummaryTotals({ ...input, status: "voided" }, 2)).toEqual({
+      total: "6.50",
+      saleTotal: null,
+    });
+    expect(frozenSummaryTotals({ ...input, settlement: null }, 2)).toEqual({
+      total: "4.50",
+      saleTotal: "4.50",
+    });
+    expect(
+      frozenSummaryTotals({ ...input, settlement: null, coreNet: null }, 2),
+    ).toEqual({ total: "6.50", saleTotal: "6.50" });
   });
   it("projects integer sums with no SQL division, line arrays or monetary rounding", () => {
     const columns = measuredSummaryColumns({

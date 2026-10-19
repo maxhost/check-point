@@ -10,10 +10,7 @@ import {
   products,
   users,
 } from "@mi-pasaporte/db/schema";
-import {
-  buildFinancialAmountsFromSnapshots,
-  buildFinancialSettlementFromSnapshots,
-} from "@mi-pasaporte/domain/financial";
+import { buildFinancialAmountsFromSnapshots } from "@mi-pasaporte/domain/financial";
 import { CONVERSION_VERSION, MASS_UNITS } from "@mi-pasaporte/domain/measures";
 import { listPosOrders } from "./list";
 import {
@@ -23,12 +20,14 @@ import {
 } from "./measured-summary";
 import {
   dropPosWorld,
+  openOrder,
   posIntegrationEnabled,
   posStaff,
   seedPosWorld,
   seedProduct,
   type PosWorld,
 } from "./pos-integration-support";
+import { closeWithCash } from "./pos-payment-integration-support";
 
 const worlds: PosWorld[] = [];
 const now = new Date("2026-11-01T06:30:00.000Z"); // New York fall DST day, second 01:30.
@@ -41,13 +40,6 @@ const measure = {
   quantityUnit: "unit" as const,
   priceUnit: "unit" as const,
   conversionVersion: CONVERSION_VERSION,
-};
-const baseLine = {
-  sourceLineId: "line",
-  position: 0,
-  quantity: "2",
-  unitPrice: "3.25",
-  measure,
 };
 
 describe.skipIf(!posIntegrationEnabled)(
@@ -106,24 +98,7 @@ describe.skipIf(!posIntegrationEnabled)(
           new Date(now.getTime() - 90 * 86400000 - 1).toISOString(),
         ],
       ] as const) {
-        const settlement =
-          name === "net"
-            ? buildFinancialSettlementFromSnapshots({
-                currencyCode: "USD",
-                lines: [baseLine],
-                discount: {
-                  amount: "1.00",
-                  origin: {
-                    type: "campaign_coupon",
-                    sourceId: randomUUID(),
-                    scope: "order",
-                  },
-                },
-                payments: [
-                  { methodId: "cash", paymentId: randomUUID(), amount: "5.50" },
-                ],
-              })
-            : null;
+        if (name === "net") continue;
         const [row] = await getDb()
           .insert(posOrders)
           .values({
@@ -137,7 +112,7 @@ describe.skipIf(!posIntegrationEnabled)(
             createdAt: new Date(created),
             closedAt: closed ? new Date(closed) : null,
             closedByUserId: closed ? staffId : null,
-            settlement,
+            settlement: null,
             totalSnapshot: name === "legacy" ? "6.50" : null,
           })
           .returning();
@@ -152,6 +127,29 @@ describe.skipIf(!posIntegrationEnabled)(
             position: 0,
           });
       }
+      // A real paid close without a customer; no fabricated payment rows or discount.
+      const netOrder = await openOrder(
+        worlds[0],
+        [{ productId, quantity: 2 }],
+        "Cash without customer",
+      );
+      const closedResponse = await closeWithCash(
+        worlds[0].ownerCookie,
+        netOrder.id,
+        { clientRequestId: randomUUID(), version: netOrder.version },
+      );
+      expect(closedResponse.status).toBe(200);
+      const closedBody = await closedResponse.json();
+      expect(closedBody.sale).toBeNull();
+      expect(closedBody.settlement.collected).toBe("6.50");
+      ids.net = netOrder.id;
+      await getDb()
+        .update(posOrders)
+        .set({
+          createdAt: new Date("2026-11-01T04:30:00Z"),
+          closedAt: new Date("2026-11-01T05:30:00Z"),
+        })
+        .where(eq(posOrders.id, netOrder.id));
       await getDb().insert(posOrders).values({
         businessId: worlds[1].seed.business.id,
         tableLabel: "Other tenant",
@@ -226,8 +224,8 @@ describe.skipIf(!posIntegrationEnabled)(
         ids.net,
       ]);
       expect(result.closedToday.find((o) => o.id === ids.net)).toMatchObject({
-        total: "5.50",
-        saleTotal: "5.50",
+        total: "6.50",
+        saleTotal: "6.50",
       });
       expect(result.closedToday.find((o) => o.id === ids.legacy)).toMatchObject(
         { total: "6.50", saleTotal: "6.50" },
@@ -286,7 +284,7 @@ describe.skipIf(!posIntegrationEnabled)(
           lineCount: 1,
         });
         expect(result.closedToday.find((o) => o.id === ids.net)).toMatchObject({
-          total: "5.50",
+          total: "6.50",
         });
         expect(
           (await listPosOrders(worlds[0].seed.business.id, now)).open.find(

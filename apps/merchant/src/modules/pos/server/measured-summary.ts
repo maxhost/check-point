@@ -174,3 +174,29 @@ export function summaryAmounts(
     throw error;
   }
 }
+
+/** Chooses frozen snapshots only; it does not calculate or round historical money. */
+export function frozenSummaryTotals(
+  input: {
+    status: "open" | "closed" | "voided";
+    settlement: { gross: string; collected: string } | null;
+    coreNet: string | null;
+    totalSnapshot: string | null;
+    legacyGross: string;
+  },
+  version: 1 | 2,
+) {
+  const gross =
+    input.settlement?.gross ?? input.totalSnapshot ?? input.legacyGross;
+  const net =
+    input.status === "closed"
+      ? (input.settlement?.collected ??
+        input.coreNet ??
+        input.totalSnapshot ??
+        input.legacyGross)
+      : null;
+  return {
+    total: input.status === "closed" && version === 2 ? net! : gross,
+    saleTotal: net,
+  };
+}

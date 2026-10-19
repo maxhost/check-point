@@ -12,6 +12,7 @@ import {
   EMPTY_SUMMARY,
   measuredSummaryColumns,
   summaryAmounts,
+  frozenSummaryTotals,
   upgradeRequired,
 } from "./measured-summary";
 
@@ -181,20 +182,18 @@ export async function listPosOrders(
         : (row.settlement?.currencyCode ?? "USD"),
       version,
     );
-    const frozenGross = row.settlement?.gross ?? row.totalSnapshot;
-    const net =
-      row.status === "closed"
-        ? (row.settlement?.collected ??
-          row.saleTotal ??
-          row.totalSnapshot ??
-          amounts.total)
-        : null;
-    const total =
-      row.status === "open"
-        ? amounts.total
-        : version === 2 && row.status === "closed"
-          ? net!
-          : (frozenGross ?? amounts.total);
+    const frozen = frozenSummaryTotals(
+      {
+        status: row.status as PosOrderSummary["status"],
+        settlement: row.settlement,
+        coreNet: row.saleTotal,
+        totalSnapshot: row.totalSnapshot,
+        legacyGross: amounts.total,
+      },
+      version,
+    );
+    const total = row.status === "open" ? amounts.total : frozen.total;
+    const net = frozen.saleTotal;
     const common = {
       id: row.id,
       status: row.status as PosOrderSummary["status"],
