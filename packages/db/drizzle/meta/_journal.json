@@ -757,6 +757,13 @@
       "when": 1792370000000,
       "tag": "0107_pos_staff_cutover",
       "breakpoints": true
+    },
+    {
+      "idx": 108,
+      "version": "7",
+      "when": 1792395424818,
+      "tag": "0108_measured_activation",
+      "breakpoints": true
     }
   ]
 }

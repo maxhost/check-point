@@ -246,18 +246,18 @@ export const posOrderItems = posSchema.table(
       sql`${table.unitPriceSnapshot} >= 0`,
     ),
     check("core_pos_order_item_quantity_check", sql`${table.quantity} > 0`),
-    // Temporary expand barriers: retain every historical unit row until CP2c.
+    // Permanent measured shape; retain historical unit quantities and tariffs.
     check(
-      "pos_order_item_quantity_legacy_check",
-      sql`${table.quantity} <= 2147483647 and ${table.quantity} = trunc(${table.quantity})`,
+      "pos_order_item_quantity_shape_check",
+      sql`(${table.measureKind} = 'unit' and ${table.quantity} <= 2147483647 and ${table.quantity} = trunc(${table.quantity})) or (${table.measureKind} = 'mass' and ${table.quantity} <= 999999999.999999999)`,
     ),
     check(
-      "pos_order_item_price_legacy_check",
-      sql`${table.unitPriceSnapshot} between -9999999999.99 and 9999999999.99 and ${table.unitPriceSnapshot} = trunc(${table.unitPriceSnapshot}, 2)`,
+      "pos_order_item_price_shape_check",
+      sql`${table.unitPriceSnapshot} <= 999999999.999999999 or (${table.measureKind} = 'unit' and ${table.unitPriceSnapshot} <= 9999999999.99 and ${table.unitPriceSnapshot} = trunc(${table.unitPriceSnapshot}, 2))`,
     ),
     check(
-      "pos_order_item_measure_legacy_check",
-      sql`${table.measureKind} = 'unit' and ${table.quantityUnit} = 'unit' and ${table.priceUnit} = 'unit' and ${table.conversionVersion} = 'mass-si-1'`,
+      "pos_order_item_measure_shape_check",
+      sql`${table.conversionVersion} = 'mass-si-1' and ((${table.measureKind} = 'unit' and ${table.quantityUnit} = 'unit' and ${table.priceUnit} = 'unit') or (${table.measureKind} = 'mass' and ${table.quantityUnit} in ('kg', 'lb', 'g') and ${table.priceUnit} in ('kg', 'lb', 'g')))`,
     ),
     index("core_pos_order_item_order_idx").on(table.posOrderId),
   ],
