@@ -36,8 +36,8 @@ Base `01445a86bdec433e8d7bc75b94dfca1ce8184c19`, WT/ref `pos-ui-card-0242`. Cort
 | `apps/merchant/src/modules/pos/server/business-failures.neon.integration.test.ts` | PASS DB compatible por corte660add97/25bc5a27/d9d0b8bd; ver resultados y límites abajo |
 | `apps/merchant/src/modules/pos/server/business-financial.neon.integration.test.ts` | PASS DB compatible por corte660add97/25bc5a27/d9d0b8bd; ver resultados y límites abajo |
 | `apps/merchant/src/modules/pos/server/business-sales-units.neon.integration.test.ts` | Compatible por lectura: usa sólo seed/módulo o caller nativo/raw de cutover explícito; no cambiar por el soporte |
-| `apps/merchant/src/modules/pos/server/catalog-measure-storage.neon.integration.test.ts` | Histórico6 actualizado; SQL canónico/clones/constraints de origen conservados y shape0108 activo separado; DB serial pendiente |
-| `apps/merchant/src/modules/pos/server/catalog-storage-expand.neon.integration.test.ts` | Histórico6 actualizado; SQL canónico/clones/constraints de origen conservados y shape0108 activo separado; DB serial pendiente |
+| `apps/merchant/src/modules/pos/server/catalog-measure-storage.neon.integration.test.ts` | PASS DB5/5 en469422e0, hash/clones/configuración/shapeactivo íntegros |
+| `apps/merchant/src/modules/pos/server/catalog-storage-expand.neon.integration.test.ts` | PASS DB4/4 en469422e0, hash/cloneorigen/shapeactivo íntegros |
 | `apps/merchant/src/modules/pos/server/close-api-v2.neon.integration.test.ts` | Corte inicial PASS DB en afe7060d |
 | `apps/merchant/src/modules/pos/server/console-native.neon.integration.test.ts` | Compatible por lectura: usa sólo seed/módulo o caller nativo/raw de cutover explícito; no cambiar por el soporte |
 | `apps/merchant/src/modules/pos/server/legacy-cutover.neon.integration.test.ts` | Compatible por lectura: usa sólo seed/módulo o caller nativo/raw de cutover explícito; no cambiar por el soporte |
@@ -45,7 +45,7 @@ Base `01445a86bdec433e8d7bc75b94dfca1ce8184c19`, WT/ref `pos-ui-card-0242`. Cort
 | `apps/merchant/src/modules/pos/server/measured-read.neon.integration.test.ts` | Corte inicial PASS DB en afe7060d |
 | `apps/merchant/src/modules/pos/server/measured-summary.neon.integration.test.ts` | PASS DB compatible por corte660add97/25bc5a27/d9d0b8bd; ver resultados y límites abajo |
 | `apps/merchant/src/modules/pos/server/measured-update.neon.integration.test.ts` | Corte inicial PASS DB en afe7060d |
-| `apps/merchant/src/modules/pos/server/order-intent-storage.neon.integration.test.ts` | Histórico6 actualizado; SQL canónico/clones/constraints de origen conservados y shape0108 activo separado; DB serial pendiente |
+| `apps/merchant/src/modules/pos/server/order-intent-storage.neon.integration.test.ts` | PASS DB4/4 en469422e0, histórico/backfill/tenant/fingerprint íntegros |
 | `apps/merchant/src/modules/pos/server/payment-methods.neon.integration.test.ts` | Ampliación5 PASS DB en afe7060d |
 | `apps/merchant/src/modules/pos/server/pos-access.neon.integration.test.ts` | Ampliación5 PASS DB en afe7060d |
 | `apps/merchant/src/modules/pos/server/pos-best-sellers.neon.integration.test.ts` | PASS DB2/2 en98ffe933, fuente compatible |
@@ -56,15 +56,15 @@ Base `01445a86bdec433e8d7bc75b94dfca1ce8184c19`, WT/ref `pos-ui-card-0242`. Cort
 | `apps/merchant/src/modules/pos/server/pos-disable-tables.neon.integration.test.ts` | PASS retest DB2/2 en5d095652; dos direcciones con contención exacta/finally |
 | `apps/merchant/src/modules/pos/server/pos-disable.neon.integration.test.ts` | PASS DB6/6 en98ffe933 incluidas carreras, fuente compatible |
 | `apps/merchant/src/modules/pos/server/pos-ladder.neon.integration.test.ts` | Ampliación5 PASS DB en afe7060d |
-| `apps/merchant/src/modules/pos/server/pos-migration-0079.neon.integration.test.ts` | Histórico6 actualizado; SQL canónico/clones/constraints de origen conservados y shape0108 activo separado; DB serial pendiente |
+| `apps/merchant/src/modules/pos/server/pos-migration-0079.neon.integration.test.ts` | PendienteDB:grupo detenido trasunitFAIL, fuente histórica íntegra congelada |
 | `apps/merchant/src/modules/pos/server/pos-orders.neon.integration.test.ts` | PASS retest DB8/8 en5d095652; invalid_input422 y snapshot sin efectos |
 | `apps/merchant/src/modules/pos/server/pos-scope.neon.integration.test.ts` | Compatible por lectura: usa sólo seed/módulo o caller nativo/raw de cutover explícito; no cambiar por el soporte |
 | `apps/merchant/src/modules/pos/server/pos-staff-entry.neon.integration.test.ts` | Compatible por lectura: usa sólo seed/módulo o caller nativo/raw de cutover explícito; no cambiar por el soporte |
-| `apps/merchant/src/modules/pos/server/quantity-storage-expand.neon.integration.test.ts` | Histórico6 actualizado; SQL canónico/clones/constraints de origen conservados y shape0108 activo separado; DB serial pendiente |
+| `apps/merchant/src/modules/pos/server/quantity-storage-expand.neon.integration.test.ts` | PASS DB3/3 en469422e0, SQL/IDs/snapshots/constraints de origen íntegros |
 | `apps/merchant/src/modules/pos/server/read-api-v2.neon.integration.test.ts` | Corte inicial PASS DB en afe7060d |
 | `apps/merchant/src/modules/pos/server/settlement.neon.integration.test.ts` | PASS DB compatible por corte660add97/25bc5a27/d9d0b8bd; ver resultados y límites abajo |
 | `apps/merchant/src/modules/pos/server/ticket-settings.neon.integration.test.ts` | Ampliación5 PASS DB en afe7060d |
-| `apps/merchant/src/modules/pos/server/unit-expand-compat.neon.integration.test.ts` | Histórico6 actualizado; SQL canónico/clones/constraints de origen conservados y shape0108 activo separado; DB serial pendiente |
+| `apps/merchant/src/modules/pos/server/unit-expand-compat.neon.integration.test.ts` | 469422e0 4/6,2codeFAIL;4oráculos V2/cuerpoexacto corregidosoffline, retestpendiente |
 | `apps/merchant/src/modules/pos/server/void-api-v2.neon.integration.test.ts` | Corte inicial PASS DB en afe7060d |
 | `apps/merchant/src/modules/stock-local-recipes.neon.integration.test.ts` | PASS DB2/2 en5d095652, fuente compatible |
 | `apps/merchant/src/modules/stock-local.neon.integration.test.ts` | 50e02098 1/4: recoveryPASS,2timeout30s y eventOfambiguo corregido; fases/promises diagnósticos offline, retest pendiente |
@@ -237,3 +237,29 @@ PIDs77564,78041,78043,78050ausentes. Inspectorpreflight0waiters/actividadtx=[];2
 Cleanupadicional autorizado explícitamente por coordinador mediante mismo wrapper:preflight0actors/0waiters;commit eliminó exactamente2roots y3users de esosIDs. SELECTpostcommitdurable0:business,business_membership,posOrders4,eventos9,deliveries13,users3,sessions3;final0actors/0waiters. Log `p6-new6-exact-cleanup.log`; ownershiphijos/identidades `p6-new6-ownership-attempt2.log`. Intentoownership1 EXIT1 por tabla privateinspector mal escrita core.pos_order; corregida a pos.pos_order y logconservado `p6-new6-ownership.log`. Losinspector/cleanup usan8omitidos de harness explícitos NOcertificados comoPASS. AfterAll40P01original sigueFAIL pese a limpieza posterior exitosa. Frontera limpia comunicada antes de continuar offline; noDBsobre nuevofix todavía.
 
 Checks fix module-events: typecheckmerchant inicial/final PASS, ESLint2 PASS, Prettier3 PASS y diff whitespace PASS. Trespaths propios; ningúnDB/retry sobre la revisión nueva. Próximo gate:QAlectura y module-events5 focal antes de históricosDDL6 separados.
+
+
+## Module-events5 y DDL1–5 sobre469422e0
+
+Module-events focal EXIT0,5/5casos,0skips/retries,71.73s; snapshotV4/coste12,legacy0.5×7=3.50,zero/tenant/schema/contradictoryzeroPASS. afterAllsin40P01; ownedretrySet aguardado y cleanup comprobado además en inspector por2roots/3usersregistrados business0/users0/sessions0,0waiters/actividadtx=[]. PIDs94544,95025,95027,95035ausentes. Logs `p6-module-events-attempt2.log` y `p6-module-events-attempt2-inspector.log`;8omitidos deinspección no añadenPASS.
+
+Gatecumplido, cinco invocaciones DDL AISLADAS/seriales, una suite por wrapper, mismoSHA limpio sin cambiar código:
+
+| Suite | Resultado y duración |
+| --- | --- |
+| catalog-storage-expand | EXIT0,4/4casos,18.76s |
+| quantity-storage-expand | EXIT0,3/3casos,23.07s |
+| catalog-measure-storage | EXIT0,5/5casos,28.88s |
+| order-intent-storage | EXIT0,4/4casos,24.58s |
+| unit-expand-compat | EXIT1,4/6casosPASS,2codeFAIL,46.04s |
+
+0skips/retries en todas. SQL/hashes/clones/shapeactivo/constraints de origen preservados; nadaDROP0108real. Logs privados `p6-ddl-{catalog-storage,quantity-storage,catalog-measure,order-intent,unit-expand}-attempt1.log`. Grupo detenido alFAIL5, pos-migration-0079NOejecutado. afterAllunit confirmóbusiness/owner/sessions/consumersvacíos; launchers/workers propios ausentes; inspector0waiters/actividadtx=[] (`p6-ddl-unit-expand-attempt1-inspector.log`). Sin másDB tras cierre.
+
+Unit casosfallidos: createoverflow de línea/aggregate yupdateoverflow de cantidadexistente/líneanueva esperabaninvalid_amount, recibieronamount_out_of_range, ambos422. Contrato actual trazado por lectura:assertMoneyRange emiteMeasureErroramount_out_of_range; captureNewMeasuredLines ythrowMeasuredUpdateError conservanerror.code y textoexacto"La cantidad, medida o tarifa no es válida.". La traduccióninvalid_amount está en summarylegacy. Correcciónmínima sólo2casos:familiaV2/cuerpoexacto, snapshots/órdenes0/rollback/header/version/intentosnegativosrawV1 intactos. Producto/límites/polls no cambian. Próximo gate QAlectura→unit6focal→0079aislado; no repetir module-events niDDL1–4compatibles.
+
+Matriz completa compatible37suites/189casos(32/168+moduleevents5+DDL4/16);unit4parciales no sumados, pendientes2suites(unit/0079),7compatiblesporlectura. Intentos anterioresFAIL/40P01/cleanupadicional se conservan.
+
+
+Chequeo offline del resto del MISMOcaso create tras fallo tempranooverflow detectó2oráculosinvalid_input obsoletos no alcanzados en ese intento:quantitynumérico1 ystring"1.0000000000". Cuerpos negativos literales se conservan sinbuilder/reparación. Coordinador autorizó4oráculos del mismo path. Flujo HTTPV2 trazado completo por lectura:routes.ts POSTorders→readPosBody JSONdecoder→createPosOrderV2→parsePosCreateV2/items→parseMeasuredLineInput→measured(captureQuantity)→parseQuantity/parseInput; tipo no-string yescala>9 disparanMeasureErrorinvalid_quantity. measured-line-input convierte aCounterError422 conservando código ytexto"La cantidad o la unidad no es válida."; posRoute/posErrorResponse serializa exactamente{error,code}. No se entró transacción para esos2negativos sintácticos. Las4filas ahora declaran respuestas exactas explícitas (2range/2quantity), sin alterar status422/snapshots/noefectos. Es evidenciaoffline de contrato, NO nuevosPASSDB; próximos QA/retest deben comprobar los4negativos reales.
+
+Checks congelado unit: typecheckmerchant inicial/final PASS, ESLint1 PASS, Prettier2 PASS y diff whitespace PASS; sólo unit-expand-compat y handoff. No DB posterior al inspector0; esperaQA/GO paraunit6y0079.

@@ -265,7 +265,7 @@ describe.skipIf(!posIntegrationEnabled)(
       );
       expect(retired.status).toBe(409);
       expect((await retired.json()).code).toBe("pos_client_upgrade_required");
-      for (const [items, code] of [
+      for (const [items, expected] of [
         [
           [
             {
@@ -275,7 +275,10 @@ describe.skipIf(!posIntegrationEnabled)(
               catalogRevision: "1",
             },
           ],
-          "invalid_amount",
+          {
+            code: "amount_out_of_range",
+            error: "La cantidad, medida o tarifa no es válida.",
+          },
         ],
         [
           [
@@ -292,7 +295,10 @@ describe.skipIf(!posIntegrationEnabled)(
               catalogRevision: "1",
             },
           ],
-          "invalid_amount",
+          {
+            code: "amount_out_of_range",
+            error: "La cantidad, medida o tarifa no es válida.",
+          },
         ],
         [
           [
@@ -303,7 +309,10 @@ describe.skipIf(!posIntegrationEnabled)(
               catalogRevision: "1",
             },
           ],
-          "invalid_input",
+          {
+            code: "invalid_quantity",
+            error: "La cantidad o la unidad no es válida.",
+          },
         ],
         [
           [
@@ -314,7 +323,10 @@ describe.skipIf(!posIntegrationEnabled)(
               catalogRevision: "1",
             },
           ],
-          "invalid_input",
+          {
+            code: "invalid_quantity",
+            error: "La cantidad o la unidad no es válida.",
+          },
         ],
       ] as const) {
         const response = await scopedPos(w.ownerCookie, scope).create({
@@ -327,7 +339,7 @@ describe.skipIf(!posIntegrationEnabled)(
           items,
         });
         expect(response.status).toBe(422);
-        expect((await response.json()).code).toBe(code);
+        expect(await response.json()).toEqual(expected);
       }
       expect(
         await getDb()
@@ -386,7 +398,11 @@ describe.skipIf(!posIntegrationEnabled)(
           },
         );
         expect(response.status).toBe(422);
-        expect((await response.json()).code).toBe("invalid_amount");
+        // V2 capture/update preserves the exact measured range error family.
+        expect(await response.json()).toEqual({
+          code: "amount_out_of_range",
+          error: "La cantidad, medida o tarifa no es válida.",
+        });
         expect(
           await getDb()
             .select()
