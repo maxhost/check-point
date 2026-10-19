@@ -265,3 +265,67 @@ focal de esa línea y prueba savedexpected/savedreceived. Luego namespace/authCO
 NUEVOS ligados al SHA final; preservar00749 completo, sin retry de setup ni
 alterar sus resultados. Nada fue asignado por ese setup, no limpieza por barrido.
 Sin DB adicional/browser/OTP hasta nueva autorización root posterior a COPY.
+
+## Contrato MASA: terminales especulativos antes del primer create
+
+RUN083 se conserva FAIL, validfalse: readiness bloqueó create ante25failedGETs.
+QA independiente correlacionó multiset Playwright/CDP25/25 rawb6958e31 y attemptb9e50cc9:
+454events, todos stage fallo EDITOR, GETlocal43242/backoffice*, Fetch/RSC1 y
+NextRouterPrefetch1 comprobados por requestExtraInfo, responseExtra200+response200
+text/x-component, ERR_ABORTED/canceledtrue/blockedReason ausente(normalizable null),
+dos frames exactos8140(0,71702),(0,75109), chunk55d723bfc4c5053ffe7d073e67011546787116cfd2ed83886c9b073001bcba55/BIDmZN.
+Terminaron4499–4739ms antes del audit. Ninguna API falló;0page/HTTPerrors y0create/close.
+Esto demuestra la conjunción técnica, no el callsite causal del aborto. R1 sólo
+permite warmup/full-list, NO cubre editorMASA ni acredita este intento como PASS.
+
+Tras STOP/cleanup propios verificados del intento083, se encarga MISMOautor MASA
+únicamente en sus cuatro paths ya reservados un perfil distinto candidate-only,
+no inferencial: pos-mass-prefetch-terminal-v1. Authroot0600wx y manifest/COPY
+ligarán perfil exacto, runner/receta, evidencia083b695+b9e5, fuente6cee/freeze58df,
+BIDmZN/Next16.3/chunk55d/dosframes exactos y QAref concreta. Operaciones posteriores
+conservan perfil idéntico; ausencia/deriva/auth ajena no habilitan excepción.
+GeneratedSourceCompatibility y metadataCompatibility conservan semántica aprobada.
+
+Se puede calificar únicamente fallo en stage EDITOR, origin EXACTOlocalhost43242,
+GETFetch de /backoffice o descendientes noAPI, RSC1/prefetch1 ambos acreditados por
+ExtraInfo, response+ExtraInfo200/mime exacto, ERR_ABORTED/canceledtrue/blockedReason
+null/ausente, dosframes/chunk/BID/profile exactos. Debe terminar ANTES de empezar
+readiness y antes de snapshot/audit/cualquiercreate. Correlación uno-a-uno por URL
+completa/método/identidad CDP y multiset sin huérfanos; CDP por contexto/tag propio
+completo, no aceptar por path solo ni reasignar una fila válida a otro fallo.
+Cualquier otro fallo navigation/resolve/readiness/create/payment/close/history/
+replay/tail/close-induced sigue fatal. No exención de API ni pageErrors ni HTTP>=400.
+
+Prerequisitos nuevos concretos en MISMOcontexto ANTES del primer create: capturar
+los bodies reales de cinco respuestas ya emitidas (GETpayment-methods/orders/
+catalog/ticket y POSTresolve), sin peticiones adicionales ni interceptar/cambiar
+producto/prefetch/viewport. Guardar en evidencia privada con path/status e identidad;
+settle las promesas de parseo como observadores pendientes y fallar ante parseerror.
+Validar forma real de DTO: lista propia vacía al iniciar, catálogo contiene el
+producto propio/local correcto, kg y precio4.123456789 exactos; método de pago propio
+cash válido y resolve membership/coupon propio10% (aserciones existentes más evidencia
+persistida). Ticket200/JSON real se registra sin inventar settings habilitados.
+No afirmar que el artefacto083 ya tenía esos cuerpos: sólo tenían status/paths.
+DOM anteswrite confirma línea propia única,0.75kg, precio mostrado correcto,
+cliente/beneficio seleccionados y Continuar enabled,0dialogs/alerts; usar selectores
+semánticos de UI actual y guardar aserciones/snapshot. No usar API24/DOM12 de R1.
+
+Guard prewrite mantiene dosquiescencias/deadline15s/estabilidad500ms, observa red y
+request/sql/phases/CDP/promesas, recheck DESPUÉStodosawait. Conjunto de terminales
+se califica una sola vez en readiness; los nuevos posteriores siguen estrictos.
+Gate final usa los mismos IDs aprobados sin habilitar fallos nuevos. Conservar
+requestFailures/rawerrores/status/stack/cause/bytes parciales/transfernull originales,
+strictFunctionalValidfalse si hubo terminales; reportar categorías y conteos
+calificados/efectivos y policy aplicada. Sólo funcionaldiagnóstico puede ser válido
+si TODOS los demás invariantesfinancieros/receipt/history/inspect/replay/quietud e
+identidad final pasan. No PASS retroactivo de083 ni crédito R2/rendimiento.
+
+Negativos focales de conjunción incompleta/statusmime/ExtraInfo/framehashBID/tag/
+stage/timestamp tardío/URLmultiset/profileauth/parseoAPI/identidades o measureprecio
+incorrectos/DOM nohabilitado; todos bloquean acción mutante. Positivo exacto permite
+una acción, conserva strictfalse/rawerrores/bytes; fallo nuevo durantecierre fatal.
+Reusar helpers de R1 si son import-safe y cumplen esta policy distinta, no editar
+R1/GRID/preload ni inventar código producto. JSonly permite reutilizar tscFINAL083;
+unit/lint/diff/formato+receta nueva/SHAclean y QA focal ANTES nuevoNS/COPY/fixtures.
+No instalar/build/DB/browser/OTP mientras se implementa. No cambiar datos ni reusar
+identidades del intento fallido, no resetear bucketOTP ni ampliar scope sin contrato.
