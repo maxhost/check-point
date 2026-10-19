@@ -2,7 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { compare, median, p95, decision, analyze, rng } from "./m1-analyze.mjs";
 import { schedule, validateEndpoint, hash } from "./m1.mjs";
-import { validateOpenDetail } from "./m1-browser.mjs";
+import { validateOpenDetail, diagnosticRequestHeaders } from "./m1-browser.mjs";
+import { diagnosticSchedule } from "./m1.mjs";
 import { snapshotBuild, compareBuildIdentity } from "./m1.mjs";
 import {
   metadataProvenance,
@@ -311,4 +312,42 @@ test("execution metadata binds final freeze, while prepare delta remains observa
       /Installed dependency identity drift/,
     );
   }
+});
+test("D1 observes only allowlisted header booleans and exactly two noninferential owner entries", () => {
+  const flags = diagnosticRequestHeaders({
+    RSC: "1",
+    "Next-Router-Prefetch": "2",
+    "Next-Router-Segment-Prefetch": "/_tree",
+    Purpose: "prefetch",
+    "Sec-Purpose": "prefetch;prerender",
+    Cookie: "secret-cookie",
+    "X-Backoffice-Scope": "secret-scope",
+  });
+  assert.ok(Object.values(flags).every((v) => typeof v === "boolean"));
+  assert.ok(
+    flags.rsc &&
+      flags.nextRouterPrefetchPresent &&
+      flags.nextRouterPrefetchKnown &&
+      flags.nextRouterSegmentPrefetch &&
+      flags.purposePrefetch &&
+      flags.secPurposePrefetch,
+  );
+  assert.ok(!JSON.stringify(flags).includes("secret"));
+  const unknown = diagnosticRequestHeaders({
+    "next-router-prefetch": "unknown",
+  });
+  assert.equal(unknown.nextRouterPrefetchPresent, true);
+  assert.equal(unknown.nextRouterPrefetchKnown, false);
+  const plan = diagnosticSchedule();
+  assert.equal(plan.length, 2);
+  assert.deepEqual(
+    plan.map((a) => a.source),
+    ["control", "candidate"],
+  );
+  assert.ok(
+    plan.every(
+      (a) =>
+        a.role === "owner" && a.case === "normal" && a.inferential === false,
+    ),
+  );
 });

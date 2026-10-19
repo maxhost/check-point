@@ -1,3 +1,45 @@
+# 0242 D1 — observabilidad previa a otra campaña, sin inferencia
+
+La campañaR1.2 en1fd427d2 congeló receta6bb4f051…a419 y freeze1617de3c…6436.
+Setup44.3s, inspect38.0s, login39.6s: cada operación1PASS/0skips. Build directo
+Node/Next EXIT0, candidato1fd/BUILD_IDmQAEivzHwhRenkWFyULLz. Prepare/ejecución
+metadata coinciden4b03…6f7c, changedKeys[]; identidad final estricta pasó.
+
+Única entrada: warmupCONTROL, primer bloqueowner. APIlist200/válida,12labels,
+listUsable3776ms,0pageErrors y settlementfinish, pero functionalValidfalse:
+25Fetch RSC /backoffice* con canceledtrue, response200 observada, encodednull y
+decodedparcial. FinCDP1859–2096ms trasDocument, antes del marcador3776ms; no lo
+causó context.close. Initiators llegan a fetch de Next y son compatibles con
+prefetch; al faltar flags/errorText NO se atribuye causa definitiva. CERO muestras
+medidas, candidato no observado, NO M1PASS. Reporte privado list-results.jsonSHA
+`f6fc1b53819f6aa5954dd14bcb990a7bdb37718b208f7f82a59d180f4ff9dff6`;
+server-traceSHAe6029d6d018044321b598515779f392105f2aae7417e5def3ef0b936e2a59756.
+
+Cleanup MISMO1fd antes de editar:1PASS/0skips8.71s,14conteos0/phasecleaned,
+43242sinlistener; cleanup.jsonSHA
+`2d3095a9926db4520b45c81eaf53a2aff4cfcaf557e84502328405ed3c44f9aa`.
+Identity-after-stop.json preserva identidad válida y runtimeDeltas[] antescleanup.
+Basales schema0f582307…ccd0 y fixture1fb057bb…6532 se conservaron wx0600;
+no postinspect ni reescritura. DB devuelta por factory a regresión, sin nuevos
+servidores/fixtures/datos mientras se prepara este delta offline.
+
+D1 propuesto y autorizado offline por coordinador: exactamente2primeras entradas
+OWNER normal control→candidato, sin warmups/reloads ni muestras inferenciales.
+Receta D1 exacta añadida ANTESdatos. Se agregan flags permitidos booleanos,
+CDPcanceled/errorText/blockedReason/wallTime y fases de lifecycle; no cookies,
+queries/scope/QR ni capturas. Gates normales NO se relajan; ceroGETcandidate sigue
+obligatorio. ObsComplete no equivalePASS y puede salir2 con gate estrictofalse.
+Reuso candidato1fd/mQAE sólo COPY privada nueva, compiladosidénticos a freeze1617,
+producto/instrumentación/lockdiff vacío, dependencias/configestrictas y fuente1fd
+separada del runner nuevo; runtime original nunca se inicia ni modifica.
+
+Se pide revalidaciónQA del delta y autorización técnica nueva ANTES de D1. No se
+reutiliza3776 como muestra ni se transforma FAIL previo enPASS. Doce tests offline,
+0skips, incluyen allowlist sin secretos y exactamente2entradas noinferenciales.
+Sólo paths asignados m1.mjs/m1-browser.mjs/m1-analysis.test.mjs/receta/handoff.
+
+---
+
 # 0242 M1R1.2 — fallo de identidad previo a muestras y corrección offline
 
 Sobre runner3c07ff93 y namespace `/private/tmp/checkpass-pos-0242/m1-r1-3c07ff93`:

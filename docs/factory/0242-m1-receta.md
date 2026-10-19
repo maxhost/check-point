@@ -212,3 +212,63 @@ No prolongar closeConfirmed para esconder aftercommit/refresco. R2 deberá
 precisar marcadores equivalentes y conteo exacto antes de generar sus identidades.
 QA independiente revisa receta/identidades/equivalencia, todos los intentos y
 cálculo en SHA congelado; ningún verde global o cierre0242 se deriva de R1.
+
+
+## D1 — diagnóstico de observabilidad RSC, previo a otra campaña
+
+La revisión1fd427d2 se detuvo en su primera warmup CONTROL: listadoAPI200/válido,
+12labels correctas, listUsable3776ms,0pageErrors y settlementfinish; functionalValid
+false por25Fetch RSC cancelados. Se observaron response200, canceledtrue y decoded
+parcial, encodednull. Los eventos terminaron1859–2096ms después del Document,
+ANTES del marcador: context.close no los causó. El stack es compatible con fetch
+Next, pero faltan flags/errorText para probar prefetch. El intento sigue FAIL;
+no se relabela3776ms como muestra niPASS. Identidad final pasó, cleanup mismoSHA
+verificó14tablas0 y phasecleaned; artefactos/basales se conservan.
+
+D1 tiene exactamente DOS entradas nuevas: OWNER normal, control→candidato,
+proceso/pool y contexto nuevos por fuente, viewport1280×900, serviceWorkersblock,
+misma cámara no usada, cookies legítimas nuevas y datos/acciones/API reales. Cada
+entrada es primera navegación completa `/backoffice/pos`; NO warmup adicional,
+NO reload, NO staff, NO venta ni rutas mutantes, CERO muestras inferenciales.
+Fixture normal24×8, Centro primero/12filas visibles y respuesta24IDs idénticos en
+ambas fuentes. El helper existente prepara también empty/volume; no se observan
+ni mezclan esas poblaciones en D1. Se preservan y retiran por ownership al cerrar.
+
+Se aplican los markers/APIassertions exactos vigentes, sin relajar la región de
+revisión ni el listado. Plazo de listo30s; después quietud500ms sin pendientes,
+máximo15s, con finish/error/timeout y bytes observados/parciales/null. No se
+infieren bytes0, finish ni cancelación por haberSQL terminado. Se captura:
+
+- Booleanos permitidos RSC, presencia/valor reconocido Next-Router-Prefetch,
+  presencia Next-Router-Segment-Prefetch, Purposeprefetch y Sec-Purposeprefetch.
+  Se combinan requestWillBeSent y ExtraInfo mediante allowlist, sin guardar
+  Cookie, scope, QR, otros headers, queries ni valores de segment-prefetch.
+- CDP canceled, errorText saneado, blockedReason y timestamps start/response/end,
+  wallTime e initiatorstack por path. Timestamps de server/context/navigation,
+  marker observado, settlement y close/stop permiten ordenar causa/terminación.
+- TODAS las solicitudes y costos, también globals/proveedor/Nextprefetch y SQL
+  del preload existente; ningún error se borra o transforma en finish.
+
+Se permite pasar de control a candidato sólo si listado real/API/DOM son válidos,
+0pageErrors y settlementterminado. Los errores ambientales quedan registrados y
+el gate funcional estricto permanece false; D1 sólo observa su naturaleza. Cero
+GET extra sesión/módulos del candidato sigue OBLIGATORIO; si falla se detiene,
+no se aprueba ni continúa una campaña normal. D1 puede completar observación con
+exit2/strictGateSatisfiedfalse: eso NO es PASSM1 ni aprobación de la política.
+No se amplía ninguna exclusión de RSC en D1; una clasificación nueva exigiría
+receta y revisiónQA previas a una futura campaña inferencial independiente.
+
+Runner nuevo se separa de buildSource. Control6f/BUILD_IDoriginal y hasharchive
+siguen inmutables. El coordinador autorizó para D1 COPY privada NUEVA del candidato
+propio compilado1fd427d248e41cd6087fb93018f5c251c1bcd844, BUILD_ID
+`mQAEivzHwhRenkWFyULLz`, freezeSHA
+`1617de3cf21db2403f351f4e3753856a870fcecc331b3e1005000ce9589b6436`.
+Nunca iniciar/modificar runtime antiguo. `prepare NUEVO_NAMESPACE PRIOR_NAMESPACE`
+valida exactamente ese origen, config/dependencias/BUILD_ID, mapa compilado822
+idéntico y diff vacío de producto/instrumentación/lock entre buildSource y runner.
+La fuente externa del runtime también es1fd; no se le atribuye build nuevo.
+La copia no contiene cachefetch/images previa. Rebuild de esa copia se rechaza.
+Plan/freeze manifiestan fuente, hashes, reuso y paths nuevos antes de datos.
+Metadata prepare/ejecución se conserva con la política finalR1.2 y se exige estable
+mientras D1 corre. DB/build/freeze/diagnose requieren nueva reserva/autorización
+exacta del coordinador; receta y código revisados por QA ANTES de ejecutarlos.

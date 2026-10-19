@@ -12,6 +12,7 @@ import {
   chmodSync,
   openSync,
   closeSync,
+  cpSync,
 } from "node:fs";
 import { resolve, dirname, join } from "node:path";
 import { execFileSync, spawn } from "node:child_process";
@@ -292,6 +293,16 @@ export function schedule() {
   }
   return out;
 }
+export function diagnosticSchedule() {
+  return ["control", "candidate"].map((source) => ({
+    id: `d1-owner-${source}`,
+    source,
+    role: "owner",
+    case: "normal",
+    population: "prefetch-diagnostic",
+    inferential: false,
+  }));
+}
 function treeHashes(directory, prefix = "", kind = "all") {
   const result = {};
   for (const name of readdirSync(directory).sort()) {
@@ -327,8 +338,63 @@ function protectTree(directory) {
     else if (s.isFile()) chmodSync(path, 0o600);
   }
 }
-function prepare(directory) {
+function reusableCandidate(directory, runnerSHA) {
+  if (!directory) return null;
+  const namespace = privateDirectory(directory),
+    raw = privateFile(join(namespace, "freeze.json")),
+    f = JSON.parse(raw),
+    p = JSON.parse(privateFile(join(namespace, "plan.json")));
+  if (
+    namespace !== "/private/tmp/checkpass-pos-0242/m1-r12-1fd427d2" ||
+    hash(raw) !==
+      "1617de3cf21db2403f351f4e3753856a870fcecc331b3e1005000ce9589b6436" ||
+    f.candidate.buildSource !== "1fd427d248e41cd6087fb93018f5c251c1bcd844" ||
+    f.candidate.buildId !== "mQAEivzHwhRenkWFyULLz" ||
+    f.configSha256 !== selected().sha256
+  )
+    throw Error("Only explicitly authorized frozen candidate may be copied");
+  assertDependencyIdentity(p.dependencyIdentity, dependencyIdentity());
+  const productDiff = git(
+    "diff",
+    "--name-only",
+    f.candidate.buildSource,
+    runnerSHA,
+    "--",
+    "apps",
+    "packages",
+    "pnpm-lock.yaml",
+    "package.json",
+    "pnpm-workspace.yaml",
+    ".nvmrc",
+    "tests/e2e/support/pos-measurement-preload.mjs",
+  )
+    .split("\n")
+    .filter(Boolean);
+  if (productDiff.length)
+    throw Error(
+      "Candidate reuse requires empty product/instrumentation/dependency diff",
+    );
+  const next = join(p.candidate.runtime, "apps/merchant/.next"),
+    snapshot = snapshotBuild(next);
+  compareBuildIdentity(f.candidate, snapshot);
+  if (Object.keys(snapshot.runtimeFiles).some((path) => path !== "trace"))
+    throw Error("Reused candidate must have no fetch/image runtime cache");
+  return {
+    namespace,
+    next,
+    freezeSha256: hash(raw),
+    buildSource: f.candidate.buildSource,
+    buildId: f.candidate.buildId,
+    buildFiles: f.candidate.buildFiles,
+    productDiff,
+    configSha256: f.configSha256,
+    dependencyIdentity: p.dependencyIdentity,
+  };
+}
+function prepare(directory, reuseDirectory) {
   const runnerSHA = clean();
+  const reuse = reusableCandidate(reuseDirectory, runnerSHA),
+    candidateSource = reuse?.buildSource ?? runnerSHA;
   for (const file of [
     "pnpm-lock.yaml",
     "package.json",
@@ -384,7 +450,7 @@ function prepare(directory) {
     candidate = join(directory, "candidate");
   for (const [runtime, source] of [
     [control, CONTROL_SOURCE],
-    [candidate, runnerSHA],
+    [candidate, candidateSource],
   ]) {
     mkdirSync(runtime, { mode: 0o700 });
     // Archive can exceed100MB; stream stdout to an exclusive private file rather
@@ -403,6 +469,20 @@ function prepare(directory) {
     linkDependencies(runtime);
   }
   execFileSync("tar", ["-xzf", archive, "-C", join(control, "apps/merchant")]);
+  if (reuse) {
+    const next = join(candidate, "apps/merchant/.next");
+    cpSync(reuse.next, next, {
+      recursive: true,
+      errorOnExist: true,
+      force: false,
+    });
+    compareBuildIdentity(
+      { buildFiles: reuse.buildFiles, runtimeFiles: {} },
+      snapshotBuild(next),
+    );
+    if (readFileSync(join(next, "BUILD_ID"), "utf8").trim() !== reuse.buildId)
+      throw Error("Reused candidate BUILD_ID drift");
+  }
   protectTree(control);
   protectTree(candidate);
   const controlNext = join(control, "apps/merchant/.next");
@@ -453,13 +533,15 @@ function prepare(directory) {
     },
     candidate: {
       runtime: candidate,
-      buildSource: runnerSHA,
-      sourceArchivePath: join(directory, `source-${runnerSHA}.tar`),
+      buildSource: candidateSource,
+      reuse,
+      sourceArchivePath: join(directory, `source-${candidateSource}.tar`),
       sourceArchiveSha256: hash(
-        privateFile(join(directory, `source-${runnerSHA}.tar`)),
+        privateFile(join(directory, `source-${candidateSource}.tar`)),
       ),
     },
     schedule: schedule(),
+    diagnosticSchedule: diagnosticSchedule(),
     ready: false,
   });
   console.log(
@@ -528,7 +610,7 @@ async function main() {
   process.umask(0o077);
   const [mode, input, argument] = process.argv.slice(2),
     directory = resolve(input ?? "");
-  if (mode === "prepare") return prepare(directory);
+  if (mode === "prepare") return prepare(directory, argument);
   privateDirectory(directory);
   if (mode === "fixture") {
     authorization(directory, "fixture");
@@ -553,6 +635,8 @@ async function main() {
     throw Error("Offline plan runner changed; new namespace/plan required");
   if (mode === "build") {
     authorization(directory, "build");
+    if (plan.candidate.reuse)
+      throw Error("Authorized copied candidate must not be rebuilt");
     await run(
       process.execPath,
       [
@@ -645,6 +729,13 @@ async function main() {
       throw Error(
         "Original archived control compiled files changed before freeze",
       );
+    if (
+      plan.candidate.reuse &&
+      (report.candidate.buildId !== plan.candidate.reuse.buildId ||
+        JSON.stringify(report.candidate.buildFiles) !==
+          JSON.stringify(plan.candidate.reuse.buildFiles))
+    )
+      throw Error("Authorized copied candidate drift before freeze");
     exclusive(join(directory, "freeze.json"), report);
     return;
   }
@@ -654,8 +745,14 @@ async function main() {
     const { campaign } = await import("./m1-browser.mjs");
     return campaign(directory);
   }
+  if (mode === "diagnose") {
+    authorization(directory, "diagnose");
+    verifyFreeze(directory);
+    const { diagnose } = await import("./m1-browser.mjs");
+    return diagnose(directory);
+  }
   throw Error(
-    "Use prepare|fixture|build|freeze|measure with explicit namespace",
+    "Use prepare|fixture|build|freeze|measure|diagnose with explicit namespace",
   );
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href)

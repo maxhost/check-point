@@ -17,6 +17,7 @@ import {
   privateFile,
   verifyFreeze,
   environment,
+  diagnosticSchedule,
 } from "./m1.mjs";
 
 const ORIGIN = "http://localhost:43242",
@@ -29,6 +30,32 @@ const pathOnly = (url) => {
     return "[invalid-url]";
   }
 };
+export function diagnosticRequestHeaders(headers) {
+  const h = Object.fromEntries(
+    Object.entries(headers).map(([key, value]) => [
+      key.toLowerCase(),
+      String(value),
+    ]),
+  );
+  return {
+    rsc: h.rsc === "1",
+    nextRouterPrefetchPresent: Object.hasOwn(h, "next-router-prefetch"),
+    nextRouterPrefetchKnown: ["1", "2", "3"].includes(
+      h["next-router-prefetch"],
+    ),
+    nextRouterSegmentPrefetch: Object.hasOwn(h, "next-router-segment-prefetch"),
+    purposePrefetch: /\bprefetch\b/i.test(h.purpose ?? ""),
+    secPurposePrefetch: /\bprefetch\b/i.test(h["sec-purpose"] ?? ""),
+  };
+}
+function phase(observation, name, save) {
+  observation.phases ??= [];
+  observation.phases.push({
+    phase: name,
+    at: performance.timeOrigin + performance.now(),
+  });
+  save();
+}
 export function validateOpenDetail(value, fixture, source) {
   const index = 0;
   return (
@@ -220,7 +247,8 @@ async function instrument(context, fixture, source, save) {
   await cdp.send("Network.setCacheDisabled", { cacheDisabled: false });
   let current;
   const network = new Map(),
-    pending = new Set();
+    pending = new Set(),
+    observedRequests = new Map();
   cdp.on("Network.requestWillBeSent", (event) => {
     if (!current) return;
     const url = new URL(event.request.url);
@@ -230,6 +258,8 @@ async function instrument(context, fixture, source, save) {
       method: event.request.method,
       type: event.type,
       start: event.timestamp,
+      wallTime: event.wallTime,
+      requestFlags: diagnosticRequestHeaders(event.request.headers),
       status: null,
       encoded: null,
       decoded: null,
@@ -246,6 +276,19 @@ async function instrument(context, fixture, source, save) {
     };
     current.network.push(row);
     network.set(event.requestId, { row });
+    observedRequests.set(event.requestId, { row });
+  });
+  cdp.on("Network.requestWillBeSentExtraInfo", (event) => {
+    const row = observedRequests.get(event.requestId)?.row;
+    if (!row) return;
+    const flags = diagnosticRequestHeaders(event.headers);
+    row.requestFlags = Object.fromEntries(
+      Object.keys(flags).map((key) => [
+        key,
+        flags[key] || row.requestFlags[key],
+      ]),
+    );
+    row.requestExtraInfoObserved = true;
   });
   cdp.on("Network.responseReceived", (event) => {
     const row = network.get(event.requestId)?.row;
@@ -286,6 +329,10 @@ async function instrument(context, fixture, source, save) {
         end: e.timestamp,
         termination: "error",
         cancelled: e.canceled === true,
+        errorText: String(e.errorText ?? "")
+          .replace(/https?:\/\/\S+/g, "[url]")
+          .slice(0, 240),
+        blockedReason: e.blockedReason ?? null,
       });
     network.delete(e.requestId);
   });
@@ -337,11 +384,15 @@ async function instrument(context, fixture, source, save) {
   }
   async function full(observation, reload = false) {
     await begin(observation);
+    phase(observation, "navigation-start", save);
     if (reload) await page.reload({ waitUntil: "commit" });
     else await page.goto(`${ORIGIN}/backoffice/pos`, { waitUntil: "commit" });
     await page.waitForFunction(() => Number.isFinite(window.__m1?.listAt));
     observation.listUsableMs = await page.evaluate(() => window.__m1.listAt);
+    phase(observation, "list-marker-observed", save);
+    phase(observation, "settlement-start", save);
     await settle(observation, pending, network);
+    phase(observation, "settlement-end", save);
     observation.browser = await page.evaluate(() => ({
       ...window.__m1,
       timeOrigin: performance.timeOrigin,
@@ -745,5 +796,157 @@ export async function campaign(directory) {
     throw Error("M1 frozen identity check failed; private report preserved");
   console.log(
     "M1 list cut completed; separate critical-route recipe/gates still required.",
+  );
+}
+/** D1: two first entries solely for network causality; never an inferential sample. */
+export async function diagnose(directory) {
+  const { freeze, plan } = verifyFreeze(directory),
+    fixture = JSON.parse(privateFile(join(directory, "fixture.json")));
+  if (
+    JSON.stringify(plan.diagnosticSchedule) !==
+      JSON.stringify(diagnosticSchedule()) ||
+    fixture.kind !== "pos-m1-list-fixture-v1" ||
+    fixture.phase !== "ready"
+  )
+    throw Error("Frozen D1 schedule/fixture required");
+  const f = fixture.fixtures.find((x) => x.case === "normal");
+  const report = {
+    kind: "pos-m1-prefetch-diagnostic-v1",
+    runnerSHA: freeze.runnerSHA,
+    recipeSha256: freeze.recipeSha256,
+    freezeSha256: hash(privateFile(join(directory, "freeze.json"))),
+    inferentialSamples: 0,
+    completed: false,
+    strictGateSatisfied: false,
+    startedAt: new Date().toISOString(),
+    attempts: [],
+    plan: plan.diagnosticSchedule,
+    buildHashPolicy: freeze.buildHashPolicy,
+    runtimeInitial: Object.fromEntries(
+      ["control", "candidate"].map((source) => [
+        source,
+        freeze[source].runtimeFiles,
+      ]),
+    ),
+  };
+  const file = join(directory, "diagnostic-results.json");
+  exclusive(file, report);
+  const save = () =>
+    writeFileSync(file, JSON.stringify(report, null, 2) + "\n", {
+      mode: 0o600,
+    });
+  let browser, server, context;
+  try {
+    browser = await chromium.launch({
+      headless: true,
+      proxy: {
+        server: "http://127.0.0.1:43243",
+        bypass: "localhost,127.0.0.1",
+      },
+    });
+    report.chromium = browser.version();
+    for (const planned of plan.diagnosticSchedule) {
+      const a = {
+        ...planned,
+        ...observation(`pos-${planned.id}`),
+        stage: "startup",
+        startedAt: new Date().toISOString(),
+      };
+      report.attempts.push(a);
+      phase(a, "server-start", save);
+      a.runtimeBefore = verifyFreeze(directory).runtimeDeltas;
+      server = await start(directory, plan[planned.source].runtime, planned.id);
+      a.server = {
+        pid: server.child.pid,
+        runtime: plan[planned.source].runtime,
+      };
+      phase(a, "server-listening", save);
+      context = await browser.newContext({
+        viewport: { width: 1280, height: 900 },
+        serviceWorkers: "block",
+      });
+      const cookies = JSON.parse(
+        privateFile(join(directory, "cookies-normal-owner.json")),
+      );
+      if (!cookies.length || cookies.some((c) => c.domain !== "localhost"))
+        throw Error("Legitimate owner cookies required");
+      await context.addCookies(cookies);
+      phase(a, "context-created", save);
+      const measured = await instrument(context, f, planned.source, save);
+      a.stage = "diagnostic-entry";
+      save();
+      try {
+        await measured.full(a);
+        a.observationalPrerequisites =
+          Number.isFinite(a.listUsableMs) &&
+          a.listResponses.length === 1 &&
+          a.listResponses.every((r) => r.valid) &&
+          a.pageErrors === 0 &&
+          a.settlement === "finish" &&
+          a.network
+            .filter((r) => r.path.startsWith("/api/"))
+            .every(
+              (r) =>
+                r.local &&
+                r.method === "GET" &&
+                r.status === 200 &&
+                r.termination === "finish",
+            );
+        a.stage = "observed";
+        save();
+        if (!a.observationalPrerequisites)
+          throw Error(
+            "D1 API/DOM prerequisite failed; preserve without second navigation/retry",
+          );
+        if (planned.source === "candidate" && !a.structuralValid)
+          throw Error("D1 candidate structural gate failed; no further data");
+      } finally {
+        phase(a, "context-close-start", save);
+        await context.close();
+        context = null;
+        phase(a, "context-closed", save);
+        phase(a, "server-stop-start", save);
+        await server.stop();
+        server = null;
+        phase(a, "server-stopped", save);
+        a.runtimeAfter = verifyFreeze(directory).runtimeDeltas;
+        save();
+      }
+    }
+    report.completed = true;
+    report.strictGateSatisfied = report.attempts.every((a) => a.valid);
+  } catch (error) {
+    report.failure = {
+      name: error.name,
+      stage: report.attempts.at(-1)?.stage ?? "launch",
+    };
+    save();
+    throw Error(
+      "D1 stopped; diagnostic attempts preserved without inferential samples",
+    );
+  } finally {
+    await context?.close();
+    await server?.stop();
+    await browser?.close();
+    try {
+      const identity = verifyFreeze(directory);
+      report.runtimeFinal = identity.currentRuntimeFiles;
+      report.runtimeDeltas = identity.runtimeDeltas;
+    } catch {
+      report.identityFailure = true;
+      report.completed = false;
+    }
+    const tracePath = join(directory, "server-trace.jsonl");
+    if (existsSync(tracePath))
+      report.serverTraceSha256 = hash(readFileSync(tracePath));
+    report.finishedAt = new Date().toISOString();
+    save();
+  }
+  if (!report.completed)
+    throw Error("D1 frozen identity failed; evidence retained");
+  // Observation complete is NOT approval of the unchanged strict gates.
+  if (!report.strictGateSatisfied) process.exitCode = 2;
+  console.log(
+    "D1 observations retained; zero inferential samples; prior R1 failure remains preserved.",
   );
 }
