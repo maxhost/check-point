@@ -29,7 +29,6 @@ import {
   loadMeasuredPaymentMethods,
 } from "./measured-payment-session";
 import { MeasuredCheckout } from "./measured-checkout";
-import { MeasuredScan } from "./measured-scan";
 import { MeasuredOrderCache } from "./measured-order-cache";
 import { MeasuredOrderList } from "./measured-order-list";
 import { MeasuredTicket } from "./measured-ticket";
@@ -667,10 +666,7 @@ export function MeasuredConsoleContent({
         </Alert>
       )}
       {payment && accessEnabled && !denied && (
-        <>
-          <MeasuredCheckout session={payment} />
-          <MeasuredScan session={payment} />
-        </>
+        <MeasuredCheckout session={payment} />
       )}
       {paymentState?.phase === "closeUncertain" && denied && (
         <Alert
