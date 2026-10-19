@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import type { DbTransaction } from "@mi-pasaporte/db";
+import * as database from "@mi-pasaporte/db";
+import type { OperatorBusiness } from "@mi-pasaporte/domain/server/counter/core";
 import { captureMeasuredLines } from "./measured-capture";
+import { createPosOrderV2 } from "./measured-create";
 
 // Availability/tenant SQL is exercised by the real integration suite. This suite
 // supplies already-selected catalog rows to isolate exact capture projection.
@@ -53,6 +56,61 @@ const line = {
   catalogRevision: "3",
 };
 describe("0242 transactional capture projection (mass algebra, no canonical DB writes)", () => {
+  it("maps only known temporary storage barriers and preserves unknown failures", async () => {
+    const command = {
+      createRequestId: product.id,
+      saleType: "pickup",
+      orderLabel: "Pedido",
+      locationId: null,
+      tableId: null,
+      note: null,
+      items: [],
+    };
+    for (const constraint of [
+      "pos_order_item_quantity_legacy_check",
+      "pos_order_item_price_legacy_check",
+      "pos_order_item_measure_legacy_check",
+    ]) {
+      const injected = vi
+        .spyOn(database, "withDbTransaction")
+        .mockRejectedValue({ cause: { code: "23514", constraint } });
+      try {
+        await expect(
+          createPosOrderV2(
+            { id: "business" } as OperatorBusiness,
+            "user",
+            command,
+          ),
+        ).rejects.toMatchObject({
+          status: 409,
+          code: "pos_client_upgrade_required",
+        });
+      } finally {
+        injected.mockRestore();
+      }
+    }
+    for (const error of [
+      { cause: { code: "23514", constraint: "unknown_check" } },
+      {
+        cause: { code: "23505", constraint: "pos_order_create_request_unique" },
+      },
+    ]) {
+      const injected = vi
+        .spyOn(database, "withDbTransaction")
+        .mockRejectedValue(error);
+      try {
+        await expect(
+          createPosOrderV2(
+            { id: "business" } as OperatorBusiness,
+            "user",
+            command,
+          ),
+        ).rejects.toBe(error);
+      } finally {
+        injected.mockRestore();
+      }
+    }
+  });
   it("interprets price by pricingUnit while preserving the captured unit", async () => {
     for (const input of [
       line,
