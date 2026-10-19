@@ -1,6 +1,8 @@
 # 0242 — Handoff para retomar después de clear
 
-## Checkpoint vigente: punto 1 implementado y aceptado por QA
+## Checkpoint vigente: UI primero; prioridades reordenadas por el owner
+
+ORDEN VIGENTE:1UIcontraaprobado,2impresión/precuenta/anulación,3peso completo,4retirada legacy/accesos,5fidelización/cupones,6regresión/rendimiento. Plan0242 actualizado. Dependencia: escritores antiguos deben rechazar/retirarse ANTESactivarmass/quitarbarreras; bloqueo mínimo en3, retirada visual/completa en4 con accesosnecesariosresueltosantescorte. Ownerconfirma NOTASFUNCIONAN e IMPRESIÓNSÍACTIVADA; botónausente sigue pendiente de reproducir, no culparsettingapagado. UI NOaceptada y ahora PRIORIDAD; revisar laboratorioaprobado/prepararficha/autoresNUEVOS+QA, aúnnoWT/despachoUI. Mainfe1ee796/principaldev,QA WTlimpio679accepted;sinpushPROD. Historias«punto1cerrado»deabajose refierenalordenanterior/QAfuncional,nuevobloquegptprevalece.
 
 OWNER reporta con capturas impresión/precuentasinbotón ynotasnofuncionan; punto1NOaceptadomanualmente. Async pregunta de nota pendiente (escritura/persistencia/visualización/porproducto). Código noteexistentecontrolado/persistidovisible, aúnnofalloreproducido. Printbuttoncondicionado printingEnabled(defaultFALSEspec0206), configuraciónPOS«Imprimir tickets»; ajusteownerNOconsultadoni cambiado,causaposiblenoconfirmada. ProblemasUIobservados unit/raw/formatosmixtos/repetición, pendientecontraaprobado. Solo investigaciónread-only,nohabilitarsettingnirediseñarantesaclaración;detalle gptvigente.
 
