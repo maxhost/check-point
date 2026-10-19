@@ -18,7 +18,7 @@ import {
   type MeasuredCartLine,
 } from "./measured-cart-model";
 import { MeasuredOrderCommands } from "./measured-order-commands";
-import { catalogKey, PosCache } from "./pos-cache";
+import { catalogKey, tablesKey, PosCache } from "./pos-cache";
 import type { PosClient } from "./pos-context";
 import { PosError } from "./pos-types";
 import { MeasuredCustomerModel } from "./measured-customer-model";
@@ -160,6 +160,7 @@ export class MeasuredEditorSession {
     this.revision++;
     this.listeners.forEach((fn) => fn());
   };
+  tableRevision = 0;
   get dirty() {
     return JSON.stringify(this.draft) !== this.baseline;
   }
@@ -449,6 +450,23 @@ export class MeasuredEditorSession {
           });
     if (!this.active) return null;
     if (result.status !== "confirmed") {
+      const error = "error" in result ? result.error : null;
+      // Only definitive table rejections permit choosing another table. A recovery
+      // of an uncertain create remains uncertain even if its latest response is 409.
+      if (
+        (result.status === "conflict" || result.status === "rejected") &&
+        error instanceof PosError &&
+        ((error.code === "table_occupied" && error.status === 409) ||
+          (error.code === "unknown_table" && error.status === 422))
+      ) {
+        if (result.status === "conflict") this.reviewedConflict = result;
+        this.cache.invalidate(tablesKey(this.draft.locationId));
+        this.draft = { ...this.draft, tableId: null };
+        this.tableRevision++;
+        this.error = error.message;
+        this.publish();
+        return null;
+      }
       if (result.status === "rejected") {
         const error = result.error;
         this.error =

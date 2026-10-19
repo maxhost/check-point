@@ -1,3 +1,5 @@
+import { MODULES } from "../../../modules/registry";
+import { staffDefaultPermissions } from "./staff-contract";
 import { describe, expect, it } from "vitest";
 import { PERMISSIONS as CATALOGO } from "@mi-pasaporte/db/permissions-catalog";
 import { PERMISSIONS, errorCopy } from "./staff-contract";
@@ -67,5 +69,44 @@ describe("staff error copy", () => {
     expect(
       errorCopy({ code: "future", error: "Detalle útil" }, "fallback"),
     ).toBe("Detalle útil");
+  });
+});
+
+const operational = MODULES.find(
+  (module) => module.operation && module.startPage,
+)!;
+const available = {
+  id: operational.id,
+  enabled: true,
+  permissions: [...operational.permissions],
+};
+
+describe("staff defaults", () => {
+  it("recommends the enabled operational manifest's start permission", () => {
+    expect(staffDefaultPermissions([available])).toEqual([
+      operational.startPage!.permission,
+    ]);
+  });
+  it("keeps Clientes when the operational module is disabled or not loaded", () => {
+    expect(staffDefaultPermissions([])).toEqual(["counter"]);
+    expect(staffDefaultPermissions([{ ...available, enabled: false }])).toEqual(
+      ["counter"],
+    );
+  });
+  it("does not invent permission grants from unknown modules or missing permissions", () => {
+    expect(
+      staffDefaultPermissions([{ ...available, permissions: [] }]),
+    ).toEqual(["counter"]);
+    expect(staffDefaultPermissions([{ ...available, id: "unknown" }])).toEqual([
+      "counter",
+    ]);
+  });
+  it("does not recommend a non-operational enabled module", () => {
+    const module = MODULES.find((entry) => !entry.operation)!;
+    expect(
+      staffDefaultPermissions([
+        { id: module.id, enabled: true, permissions: module.permissions },
+      ]),
+    ).toEqual(["counter"]);
   });
 });

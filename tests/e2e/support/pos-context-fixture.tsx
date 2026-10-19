@@ -4,7 +4,7 @@ import { Button, Text } from "../../../apps/merchant/src/ui";
 import { BackofficeProvider } from "../../../apps/merchant/src/app/backoffice/backoffice-context";
 import { createBackofficeContextController } from "../../../apps/merchant/src/app/backoffice/backoffice-context-controller";
 import { fixtureBackofficeCore } from "./backoffice-seed-fixture";
-import { PosConsole } from "../../../apps/merchant/src/modules/pos/ui/pos-console";
+import { MeasuredConsole } from "../../../apps/merchant/src/modules/pos/ui/measured-console";
 import { TicketSettings } from "../../../apps/merchant/src/modules/pos/ui/ticket-settings";
 
 const core = fixtureBackofficeCore({
@@ -98,7 +98,7 @@ function Fixture() {
         initialContext={current.core}
         controller={controller}
       >
-        <PosConsole locations={[]} />
+        <MeasuredConsole locations={[{ id: "north", name: "Local Norte" }]} />
         <TicketSettings />
       </BackofficeProvider>
     </>

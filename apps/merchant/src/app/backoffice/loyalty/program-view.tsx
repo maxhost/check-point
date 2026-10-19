@@ -85,14 +85,6 @@ export function ProgramView({ vm }: { vm: LoyaltyVm }) {
               <dt>Mecánica de acumulación</dt>
               <dd>{accumulation}</dd>
             </div>
-            <div>
-              <dt>Canje sin saldo suficiente</dt>
-              <dd>
-                {program.redeemAllowInsufficient
-                  ? "Permitido; el saldo queda en 0 y se registra la entrega."
-                  : "No permitido"}
-              </dd>
-            </div>
           </dl>
         </div>
         <div

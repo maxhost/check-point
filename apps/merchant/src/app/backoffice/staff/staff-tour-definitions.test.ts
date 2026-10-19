@@ -17,7 +17,7 @@ describe("tours de Staff", () => {
     ]);
     expect(staffTourSteps("edit-permissions")).toHaveLength(4);
   });
-  it("enseña Mostrador como primer permiso", () => {
+  it("enseña Clientes conservando la clave de compatibilidad", () => {
     expect(FIRST_STAFF_PERMISSION_ANCHOR).toBe(
       '[data-tour="staff-permission-counter"]',
     );
@@ -34,14 +34,7 @@ describe("tours de Staff", () => {
     expect(staffTourSteps("onboarding")[0]?.advanceOnClick).toBe(false);
   });
 
-  /**
-   * ORACULO DE LA ENMIENDA §11 (el defecto que cazo el revisor de la 0088).
-   *
-   * El switch de Mostrador nace ENCENDIDO en el alta, asi que si este paso autoavanzara al
-   * pulsarlo, seguir el tour al pie de la letra APAGA el unico permiso puesto y el alta se
-   * corta. El paso es informativo: avanza con «Siguiente».
-   */
-  it("no autoavanza en el paso de Mostrador: pulsarlo lo APAGARIA", () => {
+  it("no autoavanza ni altera la selección en el paso de permisos", () => {
     expect(staffTourSteps("create")[2]?.element).toBe(
       FIRST_STAFF_PERMISSION_ANCHOR,
     );

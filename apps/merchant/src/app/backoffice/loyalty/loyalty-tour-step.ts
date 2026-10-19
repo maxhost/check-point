@@ -67,9 +67,9 @@ export function loyaltyHelpStep(
     }
     if (session.task === "policies" && step === "rewards") {
       key = "redemption-policy";
-      title = "Canje sin saldo";
+      title = "Canje directo suspendido";
       description =
-        "Decide si el mostrador puede entregar un premio sin saldo suficiente. Si lo permites, el saldo queda en 0 y la entrega queda registrada. Pulsa Continuar para revisar todos los cambios.";
+        "El canje directo está suspendido. Los saldos y el historial se conservan. Pulsa Continuar para revisar los cambios del programa.";
     }
     if (current.stamp.pending) {
       key = null;

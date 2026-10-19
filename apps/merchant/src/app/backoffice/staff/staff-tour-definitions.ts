@@ -40,12 +40,8 @@ const selectors: Record<string, string> = {
 /**
  * Los pasos que avanzan al PULSAR su control, porque el control es una accion inequivoca.
  *
- * **`counter` NO esta aca, y es la enmienda §11 de la spec 0088.** El alta abre con el switch
- * de Mostrador **ya encendido** (`staff-console.tsx:30-32`), asi que un paso que autoavanza al
- * pulsarlo le pedia al merchant el clic que lo **APAGA**: los permisos quedaban en `[]` y el
- * alta se cortaba con «Elegí al menos un permiso» (`staff-console.tsx:75-76`). El copy dejo de
- * pedir el clic y el paso avanza con «Siguiente», que es lo que un paso informativo hace.
- * ORACULO: el caso «el paso de Mostrador no autoavanza» de `staff-tour-definitions.test.ts`.
+ * El paso de permisos es informativo: usa «Siguiente» para que el tour no cambie
+ * la selección recomendada ni obligue a otorgar un acceso.
  */
 const autoAdvanceAnchors = new Set<keyof (typeof STAFF_TOUR_COPY)["es"]>([
   "add",

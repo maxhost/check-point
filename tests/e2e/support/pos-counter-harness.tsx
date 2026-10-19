@@ -1,8 +1,14 @@
+import { useSyncExternalStore } from "react";
+import { MeasuredEditorCustomer } from "../../../apps/merchant/src/modules/pos/ui/measured-editor-customer";
+import { MeasuredEditorSession } from "../../../apps/merchant/src/modules/pos/ui/measured-editor-model";
+import { createPosClient } from "../../../apps/merchant/src/modules/pos/ui/pos-context";
+import { PosCache } from "../../../apps/merchant/src/modules/pos/ui/pos-cache";
+import { staffDefaultPermissions } from "../../../apps/merchant/src/app/backoffice/staff/staff-contract";
 import { TrialNotice } from "../../../apps/merchant/src/app/backoffice/subscription/trial-notice";
 import { TicketSettings } from "../../../apps/merchant/src/modules/pos/ui/ticket-settings";
 import { operationModules } from "./modules-fixture";
 import { renderBackofficeSeedFixture } from "./backoffice-seed-fixture";
-import { PosConsole } from "../../../apps/merchant/src/modules/pos/ui/pos-console";
+import { MeasuredConsole } from "../../../apps/merchant/src/modules/pos/ui/measured-console";
 import { ModuleConfiguration } from "../../../apps/merchant/src/app/backoffice/settings/module-configuration";
 import { BackofficeNavigation } from "../../../apps/merchant/src/app/backoffice/backoffice-navigation";
 import { PermissionPicker } from "../../../apps/merchant/src/app/backoffice/staff/permission-picker";
@@ -56,28 +62,63 @@ Object.defineProperty(window, "BarcodeDetector", {
     }
   },
 });
+
+const customerClient = createPosClient(
+  () => ({ identity: "test", scopeKey: "a".repeat(64) }),
+  { contractVersion: 2 },
+);
+const customerCache = new PosCache(undefined, customerClient.request);
+customerCache.bind("test");
+const customerSession = new MeasuredEditorSession(
+  {
+    identity: "test",
+    locations: [{ id: "north", name: "Norte" }],
+    currencyCode: "USD",
+    saleTypes: ["counter"],
+    tablesEnabled: false,
+  },
+  customerCache,
+  customerClient,
+  null,
+);
+function CustomerFixture() {
+  useSyncExternalStore(
+    customerSession.subscribe,
+    customerSession.getSnapshot,
+    customerSession.getSnapshot,
+  );
+  return <MeasuredEditorCustomer session={customerSession} />;
+}
+
 const params = new URLSearchParams(window.location.search);
 const mode = params.get("mode");
 // El menú usa el mismo rol y permisos que la sesión simulada.
-const settingsOwner = mode === "settings" && params.get("role") !== "staff";
+const settingsOwner = params.get("role") !== "staff";
+const fixturePermissions =
+  params.get("permissions")?.split(",") ??
+  (settingsOwner ? ["pos", "staff", "counter"] : ["pos"]);
 void renderBackofficeSeedFixture(
   <div className="backoffice-layout print:block">
     <BackofficeNavigation />
     <div className="backoffice-content print:m-0 print:p-0">
       {params.has("trial") && <TrialNotice />}
-      {mode === "settings" ? (
+      {mode === "navigation" ? null : mode === "customer" ? (
+        <CustomerFixture />
+      ) : mode === "settings" ? (
         <ModuleConfiguration
           panels={[{ moduleId: "pos", content: <TicketSettings /> }]}
         />
       ) : mode === "permissions-off" || mode === "permissions-on" ? (
         <PermissionPicker
-          value={[]}
+          value={staffDefaultPermissions(
+            operationModules(mode === "permissions-on", false),
+          )}
           onChange={() => {}}
           isOwner
           modules={operationModules(mode === "permissions-on", false)}
         />
       ) : (
-        <PosConsole
+        <MeasuredConsole
           locations={[
             { id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1", name: "Centro" },
             { id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2", name: "Norte" },
@@ -89,6 +130,6 @@ void renderBackofficeSeedFixture(
   {
     businessName: "Café de prueba",
     isOwner: params.has("trial") || settingsOwner,
-    permissions: settingsOwner ? ["pos", "staff"] : ["pos"],
+    permissions: fixturePermissions,
   },
 );
