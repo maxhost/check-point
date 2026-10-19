@@ -75,10 +75,13 @@ export function decideMeasuredBenefit(input: {
     if (coupon.discountUnit === "percent") {
       if (
         typeof coupon.discountValue !== "string" ||
-        !/^(?:[1-9]|[1-9]\d|100)$/.test(coupon.discountValue)
+        !/^(?:[1-9]|[1-9]\d|100)(?:\.0{1,2})?$/.test(coupon.discountValue)
       )
         throw new FinancialError("invalid_financial_input");
-      amount = multiply(gross, rational(BigInt(coupon.discountValue), 100n));
+      amount = multiply(
+        gross,
+        rational(BigInt(coupon.discountValue.split(".")[0]), 100n),
+      );
     } else if (coupon.discountUnit === "amount") {
       if (
         coupon.currencyCode !== null &&
