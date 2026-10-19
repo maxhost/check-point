@@ -1,8 +1,8 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Button, Heading, Text } from "../../../ui";
+import { Alert, Button, Dialog, Heading, Text } from "../../../ui";
 import type { PosHistoryV2, PosLocationV2, PosOrderV2 } from "../contracts";
-import { DiscardedPosRead, detailKey, historyKey, PosCache } from "./pos-cache";
+import { DiscardedPosRead, detailKey, historyKey } from "./pos-cache";
 import {
   DiscardedPosIntent,
   usePosContext,
@@ -16,6 +16,12 @@ import { MeasuredCheckout } from "./measured-checkout";
 import { MeasuredScan } from "./measured-scan";
 import { MeasuredOrderCache } from "./measured-order-cache";
 import { MeasuredOrderList } from "./measured-order-list";
+import { MeasuredTicket } from "./measured-ticket";
+import { useMeasuredPrinting } from "./measured-printing";
+import {
+  useMeasuredVoidAction,
+  retireMeasuredVoidIdentity,
+} from "./measured-void-action";
 import type { MeasuredEditorContext } from "./measured-editor-model";
 
 export function MeasuredConsole({ locations }: { locations: PosLocationV2[] }) {
@@ -47,6 +53,10 @@ export function MeasuredConsole({ locations }: { locations: PosLocationV2[] }) {
       },
     };
   const current = retained.current;
+  useEffect(() => {
+    if (current && current.identity !== scope.identity)
+      retireMeasuredVoidIdentity(current.identity);
+  }, [current, scope.identity]);
   if (!current || current.identity !== scope.identity)
     return (
       <Alert
@@ -99,22 +109,25 @@ export function MeasuredConsoleContent({
       capture: () => wrap(sourceClient.capture()),
     };
   }, [sourceClient]);
-  const cache = useMemo(() => {
-    const value = new PosCache(undefined, client.request);
-    value.bind(context.identity);
-    return value;
-  }, [client, context.identity]);
+  const { owner: voidAction, state: voidState } = useMeasuredVoidAction(
+    context.identity,
+    timeZone,
+  );
+  const cache = voidAction.cache;
+  const [confirmVoid, setConfirmVoid] = useState(false);
   const editors = useRef(new Set<MeasuredEditorSession>());
   const payments = useRef(new Map<string, MeasuredPaymentSession>());
   const active = useRef(true);
   const navigation = useRef(0);
   const [editor, setEditor] = useState<MeasuredEditorSession | null>(null);
   const [payment, setPayment] = useState<MeasuredPaymentSession | null>(null);
-  const [order, setOrder] = useState<PosOrderV2 | null>(null);
+  const [order, setOrder] = useState<PosOrderV2 | null>(() => voidState.order);
   const [view, setView] = useState<"list" | "edit" | "detail" | "result">(
-    "list",
+    voidState.order ? "detail" : "list",
   );
-  const [history, setHistory] = useState<PosHistoryV2 | null>(null);
+  const [history, setHistory] = useState<PosHistoryV2 | null>(() =>
+    cache.peek(historyKey, true),
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [, redraw] = useState(0);
@@ -131,10 +144,10 @@ export function MeasuredConsoleContent({
         if (active.current) return;
         ownedEditors.forEach((s) => s.retireIdentity());
         ownedPayments.forEach((s) => s.retireIdentity());
-        cache.clear();
+        if (voidAction.canLeave) cache.clear();
       });
     };
-  }, [cache]);
+  }, [cache, voidAction]);
   const handleError = useCallback((cause: unknown) => {
     if (
       !active.current ||
@@ -162,7 +175,7 @@ export function MeasuredConsoleContent({
         );
         if (active.current) {
           setHistory(result);
-          setDenied(false);
+          setDenied(voidAction.getSnapshot().phase === "retired");
         }
       } catch (cause) {
         handleError(cause);
@@ -170,15 +183,34 @@ export function MeasuredConsoleContent({
         if (active.current) setLoading(false);
       }
     },
-    [cache, client, handleError],
+    [cache, client, handleError, voidAction],
   );
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (voidAction.canLeave) void load();
+  }, [load, voidAction]);
+  useEffect(() => {
+    if (voidState.error) handleError(voidState.error);
+    if (voidState.phase === "retired") setDenied(true);
+    if (voidState.phase === "confirmed" || voidState.phase === "idle") {
+      if (voidState.order || voidState.error) {
+        setOrder(voidState.order);
+        setView(voidState.order ? "detail" : "list");
+      }
+      setHistory(cache.peek(historyKey, true));
+    }
+  }, [voidState, cache, handleError]);
+  const printing = useMeasuredPrinting({
+    order: view === "detail" || view === "result" ? order : null,
+    client,
+    context: accessEnabled && !denied ? context.identity : null,
+    prepare: !!history && accessEnabled && !denied,
+    onError: handleError,
+  });
   const blocked =
     !accessEnabled ||
     denied ||
     loading ||
+    !voidAction.canLeave ||
     !!editor?.blocked ||
     [...payments.current.values()].some((s) => !s.canLeave);
   function syncHistory() {
@@ -218,6 +250,7 @@ export function MeasuredConsoleContent({
   }
   function prepare(value: PosOrderV2) {
     if (
+      !voidAction.canLeave ||
       !accessEnabled ||
       denied ||
       value.status !== "open" ||
@@ -267,10 +300,7 @@ export function MeasuredConsoleContent({
   return (
     <>
       <div className="mx-auto max-w-6xl px-4 pt-4 md:px-6">
-        <Text variant="small">
-          Vista previa local · Impresión y anulación estarán disponibles en un
-          próximo incremento.
-        </Text>
+        <Text variant="small">Vista previa local del punto de venta.</Text>
       </div>
       {error && <Alert kind="error" title={error} />}
       {(denied || !accessEnabled) && (
@@ -340,25 +370,10 @@ export function MeasuredConsoleContent({
           <Heading level={1}>
             {view === "result" ? "Venta completada" : order.orderLabel}
           </Heading>
-          <Text>
-            {order.orderLabel} ·{" "}
-            {order.status === "open"
-              ? "Abierta"
-              : order.status === "closed"
-                ? "Cerrada"
-                : "Anulada"}
-          </Text>
           <Text variant="label">
             Total: {order.business.currencyCode}{" "}
             {order.settlement?.collected ?? order.sale?.total ?? order.total}
           </Text>
-          {order.sale && (
-            <Text>
-              {order.sale.consumer} · {order.sale.unitsGranted}{" "}
-              {order.sale.kind === "points" ? "puntos" : "sellos"} acreditados ·
-              Saldo: {order.sale.balanceAfter}
-            </Text>
-          )}
           {order.items.map((line) => (
             <Text key={line.lineId}>
               {line.name} · {line.quantity} {line.measure.quantityUnit} ·{" "}
@@ -374,6 +389,13 @@ export function MeasuredConsoleContent({
                   onPress={() => prepare(order)}
                 >
                   Cobrar
+                </Button>
+                <Button
+                  variant="danger"
+                  isDisabled={blocked}
+                  onPress={() => setConfirmVoid(true)}
+                >
+                  Anular pedido
                 </Button>
                 <Button
                   variant="secondary"
@@ -398,7 +420,59 @@ export function MeasuredConsoleContent({
               Volver al listado
             </Button>
           </div>
+          {accessEnabled && !denied && (
+            <MeasuredTicket order={order} printing={printing} />
+          )}
         </section>
+      )}
+      <Dialog
+        title="Anular pedido"
+        isOpen={confirmVoid}
+        onOpenChange={setConfirmVoid}
+        description={`¿Quieres anular ${order?.orderLabel}? Ya no podrás editar ni cobrar este pedido.`}
+      >
+        <div className="mt-4 flex flex-wrap justify-end gap-3">
+          <Button variant="secondary" onPress={() => setConfirmVoid(false)}>
+            Cancelar
+          </Button>
+          <Button
+            variant="danger"
+            isDisabled={blocked}
+            onPress={() => {
+              if (blocked || !order) return;
+              setConfirmVoid(false);
+              void voidAction.confirm(order);
+            }}
+          >
+            Confirmar anulación
+          </Button>
+        </div>
+      </Dialog>
+      {voidState.phase === "uncertain" && (
+        <Alert
+          kind="warning"
+          title="No pudimos confirmar la anulación. Conservamos el mismo intento; recupéralo antes de salir o cambiar de pedido."
+        >
+          <Button
+            isDisabled={denied || !accessEnabled}
+            onPress={() => void voidAction.retry()}
+          >
+            Reintentar la misma anulación
+          </Button>
+        </Alert>
+      )}
+      {voidState.phase === "review" && (
+        <Alert
+          kind="warning"
+          title="El pedido cambió. Revisa su estado actual antes de continuar."
+        >
+          <Button
+            isDisabled={denied || !accessEnabled}
+            onPress={() => void voidAction.review()}
+          >
+            Revisar orden actual
+          </Button>
+        </Alert>
       )}
       {payment && accessEnabled && !denied && (
         <>
