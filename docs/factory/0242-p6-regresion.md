@@ -104,3 +104,22 @@ originales; no corregir backlog no relacionado ni debilitar invariantes de event
 stock/analytics, marca fiscal o retiro. No alterar el checkout mientras corra el
 lote congelado. Puede preparar un patch propio privado con estos paths exactos
 sin crear otro worktree/configuración, para aplicarlo después del cierre del lote.
+
+## Ampliación final de históricos/storage previa a código
+
+Paths bajo `apps/merchant/src/modules/pos/server/`:
+`catalog-storage-expand.neon.integration.test.ts`,
+`quantity-storage-expand.neon.integration.test.ts`,
+`catalog-measure-storage.neon.integration.test.ts`,
+`order-intent-storage.neon.integration.test.ts`,
+`unit-expand-compat.neon.integration.test.ts`,
+`pos-migration-0079.neon.integration.test.ts`.
+
+Preparación privada permitida mientras corre el lote congelado, sin alterar su
+checkout. Conservar pruebas de SQL/migración de origen mediante clones/aislamiento
+existentes, hashes y constraints; jamás retirar0108 en core real. WritersHTTPV1
+positivos pasan a seed histórico SQL o V2 explícito según la intención original;
+proyecciones históricas internas y rechazo HTTPV1 siguen teniendo oráculos.
+Cada suite con DDL se ejecuta aislada, serial, sin otros procesos DB, incluido
+teardown. No convertir pruebas de expand antiguo en afirmaciones de dormancia
+vigente después de0108; separar historia de invariantes actuales.
