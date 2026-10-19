@@ -1,13 +1,22 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   MeasuredVoidAction,
+  createMeasuredVoidClient,
   measuredVoidOwner,
   mountMeasuredVoidOwner,
   retireMeasuredVoidIdentity,
 } from "./measured-void-action";
 import { PosError } from "./pos-types";
-import { actionOpen } from "../../../../../../tests/e2e/support/pos-console-actions-fixture";
-import type { PosClient } from "./pos-context";
+import {
+  actionOpen,
+  actionCore,
+} from "../../../../../../tests/e2e/support/pos-console-actions-fixture";
+import {
+  createPosClient,
+  DiscardedPosIntent,
+  type PosClient,
+} from "./pos-context";
+import { createBackofficeContextController } from "../../../app/backoffice/backoffice-context-controller";
 import { historyKey } from "./pos-cache";
 const order = structuredClone(actionOpen);
 const terminal = {
@@ -110,27 +119,128 @@ describe("console void owner", () => {
       order: { version: 2 },
     });
   });
-  it("same identity remount keeps owner/cache; another identity retires late callback", async () => {
-    const { request, client } = setup();
-    const action = measuredVoidOwner("remount-a", client, "UTC");
-    const unmount = mountMeasuredVoidOwner(action);
-    let release!: (value: typeof terminal) => void;
-    request.mockImplementationOnce(
+  it("provider-owned original capture survives real source-hook retirement and same-identity remount", async () => {
+    const core = actionCore();
+    const controller = createBackofficeContextController(core, {
+      readSession: async () => {
+        throw new Error("Unexpected session read");
+      },
+      readModules: async () => {
+        throw new Error("Unexpected modules read");
+      },
+      requestRefresh: () => {},
+      navigate: () => {},
+    });
+    const releaseProvider = controller.attach();
+    const identity = `0:${core.scopeKey}`;
+    const providerOwner = {
+      captureTicket: controller.captureTicket,
+      retire: controller.retire,
+    };
+    // This is the exact active ref boundary in usePosContext; it must stay strict.
+    let sourceActive = true;
+    const source = createPosClient(
       () =>
-        new Promise((resolve) => {
-          release = resolve;
-        }) as never,
+        sourceActive
+          ? { identity, scopeKey: core.scopeKey }
+          : { identity: null },
+      { contractVersion: 2 },
     );
-    const pending = action.confirm(order);
-    unmount();
-    await Promise.resolve();
-    expect(measuredVoidOwner("remount-a", client, "UTC")).toBe(action);
-    const other = measuredVoidOwner("remount-b", client, "UTC");
-    expect(action.getSnapshot().phase).toBe("retired");
-    release(terminal);
-    await pending;
-    expect(other.getSnapshot().order).toBeNull();
-    retireMeasuredVoidIdentity("remount-b");
+    const oldSourceCapture = source.capture();
+    const fetch = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("response lost"))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: "denied" }), { status: 403 }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(terminal), { status: 200 }),
+      );
+    vi.stubGlobal("fetch", fetch);
+    try {
+      const action = measuredVoidOwner(
+        identity,
+        createMeasuredVoidClient(providerOwner),
+        "UTC",
+      );
+      const unmount = mountMeasuredVoidOwner(action);
+      await action.confirm(order);
+      expect(action.getSnapshot().phase).toBe("uncertain");
+      const first = fetch.mock.calls[0];
+      unmount();
+      sourceActive = false;
+      await Promise.resolve();
+      await expect(
+        oldSourceCapture("/api/modules/pos/orders"),
+      ).rejects.toBeInstanceOf(DiscardedPosIntent);
+      expect(fetch).toHaveBeenCalledTimes(1);
+      const remounted = measuredVoidOwner(
+        identity,
+        createMeasuredVoidClient(providerOwner),
+        "UTC",
+      );
+      const cleanup = mountMeasuredVoidOwner(remounted);
+      expect(remounted).toBe(action);
+      await remounted.retry();
+      expect(remounted.getSnapshot().phase).toBe("uncertain");
+      expect(remounted.canLeave).toBe(false);
+      expect(remounted.cache.context).toBe(identity);
+      await remounted.retry();
+      expect(remounted.getSnapshot().phase).toBe("confirmed");
+      expect(fetch).toHaveBeenCalledTimes(3);
+      for (const call of fetch.mock.calls) {
+        expect(call[0]).toBe(first[0]);
+        expect(call[1].body).toBe(first[1].body);
+        expect(call[1].headers).toEqual(first[1].headers);
+      }
+      cleanup();
+    } finally {
+      retireMeasuredVoidIdentity(identity);
+      releaseProvider();
+      vi.unstubAllGlobals();
+    }
+  });
+  it("real provider retirement rejects the old capture and suppresses a late response", async () => {
+    const core = actionCore();
+    const controller = createBackofficeContextController(core, {
+      readSession: async () => {
+        throw new Error("Unexpected session read");
+      },
+      readModules: async () => {
+        throw new Error("Unexpected modules read");
+      },
+      requestRefresh: () => {},
+      navigate: () => {},
+    });
+    const releaseProvider = controller.attach();
+    let release!: (value: Response) => void;
+    const fetch = vi.fn(
+      () =>
+        new Promise<Response>((resolve) => {
+          release = resolve;
+        }),
+    );
+    vi.stubGlobal("fetch", fetch);
+    const identity = `0:${core.scopeKey}`;
+    try {
+      const action = measuredVoidOwner(
+        identity,
+        createMeasuredVoidClient(controller),
+        "UTC",
+      );
+      const pending = action.confirm(order);
+      controller.retire();
+      release(new Response(JSON.stringify(terminal), { status: 200 }));
+      await pending;
+      expect(action.getSnapshot().phase).toBe("retired");
+      expect(action.getSnapshot().order).toBeNull();
+      expect(action.cache.context).toBeNull();
+      expect(fetch).toHaveBeenCalledTimes(1);
+    } finally {
+      retireMeasuredVoidIdentity(identity);
+      releaseProvider();
+      vi.unstubAllGlobals();
+    }
   });
   for (const error of [
     new PosError("unauthorized", undefined, undefined, undefined, 401),

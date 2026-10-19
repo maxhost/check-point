@@ -1,14 +1,40 @@
 import { useEffect, useMemo, useSyncExternalStore } from "react";
+import { useOptionalBackofficeContext } from "../../../app/backoffice/backoffice-context";
 import type { PosOrderV2 } from "../contracts";
 import { MeasuredOrderCache } from "./measured-order-cache";
 import { canonicalPaymentOrder } from "./measured-payment-close";
 import { PosCache } from "./pos-cache";
 import {
   DiscardedPosIntent,
+  createPosClient,
   type PosClient,
   type PosRequest,
 } from "./pos-context";
 import { orderUrl, PosError } from "./pos-types";
+
+type VoidContextOwner = Pick<
+  NonNullable<ReturnType<typeof useOptionalBackofficeContext>>,
+  "captureTicket" | "retire"
+>;
+
+/** The provider owns this reader; a leaf hook unmount cannot withdraw its ticket.
+ * createPosClient still checks the original identity before and after every request.
+ * A retired/disposed provider returns no ticket, so the original capture is rejected. */
+export function createMeasuredVoidClient(
+  owner: VoidContextOwner | null,
+): PosClient {
+  return createPosClient(
+    () => {
+      const ticket = owner?.captureTicket("session");
+      return {
+        identity: ticket ? `${ticket.epoch}:${ticket.scopeKey}` : null,
+        scopeKey: ticket?.scopeKey,
+        retire: owner?.retire,
+      };
+    },
+    { contractVersion: 2 },
+  );
+}
 
 export type MeasuredVoidState = Readonly<{
   phase: "idle" | "pending" | "uncertain" | "review" | "confirmed" | "retired";
@@ -230,11 +256,17 @@ export function mountMeasuredVoidOwner(owner: MeasuredVoidAction) {
   };
 }
 
-export function useMeasuredVoidAction(
-  identity: string,
-  client: PosClient,
-  timeZone: string,
-) {
+export function useMeasuredVoidAction(identity: string, timeZone: string) {
+  const context = useOptionalBackofficeContext();
+  const captureTicket = context?.captureTicket,
+    retire = context?.retire;
+  const client = useMemo(
+    () =>
+      createMeasuredVoidClient(
+        captureTicket && retire ? { captureTicket, retire } : null,
+      ),
+    [captureTicket, retire],
+  );
   const owner = useMemo(
     () => measuredVoidOwner(identity, client, timeZone),
     [identity, client, timeZone],

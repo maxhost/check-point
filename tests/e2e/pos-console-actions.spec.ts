@@ -547,9 +547,10 @@ for (const mode of [
         }),
       ).toHaveCount(0);
     } else {
+      // The real provider withdraws presentation on 401/scope retirement.
       await expect(
         page.getByRole("button", { name: "Cobrar", exact: true }),
-      ).toBeDisabled();
+      ).toHaveCount(0);
       await page.evaluate(() =>
         window.dispatchEvent(new Event("actions-identity")),
       );
