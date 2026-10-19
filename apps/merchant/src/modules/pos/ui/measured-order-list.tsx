@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { FilterList } from "iconoir-react";
+import { FilterList, Plus } from "iconoir-react";
 import { Button, Heading, SelectField, Sheet, Text } from "../../../ui";
 import type { PosHistoryV2, PosLocationV2, PosOrderV2 } from "../contracts";
 import { MeasuredOrderCard } from "./measured-order-card";
@@ -52,15 +52,17 @@ export function MeasuredOrderList({
       aria-label="Pedidos"
       className="grid w-full min-w-0 max-w-none gap-5 p-3 md:p-4"
     >
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4 md:flex-nowrap">
         <Heading level={1}>Pedidos</Heading>
-        <div className="hidden md:block">
+        <div className="ml-auto hidden shrink-0 md:block">
           <Button
+            className="min-h-12 gap-2 px-5!"
             isDisabled={disabled}
             onPress={() =>
               (onChooseNew ?? onNew)(location === "all" ? "" : location)
             }
           >
+            <Plus className="size-5" aria-hidden="true" />
             Nueva orden
           </Button>
         </div>

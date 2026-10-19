@@ -1,6 +1,6 @@
 "use client";
 import { useSearchParams } from "next/navigation";
-import { NavArrowDown, Xmark } from "iconoir-react";
+import { NavArrowDown, Plus, Xmark } from "iconoir-react";
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import {
   Alert,
@@ -563,11 +563,13 @@ function PosConsoleContent({ locations }: { locations: PosLocation[] }) {
           <>
             {view === "list" && (
               <div className="grid gap-6 print:hidden">
-                <div className="hidden md:block">
+                <div className="hidden md:flex md:justify-end">
                   <Button
+                    className="min-h-12 gap-2 px-5!"
                     isDisabled={busy || refreshing}
                     onPress={startNewOrder}
                   >
+                    <Plus className="size-5" aria-hidden="true" />
                     Nueva orden
                   </Button>
                 </div>

@@ -2,7 +2,7 @@
 
 ## Situación vigente (2026-10-19)
 
-El owner probó sucesivamente las vistas en su navegador y dio por terminada la ronda visual; su último encargo fue ocultar Mostrador en la barra móvil de POS y cambiar el acceso del sidebar a Abrir POS. Implementado; pendiente su comprobación final de esos accesos. Preview existente: `http://localhost:3201/backoffice/pos?posV2=1`. No tocar servidor/túnel por oficio.
+El owner probó sucesivamente las vistas en su navegador y dio por terminada la ronda visual; sus últimos encargos fueron dejar únicamente Nueva orden centrado en la barra móvil de POS y destacar el botón Nueva orden de desktop a la derecha con un + moderado. El sidebar ya muestra Abrir POS. Implementado; pendiente su comprobación final de esos accesos. Preview existente: `http://localhost:3201/backoffice/pos?posV2=1`. No tocar servidor/túnel por oficio.
 
 Continuar **directamente, sin agentes ni QA independiente**. Este acuerdo posterior sustituye el pedido inicial de dos implementadores. El owner hace la revisión visual: **sin capturas ni comparaciones de imágenes**. Checks proporcionales; no DB, matrices amplias ni tests nuevos por ceremonia. Esperar el siguiente ajuste concreto; no iniciar otra auditoría general ni la siguiente fase funcional automáticamente.
 
@@ -16,7 +16,7 @@ Continuar **directamente, sin agentes ni QA independiente**. Este acuerdo poster
 - Guardar: toast Orden guardada y botón Cobrar cuando está limpia; Guardar cambios si se modifica. Abrir el cobro no repite update/create. Anulación persistida conserva confirmación/versionado/owner canónico; borrador requiere confirmar descarte, sin crear orden.
 - Cobro: un solo contenido compacto de total/cliente/cupón/medio/recibido/cambio, Dialog desktop y Sheet móvil con botones apilados. Medios precargados y cacheados por identidad; cupón revalidado al cobrar. Cancelar conserva editor. Se eliminó el JSX fullscreen anterior y `measured-scan.tsx`, ya sin consumidores productivos; la identificación real está en el editor.
 - Resultado: único receipt con estado, negocio/local, orden, fechas/autores, líneas exactas, nota, beneficios/descuento/redondeo, total canónico y botones Imprimir / Volver al historial. Quitado resumen duplicado de consola; documento de impresión solo se renderiza para print.
-- Último ajuste de navegación: barra móvil de operación tiene POS + Nueva orden, dos columnas, sin Mostrador. Sidebar muestra Abrir POS usando datos del manifiesto/enlaces autorizados, sin literal de módulo en core. Enlaces del POS activo conservan query de preview.
+- Último ajuste de navegación: barra móvil de operación tiene únicamente Nueva orden centrado, sin POS ni Mostrador. Sidebar muestra Abrir POS usando datos del manifiesto/enlaces autorizados, sin literal de módulo en core. El acceso del sidebar al POS activo conserva query de preview. Nueva orden desktop queda a la derecha con Plus Iconoir y altura48px, sin cambiar tipografía; aplicado también a la presentación legacy todavía accesible.
 
 Los Sheet usan el componente del kit ya autorizado, animado desde abajo, con footer y cierre por Cancelar/backdrop/Escape; no hay gesto swipe implementado. `showCloseButton` permite quitar la X sin deshabilitar los otros cierres.
 

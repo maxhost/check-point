@@ -486,29 +486,16 @@ export function BackofficeNavigation() {
 
       <nav
         aria-label="Navegación principal"
-        className={`backoffice-mobile-nav print:hidden ${mobileNavigationHidden ? "hidden!" : ""} ${operation ? "grid-cols-2" : ""}`}
+        className={`backoffice-mobile-nav print:hidden ${mobileNavigationHidden ? "hidden!" : ""} ${operation ? "grid-cols-1" : ""}`}
         data-owner={isOwner || undefined}
       >
         {operation ? (
           <>
-            {operationLinks.map((entry) => (
-              <NavLink
-                {...entry}
-                key={entry.href}
-                href={
-                  entry.segment === segment && currentQuery
-                    ? `${entry.href}?${currentQuery}`
-                    : entry.href
-                }
-                selectedSegment={segment}
-                onNavigate={closeMenu}
-              />
-            ))}
             {PrimaryIcon && operationModule && (
               <Link
                 href={operationLinks[0].href}
                 role="button"
-                className="mobile-counter-access col-start-2"
+                className="mobile-counter-access justify-self-center"
                 onKeyDown={(event) => {
                   if (event.key === " ") {
                     event.preventDefault();
