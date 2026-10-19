@@ -1,17 +1,17 @@
 import { NextResponse } from "next/server";
-import { removeCoupon } from "../../../../server/counter";
-import { counterError, readJson, requireOperator } from "../_auth";
+import { privateBackofficeResponse } from "../../../../server/backoffice-scope-http";
+import { requireOperator } from "../_auth";
 
 export const runtime = "nodejs";
 
-/** Takes back the chosen coupon, valid or not (spec 0153 M3): it goes back to the consumer. */
+/** Retired public Counter entry point; preserve the complete operator guard. */
 export async function POST(request: Request) {
   const auth = await requireOperator(request);
-  if ("response" in auth) return auth.response;
-  try {
-    const body = await readJson(request);
-    return NextResponse.json(await removeCoupon(auth.business, body));
-  } catch (error) {
-    return counterError(error, "No pudimos quitar el cupón.");
-  }
+  if ("response" in auth) return privateBackofficeResponse(auth.response);
+  return privateBackofficeResponse(
+    NextResponse.json(
+      { code: "feature_retired", error: "Esta función ya no está disponible." },
+      { status: 410 },
+    ),
+  );
 }

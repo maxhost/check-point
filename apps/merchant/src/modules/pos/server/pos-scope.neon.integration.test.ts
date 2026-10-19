@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { eq, inArray } from "drizzle-orm";
 import { getDb } from "@mi-pasaporte/db";
@@ -8,12 +9,12 @@ import { backofficeScopeKey } from "../../../server/backoffice-scope";
 import {
   type PosWorld,
   dropPosWorld,
-  openOrder,
   posIntegrationEnabled,
   posStaff,
   seedPosWorld,
 } from "./pos-integration-support";
 import { server } from "./routes";
+import { createPosOrderV2 } from "./measured-create";
 
 const inventory = [
   "GET payment-methods",
@@ -32,12 +33,12 @@ const inventory = [
   "GET ticket-settings",
   "PUT ticket-settings",
 ];
-it("all POS routes, including spread payment routes, adopt optional scope", () => {
+it("all POS routes, including spread payment routes, require scope and contract2", () => {
   expect(server.routes.map((route) => `${route.method} ${route.path}`)).toEqual(
     inventory,
   );
   expect(
-    server.routes.every((route) => route.backofficeScope === "optional"),
+    server.routes.every((route) => route.backofficeScope === "required"),
   ).toBe(true);
 });
 
@@ -54,6 +55,7 @@ const request = (
     headers: {
       cookie,
       "content-type": "application/json",
+      "X-Pos-Contract": "2",
       ...(scope === undefined ? {} : { "X-Backoffice-Scope": scope }),
     },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
@@ -102,16 +104,20 @@ describe.skipIf(!posIntegrationEnabled)(
     beforeAll(async () => {
       a = await seedPosWorld("CP1a scope A");
       b = await seedPosWorld("CP1a scope B");
-      await openOrder(
-        a,
-        [{ productId: a.cafe, quantity: 1 }],
-        "CP1a-A-private",
-      );
-      await openOrder(
-        b,
-        [{ productId: b.cafe, quantity: 1 }],
-        "CP1a-B-private",
-      );
+      // Seed through domain; this suite tests the HTTP boundary below, not the old fixture client.
+      for (const [world, orderLabel] of [
+        [a, "CP1a-A-private"],
+        [b, "CP1a-B-private"],
+      ] as const) {
+        await createPosOrderV2(world.seed.business, world.seed.userId, {
+          createRequestId: randomUUID(),
+          saleType: "pickup",
+          orderLabel,
+          locationId: world.seed.locationId,
+          tableId: null,
+          items: [],
+        });
+      }
     }, 240_000);
     afterAll(async () => {
       const businessIds = [a, b]
@@ -151,9 +157,12 @@ describe.skipIf(!posIntegrationEnabled)(
       for (const response of [
         await call(b!.ownerCookie, "orders", scope),
         await call(b!.ownerCookie, "orders", scope, {
-          tableLabel: "must-not-exist",
+          createRequestId: randomUUID(),
+          saleType: "pickup",
+          orderLabel: "must-not-exist",
+          tableId: null,
           locationId: b!.seed.locationId,
-          items: [{ productId: b!.cafe, quantity: 1 }],
+          items: [],
         }),
       ]) {
         expect(response.status).toBe(409);
@@ -164,22 +173,28 @@ describe.skipIf(!posIntegrationEnabled)(
       }
       expect(await snapshot()).toEqual(before);
     }, 60_000);
-    it("matching and legacy scopes preserve reads and a matching scope permits a real write", async () => {
+    it("matching scope preserves reads and permits a real write; missing scope is rejected", async () => {
       const scope = await mark(a!);
-      for (const header of [undefined, scope]) {
-        const response = await call(a!.ownerCookie, "orders", header);
+      const missing = await call(a!.ownerCookie, "orders");
+      expect(missing.status).toBe(409);
+      expect((await missing.json()).code).toBe("backoffice_context_changed");
+      {
+        const response = await call(a!.ownerCookie, "orders", scope);
         expect(response.status).toBe(200);
         const json = await response.json();
         expect(
           json.open.some(
-            (order: { tableLabel: string }) =>
-              order.tableLabel === "CP1a-A-private",
+            (order: { orderLabel: string }) =>
+              order.orderLabel === "CP1a-A-private",
           ),
         ).toBe(true);
         expect(JSON.stringify(json)).not.toContain("CP1a-B-private");
       }
       const response = await call(a!.ownerCookie, "orders", scope, {
-        tableLabel: "CP1a-positive",
+        createRequestId: randomUUID(),
+        saleType: "pickup",
+        orderLabel: "CP1a-positive",
+        tableId: null,
         locationId: a!.seed.locationId,
         items: [],
       });

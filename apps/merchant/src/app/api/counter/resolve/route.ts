@@ -1,35 +1,17 @@
 import { NextResponse } from "next/server";
-import { resolveScan } from "../../../../server/counter";
-import { counterError, readJson, requireOperator } from "../_auth";
-import {
-  CounterError,
-  parseUuid,
-} from "@mi-pasaporte/domain/server/counter/core";
+import { privateBackofficeResponse } from "../../../../server/backoffice-scope-http";
+import { requireOperator } from "../_auth";
 
 export const runtime = "nodejs";
 
-function optionalLocationId(value: unknown): string | null {
-  if (value === null || value === undefined || value === "") return null;
-  if (typeof value !== "string")
-    throw new CounterError(422, "invalid_input", "El local no es válido.");
-  return parseUuid(value, "locationId");
-}
-
-/** Resolves a scanned QR to the consumer + this business's program + membership
- * (auto-enrolling if needed). Never serializes the qr_token. */
+/** Retired public Counter entry point; preserve the complete operator guard. */
 export async function POST(request: Request) {
   const auth = await requireOperator(request);
-  if ("response" in auth) return auth.response;
-  try {
-    const body = await readJson(request);
-    const locationId = optionalLocationId(body.locationId);
-    const result = await resolveScan(
-      auth.business,
-      body.qrToken as string,
-      locationId,
-    );
-    return NextResponse.json(result);
-  } catch (error) {
-    return counterError(error, "No pudimos resolver el código.");
-  }
+  if ("response" in auth) return privateBackofficeResponse(auth.response);
+  return privateBackofficeResponse(
+    NextResponse.json(
+      { code: "feature_retired", error: "Esta función ya no está disponible." },
+      { status: 410 },
+    ),
+  );
 }

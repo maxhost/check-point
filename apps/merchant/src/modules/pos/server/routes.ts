@@ -7,25 +7,19 @@ import {
   assertLocationInBusiness,
   parseUuid,
 } from "@mi-pasaporte/domain/server/counter/core";
-import {
-  getCouponState,
-  removeCoupon,
-  resolveScan,
-} from "../../../server/counter";
+import { getCouponState, removeCoupon } from "../../../server/counter";
 import { readPosCatalog } from "./measured-catalog";
 import { createPosOrderV2 } from "./measured-create";
 import { updatePosOrderV2 } from "./measured-update";
 import { resolveMeasuredScan } from "./measured-resolve";
 import type { ModuleRoute, ModuleServer } from "../../route-table";
-import { closePosOrder } from "./close";
 import { closeMeasuredPosOrder } from "./measured-close";
 import { voidMeasuredPosOrder } from "./measured-void";
 import { posOrderId } from "./errors";
-import { posRoute, readPosBody, posReadContract } from "./http";
+import { posRoute, readPosBody } from "./http";
 import { listPosOrders } from "./list";
 import { posBeforeDisable } from "./module";
-import { createPosOrder, updatePosOrder, voidPosOrder } from "./orders";
-import { getPosOrder, getPosOrderV2 } from "./read";
+import { getPosOrderV2 } from "./read";
 import { listPosTables } from "./tables";
 import {
   parseTicketSettings,
@@ -60,7 +54,6 @@ const routes: readonly ModuleRoute[] = [
     path: "catalog",
     failure: "No pudimos leer el catálogo.",
     handler: async ({ request, business }) => {
-      const contract = posReadContract(request);
       const raw = query(request, "locationId");
       const locationId = raw
         ? await assertLocationInBusiness(
@@ -69,7 +62,7 @@ const routes: readonly ModuleRoute[] = [
           )
         : null;
       return NextResponse.json(
-        await readPosCatalog(business.id, locationId, contract),
+        await readPosCatalog(business.id, locationId, 2),
       );
     },
   }),
@@ -79,14 +72,11 @@ const routes: readonly ModuleRoute[] = [
     path: "orders",
     failure: "No pudimos leer las órdenes.",
     handler: async ({ business, request }) => {
-      const contract = posReadContract(request);
       const status = query(request, "status");
       if (status !== null && status !== "voided")
         throw new CounterError(422, "invalid_input", "El estado no es válido.");
       return NextResponse.json(
-        await (contract === 2
-          ? listPosOrders(business.id, new Date(), status ?? undefined, 2)
-          : listPosOrders(business.id, new Date(), status ?? undefined)),
+        await listPosOrders(business.id, new Date(), status ?? undefined, 2),
       );
     },
   }),
@@ -96,14 +86,10 @@ const routes: readonly ModuleRoute[] = [
     path: "orders",
     failure: "No pudimos guardar la orden.",
     handler: async ({ request, business, userId }) => {
-      const contract = posReadContract(request);
       const body = await readPosBody(request);
-      return NextResponse.json(
-        await (contract === 2
-          ? createPosOrderV2(business, userId, body)
-          : createPosOrder(business, userId, body)),
-        { status: 201 },
-      );
+      return NextResponse.json(await createPosOrderV2(business, userId, body), {
+        status: 201,
+      });
     },
   }),
   /** → `PosOrder`; de otro negocio → 404 `unknown_pos_order`. */
@@ -111,14 +97,9 @@ const routes: readonly ModuleRoute[] = [
     method: "GET",
     path: "orders/:id",
     failure: "No pudimos leer la orden.",
-    handler: async ({ business, params, request }) => {
-      const contract = posReadContract(request);
+    handler: async ({ business, params }) => {
       const id = posOrderId(params.id);
-      return NextResponse.json(
-        await (contract === 2
-          ? getPosOrderV2(business.id, id)
-          : getPosOrder(business.id, id)),
-      );
+      return NextResponse.json(await getPosOrderV2(business.id, id));
     },
   }),
   /** La lista COMPLETA de lineas + `version`. */
@@ -127,14 +108,9 @@ const routes: readonly ModuleRoute[] = [
     path: "orders/:id",
     failure: "No pudimos guardar la orden.",
     handler: async ({ request, business, params }) => {
-      const contract = posReadContract(request);
       const id = posOrderId(params.id);
       const body = await readPosBody(request);
-      return NextResponse.json(
-        await (contract === 2
-          ? updatePosOrderV2(business, id, body)
-          : updatePosOrder(business, id, body)),
-      );
+      return NextResponse.json(await updatePosOrderV2(business, id, body));
     },
   }),
   /** `{ clientRequestId, version, membershipId?, coupon? }`: sin pase cierra sin acreditar; con
@@ -144,16 +120,10 @@ const routes: readonly ModuleRoute[] = [
     path: "orders/:id/close",
     failure: "No pudimos cerrar la venta.",
     handler: async ({ request, business, userId, params }) => {
-      const contract = posReadContract(request);
       const id = posOrderId(params.id);
       const body = await readPosBody(request);
       return NextResponse.json(
-        await (contract === 2 ? closeMeasuredPosOrder : closePosOrder)(
-          business,
-          userId,
-          id,
-          body,
-        ),
+        await closeMeasuredPosOrder(business, userId, id, body),
       );
     },
   }),
@@ -163,17 +133,14 @@ const routes: readonly ModuleRoute[] = [
     path: "orders/:id/void",
     failure: "No pudimos anular la orden.",
     handler: async ({ request, business, userId, params }) => {
-      const contract = posReadContract(request);
       const id = posOrderId(params.id);
       return NextResponse.json(
-        await (contract === 2
-          ? voidMeasuredPosOrder(
-              business,
-              userId,
-              id,
-              request.body === null ? undefined : await readPosBody(request),
-            )
-          : voidPosOrder(business, userId, id)),
+        await voidMeasuredPosOrder(
+          business,
+          userId,
+          id,
+          request.body === null ? undefined : await readPosBody(request),
+        ),
       );
     },
   }),
@@ -183,10 +150,9 @@ const routes: readonly ModuleRoute[] = [
     path: "resolve",
     failure: "No pudimos resolver el código.",
     handler: async ({ request, business }) => {
-      const contract = posReadContract(request);
       const body = await readPosBody(request);
       return NextResponse.json(
-        await (contract === 2 ? resolveMeasuredScan : resolveScan)(
+        await resolveMeasuredScan(
           business,
           body.qrToken as string,
           optionalLocationId(body.locationId),
