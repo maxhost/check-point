@@ -29,7 +29,7 @@ Base `01445a86bdec433e8d7bc75b94dfca1ce8184c19`, WT/ref `pos-ui-card-0242`. Cort
 
 | Archivo real | Tratamiento |
 | --- | --- |
-| `apps/merchant/src/modules/analytics-an3-events.neon.integration.test.ts` | 5d095652 4/7, tres fixtures/oráculos corregidos offline; retest pendiente |
+| `apps/merchant/src/modules/analytics-an3-events.neon.integration.test.ts` | PASS DB7/7 en50e02098, fuente idéntica compatible |
 | `apps/merchant/src/modules/brand-fiscal-inert.neon.integration.test.ts` | PASS DB1/1 en5d095652, fuente compatible |
 | `apps/merchant/src/modules/negocio-retirement.neon.integration.test.ts` | PASS DB5/5 en5d095652, fuente compatible |
 | `apps/merchant/src/modules/pos/server/business-access.neon.integration.test.ts` | Compatible por lectura: usa sólo seed/módulo o caller nativo/raw de cutover explícito; no cambiar por el soporte |
@@ -67,7 +67,7 @@ Base `01445a86bdec433e8d7bc75b94dfca1ce8184c19`, WT/ref `pos-ui-card-0242`. Cort
 | `apps/merchant/src/modules/pos/server/unit-expand-compat.neon.integration.test.ts` | Histórico6 actualizado; SQL canónico/clones/constraints de origen conservados y shape0108 activo separado; DB serial pendiente |
 | `apps/merchant/src/modules/pos/server/void-api-v2.neon.integration.test.ts` | Corte inicial PASS DB en afe7060d |
 | `apps/merchant/src/modules/stock-local-recipes.neon.integration.test.ts` | PASS DB2/2 en5d095652, fuente compatible |
-| `apps/merchant/src/modules/stock-local.neon.integration.test.ts` | 5d095652 0/4, V4/spy/cascada y suscriptores corregidos offline; retest pendiente |
+| `apps/merchant/src/modules/stock-local.neon.integration.test.ts` | 50e02098 1/4: recoveryPASS,2timeout30s y eventOfambiguo corregido; fases/promises diagnósticos offline, retest pendiente |
 | `apps/merchant/src/modules/tables/server/tables.neon.integration.test.ts` | Ampliación5 PASS DB en afe7060d |
 
 ## Checks e intentos
@@ -178,3 +178,16 @@ Luego lista5confirmada contra inventario, mismoSHA limpio sin editar durante cor
 Las correcciones sólo tocan AN3/Stock y handoff; ninguna modificación de producto/soportes/guardas/esquema. Primera typecheckmerchant de correcciónPASS. SuitesPASScompatibles acumuladas25/133casos completos (22/125 tras retest2 +3/8nuevas), sin sumar parcialesAN3. Quedan14suites por DB:afectadas2 +nuevas6eventos/Counter +6históricasDDL;7compatiblesporlectura. DB devuelta a M1 porfactory; no nuevaDB hasta reasignación. Todos los intentos anteriores siguen conservados.
 
 Checks del congelado AN3/Stock: typecheckmerchant inicial y final PASS, ESLint2 PASS, Prettier3 PASS y diff whitespace PASS. Sólo3paths propios cambiados. Sin corridas DB sobre esta corrección todavía.
+
+
+## Afectadas2 intento2 en50e02098 y diagnóstico Stock pendiente
+
+WrapperCI exclusivo, sin editar fuente:EXIT1,1/2suitesPASS,8/11casosPASS,3FAIL,0skips/retries,244.02s. AN3PASS7/7(126.56s) con historialtenant,COPoriginalesexactos y candidatefinishday probados; fuente AN3 queda idéntica/compatible, no repetir por el siguiente arreglo Stock. Stock1/4: recoverymeasured/productoborradoPASS22.65s; atomic y disabled-empty timeout30s; customer-pass llegó a ambos suscriptoresapplied/replay0 pero igualdad posterior tomó otro evento del mismo sourceId. Log `p6-an3-stock-attempt2.log`. No se ejecutaron las6nuevas: gate de ambasPASS no satisfecho.
+
+El diff observado en customer-pass muestra payload stock(consumption)eventV2 en lugar de sale.closedV4 después de aplicar recipe; eventOf sólo filtraba business/sourceId. Fix precisa eventType=sale.closed, alineado con la clave única canónica negocio/tipo/fuente, sin ORDER BY arbitrario ni cambiar productor. Sus dos consumidores son Stock/Stockrecipes; sólo Stock utiliza eventOf, raw/default/callers restantes intactos.
+
+Timeouts: sin fase registrada en50e02098, causa aún no demostrada. Se conserva30s para el siguiente intento diagnóstico; se añaden fases/elapsed por operación y IDs propios correlacionados privados. Cada callback async se registra y afterEach lo espera antes de restaurar mocks/seguir; afterAll también espera cualquier pendiente antes de retirar raíces. Así un timeout Vitest no deja el callback mutando fixtures del siguiente caso. No se amplían poll/retry/budgets ni se cambia dinero/consumo/cantidad/estado esperado. Todos los invariantes y finalmente del corte anterior siguen presentes.
+
+Teardown del intento terminado:afterAll sinerror/assertions ownvacías; PIDs4093,4578,4580,4587ausentes. Inspectorreadonly `p6-an3-stock-attempt2-diagnostic.log`:waiters0,actividadtx=[];8testsomitidos diagnósticos no sonPASS. Fuente permaneciólimpia50e02098 hasta cierre; ninguna6nueva/DDL ni másDB tras transferir a M1R1.3. Compatibles completos26suites/140casos(25/133+AN3/7), sin sumar Stockparcial. Pendientes13suites:Stock1+nuevas6+históricas6;7compatiblesporlectura.
+
+Checks congelado diagnóstico Stock: typecheckmerchant inicial/final PASS, ESLint2 PASS, Prettier3 PASS y diff whitespace PASS. Sin DB sobre nueva fuente; el siguiente resultado con30s seguirá siendo intento diagnóstico, no aprobación por relajación.

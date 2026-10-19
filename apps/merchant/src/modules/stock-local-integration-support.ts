@@ -149,6 +149,7 @@ export const eventOf = async (
       and(
         eq(moduleEvents.businessId, businessId),
         eq(moduleEvents.sourceId, orderId),
+        eq(moduleEvents.eventType, "sale.closed"),
       ),
     );
   if (!event) throw new Error("Sale event not persisted");
