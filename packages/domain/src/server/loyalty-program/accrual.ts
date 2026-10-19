@@ -91,3 +91,36 @@ export function spendToRedeem(
   if (!Number.isFinite(block) || block <= 0 || accrual.grant <= 0) return 0;
   return (pointsCost * block) / accrual.grant;
 }
+
+/** Exact normalized-money variant for measured settlement. Legacy number callers stay unchanged. */
+export function computeAccrualFromMoney(
+  accrual: AccrualInput,
+  total: string,
+): number {
+  const invalid = () => {
+    throw new LoyaltyError(422, "La acumulación excede el rango permitido.");
+  };
+  const cents = (money: string | null, wholeAllowed = false): bigint => {
+    if (typeof money !== "string") return invalid();
+    if (wholeAllowed && /^(?:0|[1-9]\d{0,9})$/.test(money))
+      return BigInt(money) * 100n;
+    if (!/^(?:0|[1-9]\d{0,9})\.\d{2}$/.test(money)) return invalid();
+    return BigInt(money.replace(".", ""));
+  };
+  const amount = cents(total, true);
+  if (
+    !Number.isInteger(accrual.grant) ||
+    accrual.grant <= 0 ||
+    accrual.grant > 2_147_483_647
+  )
+    return invalid();
+  let result: bigint;
+  if (accrual.mode === "per_purchase") result = BigInt(accrual.grant);
+  else if (accrual.mode === "per_amount") {
+    const block = cents(accrual.blockAmount);
+    if (block <= 0n) return invalid();
+    result = (amount / block) * BigInt(accrual.grant);
+  } else return invalid();
+  if (result > 2_147_483_647n) return invalid();
+  return Number(result);
+}
