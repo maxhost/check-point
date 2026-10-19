@@ -3,7 +3,17 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ESTADO — 0242: PUNTOS 1–5 ACEPTADOS; P6 REGRESIÓN Y M1 EN CURSO (2026-10-19)
+## ESTADO VIGENTE — DETENIDO POR ORDEN DEL OWNER (2026-10-19)
+
+**NO continuar automáticamente0242, harness, QA niR2.** El owner detuvo el trabajo por tiempo/presupuesto. La autorización posterior fue exclusivamente un agente para comprobar/reproducir el replay pendiente y devolver resumen; ya finalizó. No nuevas ventas/fixtures/builds/instalaciones/servidores/pruebas sin nueva instrucción.
+
+Puntos1–5/REGdirigida/R1listado aceptados enmainLOCAL5c158325. R2sinmuestrasválidas yMASAcompilada sinreplay, no cierreP6global. R1campaña09:43:08→10:20:12UTC (~37min), mejoraslistadoOWNER31.27%/STAFF29.77%; no certifica cobro ni todoslosflujos.
+
+**EntornoMASA cerrado:** rootdetuvoúnicamenteNext38021/runner37978(salida natural)/43242libre, proofbudget-stop b4c6e7d2ea3a327c07e6085f57642798589262245e4f1c26767d04779a239157. Cleanup41916 terminóEXIT0/1PASS0skip14:27:52UTC; agenteconfirmó `cleanup-select0.json` SHA243cb7595ceff8cf531488561d7222d86cf426ff70ddf27790c311889d336312 verifiedtrue/44checksALL0, incluidaorden79247a3f-1540-40dc-b638-9e57de73d005/owner/sesión. ReplayNOejecutado y ahora imposible sobre esosdatoseliminados; no bugnuevo descubierto por replay. No se creóotra venta niHTTP/DBextra para comprobarlo. Cookiearchivada no implica sesiónviva.
+
+Agentes detenidos/completed, no reactivar automáticamente. CARDpreservaWIP53líneas enmass-native.mjs (además patchprivado budget-preserved-unfinished.patch), sinintegrar/validar; no descartar. GRID6cee yQAconservados; noforce/cleanupWT. Owner3201/túnel/ajenosintactos, sinpushPROD/screenshots. ÚltimoQAdiagnóstico26d54ada/últimafuenteMASA0c590, fallo antesreplay porguardoutboxmásestrictoquecontratos, no producto demostrado. El bloque abajo es **HISTÓRICO SUPERADO**; sus órdenes de continuar/GO/servidores vivos NO están vigentes.
+
+## HISTÓRICO — 0242: PUNTOS 1–5 ACEPTADOS; P6 REGRESIÓN Y M1 EN CURSO (2026-10-19)
 
 El owner pide continuar automáticamente hasta completar0242, con flujo agéntico si es posible, sin capturas ni reactivar agentes históricos. UI1 aceptada26222f50: no reabrir diseño. P2 entrega4405da73; P3a63ac5b1e (scope/contract2 obligatorio, Counter5APIs410 tras guard, accesos/locales y0107); P3b30426343/0108 (invariantes permanentes y masa canónica); P4c93a8aff (retirada UI y consumidores) aceptados. Combinado funcional **a9d32924**, entrega QA **29b8592c en main LOCAL**. Native independiente masa+pase10%→create/close/receipt/history→inspect/replay/cleanup PASS,0GETpostwrite/errores; dominio3/3, focal P4 9browser+77unit compatibles. Evidencia en0242-p3b-p4-qa.md. Puntos3–5 cerrados funcionalmente en plan; **P6/M1 no completos, specs/INDEX aún sin cierre global**.
 
