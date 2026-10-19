@@ -7,7 +7,6 @@ import {
   businessConfiguration,
   products,
   posOrders,
-  posOrderItems,
   diningTables,
   users,
 } from "@mi-pasaporte/db/schema";
@@ -346,11 +345,6 @@ describe.skipIf(!posIntegrationEnabled)(
         collected: "1.00",
         discount: "1.00",
       });
-      // Partial historical capture: settlement's matching sourceLineId remains authoritative.
-      await getDb()
-        .update(posOrderItems)
-        .set({ financialSnapshot: null })
-        .where(eq(posOrderItems.posOrderId, order.id));
       await getDb()
         .update(businesses)
         .set({ currencyCode: "COP" })
