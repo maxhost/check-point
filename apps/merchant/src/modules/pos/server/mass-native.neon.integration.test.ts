@@ -1,5 +1,5 @@
 /** Owned fixture; all DB operations run exclusively through tools/neon-test.sh. */
-import { readFile, writeFile, stat } from "node:fs/promises";
+import { readFile, writeFile, stat, lstat, realpath } from "node:fs/promises";
 import { randomUUID, createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { eq, sql } from "drizzle-orm";
@@ -36,10 +36,16 @@ import {
 } from "../../../server/permissions-integration-support";
 import { initializePaymentMethods } from "../../../server/business/payment-catalog";
 import { ONBOARDING_TOURS } from "../../../server/onboarding/tours";
-const directory = "/private/tmp/checkpass-pos-0242/mass-native";
+const run = process.env.POS_MASS_NATIVE_RUN;
+if (run !== undefined && !/^[a-z0-9-]{1,48}$/.test(run))
+  throw Error(
+    "POS_MASS_NATIVE_RUN must contain 1–48 lowercase letters, digits or hyphens",
+  );
+const directory = `/private/tmp/checkpass-pos-0242/mass-native${run === undefined ? "" : `-${run}`}`;
 const file = `${directory}/manifest.json`;
 type Manifest = {
   kind: "mass-native-0242";
+  run?: string;
   endpoint: string;
   businessId: string;
   ownerId: string;
@@ -69,13 +75,18 @@ describe.skipIf(process.env.POS_MASS_NATIVE !== "true")(
       expect(endpoint).not.toBe(PROD_DB_ENDPOINT_SHA12);
       expect(endpoint).toBe(process.env.POS_MEASUREMENT_ENDPOINT_SHA12);
       expect(process.env.BETTER_AUTH_URL).toBe("http://localhost:43252");
-      expect((await stat(directory)).mode & 0o077).toBe(0);
+      const directoryStat = await lstat(directory);
+      expect(directoryStat.isDirectory()).toBe(true);
+      expect(directoryStat.isSymbolicLink()).toBe(false);
+      expect(await realpath(directory)).toBe(directory);
+      expect(directoryStat.mode & 0o077).toBe(0);
       const save = (m: Manifest) =>
         writeFile(file, JSON.stringify(m), { mode: 0o600 });
       if (process.env.POS_MASS_OPERATION === "setup") {
         const businessId = randomUUID();
         const m: Manifest = {
           kind: "mass-native-0242",
+          ...(run === undefined ? {} : { run }),
           endpoint,
           businessId,
           ownerId: `mass-native-${randomUUID()}`,
@@ -142,6 +153,7 @@ describe.skipIf(process.env.POS_MASS_NATIVE !== "true")(
               await readFile(`${directory}/loyalty.json`, "utf8"),
             ) as Manifest);
       expect(m.kind).toBe("mass-native-0242");
+      expect(m.run).toBe(run);
       expect(m.endpoint).toBe(endpoint);
       expect(m.slug).toBe(`mass-native-${m.businessId}`);
       const [owned] = await getDb()

@@ -111,3 +111,32 @@ MachPort y SIGTERM de los dos procesos Next propios43252. Todas autorizadas por
 sandbox; no rechazos de auto-review pendientes.43252 ya detenido;3201 sigue
 escuchando con su proceso previo. Sin pendientes DB propios ni worktree retirado.
 QA independiente del candidato sigue pendiente; no es aceptación ni gateM1.
+
+## Ajuste previo a QA: namespace reutilizable
+
+Posterior a `9c57a55c`, solo se ajustan el runner, su fixture y este añadido.
+`POS_MASS_NATIVE_RUN` es opcional y se valida en ambos con
+`^[a-z0-9-]{1,48}$`. Por ejemplo, `POS_MASS_NATIVE_RUN=qa-p4` selecciona
+`/private/tmp/checkpass-pos-0242/mass-native-qa-p4`; sin variable conserva el
+`mass-native` original. Se propaga al wrapper y al servidor; browser/history
+leen el mismo namespace. Manifiesto y reporte registran el run, que se revalida
+al leer la población. No permite rutas arbitrarias ni redirigir por symlink;
+directorios0700, archivos0600 y creación exclusiva con `wx` se mantienen.
+
+QA debe usar el mismo namespace nuevo en `fixture setup`, `fixture loyalty`,
+`server`, `browser`, `fixture inspect` y `fixture cleanup`, reservando43252 en serie.
+El namespace aísla identidades y artefactos, no asigna otro puerto. No reutilizar
+la venta original ni sobrescribir `mass-native/`, private/M0 o sus manifests.
+
+El browser principal comparte ahora con history los helpers que seleccionan
+“Estado → Cerradas hoy”, abren la orden y comprueban el recibo y el texto exacto
+“Cliente: Cliente Masa nativa”. La aserción de0GET/orders tras write permanece
+antes de la navegación explícita al historial.
+
+Checks de este ajuste: Node24 `node --check` del runner, merchant typecheck,
+ESLint/Prettier focal y `git diff --check`: PASS. No se ejecutó runner, DB,
+servidor ni navegador; no hay otra venta ni nuevos artefactos de ejecución.
+Producto/esquema y suite canónica siguen idénticos a `49e1990b`. La evidencia
+nativa anterior continúa siendo compuesta: venta en `c129ac4c`, lectura final e
+inspección/replay en `453ed0f7`, con los fallos previos preservados. El nuevo
+recorrido completo tras combinar P4 corresponde a QA con su namespace propio.

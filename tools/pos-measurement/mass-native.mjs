@@ -1,10 +1,28 @@
 /** P3b native development smoke. No API interception, screenshots or M0 writes. */
-import { readFileSync, writeFileSync, mkdirSync, statSync } from "node:fs";
+import {
+  readFileSync,
+  writeFileSync,
+  mkdirSync,
+  lstatSync,
+  realpathSync,
+} from "node:fs";
 import { createHash } from "node:crypto";
 import { spawn, execFileSync } from "node:child_process";
-const directory = "/private/tmp/checkpass-pos-0242/mass-native";
+const run = process.env.POS_MASS_NATIVE_RUN;
+if (run !== undefined && !/^[a-z0-9-]{1,48}$/.test(run))
+  throw Error(
+    "POS_MASS_NATIVE_RUN must contain 1–48 lowercase letters, digits or hyphens",
+  );
+const directory = `/private/tmp/checkpass-pos-0242/mass-native${run === undefined ? "" : `-${run}`}`;
 mkdirSync(directory, { recursive: true, mode: 0o700 });
-if (statSync(directory).mode & 0o077) throw Error("Private output required");
+const directoryStat = lstatSync(directory);
+if (
+  !directoryStat.isDirectory() ||
+  directoryStat.isSymbolicLink() ||
+  realpathSync(directory) !== directory ||
+  directoryStat.mode & 0o077
+)
+  throw Error("Private owned output directory required");
 const selected = "/private/tmp/checkpass-pos-0242/private/selected.json";
 const config = JSON.parse(readFileSync(selected, "utf8"));
 const hash = (v) => createHash("sha256").update(v).digest("hex");
@@ -40,6 +58,7 @@ const env = {
   HOME: process.env.HOME,
   NVM_DIR: process.env.NVM_DIR,
   ...config,
+  ...(run === undefined ? {} : { POS_MASS_NATIVE_RUN: run }),
   DATABASE_URL: config.NEON_CI_DATABASE_URL,
   BETTER_AUTH_URL: "http://localhost:43252",
   CONSUMER_ORIGIN: "http://localhost:43253",
@@ -92,11 +111,13 @@ if (["fixture", "domain", "server"].includes(mode)) {
   if (
     fixture.kind !== "mass-native-0242" ||
     fixture.phase !== "ready" ||
-    fixture.endpoint !== config.POS_MEASUREMENT_ENDPOINT_SHA12
+    fixture.endpoint !== config.POS_MEASUREMENT_ENDPOINT_SHA12 ||
+    fixture.run !== run
   )
     throw Error("Own ready fixture required");
   const report = {
     source,
+    run: run ?? null,
     runtime: "Next development webpack :43252",
     node: process.version,
     endpoint: fixture.endpoint,
@@ -137,6 +158,26 @@ if (["fixture", "domain", "server"].includes(mode)) {
           contract: r.headers()["x-pos-contract"],
         });
     });
+    const expectReceipt = async () => {
+      await expect(
+        page
+          .getByRole("heading", { name: "Venta cerrada", exact: true })
+          .first(),
+      ).toBeVisible();
+      await expect(
+        page.getByText("Cliente: Cliente Masa nativa", { exact: true }).first(),
+      ).toBeVisible();
+    };
+    const openClosedReceipt = async (label) => {
+      await page.getByRole("button", { name: /Estado$/ }).click();
+      await page
+        .getByRole("option", { name: "Cerradas hoy", exact: true })
+        .click();
+      await page
+        .getByRole("button", { name: `Abrir ${label}`, exact: true })
+        .click();
+      await expectReceipt();
+    };
     await page.goto("http://localhost:43252/backoffice/pos");
     if (mode === "history") {
       const name = process.argv[3];
@@ -158,21 +199,7 @@ if (["fixture", "domain", "server"].includes(mode)) {
       )?.[1];
       if (!orderId) throw Error("Original canonical order required");
       const label = `Mostrador ${orderId.slice(0, 8)}`;
-      await page.getByRole("button", { name: /Estado$/ }).click();
-      await page
-        .getByRole("option", { name: "Cerradas hoy", exact: true })
-        .click();
-      await page
-        .getByRole("button", { name: `Abrir ${label}`, exact: true })
-        .click();
-      await expect(
-        page
-          .getByRole("heading", { name: "Venta cerrada", exact: true })
-          .first(),
-      ).toBeVisible();
-      await expect(
-        page.getByText("Cliente: Cliente Masa nativa", { exact: true }).first(),
-      ).toBeVisible();
+      await openClosedReceipt(label);
       expect(report.requests.filter((r) => r.method !== "GET")).toEqual([]);
       report.orderId = orderId;
       report.closeBody = prior.closeBody;
@@ -286,11 +313,7 @@ if (["fixture", "domain", "server"].includes(mode)) {
         coupon: { couponId: fixture.couponId },
         payments: [expect.objectContaining({ amount: "2.78" })],
       });
-      await expect(
-        page
-          .getByRole("heading", { name: "Venta cerrada", exact: true })
-          .first(),
-      ).toBeVisible();
+      await expectReceipt();
       expect(report.requests.every((r) => r.scoped && r.contract === "2")).toBe(
         true,
       );
@@ -304,16 +327,7 @@ if (["fixture", "domain", "server"].includes(mode)) {
       await page
         .getByRole("button", { name: "Volver al historial", exact: true })
         .click();
-      await page.getByRole("button", { name: /Estado$/ }).click();
-      await page
-        .getByRole("option", { name: "Cerradas hoy", exact: true })
-        .click();
-      await expect(
-        page.getByRole("button", {
-          name: `Abrir ${order.orderLabel}`,
-          exact: true,
-        }),
-      ).toBeVisible();
+      await openClosedReceipt(order.orderLabel);
       report.historyConfirmed = true;
       report.customerInput =
         "real opaque pass token via Código del pase; physical camera not exercised";
