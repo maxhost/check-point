@@ -2,6 +2,8 @@
 
 ## Checkpoint vigente: anulación interna aceptada; cobro cerrando entrega y HTTP void con autor nuevo
 
+OWNER probó circuito unitpreview y confirmafunciona; reporta UIalejadadiseño, NOaceptaciónvisual, pide terminarimplementaciones ycorregirUI después. PidepruebasRecetas/Stock/dinero. Punto1acciones QAFAILdb4030c0 en675e2d9e:remountreal sourceClient invalida capture retenidavoid yretiraunknown/cache. Author007yQAFAILrejectedfactoryreserved, MISMOautorreactivado proponerfix/regresiónlifecycleREAL, mismoQArevalidará. Aúnnoaccionesintegradas,main2bd56ab2,sinpushPROD. Ver gptvigente.
+
 Punto1 conexión007b1d27 ENTREGADA (7unit/15browser/gatesPASS/0procesos). QA NUEVOconsole_actions_cp2d_qa sobreCONGELADO675e2d9e,sinDB/env/server,informe0242-cp2d-console-actions-qa.md pendiente. Main2bd56ab2,conexiónaúnnointegrada. OwnerquiereprimeraQAmanualYA: servidor existente3201 comprobadoNextdevdelprincipal, preview http://localhost:3201/backoffice/pos?posV2=1 (sin sesión307→/). Puede probar UNIT circuitoaceptado sinesperar puntospeso/retiro/rendimiento;ticket/anulación de nuevoincremento solo trasQA/merge. No afirmarpruebamanualejecutada ni loginverificado,nitocar3201/túnel/demos. Ver gpt vigente.
 
 ACTUAL punto1: ticketfixbc59/QA2910857sobred0bcd4e8 ACEPTADOS; reprooriginalPASS1/1,FAIL7bbbpreservado,identidad/CASmain2bd56ab2bd173c34274b432da53c4c269fec3654 yWTretiradofactorylimpio0procesos/main. Conexión ticket/impresión/anulación DESPACHADA a NUEVOconsole_actions_cp2d_impl en pos-console-actions-0242 base2bd56ab2,factorySIETEpathsde0242-cp2d-console-actions/doc,SINDB/env;proponeantescódigo, luego gatescableado/QAnuevo. Punto1todavíano cerrado. QA WTlimpio2910857accepteddisponible. SinpushPROD;detallesgptvigente.
