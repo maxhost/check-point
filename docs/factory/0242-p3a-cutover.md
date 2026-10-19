@@ -74,3 +74,12 @@ del gate. Reusar QA de cantidades/consumidores ya entregados. Si hacen falta pat
 adicionales, ampliar reserva antes de editar. Kit/guardias/tooling fuera de scope.
 Conservar servidor/túnel3201, cambios ajenos, WTs y commits históricos. Sin capturas,
 push ni PROD. No borrar todavía componentes legacy con consumidores sin inventario.
+
+QA de combinación: coordinador reutiliza WT limpio pos-qa-0242, continúa reserva
+en dev documental y ensambla allí los SHAs exactos entregados A/B, preservando
+commits. Factory refresh congela ese candidato como base de revisión; único path
+QA nuevo `docs/factory/0242-p3a-qa.md`. Transferir recurso DBCI desde B tras su
+teardown completado. Revisor nuevo independiente, sin implementar producto,
+ejecuta legacy-cutover/pos-scope y checks de interacción pertinentes; reutiliza
+evidencia compatible de B. Solo tras PASS se acepta A/B y se integra en dev/main
+local, sin cambiar el checkout principal de rama ni tocar3201/túnel.
