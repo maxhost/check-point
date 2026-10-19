@@ -351,3 +351,38 @@ fixturecleanupnuevo). Sólo recuperación/teardown de IDspropios registrados; no
 reintento de venta ni PASS runtime, no cambiar compiled/auth/run-result originales.
 Logs/proceso nuevoswx600, conservar failureff08, ownershipprecleanup yselect0 reales.
 DBCARDexclusiva hasta auditar0; si errorSTOP sin barrido ni retry automático.
+
+## Recovery0c590: diagnóstico readonly de deliveries antes del replay
+
+RUN0c590 único37978/Next38021 se detuvo en before-replay: fixture3ca104531e052654c063042d3cfbceb29b093e54758311c057a6d33e345233ac
+assertbooleanTS502 deliveries.every no identifica fila/campo. Readiness5bodies/DOM
+pasó,24terminales calificados/no cardinalidad forzada/0pageHTTP/effective0; create,
+close,recibo,historial y oráculos2.78/puntos2/redención1/payment1/eventV4 alcanzados.
+Replay NO ejecutado, runvalidfalse/stoppedfalse/functionalDiagnosticValidfalse;
+runresult5b12ca611ef510b31bc7a58098bd99b4c10d20b39ac8b2d8cf7cbde82a95318e,
+attemptacafc2b302e0ce23521ae0b2fb37a25ab24e2985a20e6124a01083bce5d4c04b.
+No asumir si es producto, claim activo, error de handler o guard demasiado estricto.
+
+MISMOautor está autorizado a recuperación privada de sólo lectura: primero guardar
+proof600msstable traza/CDP/fragment0/requestSQLphasependientes0/aftercommitcompletado,
+proceso37978/38021/descendientes/port43242 exactos/lifecyclebrowserclosed guardado.
+Si no hay quietud, STOP; noSQL/kill/cleanup/retry. Con proofquiet correcto, UNA
+invocación tools/neon-test.sh de inspector privado exact1test/1include absoluto,
+sin globalSetup/setupFiles/hooks de otrosfixtures, Node24 y selecciónCIprotegida
+verificada antiPROD/compiledconfig+ci hashes. Reutilizar esqueletoreadonly del
+inspector D2 6cee (no modificarlo), imports desde CARD actual; node --check antes
+para evitar parsefail. TRANSACTION REPEATABLE READ READ ONLY y ROLLBACK obligatorio.
+
+Consultar exclusivamente raíces/orden79247a3f-1540-40dc-b638-9e57de73d005 propias
+de loyalty.json actualNS0c590: business/slug y pertenencias; pedido/pago/coreledger,
+puntos/redención/únicoV4; deliveries unidas al evento cuyo business_id propio
+(incluir camposdiagnostic/terminal_reason/state/attempts/claim_token/claim_until),
+y wallet_push_queue consumidor propio. Guardar rawrows/tipos/SQLnames y txsettings
+ANTES de assertions, endedROLLBACK/proof0600wx/log/proceso nuevos. No leer OTPledger/
+cookies/authsecrets ni escribir/mutar/drain/replay/borrados. No sweeps por nombres.
+DBCARDexclusiva durante diagnóstico y hasta recuperación/cleanup confirmados.
+
+Después proof, QA independiente lee filas/semánticaoriginal y coord decide arreglo
+acotado o bugreal; no relajar condición de delivery sin evidencia. Source0c590 y
+origenGRID6cee permanecen frozen, servidorpreservado hasta rootGOstop/cleanup.
+Nada autoriza reintento del RUN ni editar resultados false como PASS.
