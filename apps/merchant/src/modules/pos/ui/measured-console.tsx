@@ -24,7 +24,10 @@ import {
 import { PosError, orderUrl } from "./pos-types";
 import { MeasuredEditorSession } from "./measured-editor-model";
 import { MeasuredPosEditor } from "./measured-pos-editor";
-import { MeasuredPaymentSession } from "./measured-payment-session";
+import {
+  MeasuredPaymentSession,
+  loadMeasuredPaymentMethods,
+} from "./measured-payment-session";
 import { MeasuredCheckout } from "./measured-checkout";
 import { MeasuredScan } from "./measured-scan";
 import { MeasuredOrderCache } from "./measured-order-cache";
@@ -237,6 +240,9 @@ export function MeasuredConsoleContent({
   useEffect(() => {
     if (view !== "list" || !accessEnabled || denied) return;
     let current = true;
+    void loadMeasuredPaymentMethods(cache, client).catch((cause) => {
+      if (current) handleError(cause);
+    });
     for (const locationId of JSON.parse(tableLocations) as string[]) {
       void cache
         .read<PosCatalogV2>(catalogKey(locationId), () =>

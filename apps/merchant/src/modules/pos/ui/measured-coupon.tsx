@@ -4,8 +4,10 @@ import { Alert, Button, SelectField, Text } from "../../../ui";
 import type { MeasuredPaymentSession } from "./measured-payment-session";
 export function MeasuredCoupon({
   session,
+  compact = false,
 }: {
   session: MeasuredPaymentSession;
+  compact?: boolean;
 }) {
   const state = useSyncExternalStore(
     session.subscribe,
@@ -31,31 +33,39 @@ export function MeasuredCoupon({
     );
   return (
     <div className="grid gap-3">
-      <Alert kind={verdict.valid ? "success" : "error"} title={coupon.label}>
-        <Text>
-          {
-            {
-              discount: "Descuento",
-              free_product: "Producto gratis",
-              two_for_one: "2×1",
-              custom: "Beneficio especial",
-              extra_points: "Puntos extra",
-              extra_stamps: "Sellos extra",
-            }[coupon.kind]
-          }
-        </Text>
-        {coupon.kind === "discount" && (
-          <Text>
-            {coupon.discountValue}
-            {coupon.discountUnit === "percent"
-              ? "%"
-              : ` ${coupon.currencyCode ?? state.order.business.currencyCode}`}
-          </Text>
-        )}
-        {coupon.extraUnits !== null && <Text>Extras: {coupon.extraUnits}</Text>}
-        {coupon.rule && <Text>{coupon.rule}</Text>}
-        {!verdict.valid && <Text>{verdict.message}</Text>}
-      </Alert>
+      {compact && verdict.valid ? (
+        <Text variant="label">Cupón: {coupon.label}</Text>
+      ) : (
+        <Alert kind={verdict.valid ? "success" : "error"} title={coupon.label}>
+          {!compact && (
+            <Text>
+              {
+                {
+                  discount: "Descuento",
+                  free_product: "Producto gratis",
+                  two_for_one: "2×1",
+                  custom: "Beneficio especial",
+                  extra_points: "Puntos extra",
+                  extra_stamps: "Sellos extra",
+                }[coupon.kind]
+              }
+            </Text>
+          )}
+          {coupon.kind === "discount" && (
+            <Text>
+              {coupon.discountValue}
+              {coupon.discountUnit === "percent"
+                ? "%"
+                : ` ${coupon.currencyCode ?? state.order.business.currencyCode}`}
+            </Text>
+          )}
+          {coupon.extraUnits !== null && (
+            <Text>Extras: {coupon.extraUnits}</Text>
+          )}
+          {!compact && coupon.rule && <Text>{coupon.rule}</Text>}
+          {!verdict.valid && <Text>{verdict.message}</Text>}
+        </Alert>
+      )}
       {["free_product", "two_for_one"].includes(coupon.kind) && (
         <SelectField
           label="Línea del beneficio"
@@ -75,13 +85,15 @@ export function MeasuredCoupon({
           isDisabled={session.busy}
         />
       )}
-      <Button
-        variant="secondary"
-        onPress={() => session.excludeBenefit()}
-        isDisabled={session.busy}
-      >
-        Quitar beneficio de esta venta
-      </Button>
+      {(!compact || !verdict.valid || session.preview.error) && (
+        <Button
+          variant={compact ? "quiet" : "secondary"}
+          onPress={() => session.excludeBenefit()}
+          isDisabled={session.busy}
+        >
+          Quitar beneficio de esta venta
+        </Button>
+      )}
     </div>
   );
 }

@@ -10,6 +10,23 @@ import {
 import { measuredPaymentPreview } from "./measured-payment-preview";
 import type { EditorCustomerSelection } from "./measured-customer-model";
 
+export const paymentMethodsKey = "measured-payment-methods";
+type PaymentMethods = {
+  methods: PosPaymentMethod[];
+  defaultMethodId: string | null;
+};
+export function loadMeasuredPaymentMethods(
+  cache: PosCache,
+  client: PosClient,
+  request?: PosClient["request"],
+) {
+  return cache.read<PaymentMethods>(paymentMethodsKey, () =>
+    (request ?? client.capture())<PaymentMethods>(
+      "/api/modules/pos/payment-methods",
+    ),
+  );
+}
+
 export type MeasuredPaymentState = {
   phase:
     | "idle"
@@ -57,6 +74,7 @@ export class MeasuredPaymentSession {
     if (options.order.contractVersion !== 2 || options.order.status !== "open")
       throw new Error("confirmed_open_order_required");
     this.epoch = cache.epoch;
+    const cachedMethods = cache.peek<PaymentMethods>(paymentMethodsKey);
     this.state = {
       phase: "idle",
       order: structuredClone(options.order),
@@ -64,8 +82,10 @@ export class MeasuredPaymentSession {
       customerReview: false,
       target: null,
       excluded: false,
-      methods: [],
-      methodId: null,
+      methods:
+        cachedMethods?.methods.filter((method) => method.status === "active") ??
+        [],
+      methodId: cachedMethods?.defaultMethodId ?? null,
       received: "",
       validated: false,
       review: false,
@@ -312,20 +332,21 @@ export class MeasuredPaymentSession {
         before.amounts?.collected !== after.amounts?.collected ||
         before.targetSourceLineId !== after.targetSourceLineId;
       if (after.amounts && !/^0(?:\.00)?$/.test(after.amounts.collected)) {
-        const result = await request<{
-          methods: PosPaymentMethod[];
-          defaultMethodId: string | null;
-        }>("/api/modules/pos/payment-methods");
+        const result = await loadMeasuredPaymentMethods(
+          this.cache,
+          this.client,
+          request,
+        );
         if (!this.live(token)) return;
-        result.methods = result.methods.filter(
+        const methods = result.methods.filter(
           (method) => method.status === "active",
         );
-        const methodId = result.methods.some(
+        const methodId = methods.some(
           (method) => method.id === this.state.methodId,
         )
           ? this.state.methodId
           : result.defaultMethodId;
-        this.publish({ methods: result.methods, methodId });
+        this.publish({ methods, methodId });
       } else this.publish({ methods: [], methodId: null });
       if (this.live(token))
         this.publish({ phase: "paymentOpen", validated: true, review });

@@ -5,7 +5,10 @@ import {
   paymentMethods,
   paymentClosed,
 } from "../../../../../../tests/e2e/support/pos-measured-payment-fixture";
-import { MeasuredPaymentSession } from "./measured-payment-session";
+import {
+  MeasuredPaymentSession,
+  loadMeasuredPaymentMethods,
+} from "./measured-payment-session";
 import { PosCache } from "./pos-cache";
 import { PosError } from "./pos-types";
 import type { PosRequest } from "./pos-context";
@@ -359,4 +362,34 @@ describe("parent-held measured payment command", () => {
       calls.find((call) => call.url.endsWith("/close"))?.body,
     ).toMatchObject({ payments: [] });
   });
+});
+
+it("reuses prefetched methods between checkout openings and orders, and clears them with identity", async () => {
+  const { session, cache, calls } = setup(async <T>() => closed as T);
+  await Promise.all([
+    loadMeasuredPaymentMethods(cache, session.client),
+    loadMeasuredPaymentMethods(cache, session.client),
+  ]);
+  await session.prepare();
+  session.cancelDialog();
+  await session.prepare();
+  const another = new MeasuredPaymentSession(session.client, cache, {
+    order: { ...paymentOrder, id: "another" },
+    historyStatus: "active",
+  });
+  expect(another.getSnapshot().methods).toEqual(paymentMethods);
+  await another.prepare();
+  expect(
+    calls.filter((call) => call.url.endsWith("/payment-methods")),
+  ).toHaveLength(1);
+  cache.bind("another-identity");
+  const fresh = new MeasuredPaymentSession(session.client, cache, {
+    order: paymentOrder,
+    historyStatus: "active",
+  });
+  expect(fresh.getSnapshot().methods).toEqual([]);
+  await fresh.prepare();
+  expect(
+    calls.filter((call) => call.url.endsWith("/payment-methods")),
+  ).toHaveLength(2);
 });
