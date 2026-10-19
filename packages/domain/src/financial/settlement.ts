@@ -37,6 +37,50 @@ export function buildFinancialAmountsFromSnapshots(
 ): FinancialAmounts {
   return buildAmounts(input, true);
 }
+/** Resolve the internal union before the existing normalization/allocation path. */
+function discountOriginal(input: AmountInput) {
+  const discount = input.discount;
+  if (!discount) return rational(0n);
+  const decimal = "amount" in discount;
+  const original = "originalAmount" in discount;
+  if (decimal === original) throw new FinancialError("invalid_financial_input");
+  if (decimal) return originalMoney(discount.amount!);
+  if (input.lines.some((line) => !("measure" in line)))
+    throw new FinancialError("invalid_financial_input");
+  const origin = discount.origin;
+  if (
+    !origin ||
+    typeof origin !== "object" ||
+    Array.isArray(origin) ||
+    typeof origin.sourceId !== "string" ||
+    !origin.sourceId ||
+    (origin.campaignId !== undefined &&
+      (typeof origin.campaignId !== "string" || !origin.campaignId)) ||
+    (origin.benefitKind !== undefined &&
+      (typeof origin.benefitKind !== "string" || !origin.benefitKind)) ||
+    (origin.scope === "order" && origin.targetSourceLineId !== undefined)
+  )
+    throw new FinancialError("invalid_financial_input");
+  const value = discount.originalAmount;
+  if (
+    !value ||
+    typeof value !== "object" ||
+    value.scale !== 2 ||
+    typeof value.numerator !== "string" ||
+    typeof value.denominator !== "string" ||
+    !/^(0|[1-9]\d*)$/.test(value.numerator) ||
+    !/^[1-9]\d*$/.test(value.denominator)
+  )
+    throw new FinancialError("invalid_financial_input");
+  const parsed = fromExact(value);
+  const canonical = exact(parsed);
+  if (
+    canonical.numerator !== value.numerator ||
+    canonical.denominator !== value.denominator
+  )
+    throw new FinancialError("invalid_financial_input");
+  return parsed;
+}
 function buildAmounts(
   input: AmountInput,
   snapshots: boolean,
@@ -75,7 +119,7 @@ function buildAmounts(
       );
     }),
     g0 = gross.reduce(add, rational(0n)),
-    d0 = input.discount ? originalMoney(input.discount.amount) : rational(0n),
+    d0 = discountOriginal(input),
     n0 = subtract(g0, d0);
   for (const amount of [...gross, g0, d0]) assertMoneyRange(amount);
   // The stored total must fit after currency normalization as well.
