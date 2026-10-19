@@ -18,7 +18,11 @@ export function PosPrintTicket({ doc }: { doc: TicketDoc }) {
           <Text>
             {doc.metadata.saleType} · {doc.metadata.identifier}
           </Text>
-          {doc.metadata.note && <Text>Nota: {doc.metadata.note}</Text>}
+          {doc.metadata.note && (
+            <Text className="whitespace-pre-wrap">
+              Nota: {doc.metadata.note}
+            </Text>
+          )}
         </div>
       )}
       <div className="grid gap-3 border-y border-border py-4">

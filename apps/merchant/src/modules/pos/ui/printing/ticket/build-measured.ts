@@ -2,6 +2,14 @@ import { buildFinancialAmountsFromSnapshots } from "@mi-pasaporte/domain/financi
 import type { PosOrderV2, SaleType } from "../../../contracts";
 import type { TicketDoc, TicketSettings } from "./types";
 
+export type MeasuredDraftTicket = Pick<
+  PosOrderV2,
+  "saleType" | "orderLabel" | "tableLabel" | "note" | "business" | "items"
+>;
+type TicketSource = MeasuredDraftTicket &
+  Pick<PosOrderV2, "status"> &
+  Partial<Pick<PosOrderV2, "id" | "total" | "settlement" | "sale">>;
+
 const saleTypes: Record<SaleType, string> = {
   table: "Mesa",
   pickup: "Para recoger",
@@ -17,8 +25,36 @@ export function buildMeasuredTicket(
   settings: TicketSettings,
   opts: { now?: Date; qr?: string } = {},
 ): TicketDoc {
+  return buildSourceTicket(order, settings, opts);
+}
+
+export function buildMeasuredDraftTicket(
+  draft: MeasuredDraftTicket,
+  settings: TicketSettings,
+  opts: {
+    confirmed?: boolean;
+    amounts?: ReturnType<typeof buildFinancialAmountsFromSnapshots>;
+  } = {},
+): TicketDoc {
+  return buildSourceTicket({ ...draft, status: "open" }, settings, {
+    draft: !opts.confirmed,
+    amounts: opts.amounts,
+  });
+}
+
+function buildSourceTicket(
+  order: TicketSource,
+  settings: TicketSettings,
+  opts: {
+    now?: Date;
+    qr?: string;
+    draft?: boolean;
+    amounts?: ReturnType<typeof buildFinancialAmountsFromSnapshots>;
+  },
+): TicketDoc {
   const amounts =
-    order.status === "open"
+    opts.amounts ??
+    (order.status === "open"
       ? buildFinancialAmountsFromSnapshots({
           currencyCode: order.business.currencyCode,
           discount: null,
@@ -28,7 +64,7 @@ export function buildMeasuredTicket(
             position,
           })),
         })
-      : order.settlement;
+      : order.settlement);
   const currency = amounts?.currencyCode ?? order.business.currencyCode;
   // Do not infer today's currency precision for historical settlements. Their
   // decimal strings already carry the frozen minorUnit (including zero).
@@ -36,14 +72,15 @@ export function buildMeasuredTicket(
   const now = opts.now ?? new Date();
   return {
     metadata: {
-      kind:
-        order.status === "open"
+      kind: opts.draft
+        ? "Precuenta · Borrador sin confirmar"
+        : order.status === "open"
           ? "Precuenta"
           : order.status === "closed"
             ? "Venta cerrada · Reimpresión"
             : "Orden anulada",
       saleType: saleTypes[order.saleType],
-      identifier: order.orderLabel || order.id,
+      identifier: order.orderLabel || order.id || "Nueva orden",
       note: order.note,
     },
     businessName: settings.showBusinessName ? order.business.name : null,
@@ -75,7 +112,7 @@ export function buildMeasuredTicket(
           },
         }
       : {}),
-    total: money(amounts?.collected ?? order.sale?.total ?? order.total),
+    total: money(amounts?.collected ?? order.sale?.total ?? order.total ?? "0"),
     date: now.toLocaleDateString("es-EC"),
     time: now.toLocaleTimeString("es-EC", {
       hour: "2-digit",

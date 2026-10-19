@@ -63,6 +63,7 @@ export function MeasuredConsole({ locations }: { locations: PosLocationV2[] }) {
         identity: scope.identity,
         locations,
         currencyCode: session.business.currencyCode,
+        businessName: scope.businessName ?? "",
         saleTypes: ["counter", "table", "pickup", "delivery"],
         tablesEnabled: session.business.enabledModules.includes("tables"),
       },
@@ -466,6 +467,8 @@ export function MeasuredConsoleContent({
       {view === "edit" && editor && (
         <MeasuredPosEditor
           session={editor}
+          printingConfiguration={printing}
+          accessEnabled={accessEnabled && !denied}
           onAccessError={handleError}
           onSaved={(value) => {
             customerSelections.current.set(value.id, editor.customer.selection);

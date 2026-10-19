@@ -247,7 +247,7 @@ test("anonymous closed result and voided ticket keep their actual status", async
     page.getByRole("heading", { name: "Venta cerrada", exact: true }),
   ).toHaveCount(0);
 });
-test("configuration error retries explicitly and disabled printing stays hidden", async ({
+test("configuration error retries explicitly and disabled printing remains visible", async ({
   page,
 }) => {
   const requests = await open(page, "", "error");
@@ -267,7 +267,12 @@ test("configuration error retries explicitly and disabled printing stays hidden"
       name: /Imprimir precuenta|Reimprimir ticket/,
       exact: true,
     }),
-  ).toHaveCount(0);
+  ).toBeDisabled();
+  await expect(
+    page.getByText("Impresión desactivada en los ajustes del POS", {
+      exact: true,
+    }),
+  ).toBeVisible();
 });
 for (const change of ["identity", "order", "version", "status", "unmount"]) {
   test(`retired ${change} callbacks cannot access a device or open browser printing`, async ({

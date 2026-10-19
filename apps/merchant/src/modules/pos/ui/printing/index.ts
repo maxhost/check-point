@@ -24,7 +24,10 @@ import {
 } from "./transport/types";
 import type { TicketDoc } from "./ticket/types";
 
-export { buildMeasuredTicket } from "./ticket/build-measured";
+export {
+  buildMeasuredTicket,
+  buildMeasuredDraftTicket,
+} from "./ticket/build-measured";
 export { buildTicket } from "./ticket/build";
 export type {
   TicketDoc,

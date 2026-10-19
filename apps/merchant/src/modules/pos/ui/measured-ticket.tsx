@@ -68,18 +68,26 @@ export function MeasuredTicket({
             title="Esta orden está anulada. Su ticket no acredita una venta."
           />
         )}
-        {printing.enabled && (
-          <div>
-            <Button
-              onPress={printing.print}
-              isDisabled={!printing.doc}
-              isLoading={printing.busy}
-            >
-              {order.status === "open"
-                ? "Imprimir precuenta"
-                : "Reimprimir ticket"}
+        <div>
+          <Button
+            onPress={printing.print}
+            isDisabled={!printing.doc}
+            isLoading={printing.busy}
+          >
+            {order.status === "open"
+              ? "Imprimir precuenta"
+              : "Reimprimir ticket"}
+          </Button>
+        </div>
+        {printing.ready && !printing.enabled && (
+          <Alert
+            kind="info"
+            title="Impresión desactivada en los ajustes del POS"
+          >
+            <Button variant="quiet" onPress={printing.retrySettings}>
+              Volver a leer ajustes de impresión
             </Button>
-          </div>
+          </Alert>
         )}
       </div>
       <PosPrintFeedback printing={printing} />

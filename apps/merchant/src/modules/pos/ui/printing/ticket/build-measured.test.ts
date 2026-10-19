@@ -1,10 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { buildFinancialSettlementFromSnapshots } from "@mi-pasaporte/domain/financial";
+import {
+  buildFinancialAmountsFromSnapshots,
+  buildFinancialSettlementFromSnapshots,
+} from "@mi-pasaporte/domain/financial";
 import {
   ticketOrder,
   closedTicket,
 } from "../../../../../../../../tests/e2e/support/pos-measured-ticket-fixture";
-import { buildMeasuredTicket } from "./build-measured";
+import {
+  buildMeasuredDraftTicket,
+  buildMeasuredTicket,
+} from "./build-measured";
 import { layoutTicket, COLUMNS } from "../escpos/layout";
 import { encodeTicket } from "../escpos/encode";
 import type { PosOrderV2 } from "../../../contracts";
@@ -220,4 +226,46 @@ describe("measured document preserves exact snapshots and monetary authority", (
       expect(bytes).toContain("12.123456789");
     },
   );
+});
+
+describe("editor precuenta", () => {
+  it("prints an unsaved draft without inventing an order identifier", () => {
+    const draft = {
+      saleType: ticketOrder.saleType,
+      orderLabel: "",
+      tableLabel: "",
+      note: "Sin hielo",
+      business: ticketOrder.business,
+      items: ticketOrder.items,
+    };
+    const doc = buildMeasuredDraftTicket(draft, settings);
+    expect(doc.metadata).toMatchObject({
+      kind: "Precuenta · Borrador sin confirmar",
+      identifier: "Nueva orden",
+      note: "Sin hielo",
+    });
+    expect(doc.lines[0].quantity).toBe("0.123456789 kg");
+    expect(
+      buildMeasuredDraftTicket(draft, settings, { confirmed: true }).metadata
+        ?.kind,
+    ).toBe("Precuenta");
+  });
+  it("uses the same preview discount and net total as the editor", () => {
+    const amounts = buildFinancialAmountsFromSnapshots({
+      currencyCode: "USD",
+      lines: ticketOrder.items.map((line, position) => ({
+        ...line,
+        sourceLineId: line.lineId,
+        position,
+      })),
+      discount: {
+        amount: "1.00",
+        origin: { type: "campaign_coupon", sourceId: "coupon", scope: "order" },
+      },
+    });
+    const doc = buildMeasuredDraftTicket(ticketOrder, settings, { amounts });
+    expect(doc.total).toBe(`${amounts.collected} USD`);
+    expect(doc.summary?.discount).toBe("1.00 USD");
+    expect(doc.lines[0].lineTotal).toBe(`${amounts.lines[0].money.net} USD`);
+  });
 });

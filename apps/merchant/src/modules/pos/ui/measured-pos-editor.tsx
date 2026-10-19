@@ -3,10 +3,11 @@ import {
   useCallback,
   useEffect,
   useRef,
+  useMemo,
   useState,
   useSyncExternalStore,
 } from "react";
-import { EditPencil } from "iconoir-react";
+import { EditPencil, Printer } from "iconoir-react";
 import {
   Alert,
   Button,
@@ -24,6 +25,14 @@ import { MeasuredCart } from "./measured-cart";
 import { measuredMoney } from "./measured-money";
 import { measuredPaymentPreview } from "./measured-payment-preview";
 import { MeasuredEditorCustomer } from "./measured-editor-customer";
+import {
+  useMeasuredPrinting,
+  type MeasuredPrinting,
+} from "./measured-printing";
+import { buildMeasuredDraftTicket } from "./printing/index";
+import type { TicketSettings } from "./ticket-settings-types";
+import { PosPrintFeedback } from "./pos-print-feedback";
+import { PosPrintTicket } from "./pos-print-ticket";
 import {
   appendCartLine,
   newCartLine,
@@ -55,6 +64,8 @@ export type MeasuredPosEditorProps = {
   onSaved: (order: PosOrderV2) => void;
   onPrepare: (order: PosOrderV2) => void;
   onAccessError?: (error: unknown) => void;
+  printingConfiguration?: MeasuredPrinting;
+  accessEnabled?: boolean;
 };
 export function MeasuredPosEditor({
   session,
@@ -62,6 +73,8 @@ export function MeasuredPosEditor({
   onSaved,
   onPrepare,
   onAccessError,
+  printingConfiguration,
+  accessEnabled = true,
 }: MeasuredPosEditorProps) {
   useSyncExternalStore(
     session.subscribe,
@@ -129,26 +142,34 @@ export function MeasuredPosEditor({
     /* Partial captures remain visible. */
   }
   const validation = session.validation();
-  let benefitPreview: ReturnType<typeof measuredPaymentPreview> | null = null;
-  if (session.customer.state.resolved && draft.lines.length) {
-    try {
-      benefitPreview = measuredPaymentPreview(
-        {
-          status: "open",
-          business: { name: "", currencyCode: context.currencyCode },
-          items: draft.lines.map((line) => ({
-            ...resolvedCartLine(line, units),
-            lineId: line.key,
-          })),
-        },
-        session.customer.state.resolved,
-        null,
-        session.customer.state.excluded,
-      );
-    } catch {
-      /* Keep incomplete quantities visible. */
+  const benefitPreview = useMemo(() => {
+    if (session.customer.state.resolved && draft.lines.length) {
+      try {
+        return measuredPaymentPreview(
+          {
+            status: "open",
+            business: { name: "", currencyCode: context.currencyCode },
+            items: draft.lines.map((line) => ({
+              ...resolvedCartLine(line, units),
+              lineId: line.key,
+            })),
+          },
+          session.customer.state.resolved,
+          null,
+          session.customer.state.excluded,
+        );
+      } catch {
+        /* Keep incomplete quantities visible. */
+      }
     }
-  }
+    return null;
+  }, [
+    draft.lines,
+    units,
+    context.currencyCode,
+    session.customer.state.resolved,
+    session.customer.state.excluded,
+  ]);
   const conflict = session.conflict;
   const conflictError =
     conflict?.error instanceof PosError ? conflict.error : null;
@@ -201,9 +222,68 @@ export function MeasuredPosEditor({
       setMessage((cause as Error).message);
     }
   }
+  const draftDocument = useCallback(
+    (settings: TicketSettings) =>
+      buildMeasuredDraftTicket(
+        {
+          saleType: draft.saleType,
+          orderLabel: draft.orderLabel,
+          tableLabel: draft.saleType === "table" ? draft.orderLabel : "",
+          note: draft.note.trim() || null,
+          business: {
+            name: context.businessName ?? "",
+            currencyCode: context.currencyCode,
+          },
+          items: draft.lines.map((line) => resolvedCartLine(line, units)),
+        },
+        settings,
+        {
+          confirmed: !!session.order && !session.dirty,
+          amounts: benefitPreview?.amounts ?? undefined,
+        },
+      ),
+    [
+      draft,
+      units,
+      context.businessName,
+      context.currencyCode,
+      session.order,
+      session.dirty,
+      benefitPreview?.amounts,
+    ],
+  );
+  const printing = useMeasuredPrinting({
+    order: session.order && !session.dirty ? session.order : null,
+    buildDocument: draftDocument,
+    client: session.client,
+    context:
+      accessEnabled && state.status !== "retired" ? context.identity : null,
+    prepare:
+      accessEnabled && state.status !== "retired" && !!printingConfiguration,
+    prepared: printingConfiguration,
+    onError: (cause) => onAccessError?.(cause),
+  });
+  const printButton = (
+    <Button
+      variant="secondary"
+      className="size-11 shrink-0 rounded-full! p-0!"
+      aria-label="Imprimir precuenta"
+      isDisabled={
+        blocked ||
+        !draft.lines.length ||
+        !printing.doc ||
+        !!benefitPreview?.error ||
+        (!!session.order && session.order.status !== "open")
+      }
+      isLoading={printing.busy}
+      onPress={printing.print}
+    >
+      {!printing.busy && <Printer className="size-5" aria-hidden="true" />}
+    </Button>
+  );
   const confirmation = (
     <Button
-      className="md:w-full"
+      className="min-w-0 flex-1"
       isDisabled={
         blocked ||
         !!validation ||
@@ -261,7 +341,17 @@ export function MeasuredPosEditor({
       {benefitPreview?.error && (
         <Alert kind="error" title={benefitPreview.error} />
       )}
-      {confirmation}
+      <div className="flex items-center gap-3">
+        {confirmation}
+        {printButton}
+      </div>
+      {printing.ready && !printing.enabled && (
+        <Alert kind="info" title="Impresión desactivada en los ajustes del POS">
+          <Button variant="quiet" onPress={printing.retrySettings}>
+            Volver a leer ajustes de impresión
+          </Button>
+        </Alert>
+      )}
     </div>
   );
   const mobilePrimary = (
@@ -270,7 +360,10 @@ export function MeasuredPosEditor({
         <Text variant="small">Total del pedido</Text>
         <Text variant="label">{totalLabel}</Text>
       </div>
-      {confirmation}
+      <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
+        {confirmation}
+        {printButton}
+      </div>
     </div>
   );
   return (
@@ -582,7 +675,7 @@ export function MeasuredPosEditor({
                 <div className="grid gap-2">
                   <Button
                     variant="quiet"
-                    className="justify-start! px-0!"
+                    className="justify-start! px-3!"
                     isDisabled={blocked}
                     onPress={() => setNoteOpen(true)}
                   >
@@ -627,6 +720,12 @@ export function MeasuredPosEditor({
           <Button onPress={() => setNoteOpen(false)}>Listo</Button>
         </div>
       </Dialog>
+      {printing.doc && (
+        <div className="hidden print:block">
+          <PosPrintTicket doc={printing.browserDoc ?? printing.doc} />
+        </div>
+      )}
+      <PosPrintFeedback printing={printing} />
       {pending && (
         <MeasuredQuantityDialog
           name={pending.product.name}

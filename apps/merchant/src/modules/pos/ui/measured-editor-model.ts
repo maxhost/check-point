@@ -27,6 +27,7 @@ export type MeasuredEditorContext = {
   identity: string;
   locations: PosLocationV2[];
   currencyCode: string;
+  businessName?: string;
   saleTypes: Exclude<SaleType, "legacy">[];
   tablesEnabled: boolean;
   lastLocationId?: string;

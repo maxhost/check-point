@@ -108,6 +108,7 @@ export function usePosContext(options?: PosClientOptions) {
   );
   return {
     client,
+    businessName: core?.business.name ?? null,
     present: provider !== null,
     identity,
     loading: modules?.state === "loading",

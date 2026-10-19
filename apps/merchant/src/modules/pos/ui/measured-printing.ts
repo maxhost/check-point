@@ -40,17 +40,30 @@ export function useMeasuredPrinting({
   context,
   prepare,
   onError,
+  prepared,
+  buildDocument,
 }: {
   order: PosOrderV2 | null;
   client: PosClient;
   context: string | null;
   prepare: boolean;
   onError: (error: unknown) => void;
+  /** Reuse the configuration already prepared by the parent console. */
+  prepared?: {
+    settings: TicketSettings | null;
+    settingsError: string | null;
+    retrySettings: () => void;
+  };
+  buildDocument?: (settings: TicketSettings) => TicketDoc;
 }) {
-  const configKey = useMemo(() => ({}), [client, context, prepare]);
+  const inherited = prepared !== undefined;
+  const configKey = useMemo(
+    () => ({}),
+    [client, context, prepare, prepared?.settings],
+  );
   const identity = useMemo(
     () => ({}),
-    [configKey, order?.id, order?.version, order?.status],
+    [configKey, order?.id, order?.version, order?.status, buildDocument],
   );
   const configCurrent = useRef(configKey);
   configCurrent.current = configKey;
@@ -83,7 +96,7 @@ export function useMeasuredPrinting({
   useEffect(() => {
     let mounted = true;
     setConfiguration(null);
-    if (!prepare || !context) return;
+    if (!prepare || !context || inherited) return;
     const request = client.capture();
     void request<TicketSettings>("/api/modules/pos/ticket")
       .then((settings) => {
@@ -121,21 +134,34 @@ export function useMeasuredPrinting({
     return () => {
       mounted = false;
     };
-  }, [client, context, configKey, prepare, attempt]);
-  const settings =
-    configuration?.key === configKey ? configuration.settings : null;
+  }, [client, context, configKey, prepare, attempt, inherited]);
+  const settings = inherited
+    ? prepared.settings
+    : configuration?.key === configKey
+      ? configuration.settings
+      : null;
   const built = useMemo(() => {
-    if (!settings?.printingEnabled || !order || !context || !prepare)
+    if (
+      !settings?.printingEnabled ||
+      (!order && !buildDocument) ||
+      !context ||
+      !prepare
+    )
       return { doc: null, error: null };
     try {
-      return { doc: buildMeasuredTicket(order, settings), error: null };
+      return {
+        doc: buildDocument
+          ? buildDocument(settings)
+          : buildMeasuredTicket(order!, settings),
+        error: null,
+      };
     } catch {
       return {
         doc: null,
         error: "No pudimos preparar el ticket. Revisa la orden.",
       };
     }
-  }, [settings, order, context, prepare]);
+  }, [settings, order, context, prepare, buildDocument]);
   const update = (next: State) => {
     if (live()) setStored({ key: identity, state: next });
   };
@@ -187,12 +213,20 @@ export function useMeasuredPrinting({
       order?.status,
     ]),
     ready: !!settings,
+    settings,
     enabled: settings?.printingEnabled === true,
     doc: built.doc,
     settingsError:
-      (configuration?.key === configKey ? configuration.error : null) ??
-      built.error,
+      (inherited
+        ? prepared.settingsError
+        : configuration?.key === configKey
+          ? configuration.error
+          : null) ?? built.error,
     retrySettings: () => {
+      if (inherited) {
+        if (live()) prepared.retrySettings();
+        return;
+      }
       if (live()) setAttempt((value) => value + 1);
     },
     print,
