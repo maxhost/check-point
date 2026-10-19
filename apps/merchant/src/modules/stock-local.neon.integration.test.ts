@@ -62,7 +62,7 @@ import {
   setupStockLocalWorld,
   cleanupStockLocalWorld,
 } from "./stock-local-integration-support";
-beforeAll(setupStockLocalWorld, 180_000);
+beforeAll(() => setupStockLocalWorld({ posContract: 2 }), 180_000);
 afterAll(cleanupStockLocalWorld, 180_000);
 afterEach(() => vi.restoreAllMocks());
 describe.skipIf(!modulesIntegrationEnabled)(

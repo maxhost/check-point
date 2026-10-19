@@ -23,9 +23,9 @@ Base `01445a86bdec433e8d7bc75b94dfca1ce8184c19`, WT/ref `pos-ui-card-0242`. Cort
 | void-api-v2 | harness explícito con cookie/scope real; body opcional; JSON/versión inválidos; replay/evento uno; tenant y cerrada sin alterar pagos |
 | extensión5 | escaleraauth, owner/staff/tenant, ajustes/pagos, locks mesaocupada/toggle, cuerpos V2 explícitos sin reparar negativos |
 
-## Inventario transitivo exhaustivo
+## Inventario directo y cierre recursivo de soportes
 
-39 consumidores únicos de ambos soportes: seis iniciales +33 fuera del corte inicial. Cinco ya autorizados después; otros siete dinero/soporte indirecto en preparación. Los14 residuales/históricos están autorizados y preparados sólo en patches privados. “Compatible por lectura” no significa PASS ejecutado.
+39 consumidores directos únicos de ambos soportes: seis iniciales +33 fuera del corte inicial. El cierre recursivo posterior descubre40, agregando stock-local-recipes vía stock-local-integration-support;39 nunca fue el universo indirecto completo. Cinco ya autorizados después; otros siete dinero/soporte indirecto en preparación. Los14 residuales/históricos están autorizados y preparados sólo en patches privados. “Compatible por lectura” no significa PASS ejecutado.
 
 | Archivo real | Tratamiento |
 | --- | --- |
@@ -66,6 +66,7 @@ Base `01445a86bdec433e8d7bc75b94dfca1ce8184c19`, WT/ref `pos-ui-card-0242`. Cort
 | `apps/merchant/src/modules/pos/server/ticket-settings.neon.integration.test.ts` | Ampliación5 PASS DB en afe7060d |
 | `apps/merchant/src/modules/pos/server/unit-expand-compat.neon.integration.test.ts` | Histórico6 actualizado; SQL canónico/clones/constraints de origen conservados y shape0108 activo separado; DB serial pendiente |
 | `apps/merchant/src/modules/pos/server/void-api-v2.neon.integration.test.ts` | Corte inicial PASS DB en afe7060d |
+| `apps/merchant/src/modules/stock-local-recipes.neon.integration.test.ts` | Indirecto vía stock-local-integration-support; opt-inV2 actualizado, checks offline PASS, DB pendiente |
 | `apps/merchant/src/modules/stock-local.neon.integration.test.ts` | Residual8 actualizado, checks offline PASS; DB pendiente de devolución |
 | `apps/merchant/src/modules/tables/server/tables.neon.integration.test.ts` | Ampliación5 PASS DB en afe7060d |
 
@@ -120,3 +121,11 @@ Los8HTTP/toggles/eventos y6históricos autorizados están aplicados. No cambia n
 Históricos: SQL0102/0103/0105 canónico, hashes y clones privados conservados; los negativos temporales de masa dormante/tarifa cents quedan en el checkpoint de origen y los shape0108 activos se prueban por separado, incluyendo ausencia de barreras retiradas. Único DROP CONSTRAINT sigue siendo sobre cloneproductTable propio; nada se retira de core/pos reales. Todos los DDL se correrán seriales con teardown y reservaCI. IDs propios de nuevas fixtures se capturan y retiran localmente después de negocios/órdenes, con evidencia de owner/consumer/sesiones; no cambia cleanup Counter global.
 
 Checks offline residual: ESLint14 y Prettier14 PASS. Typecheck intento1 FAIL2errores propios (find potencialmenteundefined y timezone no parte deOperatorBusiness); intento2 FAIL por firma real listPosOrders(segundoargDate); corregido para usar lector autoritativo interno y tercer intento typecheck merchant PASS. Lint privado después de mejorarcleanup tuvo3imports inArray sobrantes, retirados; siguiente privado14 PASS. No se ejecutóDB de este grupo durante la ventanaM1. Pendientes su congelado final, suites8 y suites6DDL aisladas tras devoluciónDB, y QA independiente sobre candidato congelado.
+
+## Dependencia Stock indirecta y universo40
+
+Antes de editar se pidió ampliación concreta; autorizada41c908e8/factory. `stock-local-integration-support.ts` era un writerV1 indirecto de stock-local y stock-local-recipes. Setup({posContract:2}) ahora captura cookie/scope del ModuleWorld real, create positivo declara comandoV2/revisión comercial consultada y close adopta scope explícito; default raw y route genérico siguen intactos. Ambos callers optan expresamente. Negativos de receta/local mantienen422location_required/404foreign y éxito201local elegido con payloadV2 explícito, sin traducir cuerpos negativos. Cleanup de ModuleWorld conserva IDs exactos y verifica users/sesiones propios sólo en opt-in.
+
+Cierre recursivo sobre imports relativos estáticos/dinámicos de pos-integration-support, pos-payment-integration-support, business-core-support y stock-local-integration-support:40archivos de test. Se revisaron también los soportes intermedios tables-integration-support (único caller yaactualizado), retirement-integration-support (historia/domain sin writerHTTP obsoleto) y business-core (financial/failures opt-in; access sólo businessAPI). Nuevas extensiones siguen requiriendo paths concretos antes de editar.
+
+Checks extraStock: types merchant PASS, ESLint3 PASS y Prettier3 PASS; ningunaDB durante reservaM1. Pendiente pasa a9residualesHTTP/eventos (8anteriores+stock-local-recipes) y6históricosDDL:15suites. Los18archivos/107casos yaPASS conservan fuente y compatibilidad;7consumidores noeditados quedan documentados por lectura, no se les atribuyePASS nuevo.
